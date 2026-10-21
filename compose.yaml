@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sanierung
+      POSTGRES_USER: sanierung
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lokal_aendern}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sanierung -d sanierung"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://sanierung:${POSTGRES_PASSWORD:-lokal_aendern}@db:5432/sanierung
+      HOST: 0.0.0.0
+    volumes:
+      - ./private:/app/private
+      - ./data:/app/data:ro
+    ports:
+      - "127.0.0.1:5000:5000"
+volumes:
+  pgdata:

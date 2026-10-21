@@ -1,0 +1,17 @@
+# Projektinhalt / vertrauliche Finanz- und Kontaktdaten
+private/
+data/initial_budget.json
+sanierung.db
+*.db-shm
+*.db-wal
+*.sqlite3
+*.zip
+.env
+# Entwicklungsumgebung
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+.idea/
+.vscode/

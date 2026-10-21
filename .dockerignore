@@ -1,0 +1,12 @@
+# Private Bauunterlagen bleiben auf dem Host und werden nur per Volume eingebunden
+private/
+data/initial_budget.json
+*.db
+*.db-shm
+*.db-wal
+.git/
+.venv/
+__pycache__/
+*.pyc
+.env
+*.zip
