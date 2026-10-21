@@ -4,12 +4,15 @@ import io
 import json
 import os
 from uuid import uuid4
+from hashlib import sha256
+from shutil import copyfile
 import math
 import sqlite3
 import tempfile
 import zipfile
 from datetime import date, datetime
 from financials import effective_offer, forecast_lines, monetary_totals
+from offer_parser import parse_pdf
 from scheduler import schedule
 from pathlib import Path
 from flask import Flask, jsonify, render_template, request, Response, send_file
@@ -84,6 +87,7 @@ class CostItem(db.Model):
     notes=db.Column(db.Text,default='')
     budget_line_id=db.Column(db.Integer, db.ForeignKey('budget_line.id'), nullable=True)
     selected=db.Column(db.Boolean, nullable=False, default=False)
+    offer_id=db.Column(db.Integer,db.ForeignKey('offer.id'),nullable=True)
 
 class BudgetLine(db.Model):
     id=db.Column(db.Integer,primary_key=True)
@@ -119,6 +123,51 @@ class Document(db.Model):
     cost_item_id = db.Column(db.Integer, db.ForeignKey('cost_item.id'), nullable=True)
     notes = db.Column(db.Text, default='')
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+class Offer(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    digest=db.Column(db.String(64),unique=True,nullable=False)
+    document_id=db.Column(db.Integer,db.ForeignKey('document.id'))
+    contractor_id=db.Column(db.Integer,db.ForeignKey('contractor.id'))
+    vendor=db.Column(db.String(200),nullable=False)
+    number=db.Column(db.String(100),default='')
+    issued=db.Column(db.String(20),default='')
+    expires=db.Column(db.String(20),default='')
+    gross=db.Column(db.Float)
+    net=db.Column(db.Float)
+    vat=db.Column(db.Float)
+    tax_rate=db.Column(db.Float,default=0)
+    status=db.Column(db.String(30),nullable=False,default='Angebot')
+    reconciled=db.Column(db.Boolean,nullable=False,default=False)
+    warnings=db.Column(db.Text,nullable=False,default='[]')
+    filename=db.Column(db.String(260),nullable=False)
+    created_at=db.Column(db.DateTime,default=datetime.utcnow)
+    sections=db.relationship('OfferSection',cascade='all,delete-orphan',lazy='select')
+    positions=db.relationship('OfferPosition',cascade='all,delete-orphan',lazy='select')
+
+class OfferSection(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    offer_id=db.Column(db.Integer,db.ForeignKey('offer.id',ondelete='CASCADE'),nullable=False)
+    name=db.Column(db.String(170),nullable=False)
+    net=db.Column(db.Float,nullable=False,default=0)
+    gross=db.Column(db.Float,nullable=False,default=0)
+    budget_line_id=db.Column(db.Integer,db.ForeignKey('budget_line.id'))
+    selected=db.Column(db.Boolean,nullable=False,default=False)
+    sort_order=db.Column(db.Integer,nullable=False,default=0)
+
+class OfferPosition(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    offer_id=db.Column(db.Integer,db.ForeignKey('offer.id',ondelete='CASCADE'),nullable=False)
+    number=db.Column(db.String(30),nullable=False)
+    section=db.Column(db.String(170),nullable=False)
+    description=db.Column(db.String(300),nullable=False)
+    quantity=db.Column(db.Float)
+    unit=db.Column(db.String(40),default='')
+    unit_price=db.Column(db.Float)
+    net_amount=db.Column(db.Float)
+    optional_amount=db.Column(db.Float)
+    optional=db.Column(db.Boolean,nullable=False,default=False)
+    page=db.Column(db.Integer)
 
 class HistoricalEstimate(db.Model):
     id=db.Column(db.Integer,primary_key=True)
@@ -166,6 +215,8 @@ def initialize():
         db.session.execute(text('ALTER TABLE cost_item ADD COLUMN budget_line_id INTEGER'))
     if 'selected' not in old_columns:
         db.session.execute(text('ALTER TABLE cost_item ADD COLUMN selected BOOLEAN NOT NULL DEFAULT FALSE'))
+    if 'offer_id' not in old_columns:
+        db.session.execute(text('ALTER TABLE cost_item ADD COLUMN offer_id INTEGER'))
     db.session.commit()
     if not db.session.get(Setting,'start'):
         db.session.add(Setting(key='start', value='2027-03-01'))
@@ -184,6 +235,7 @@ def initialize():
                 db.session.add(Dependency(task_id=by_code[data['code']], predecessor_id=by_code[code]))
     db.session.commit()
     initialize_budget()
+    initialize_offers()
 
 @app.get('/')
 def home():
@@ -288,7 +340,7 @@ def export_csv():
 
 @app.get('/api/backup.json')
 def backup():
-    return Response(json.dumps({'start':setting('start'),'tasks':serialize(all_tasks()),'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))], 'budget_lines':[budget_dict(x) for x in all_budget_lines()], 'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))], 'contractors':[as_dict(x,CONTACT_FIELDS) for x in db.session.scalars(select(Contractor))], 'documents':[document_dict(x) for x in db.session.scalars(select(Document))]},ensure_ascii=False,indent=2),mimetype='application/json',headers={'Content-Disposition':'attachment; filename=Sanierungsprojekt_Backup.json'})
+    return Response(json.dumps({'start':setting('start'),'tasks':serialize(all_tasks()),'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))], 'budget_lines':[budget_dict(x) for x in all_budget_lines()], 'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))], 'contractors':[as_dict(x,CONTACT_FIELDS) for x in db.session.scalars(select(Contractor))], 'documents':[document_dict(x) for x in db.session.scalars(select(Document))], 'offers':[offer_dict(x) for x in db.session.scalars(select(Offer))]},ensure_ascii=False,indent=2),mimetype='application/json',headers={'Content-Disposition':'attachment; filename=Sanierungsprojekt_Backup.json'})
 
 COST_FIELDS={'category','title','contractor_id','task_id','budget_line_id','selected','kind','state','estimate','offer','committed','paid','own_hours','own_hourly','source_ref','notes'}
 CONTACT_FIELDS={'trade','name','contact','phone','email','address','notes'}
@@ -387,6 +439,208 @@ def budget_summary(items):
             'categories':[{'category':k,'estimate':round(v['estimate'],2),'planned':round(v['planned'],2),'paid':round(v['paid'],2)} for k,v in grouped.items()],
             'line_forecasts':previews,'line_basis':basis,'additional_items':len(extras)}
 
+
+def _get_or_add_contractor(name, family):
+    existing=db.session.scalar(select(Contractor).where(db.func.lower(Contractor.name)==name.lower()).limit(1))
+    if existing:return existing
+    obj=Contractor(name=name,trade={'WP':'Wärmepumpe / Heizung','PV':'Photovoltaik','P3':'Elektro'}.get(family,'Sonstiges'),notes='Aus PDF-Angebot eingelesen; keine Beauftragung bestätigt.')
+    db.session.add(obj);db.session.flush();return obj
+
+
+def add_parsed_offer(parsed,digest,source_document=None):
+    if db.session.scalar(select(Offer.id).where(Offer.digest==digest)):
+        raise ValueError('Dieses PDF-Angebot wurde bereits importiert (identischer Dateiinhalt).')
+    contractor=_get_or_add_contractor(parsed['vendor'],parsed['family'])
+    offer=Offer(digest=digest,document_id=source_document.id if source_document else None,
+                contractor_id=contractor.id,vendor=parsed['vendor'],number=parsed['number'],
+                issued=parsed['issued'],expires=parsed['expires'],net=parsed['net'],vat=parsed['vat'],
+                gross=parsed['gross'],tax_rate=parsed['tax_rate'],status='Angebot',
+                reconciled=parsed['reconciled'],warnings=json.dumps(parsed['warnings'],ensure_ascii=False),
+                filename=parsed['filename'])
+    db.session.add(offer);db.session.flush()
+    budget_codes={x.code:x.id for x in db.session.scalars(select(BudgetLine)).all()}
+    for idx,section in enumerate(parsed['groups']):
+        db.session.add(OfferSection(offer_id=offer.id,name=section['name'],net=section['net'],gross=section['gross'],
+                        budget_line_id=budget_codes.get(section.get('suggested_budget_code')),sort_order=idx,selected=False))
+    for entry in parsed['positions']:
+        db.session.add(OfferPosition(offer_id=offer.id,**{k:entry.get(k) for k in ('number','section','description','quantity','unit','unit_price','net_amount','optional_amount','optional','page')}))
+    return offer
+
+
+def initialize_offers():
+    """Import only bundled private source files, never public example data."""
+    path=ROOT/'data'/'initial_offers.json'
+    if not path.exists() or db.session.get(Setting,'initial_offers_loaded'):return
+    records=json.loads(path.read_text(encoding='utf-8'))
+    for row in records:
+        pdf=ROOT/'private'/'offer_sources'/row['filename']
+        if not pdf.is_file():continue
+        content=pdf.read_bytes()
+        digest=sha256(content).hexdigest()
+        if db.session.scalar(select(Offer.id).where(Offer.digest==digest)):continue
+        # Re-parse source PDF so the private JSON can never silently diverge.
+        parsed=parse_pdf(content,row['filename'])
+        DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)
+        stored=uuid4().hex+'.pdf'
+        (DOCUMENT_ROOT/stored).write_bytes(content)
+        doc=Document(original_name=row['filename'][:240],stored_name=stored,kind='Angebot',
+                     notes='Lokal bereitgestelltes PDF; automatisch analysiert. Nicht beauftragt.')
+        db.session.add(doc);db.session.flush()
+        offer=add_parsed_offer(parsed,digest,doc)
+        doc.contractor_id=offer.contractor_id
+    db.session.add(Setting(key='initial_offers_loaded',value='1'))
+    db.session.commit()
+
+
+def _sync_offer_costs(offer):
+    """For each selected budget line, make EXACTLY ONE CostItem per offer.
+
+    An offer may be divided into sections, but separate sections for the same
+    budget line are aggregated to avoid the 'first selected offer wins' trap.
+    """
+    existing={x.budget_line_id:x for x in db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id)).all()}
+    grouped={}
+    for section in offer.sections:
+        if not section.selected:continue
+        if not offer.reconciled:raise ValueError('Die PDF-Summen sind nicht abgeglichen. Angebot zuerst prüfen.')
+        if not section.budget_line_id:raise ValueError('Bitte zuerst die passende Budgetposition zuordnen.')
+        line=db.session.get(BudgetLine,section.budget_line_id)
+        if not line or not line.active or line.is_group:raise ValueError('Nur aktive Kostenpositionen können ausgewählt werden.')
+        grouped.setdefault(line.id,[]).append(section)
+    for line_id, sections in grouped.items():
+        other=db.session.scalar(select(CostItem.id).where(CostItem.budget_line_id==line_id,
+                CostItem.selected.is_(True),CostItem.offer_id!=offer.id).limit(1))
+        if other:raise ValueError('Diese Budgetposition enthält bereits ein ausgewähltes Angebot. Bitte zunächst die bisherige Auswahl entfernen.')
+        line=db.session.get(BudgetLine,line_id)
+        item=existing.pop(line_id,None)
+        if item is None:item=CostItem(offer_id=offer.id,budget_line_id=line_id,title='',category=line.category)
+        total=round(sum(x.gross for x in sections),2)
+        item.category=line.category;item.title=f'{offer.vendor}: {", ".join(x.name for x in sections)}'[:300]
+        item.contractor_id=offer.contractor_id;item.kind='Fremdleistung'
+        item.offer=total;item.source_ref=offer.number
+        item.state='Beauftragt' if offer.status=='Beauftragt' else 'Angebot'
+        item.committed=total if offer.status=='Beauftragt' else 0
+        item.selected=True
+        db.session.add(item)
+    for stale in existing.values():
+        if stale.paid or db.session.scalar(select(Document.id).where(Document.cost_item_id==stale.id).limit(1)):
+            raise ValueError('Zugeordnete Kostenposition hat bereits Zahlungen oder Dokumente. Vor einer Änderung zunächst manuell klären.')
+        db.session.delete(stale)
+
+
+def offer_dict(o):
+    return {'id':o.id,'number':o.number,'vendor':o.vendor,'filename':o.filename,
+            'issued':o.issued,'expires':o.expires,'net':o.net,'vat':o.vat,'gross':o.gross,
+            'tax_rate':o.tax_rate,'status':o.status,'reconciled':o.reconciled,
+            'warnings':json.loads(o.warnings or '[]'),'document_id':o.document_id,'contractor_id':o.contractor_id,
+            'sections':[{'id':g.id,'name':g.name,'net':g.net,'gross':g.gross,'budget_line_id':g.budget_line_id,
+                         'selected':g.selected} for g in sorted(o.sections,key=lambda x:x.sort_order)],
+            'positions':[{'number':p.number,'section':p.section,'description':p.description,
+                          'quantity':p.quantity,'unit':p.unit,'unit_price':p.unit_price,
+                          'net_amount':p.net_amount,'optional_amount':p.optional_amount,
+                          'optional':p.optional,'page':p.page} for p in o.positions]}
+
+
+@app.get('/api/offers')
+def offers_list():
+    return jsonify(offers=[offer_dict(x) for x in db.session.scalars(select(Offer).order_by(Offer.id.desc()))])
+
+
+@app.post('/api/offers/import')
+def offers_import():
+    f=request.files.get('file')
+    if not f or not f.filename or Path(f.filename).suffix.lower()!='.pdf':
+        return jsonify(error='Bitte eine PDF-Datei auswählen.'),400
+    data=f.read()
+    if not data or not data.startswith(b'%PDF'):
+        return jsonify(error='Die Datei ist kein gültiges PDF.'),400
+    digest=sha256(data).hexdigest()
+    if db.session.scalar(select(Offer.id).where(Offer.digest==digest)):
+        return jsonify(error='Dieses PDF wurde bereits als Angebot importiert.'),409
+    name=Path(f.filename).name[:240]
+    try:parsed=parse_pdf(data,name)
+    except Exception as exc:return jsonify(error='PDF konnte nicht ausgewertet werden: '+str(exc)),422
+    DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)
+    stored=uuid4().hex+'.pdf'
+    (DOCUMENT_ROOT/stored).write_bytes(data)
+    try:
+        doc=Document(original_name=name,stored_name=stored,kind='Angebot',
+                     notes='Automatisch analysiert; bitte Angebot/Zuordnungen prüfen.')
+        db.session.add(doc);db.session.flush()
+        obj=add_parsed_offer(parsed,digest,doc)
+        doc.contractor_id=obj.contractor_id
+        db.session.commit()
+        return jsonify(ok=True,id=obj.id,offer=offer_dict(obj)),201
+    except (ValueError,Exception) as exc:
+        db.session.rollback();(DOCUMENT_ROOT/stored).unlink(missing_ok=True)
+        return jsonify(error=str(exc)),400
+
+
+@app.patch('/api/offers/<int:offer_id>')
+def offer_update(offer_id):
+    obj=db.session.get(Offer,offer_id)
+    if not obj:return jsonify(error='Angebot nicht gefunden.'),404
+    state=(request.get_json(force=True) or {}).get('status')
+    if state not in ('Angebot','Beauftragt'):
+        return jsonify(error='Erlaubt sind Angebot und Beauftragt.'),400
+    try:
+        obj.status=state;_sync_offer_costs(obj)
+        db.session.commit();return jsonify(ok=True)
+    except ValueError as exc:
+        db.session.rollback();return jsonify(error=str(exc)),409
+
+
+@app.patch('/api/offer-sections/<int:section_id>')
+def offer_section_update(section_id):
+    obj=db.session.get(OfferSection,section_id)
+    if not obj:return jsonify(error='Abschnitt nicht gefunden.'),404
+    body=request.get_json(force=True) or {}
+    try:
+        if 'budget_line_id' in body:
+            raw=body['budget_line_id']; obj.budget_line_id=int(raw) if raw not in ('',None) else None
+        if 'selected' in body:
+            if not isinstance(body['selected'],bool):raise ValueError('Ungültiger Auswahlwert.')
+            obj.selected=body['selected']
+        db.session.flush()
+        _sync_offer_costs(db.session.get(Offer,obj.offer_id))
+        db.session.commit();return jsonify(ok=True)
+    except (ValueError,TypeError) as exc:
+        db.session.rollback();return jsonify(error=str(exc)),409
+
+
+@app.patch('/api/offer-costs/<int:item_id>')
+def offer_cost_payment(item_id):
+    """Allow recording real payments without corrupting an imported offer amount."""
+    obj=db.session.get(CostItem,item_id)
+    if not obj or not obj.offer_id:return jsonify(error='Importierte Kostenposition nicht gefunden.'),404
+    data=request.get_json(force=True) or {}
+    try:
+        if 'paid' in data:
+            paid=float(data['paid'] or 0)
+            if not math.isfinite(paid) or paid<0:raise ValueError('Zahlungsbetrag muss nicht-negativ sein.')
+            obj.paid=paid
+        if 'notes' in data:obj.notes=str(data['notes'] or '')[:2000]
+        db.session.commit();return jsonify(ok=True)
+    except (ValueError,TypeError) as exc:
+        db.session.rollback();return jsonify(error=str(exc)),400
+
+
+@app.delete('/api/offers/<int:offer_id>')
+def offer_delete(offer_id):
+    obj=db.session.get(Offer,offer_id)
+    if not obj:return jsonify(error='Angebot nicht gefunden.'),404
+    linked=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer_id)).all()
+    if any(x.paid or x.committed for x in linked):
+        return jsonify(error='Zu diesem Angebot sind Zahlungen oder Aufträge gespeichert. Erst manuell prüfen.'),409
+    doc=db.session.get(Document,obj.document_id) if obj.document_id else None
+    try:
+        for x in linked:db.session.delete(x)
+        db.session.delete(obj)
+        # Linked PDF is preserved as a document (do not discard private documents).
+        db.session.commit();return jsonify(ok=True,document_id=doc.id if doc else None)
+    except Exception:
+        db.session.rollback();return jsonify(error='Angebot konnte nicht gelöscht werden.'),409
+
 @app.get('/kosten')
 def costs_page():return render_template('kosten.html')
 
@@ -394,20 +648,22 @@ def costs_page():return render_template('kosten.html')
 def get_costs():
     items=db.session.scalars(select(CostItem).order_by(CostItem.category,CostItem.id)).all()
     contacts=db.session.scalars(select(Contractor).order_by(Contractor.name)).all()
-    return jsonify({'items':[as_dict(x,COST_FIELDS) for x in items],
+    return jsonify({'items':[as_dict(x,COST_FIELDS)|{'offer_id':x.offer_id} for x in items],
                     'contractors':[as_dict(x,CONTACT_FIELDS) for x in contacts],
                     'tasks':[{'id':x.id,'code':x.code,'name':x.name} for x in all_tasks()],
                     'summary':budget_summary(items),
                     'budget_lines':[budget_dict(x) for x in all_budget_lines()],
                     'funding':[funding_dict(x) for x in db.session.scalars(select(Funding).order_by(Funding.id))],
                     'historical':[{'row':x.sheet_row,'name':x.name,'architect_estimate':x.architect_estimate,'own_estimate':x.own_estimate,'supplier_note':x.supplier_note} for x in db.session.scalars(select(HistoricalEstimate).order_by(HistoricalEstimate.sheet_row))],
-                    'historical_funding':json.loads(setting('historical_funding','{}')), 'documents':[document_dict(x) for x in db.session.scalars(select(Document).order_by(Document.id.desc()))]})
+                    'historical_funding':json.loads(setting('historical_funding','{}')), 'documents':[document_dict(x) for x in db.session.scalars(select(Document).order_by(Document.id.desc()))],
+                    'offers':[offer_dict(x) for x in db.session.scalars(select(Offer).order_by(Offer.id.desc()))]})
 
 @app.route('/api/costs/<int:item_id>',methods=['PUT','DELETE'])
 @app.post('/api/costs')
 def cost_edit(item_id=None):
     obj=db.session.get(CostItem,item_id) if item_id else CostItem(title='')
     if item_id and not obj:return jsonify(error='Position nicht gefunden.'),404
+    if item_id and obj.offer_id:return jsonify(error='Diese Position stammt aus dem Angebotsimport. Bitte den Angebotsabschnitt bearbeiten.'),409
     try:
         if request.method=='DELETE':
             if db.session.scalar(select(Document.id).where(Document.cost_item_id==item_id).limit(1)):
@@ -572,6 +828,8 @@ def download_document(doc_id):
 def delete_document(doc_id):
     row=db.session.get(Document,doc_id)
     if not row:return jsonify(error='Dokument nicht gefunden.'),404
+    if db.session.scalar(select(Offer.id).where(Offer.document_id==doc_id).limit(1)):
+        return jsonify(error='PDF gehört zu einem importierten Angebot. Zuerst Angebot löschen.'),409
     p=DOCUMENT_ROOT/row.stored_name
     db.session.delete(row);db.session.commit();p.unlink(missing_ok=True)
     return jsonify(ok=True)
@@ -599,17 +857,24 @@ def project_archive():
         if DOCUMENT_ROOT.exists():
             for document in DOCUMENT_ROOT.iterdir():
                 if document.is_file():archive.write(document,arcname='private/documents/'+document.name)
+        source_offers=ROOT/'private'/'offer_sources'
+        if source_offers.exists():
+            for pdf in source_offers.glob('*.pdf'):
+                archive.write(pdf,arcname='private/offer_sources/'+pdf.name)
         original=ROOT/'private'/'Geplante Kosten.xlsx'
         if original.is_file():archive.write(original,arcname='private/Geplante Kosten.xlsx')
         initial=ROOT/'data'/'initial_budget.json'
         if initial.is_file():archive.write(initial,arcname='data/initial_budget.json')
+        private_offers=ROOT/'data'/'initial_offers.json'
+        if private_offers.is_file():archive.write(private_offers,arcname='data/initial_offers.json')
         archive.writestr('export.json',json.dumps({
             'tasks':serialize(all_tasks()),
             'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))],
             'budget_lines':[budget_dict(x) for x in all_budget_lines()],
             'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))],
             'contractors':[as_dict(x,CONTACT_FIELDS) for x in db.session.scalars(select(Contractor))],
-            'documents':[document_dict(x) for x in db.session.scalars(select(Document))]
+            'documents':[document_dict(x) for x in db.session.scalars(select(Document))],
+            'offers':[offer_dict(x) for x in db.session.scalars(select(Offer))]
         },ensure_ascii=False,indent=2))
     stream.seek(0)
     return send_file(stream,mimetype='application/zip',as_attachment=True,

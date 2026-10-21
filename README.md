@@ -89,3 +89,25 @@ Abhängigkeiten: Flask, Flask-SQLAlchemy, psycopg. Bei Neuinstallationen werden 
 - `templates/`, `static/`: Gantt und Kostenoberfläche
 - `tests/`: Unit-Tests für Termin-/Kostenlogik
 - `private/`, `sanierung.db`, `data/initial_budget.json`: persönliche Daten, **nicht committen**
+
+## PDF-Angebote automatisch auswerten (V5)
+
+Unter **Kosten & Kontakte → PDF-Angebote automatisch auswerten** ein *durchsuchbares* PDF auswählen. Die Analyse findet **ausschließlich auf dem eigenen Rechner** mit `pypdf` statt; es wird nichts an eine KI oder einen externen Server geschickt.
+
+1. Die Anwendung liest – soweit im PDF als Text vorhanden – Anbieter, Angebotsnummer, Datum, Nettosumme, MwSt., Bruttosumme sowie Einzelpositionen und Preise.
+2. Einzelpositionen werden nach Leistungsgruppen sortiert. **Optional- und Bedarfspositionen** (z. B. `E.P.`) erscheinen getrennt und werden nicht in den Vertragsbetrag summiert.
+3. Die errechnete Summe der enthaltenen Positionen wird mit der **Nettosumme des PDF** abgeglichen. Nicht abgeglichene PDFs dürfen nicht in den Budgetplan übernommen werden.
+4. Für jede Gruppe eine aktive Budgetzeile wählen, dann die Checkbox „Prognose“ aktivieren. **Erst dann** wird der Angebotsbetrag anstelle der bisherigen Budgetschätzung berücksichtigt. Mehrere Gruppen derselben PDF auf derselben Budgetzeile ergeben genau **eine** zusammengefasste Kostenposition; so entstehen keine Doppelbuchungen.
+5. „Beauftragt“ nur auswählen, wenn der Auftrag tatsächlich erteilt wurde. Die Software kann das **nicht** anhand eines Angebots erkennen. Zahlungen für importierte Angebote können in der Tabelle „Angebote, Aufträge & Ausgaben“ mit dem Button „Zahlung“ erfasst werden.
+
+**Unterstützte PDF-Layouts:** getestet mit textbasierten Positionslisten mit `€`-Spalten (u. a. klassische Angebote mit Positionen und `E.P.`). PDF-Layout und Begriffe variieren zwischen Betrieben stark. **Nicht jedes beliebige Angebot** lässt sich automatisch korrekt analysieren. Bei unlesbaren oder nicht abgeglichenen Dateien: PDF manuell prüfen und das Angebot wie bisher als Kostenposition erfassen. Gescannten PDFs fehlt ohne vorgelagertes OCR die auswertbare Textebene; eine OCR-Funktion ist nicht enthalten. Die Software ist eine Verwaltungshilfe und prüft nicht die rechtliche Bindungswirkung eines Vertrags.
+
+### Datenschutz und Updates
+
+Privat bleiben `private/`, die SQLite-Datei `sanierung.db` und `data/initial_budget.json` sowie `data/initial_offers.json` (alle in `.gitignore`). Das **öffentliche** Repository enthält ausschließlich die Software, synthetische Tests und Beispieldaten. ZIP-Versionen können zusätzlich persönlich importierte lokale PDFs enthalten; solche ZIPs bitte **nicht** öffentlich teilen.
+
+Für ein Update der bisherigen lokalen V4-Installation vorher unter **Projektarchiv ZIP** eine Datensicherung erstellen, dann die neuen Quelldateien übernehmen und die bisherige `sanierung.db` und `private/` behalten. SQLAlchemy ergänzt die neue Datenbankstruktur automatisch. Für PostgreSQL zusätzlich `pg_dump` nutzen. Ein Python-Test lässt sich nach Installation der Abhängigkeiten mit `python -m unittest discover -s tests -v` ausführen.
+
+### Individuelle Initialdaten (optional)
+
+Die persönliche, nicht öffentliche Download-Ausgabe kann die Original-PDFs in `private/offer_sources/` und eine Liste `data/initial_offers.json` enthalten. **Nur beim ersten Start mit dieser Liste** werden die PDF-Dateien lokal analysiert und als unverbindliche Angebote importiert; sie sind **nicht** automatisch als beauftragt gekennzeichnet und verändern die Prognose **nicht** ohne Auswahl. Der Import ist durch Datei-Hash und Initialisierungsmerker vor Doppelimport geschützt.

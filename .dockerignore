@@ -1,6 +1,7 @@
 # Private Bauunterlagen bleiben auf dem Host und werden nur per Volume eingebunden
 private/
 data/initial_budget.json
+data/initial_offers.json
 *.db
 *.db-shm
 *.db-wal

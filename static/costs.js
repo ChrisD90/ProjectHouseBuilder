@@ -19,7 +19,7 @@ function render(){const s=state.summary;
  const q=el('budgetSearch').value.toLowerCase().trim();
  el('budgetrows').innerHTML=state.budget_lines.filter(b=>(b.category+' '+b.title+' '+b.company_hint).toLowerCase().includes(q)).map(b=>`<tr class="${b.is_group?'group-row':''}"><td>${esc(b.category)}<div class="${b.parent_code?'child-title':'muted'}">${b.parent_code?'↳ ':''}${esc(b.title)}</div></td><td><span class="marker">${esc(b.marker)}</span></td><td>${b.is_group?'Gruppe':esc(b.kind)}</td><td>${esc(b.company_hint)}</td>${fmtcell(b.is_group?0:b.estimate)}${fmtcell(s.line_forecasts[b.id]??0)}<td><span class="hint-pill">${esc(s.line_basis[b.id]??(b.is_group?'Gruppenzeile':'Inaktiv'))}</span></td><td><button class="mini" data-budget="${b.id}">Bearbeiten</button></td></tr>`).join('')||'<tr><td colspan="8">Keine passenden Positionen</td></tr>';
  const contractors=new Map(state.contractors.map(x=>[x.id,x.name])); const budget=new Map(state.budget_lines.map(x=>[x.id,x.title]));
- el('costrows').innerHTML=state.items.map(c=>`<tr><td>${esc(c.category)}</td><td>${esc(c.title)}${c.kind==='Eigenleistung'?`<div class="muted">${nf(c.own_hours)} h Eigenarbeit</div>`:''}</td><td>${esc(c.state)}</td><td>${esc(budget.get(c.budget_line_id)||'Zusätzliche Position')}</td><td>${esc(contractors.get(c.contractor_id)||'–')}</td>${fmtcell(c.offer)}${fmtcell(c.committed)}${fmtcell(c.paid)}<td>${c.selected?'✓':'–'}</td><td><button class="mini" data-cost="${c.id}">Bearbeiten</button></td></tr>`).join('')||'<tr><td colspan="10">Noch keine Angebote erfasst. Die Grobschätzungen stehen oben im Kostenplan.</td></tr>';
+ el('costrows').innerHTML=state.items.map(c=>`<tr><td>${esc(c.category)}</td><td>${esc(c.title)}${c.kind==='Eigenleistung'?`<div class="muted">${nf(c.own_hours)} h Eigenarbeit</div>`:''}</td><td>${esc(c.state)}</td><td>${esc(budget.get(c.budget_line_id)||'Zusätzliche Position')}</td><td>${esc(contractors.get(c.contractor_id)||'–')}</td>${fmtcell(c.offer)}${fmtcell(c.committed)}${fmtcell(c.paid)}<td>${c.selected?'✓':'–'}</td><td>${c.offer_id?`<button class="mini" data-offer-paid="${c.id}">Zahlung</button>`:`<button class="mini" data-cost="${c.id}">Bearbeiten</button>`}</td></tr>`).join('')||'<tr><td colspan="10">Noch keine Angebote erfasst. Die Grobschätzungen stehen oben im Kostenplan.</td></tr>';
  const ownLines=state.budget_lines.filter(b=>b.kind==='Eigenleistung'&&b.active&&!b.is_group);
  const ownExtras=state.items.filter(i=>i.kind==='Eigenleistung'&&!i.budget_line_id&&!['Alternative','Abgelehnt'].includes(i.state));
  const ownRows=ownLines.map(b=>{const entries=state.items.filter(i=>i.kind==='Eigenleistung'&&i.budget_line_id===b.id);
@@ -29,6 +29,17 @@ function render(){const s=state.summary;
  el('ownworkrows').innerHTML=ownRows+extraRows||'<tr><td colspan="7">Noch keine Eigenleistungen angelegt.</td></tr>';
  document.querySelectorAll('[data-own]').forEach(btn=>btn.onclick=()=>openEditor('cost',null,{budget_line_id:Number(btn.dataset.own),kind:'Eigenleistung',category:state.budget_lines.find(x=>x.id===Number(btn.dataset.own))?.category||'Eigenleistung',title:state.budget_lines.find(x=>x.id===Number(btn.dataset.own))?.title||'Eigenleistung',state:'Schätzung'}));
  document.querySelectorAll('[data-ownedit]').forEach(btn=>btn.onclick=()=>openEditor('cost',Number(btn.dataset.ownedit)));
+ document.querySelectorAll('[data-offer-paid]').forEach(btn=>btn.onclick=async()=>{
+   const c=state.items.find(x=>x.id===Number(btn.dataset.offerPaid));
+   if(!c)return;
+   const answer=prompt('Tatsächlich insgesamt bezahlt (€), nicht der nächste Abschlag:',String(c.paid||0));
+   if(answer===null)return;
+   const value=Number(answer.trim().replace(/\./g,'').replace(',','.'));
+   if(!Number.isFinite(value)||value<0){alert('Bitte einen gültigen Betrag eingeben.');return}
+   try{await api('/api/offer-costs/'+c.id,{method:'PATCH',body:JSON.stringify({paid:value})});await reload()}
+   catch(error){alert(error.message)}
+ });
+
  el('documents').innerHTML=state.documents.map(d=>`<tr><td><a href="/api/documents/${d.id}/download">${esc(d.name)}</a></td><td>${esc(d.kind)}</td><td>${esc(contractors.get(d.contractor_id)||'–')}</td><td>${esc(budget.get(d.budget_line_id)||state.items.find(i=>i.id===d.cost_item_id)?.title||'–')}</td><td>${esc(d.notes)}</td><td>${esc((d.uploaded_at||'').substring(0,10))}</td><td><button class="mini" data-delete-doc="${d.id}">Löschen</button></td></tr>`).join('')||'<tr><td colspan="7">Noch keine Dokumente abgelegt</td></tr>';
  for(const [node,values,title] of [['fileContractor',state.contractors,'name'],['fileBudget',state.budget_lines.filter(x=>!x.is_group),'title'],['fileCost',state.items,'title']]){const selection=el(node).value;el(node).innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${esc(x[title])}</option>`).join('');el(node).value=selection}
  document.querySelectorAll('[data-delete-doc]').forEach(btn=>btn.onclick=async()=>{if(!confirm('Dieses Dokument dauerhaft von diesem Rechner löschen?'))return;try{await api('/api/documents/'+btn.dataset.deleteDoc,{method:'DELETE'});await reload()}catch(e){alert(e.message)}});
@@ -37,6 +48,7 @@ function render(){const s=state.summary;
  el('contacts').innerHTML=state.contractors.map(c=>`<tr><td>${esc(c.trade)}</td><td>${esc(c.name)}</td><td>${esc(c.contact)}</td><td>${esc(c.phone)}</td><td>${c.email?`<a href="mailto:${encodeURIComponent(c.email).replace('%40','@')}">${esc(c.email)}</a>`:'–'}</td><td>${esc(c.address)}</td><td><button class="mini" data-contact="${c.id}">Bearbeiten</button></td></tr>`).join('')||'<tr><td colspan="7">Keine Firmen vorhanden</td></tr>';
  el('historicalrows').innerHTML=state.historical.map(x=>`<tr><td>${esc(x.name)}</td>${fmtcell(x.architect_estimate)}${fmtcell(x.own_estimate)}<td>${esc(x.supplier_note)}</td></tr>`).join('');
  for(const typ of ['budget','cost','funding','contact'])document.querySelectorAll('[data-'+typ+']').forEach(btn=>btn.addEventListener('click',()=>openEditor(typ,Number(btn.dataset[typ]))));
+ if(window.renderOffers)window.renderOffers();
 }
 const sources={budget:'budget_lines',cost:'items',funding:'funding',contact:'contractors'};
 function selector(key,val){let arr=key==='budget_line_id'?state.budget_lines.filter(x=>!x.is_group):key==='contractor_id'?state.contractors:key==='task_id'?state.tasks:state.budget_lines.filter(x=>x.is_group);let o=`<option value="">Keine Zuordnung</option>`;return o+arr.map(x=>`<option value="${esc(key==='parent_code'?x.code:x.id)}" ${String(val??'')===String(key==='parent_code'?x.code:x.id)?'selected':''}>${esc(key==='task_id'?x.code+' · '+x.name:key==='contractor_id'?x.name:x.category+' · '+x.title)}</option>`).join('')}

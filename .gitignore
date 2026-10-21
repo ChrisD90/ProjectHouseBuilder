@@ -1,6 +1,7 @@
 # Projektinhalt / vertrauliche Finanz- und Kontaktdaten
 private/
 data/initial_budget.json
+data/initial_offers.json
 sanierung.db
 *.db-shm
 *.db-wal
