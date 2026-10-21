@@ -235,7 +235,6 @@ def initialize():
                 db.session.add(Dependency(task_id=by_code[data['code']], predecessor_id=by_code[code]))
     db.session.commit()
     initialize_budget()
-    initialize_offers()
 
 @app.get('/')
 def home():
@@ -458,73 +457,51 @@ def add_parsed_offer(parsed,digest,source_document=None):
                 reconciled=parsed['reconciled'],warnings=json.dumps(parsed['warnings'],ensure_ascii=False),
                 filename=parsed['filename'])
     db.session.add(offer);db.session.flush()
-    budget_codes={x.code:x.id for x in db.session.scalars(select(BudgetLine)).all()}
     for idx,section in enumerate(parsed['groups']):
         db.session.add(OfferSection(offer_id=offer.id,name=section['name'],net=section['net'],gross=section['gross'],
-                        budget_line_id=budget_codes.get(section.get('suggested_budget_code')),sort_order=idx,selected=False))
+                        budget_line_id=None,sort_order=idx,selected=False))
     for entry in parsed['positions']:
         db.session.add(OfferPosition(offer_id=offer.id,**{k:entry.get(k) for k in ('number','section','description','quantity','unit','unit_price','net_amount','optional_amount','optional','page')}))
     return offer
 
 
-def initialize_offers():
-    """Import only bundled private source files, never public example data."""
-    path=ROOT/'data'/'initial_offers.json'
-    if not path.exists() or db.session.get(Setting,'initial_offers_loaded'):return
-    records=json.loads(path.read_text(encoding='utf-8'))
-    for row in records:
-        pdf=ROOT/'private'/'offer_sources'/row['filename']
-        if not pdf.is_file():continue
-        content=pdf.read_bytes()
-        digest=sha256(content).hexdigest()
-        if db.session.scalar(select(Offer.id).where(Offer.digest==digest)):continue
-        # Re-parse source PDF so the private JSON can never silently diverge.
-        parsed=parse_pdf(content,row['filename'])
-        DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)
-        stored=uuid4().hex+'.pdf'
-        (DOCUMENT_ROOT/stored).write_bytes(content)
-        doc=Document(original_name=row['filename'][:240],stored_name=stored,kind='Angebot',
-                     notes='Lokal bereitgestelltes PDF; automatisch analysiert. Nicht beauftragt.')
-        db.session.add(doc);db.session.flush()
-        offer=add_parsed_offer(parsed,digest,doc)
-        doc.contractor_id=offer.contractor_id
-    db.session.add(Setting(key='initial_offers_loaded',value='1'))
-    db.session.commit()
-
-
 def _sync_offer_costs(offer):
-    """For each selected budget line, make EXACTLY ONE CostItem per offer.
+    """Synchronize accepted/selected PDF sections into distinct, counted budget costs.
 
-    An offer may be divided into sections, but separate sections for the same
-    budget line are aggregated to avoid the 'first selected offer wins' trap.
+    An accepted offer includes all non-optional sections. A section without a budget
+    assignment is counted as an extra cost, never silently dropped.
     """
     existing={x.budget_line_id:x for x in db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id)).all()}
     grouped={}
     for section in offer.sections:
         if not section.selected:continue
-        if not offer.reconciled:raise ValueError('Die PDF-Summen sind nicht abgeglichen. Angebot zuerst prüfen.')
-        if not section.budget_line_id:raise ValueError('Bitte zuerst die passende Budgetposition zuordnen.')
-        line=db.session.get(BudgetLine,section.budget_line_id)
-        if not line or not line.active or line.is_group:raise ValueError('Nur aktive Kostenpositionen können ausgewählt werden.')
-        grouped.setdefault(line.id,[]).append(section)
+        if not offer.reconciled:raise ValueError('PDF-Gesamtsumme ist nicht abgeglichen; vor Annahme prüfen.')
+        line_id=section.budget_line_id
+        if line_id is not None:
+            line=db.session.get(BudgetLine,line_id)
+            if not line or not line.active or line.is_group:
+                raise ValueError('Zuordnung nur zu einer aktiven Kostenposition möglich.')
+        grouped.setdefault(line_id,[]).append(section)
     for line_id, sections in grouped.items():
-        other=db.session.scalar(select(CostItem.id).where(CostItem.budget_line_id==line_id,
-                CostItem.selected.is_(True),CostItem.offer_id!=offer.id).limit(1))
-        if other:raise ValueError('Diese Budgetposition enthält bereits ein ausgewähltes Angebot. Bitte zunächst die bisherige Auswahl entfernen.')
-        line=db.session.get(BudgetLine,line_id)
+        if line_id is not None:
+            other=db.session.scalar(select(CostItem.id).where(CostItem.budget_line_id==line_id,
+                    CostItem.selected.is_(True),CostItem.offer_id!=offer.id).limit(1))
+            if other:raise ValueError('Für diese Budgetposition ist bereits ein anderes Angebot gewählt. Bitte Zuordnung korrigieren.')
+        line=db.session.get(BudgetLine,line_id) if line_id else None
         item=existing.pop(line_id,None)
-        if item is None:item=CostItem(offer_id=offer.id,budget_line_id=line_id,title='',category=line.category)
+        if item is None:item=CostItem(offer_id=offer.id,budget_line_id=line_id,title='',category=line.category if line else 'Nicht zugeordnet')
         total=round(sum(x.gross for x in sections),2)
-        item.category=line.category;item.title=f'{offer.vendor}: {", ".join(x.name for x in sections)}'[:300]
+        item.category=line.category if line else 'Nicht zugeordnet'
+        item.title=f'{offer.vendor}: {", ".join(x.name for x in sections)}'[:300]
         item.contractor_id=offer.contractor_id;item.kind='Fremdleistung'
         item.offer=total;item.source_ref=offer.number
-        item.state='Beauftragt' if offer.status=='Beauftragt' else 'Angebot'
-        item.committed=total if offer.status=='Beauftragt' else 0
+        item.state='Beauftragt' if offer.status in ('Angenommen','Beauftragt') else 'Angebot'
+        item.committed=total if offer.status in ('Angenommen','Beauftragt') else 0
         item.selected=True
         db.session.add(item)
     for stale in existing.values():
         if stale.paid or db.session.scalar(select(Document.id).where(Document.cost_item_id==stale.id).limit(1)):
-            raise ValueError('Zugeordnete Kostenposition hat bereits Zahlungen oder Dokumente. Vor einer Änderung zunächst manuell klären.')
+            raise ValueError('Diese Position hat Zahlungen/Dokumente und kann nicht automatisch entfernt werden.')
         db.session.delete(stale)
 
 
@@ -581,10 +558,25 @@ def offer_update(offer_id):
     obj=db.session.get(Offer,offer_id)
     if not obj:return jsonify(error='Angebot nicht gefunden.'),404
     state=(request.get_json(force=True) or {}).get('status')
-    if state not in ('Angebot','Beauftragt'):
-        return jsonify(error='Erlaubt sind Angebot und Beauftragt.'),400
+    if state not in ('Angebot','Angenommen','Beauftragt'):
+        return jsonify(error='Erlaubt sind Angebot und Angenommen.'),400
     try:
-        obj.status=state;_sync_offer_costs(obj)
+        if state in ('Angenommen','Beauftragt'):
+            if not obj.reconciled:
+                raise ValueError('Das Angebot hat keine abgeglichene Gesamtsumme. Bitte erst prüfen.')
+            # Accept all base sections. Optional positions are excluded by the parser.
+            for section in obj.sections:section.selected=True
+            if not obj.sections:
+                raise ValueError('Keine auswertbaren Angebotsgruppen vorhanden.')
+            obj.status='Angenommen'
+        else:
+            # Refuse changing a paid/accepted order back to a mere offer.
+            linked=db.session.scalars(select(CostItem).where(CostItem.offer_id==obj.id)).all()
+            if any(x.paid for x in linked):
+                raise ValueError('Zu diesem angenommenen Angebot sind bereits Zahlungen erfasst.')
+            obj.status='Angebot'
+            for section in obj.sections:section.selected=False
+        _sync_offer_costs(obj)
         db.session.commit();return jsonify(ok=True)
     except ValueError as exc:
         db.session.rollback();return jsonify(error=str(exc)),409
@@ -599,6 +591,8 @@ def offer_section_update(section_id):
         if 'budget_line_id' in body:
             raw=body['budget_line_id']; obj.budget_line_id=int(raw) if raw not in ('',None) else None
         if 'selected' in body:
+            if db.session.get(Offer,obj.offer_id).status in ('Angenommen','Beauftragt') and not body['selected']:
+                raise ValueError('Angenommene Angebote können nicht teilweise deaktiviert werden. Status zuerst zurücksetzen.')
             if not isinstance(body['selected'],bool):raise ValueError('Ungültiger Auswahlwert.')
             obj.selected=body['selected']
         db.session.flush()
@@ -857,16 +851,10 @@ def project_archive():
         if DOCUMENT_ROOT.exists():
             for document in DOCUMENT_ROOT.iterdir():
                 if document.is_file():archive.write(document,arcname='private/documents/'+document.name)
-        source_offers=ROOT/'private'/'offer_sources'
-        if source_offers.exists():
-            for pdf in source_offers.glob('*.pdf'):
-                archive.write(pdf,arcname='private/offer_sources/'+pdf.name)
         original=ROOT/'private'/'Geplante Kosten.xlsx'
         if original.is_file():archive.write(original,arcname='private/Geplante Kosten.xlsx')
         initial=ROOT/'data'/'initial_budget.json'
         if initial.is_file():archive.write(initial,arcname='data/initial_budget.json')
-        private_offers=ROOT/'data'/'initial_offers.json'
-        if private_offers.is_file():archive.write(private_offers,arcname='data/initial_offers.json')
         archive.writestr('export.json',json.dumps({
             'tasks':serialize(all_tasks()),
             'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))],

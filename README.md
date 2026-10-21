@@ -104,10 +104,15 @@ Unter **Kosten & Kontakte → PDF-Angebote automatisch auswerten** ein *durchsuc
 
 ### Datenschutz und Updates
 
-Privat bleiben `private/`, die SQLite-Datei `sanierung.db` und `data/initial_budget.json` sowie `data/initial_offers.json` (alle in `.gitignore`). Das **öffentliche** Repository enthält ausschließlich die Software, synthetische Tests und Beispieldaten. ZIP-Versionen können zusätzlich persönlich importierte lokale PDFs enthalten; solche ZIPs bitte **nicht** öffentlich teilen.
+Privat bleiben `private/`, die SQLite-Datei `sanierung.db` und `data/initial_budget.json`  (alle in `.gitignore`). Das **öffentliche** Repository enthält ausschließlich die Software, synthetische Tests und Beispieldaten. ZIP-Versionen können zusätzlich persönlich importierte lokale PDFs enthalten; solche ZIPs bitte **nicht** öffentlich teilen.
 
 Für ein Update der bisherigen lokalen V4-Installation vorher unter **Projektarchiv ZIP** eine Datensicherung erstellen, dann die neuen Quelldateien übernehmen und die bisherige `sanierung.db` und `private/` behalten. SQLAlchemy ergänzt die neue Datenbankstruktur automatisch. Für PostgreSQL zusätzlich `pg_dump` nutzen. Ein Python-Test lässt sich nach Installation der Abhängigkeiten mit `python -m unittest discover -s tests -v` ausführen.
 
 ### Individuelle Initialdaten (optional)
 
-Die persönliche, nicht öffentliche Download-Ausgabe kann die Original-PDFs in `private/offer_sources/` und eine Liste `data/initial_offers.json` enthalten. **Nur beim ersten Start mit dieser Liste** werden die PDF-Dateien lokal analysiert und als unverbindliche Angebote importiert; sie sind **nicht** automatisch als beauftragt gekennzeichnet und verändern die Prognose **nicht** ohne Auswahl. Der Import ist durch Datei-Hash und Initialisierungsmerker vor Doppelimport geschützt.
+Es werden **keine Angebote vorinstalliert oder beim ersten Start automatisch importiert**. PDFs importierst du ausschließlich selbst über „Kosten & Kontakte“. Ein als **Angenommen** markiertes Angebot übernimmt sämtliche regulären (nicht optionalen) Leistungsgruppen als beauftragte Kosten. Unzugeordnete Gruppen werden zusätzlich als eigene Kostenposition erfasst. Bei konkurrierenden Angebotszuordnungen erfolgt keine automatische Überschreibung. Bereits existierende lokale Datenbanken werden niemals beim Start geleert.
+
+
+### Version 6: leere Angebotsverwaltung
+
+Die Anwendung enthält keine vorinstallierten Angebote, PDF-Beispiele aus echten Firmen oder automatische Erstimporte. Selbst importierte Angebote werden in der lokalen Datenbank abgelegt. Der Status **Angenommen** übernimmt alle regulären Positionen als beauftragte Kosten in die Prognose; bislang nicht zugeordnete Positionen zählen zusätzlich. Um Doppelzählungen gegenüber deiner Grobschätzung zu vermeiden, ordne vor der Annahme möglichst sämtliche Leistungsgruppen den Budgetzeilen zu. Die Anwendung löscht niemals stillschweigend Angebote aus einer bestehenden Datenbank. Bei einem Upgrade behältst du deine vorhandene Datenbank unverändert.

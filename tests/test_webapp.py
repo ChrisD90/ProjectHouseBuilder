@@ -51,13 +51,55 @@ Gesamtsumme: € 100,00'''],'anonym.pdf')
         res=client.patch(f'/api/offer-costs/{item_id}',json={'paid':30})
         self.assertEqual(res.status_code,200,res.get_json())
         self.assertEqual(client.get('/api/costs').get_json()['summary']['paid'],30)
-        res=client.patch(f'/api/offers/{offer_id}',json={'status':'Beauftragt'})
+        res=client.patch(f'/api/offers/{offer_id}',json={'status':'Angenommen'})
         self.assertEqual(res.status_code,200,res.get_json())
         self.assertEqual(client.get('/api/costs').get_json()['summary']['committed'],100)
-        # A paid assignment must never be removed silently.
+        # A paid or accepted assignment must never be removed silently.
         res=client.patch(f'/api/offer-sections/{section_id}',json={'selected':False})
         self.assertEqual(res.status_code,409)
         self.assertEqual(client.get('/api/costs').get_json()['summary']['planned'],100)
 
 
 if __name__=='__main__':unittest.main()
+
+
+class AcceptedOfferTest(unittest.TestCase):
+    def setUp(self):
+        with app.app_context():
+            db.drop_all(); initialize()
+    def test_no_preloaded_offers(self):
+        client=app.test_client()
+        self.assertEqual(client.get('/api/offers').get_json()['offers'],[])
+    def test_accept_without_manual_section_selection_counts_full_cost(self):
+        parsed=parse_offer(['''Test Handwerk GmbH Angebot-Nr.: DEMO-8
+PHOTOVOLTAIKANLAGE
+1    1,00 Stk. PHOTOVOLTAIKANLAGE € 100,00 € 100,00
+Summe Photovoltaik: € 100,00
+Listenpreis: € 100,00
+Gesamtsumme: € 100,00'''],'dummy.pdf')
+        with app.app_context():
+            offer=add_parsed_offer(parsed,'b'*64); db.session.commit();oid=offer.id
+        client=app.test_client()
+        before=client.get('/api/costs').get_json()['summary']
+        res=client.patch(f'/api/offers/{oid}',json={'status':'Angenommen'})
+        self.assertEqual(res.status_code,200,res.get_json())
+        after=client.get('/api/costs').get_json()['summary']
+        self.assertAlmostEqual(after['planned']-before['planned'],100)
+        self.assertAlmostEqual(after['committed']-before['committed'],100)
+        self.assertEqual(client.get('/api/offers').get_json()['offers'][0]['status'],'Angenommen')
+        # Re-applying status is idempotent, not another cost.
+        self.assertEqual(client.patch(f'/api/offers/{oid}',json={'status':'Angenommen'}).status_code,200)
+        self.assertEqual(client.get('/api/costs').get_json()['summary']['committed'],after['committed'])
+    def test_revert_to_offer_clears_cost(self):
+        parsed=parse_offer(['''Test Handwerk GmbH Angebot-Nr.: DEMO-9
+PHOTOVOLTAIKANLAGE
+1    1,00 Stk. PHOTOVOLTAIKANLAGE € 100,00 € 100,00
+Summe Photovoltaik: € 100,00
+Listenpreis: € 100,00
+Gesamtsumme: € 100,00'''],'dummy.pdf')
+        with app.app_context():
+            offer=add_parsed_offer(parsed,'c'*64);db.session.commit();oid=offer.id
+        c=app.test_client()
+        self.assertEqual(c.patch(f'/api/offers/{oid}',json={'status':'Angenommen'}).status_code,200)
+        self.assertEqual(c.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)
+        self.assertEqual(c.get('/api/costs').get_json()['summary']['committed'],0)
