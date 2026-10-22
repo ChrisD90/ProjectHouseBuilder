@@ -49,3 +49,7 @@ Fuer Synology Container Manager liegt die passende Compose-Konfiguration unter
 [`synology/README.md`](synology/README.md). Die App nutzt Port **8443 statt 443**,
 PostgreSQL und getrennte persistente Docker-Volumes. Keine Router-Portweiterleitung
 konfigurieren. Das Projekt ist ein **Feature-Branch** und aendert `main` nicht.
+
+### Neu: Belegjournal mit lokaler OCR
+
+Über `/belege` können Rechnungen und Kassenzettel im PDF-, JPG-, PNG- oder WEBP-Format importiert werden. Lesbare PDF-Texte werden direkt extrahiert, Fotos und Scan-PDFs verarbeitet Tesseract lokal (Dockerfile installiert `tesseract-ocr`, `tesseract-ocr-deu`, `tesseract-ocr-eng` und `poppler-utils`). Bei einer lokalen Python-Installation sind diese Systempakete separat erforderlich. Jeder Beleg beginnt als **Entwurf**, OCR-Vorschläge dürfen manuell bearbeitet werden und zählen erst nach **Verbindlich buchen** zu den Projektkosten. Bezahlungen werden getrennt erfasst. Plan- und Auftragszuordnung hilft gegen Doppelzählung. Originale bleiben im privaten Docker-Volume. Keine Beispiel-Belege und keine Rechnungsdaten in GitHub.

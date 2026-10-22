@@ -66,3 +66,13 @@ Wiederherstellung nur in einer gestoppten oder separat vorbereiteten Testinstall
 - Reverse Proxy auf Synology: spaeter moeglich, aber nicht erforderlich. Keine zusaetzliche Exposition zum Internet vornehmen.
 
 Die offizielle Synology-Dokumentation zur Projektverwaltung: https://kb.synology.com/en-global/DSM/help/ContainerManager/docker_project
+
+## Rechnungen und Kassenzettel (lokales OCR)
+
+Unter **Kosten → Rechnungen & Kassenzettel** können PDF, JPG, PNG und WEBP (bis 15 MB) hochgeladen werden. PDFs mit Textebene werden direkt gelesen; bei Scans/Fotos verwenden wir **Tesseract (Deutsch/Englisch)** und Poppler ausschließlich **lokal im App-Container**. Kein externer KI- oder OCR-Dienst erhält die Dateien. Die erste Container-Erstellung installiert deshalb Tesseract und Poppler; auf der DS223 mit 2 GB RAM können große Scans langsamer sein.
+
+Der OCR-Vorschlag wird **immer erst als Entwurf gespeichert**. Lieferant, Datum, Referenz, Brutto/Nettobetrag, Steuern, Gewerk und Zuordnung lassen sich prüfen und korrigieren. Erst nach **Verbindlich buchen** zählt der Beleg in der Kostenübersicht. Ein gebuchter, aber unbezahlter Rechnungsbetrag erhöht nur die Ausgabe/den Ist-Kostenstand, **nicht** die schon gezahlten Beträge. Zahlungen werden getrennt als tatsächlich bezahlter Betrag eingetragen.
+
+**Doppelzählung:** Die Zuordnung zu einer Planposition verhindert, dass das Angebot und die Rechnung zusätzlich voll gezählt werden. Der Planwert wird erst angehoben, wenn die Summe der verbuchten Belege darüber liegt. Belege ohne Zuordnung gelten als zusätzliche Ausgaben. Bei bereits manuell erfassten Zahlungen auf einem verknüpften Auftrag verlangt die Software vorherige Bereinigung. Für Rechnungsnummer und Lieferant sowie identische Upload-Dateien gibt es Dublettenprüfungen. Gutschriften sind zunächst nur als prüfbare Entwürfe möglich.
+
+**Sicherheit / Backup:** Originalbelege und OCR-Texte sind privat unter `/app/private/receipts` beziehungsweise in der Datenbank gespeichert, also im bestehenden `private_data`-Volume. Sie werden vom bestehenden privaten TAR-Backup und vom PostgreSQL-Dump erfasst. JSON-Exporte allein ersetzen kein vollständiges Dateibackup. Bitte Backup und Wiederherstellung regelmäßig testen. Vor einem Update immer sichern.

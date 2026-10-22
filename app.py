@@ -13,6 +13,7 @@ import zipfile
 from datetime import date, datetime
 from financials import effective_offer, forecast_lines, monetary_totals
 from offer_parser import parse_pdf
+from receipt_parser import parse_receipt, extract_text, CATEGORIES
 from scheduler import schedule
 from pathlib import Path
 import hmac
@@ -179,6 +180,29 @@ class Document(db.Model):
     cost_item_id = db.Column(db.Integer, db.ForeignKey('cost_item.id'), nullable=True)
     notes = db.Column(db.Text, default='')
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+class Receipt(db.Model):
+    id=db.Column(db.Integer,primary_key=True)
+    digest=db.Column(db.String(64),nullable=False,unique=True)
+    original_name=db.Column(db.String(260),nullable=False)
+    stored_name=db.Column(db.String(90),nullable=False,unique=True)
+    source=db.Column(db.String(35),default='')
+    ocr_text=db.Column(db.Text,default='')
+    warnings=db.Column(db.Text,default='[]')
+    supplier=db.Column(db.String(200),default='')
+    invoice_number=db.Column(db.String(100),default='')
+    document_date=db.Column(db.String(10),default='')
+    gross_amount=db.Column(db.Numeric(12,2),nullable=True)
+    net_amount=db.Column(db.Numeric(12,2),nullable=True)
+    vat_amount=db.Column(db.Numeric(12,2),nullable=True)
+    category=db.Column(db.String(120),default='Sonstiges')
+    kind=db.Column(db.String(30),default='Rechnung')
+    notes=db.Column(db.Text,default='')
+    status=db.Column(db.String(20),nullable=False,default='Entwurf')
+    paid_amount=db.Column(db.Numeric(12,2),nullable=False,default=0)
+    budget_line_id=db.Column(db.Integer,db.ForeignKey('budget_line.id'))
+    cost_item_id=db.Column(db.Integer,db.ForeignKey('cost_item.id'))
+    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
 
 class Offer(db.Model):
     id=db.Column(db.Integer,primary_key=True)
@@ -466,12 +490,29 @@ def budget_summary(items):
     active=[x for x in lines if x.active and not x.is_group]
     valid=[x for x in items if x.state not in ('Alternative','Abgelehnt')]
     previews,basis,extras=forecast_lines(lines,items)
+    # Reviewed receipts are tracked separately from quotations and contracts.
+    booked=db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht')).all()
+    receipt_by_line={};unplanned_receipts=[]
+    for receipt in booked:
+        if receipt.budget_line_id in previews:
+            receipt_by_line.setdefault(receipt.budget_line_id,[]).append(receipt)
+        elif receipt.cost_item_id and db.session.get(CostItem,receipt.cost_item_id):
+            # An already forecast unlinked contractor item is not a second new expense.
+            pass
+        else:
+            unplanned_receipts.append(receipt)
+    for line_id, receipts in receipt_by_line.items():
+        actual=sum(float(x.gross_amount) for x in receipts)
+        if actual>previews[line_id]:
+            previews[line_id]=round(actual,2)
+            basis[line_id]='Belege über Planansatz'
     linked={}
     for x in valid:
         if x.budget_line_id:linked.setdefault(x.budget_line_id,[]).append(x)
     outside=sum(effective_offer(x) for x in extras)
-    forecast=sum(previews.values())+outside
-    spent=sum(x.paid for x in items)  # Tatsächliche Zahlungen bleiben immer sichtbar.
+    extra_receipts=sum(float(x.gross_amount) for x in unplanned_receipts)
+    forecast=sum(previews.values())+outside+extra_receipts
+    spent=sum(x.paid for x in items)+sum(float(x.paid_amount or 0) for x in booked)
     committed=sum(x.committed for x in items if x.state in ('Beauftragt','Abgeschlossen'))
     funds=db.session.scalars(select(Funding)).all()
     funding_confirmed=sum(f.confirmed for f in funds)
@@ -484,6 +525,13 @@ def budget_summary(items):
     for x in extras:
         group=grouped.setdefault(x.category,{'category':x.category,'estimate':0,'planned':0,'paid':0})
         group['planned']+=effective_offer(x);group['paid']+=x.paid
+    for r in booked:
+        category=next((line.category for line in active if line.id==r.budget_line_id),r.category)
+        group=grouped.setdefault(category,{'category':category,'estimate':0,'planned':0,'paid':0})
+        group['paid']+=float(r.paid_amount or 0)
+    for r in unplanned_receipts:
+        group=grouped.setdefault(r.category,{'category':r.category,'estimate':0,'planned':0,'paid':0})
+        group['planned']+=float(r.gross_amount)
     return {'budget':round(budget,2),'planned':round(forecast,2),'overrun':round(forecast-budget,2),'paid':round(spent,2),
             'remaining':round(forecast-spent,2),'committed':round(committed,2),
             'funding_confirmed':round(funding_confirmed,2),'funding_expected':round(funding_expected,2),
@@ -491,6 +539,9 @@ def budget_summary(items):
             'own_budget':round(sum(previews[x.id] for x in active if x.kind=='Eigenleistung') + sum(effective_offer(x) for x in extras if x.kind=='Eigenleistung'),2),
             'own_hours':round(sum(x.own_hours for x in valid if x.kind=='Eigenleistung'),1),
             'own_imputed_value':round(sum(x.own_hours*x.own_hourly for x in valid if x.kind=='Eigenleistung'),2),
+            'receipt_booked':round(sum(float(x.gross_amount) for x in booked),2),
+            'receipt_paid':round(sum(float(x.paid_amount or 0) for x in booked),2),
+            'receipt_drafts':db.session.scalar(select(db.func.count(Receipt.id)).where(Receipt.status=='Entwurf')) or 0,
             'categories':[{'category':k,'estimate':round(v['estimate'],2),'planned':round(v['planned'],2),'paid':round(v['paid'],2)} for k,v in grouped.items()],
             'line_forecasts':previews,'line_basis':basis,'additional_items':len(extras)}
 
@@ -668,6 +719,8 @@ def offer_cost_payment(item_id):
         if 'paid' in data:
             paid=float(data['paid'] or 0)
             if not math.isfinite(paid) or paid<0:raise ValueError('Zahlungsbetrag muss nicht-negativ sein.')
+            if paid>0 and db.session.scalar(select(Receipt.id).where(Receipt.cost_item_id==obj.id,Receipt.status=='Gebucht').limit(1)):
+                raise ValueError('Zu diesem Auftrag liegen bereits gebuchte Belege vor. Zahlung bitte dort erfassen.')
             obj.paid=paid
         if 'notes' in data:obj.notes=str(data['notes'] or '')[:2000]
         db.session.commit();return jsonify(ok=True)
@@ -690,6 +743,181 @@ def offer_delete(offer_id):
         db.session.commit();return jsonify(ok=True,document_id=doc.id if doc else None)
     except Exception:
         db.session.rollback();return jsonify(error='Angebot konnte nicht gelöscht werden.'),409
+
+# Receipts are a separate, reviewed ledger; OCR guesses never change financial totals.
+RECEIPT_ROOT=ROOT/'private'/'receipts'
+RECEIPT_EXTENSIONS={'.pdf','.jpg','.jpeg','.png','.webp'}
+
+def _receipt_json(r, include_text=False):
+    obj={'id':r.id,'filename':r.original_name,'source':r.source,'supplier':r.supplier,'invoice_number':r.invoice_number,
+         'document_date':r.document_date,'gross_amount':float(r.gross_amount) if r.gross_amount is not None else None,
+         'net_amount':float(r.net_amount) if r.net_amount is not None else None,
+         'vat_amount':float(r.vat_amount) if r.vat_amount is not None else None,'category':r.category,
+         'kind':r.kind,'notes':r.notes,'status':r.status,'paid_amount':float(r.paid_amount or 0),
+         'budget_line_id':r.budget_line_id,'cost_item_id':r.cost_item_id,
+         'warnings':json.loads(r.warnings or '[]'),'created_at':r.created_at.isoformat()}
+    if include_text:obj['ocr_text']=r.ocr_text
+    return obj
+
+def _receipt_amount(value, name, optional=True):
+    from decimal import Decimal, InvalidOperation
+    if value in (None,''):
+        if optional:return None
+        raise ValueError(name+' fehlt.')
+    try:
+        result=Decimal(str(value).replace(',','.'))
+        if not result.is_finite() or result<0 or result.as_tuple().exponent < -2 or result>Decimal('99999999.99'):
+            raise ValueError()
+        return result
+    except (InvalidOperation, ValueError):raise ValueError('Ungültiger Betrag für '+name+'.')
+
+@app.post('/api/receipts')
+def receipt_upload():
+    file=request.files.get('file')
+    if not file or not file.filename:return jsonify(error='Bitte einen Beleg auswählen.'),400
+    name=Path(file.filename).name[:240]; ext=Path(name).suffix.lower()
+    if ext not in RECEIPT_EXTENSIONS:return jsonify(error='Nur PDF, JPG, PNG und WEBP erlaubt.'),400
+    data=file.read(15*1024*1024+1)
+    if not data or len(data)>15*1024*1024:return jsonify(error='Belege dürfen maximal 15 MB groß sein.'),400
+    if ext=='.pdf' and not data.startswith(b'%PDF-'):return jsonify(error='Keine gültige PDF-Datei.'),400
+    if ext!='.pdf':
+        from PIL import Image, UnidentifiedImageError
+        from io import BytesIO
+        try:
+            im=Image.open(BytesIO(data))
+            if im.width*im.height>25_000_000:raise ValueError('Bildauflösung zu groß.')
+            im.verify()
+        except (ValueError, UnidentifiedImageError, OSError) as exc:return jsonify(error='Ungültiges oder zu großes Bild.'),400
+    digest=sha256(data).hexdigest()
+    original=db.session.scalar(select(Receipt).where(Receipt.digest==digest))
+    if original:return jsonify(error='Dieser Beleg wurde bereits hochgeladen.',existing_id=original.id),409
+    try:
+        content,source=extract_text(data,name)
+        guessed=parse_receipt(content)
+    except (ValueError,Exception) as err:
+        # Store the original even if OCR is unavailable: manual processing stays possible.
+        content='';source='Nicht ausgelesen';guessed={'supplier':'','invoice_number':'','document_date':'',
+          'gross_amount':None,'net_amount':None,'vat_amount':None,'category':'Sonstiges',
+          'warnings':['Automatische Erkennung fehlgeschlagen: '+str(err)[:180]]}
+    RECEIPT_ROOT.mkdir(parents=True,exist_ok=True)
+    stored=uuid4().hex+ext; target=RECEIPT_ROOT/stored
+    target.write_bytes(data)
+    try:
+        row=Receipt(digest=digest,original_name=name,stored_name=stored,source=source,ocr_text=content,
+                    warnings=json.dumps(guessed['warnings'],ensure_ascii=False),supplier=guessed['supplier'],
+                    invoice_number=guessed['invoice_number'],document_date=guessed['document_date'],
+                    gross_amount=_receipt_amount(guessed['gross_amount'],'Bruttobetrag'),
+                    net_amount=_receipt_amount(guessed['net_amount'],'Nettobetrag'),
+                    vat_amount=_receipt_amount(guessed['vat_amount'],'Umsatzsteuer'),category=guessed['category'])
+        db.session.add(row);db.session.commit()
+        return jsonify(_receipt_json(row,True)),201
+    except Exception:
+        db.session.rollback();target.unlink(missing_ok=True)
+        return jsonify(error='Beleg konnte nicht gespeichert werden.'),500
+
+@app.get('/api/receipts')
+def receipt_list():
+    rows=db.session.scalars(select(Receipt).order_by(Receipt.id.desc())).all()
+    return jsonify(receipts=[_receipt_json(r) for r in rows],categories=CATEGORIES,
+                   booked_gross=round(sum(float(r.gross_amount or 0) for r in rows if r.status=='Gebucht'),2),
+                   paid=round(sum(float(r.paid_amount or 0) for r in rows if r.status=='Gebucht'),2),
+                   drafts=sum(r.status=='Entwurf' for r in rows))
+
+@app.get('/api/receipts/<int:rid>')
+def receipt_get(rid):
+    r=db.session.get(Receipt,rid)
+    if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    return jsonify(_receipt_json(r,True))
+
+@app.get('/api/receipts/<int:rid>/download')
+def receipt_download(rid):
+    r=db.session.get(Receipt,rid)
+    if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    path=RECEIPT_ROOT/r.stored_name
+    if not path.is_file():return jsonify(error='Originaldatei fehlt.'),404
+    return send_file(path,as_attachment=True,download_name=r.original_name)
+
+@app.patch('/api/receipts/<int:rid>')
+def receipt_edit(rid):
+    r=db.session.get(Receipt,rid)
+    if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    data=request.get_json(silent=True) or {}
+    if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','category','supplier','invoice_number','document_date','kind')):
+        return jsonify(error='Zum Ändern der Zuordnung oder Belegsumme zunächst Buchung zurücknehmen.'),409
+    try:
+        for f in ('supplier','invoice_number','document_date','category','kind','notes'):
+            if f in data:
+                value=str(data[f] or '')
+                if len(value)>({'supplier':200,'invoice_number':100,'document_date':10,'category':120,'kind':30,'notes':3000}[f]):raise ValueError('Text zu lang: '+f)
+                if f=='category' and value not in CATEGORIES:raise ValueError('Unbekannte Kategorie.')
+                if f=='kind' and value not in ('Rechnung','Kassenzettel','Gutschrift'):raise ValueError('Ungültige Belegart.')
+                if f=='document_date' and value:date.fromisoformat(value)
+                setattr(r,f,value)
+        for f in ('gross_amount','net_amount','vat_amount','paid_amount'):
+            if f in data:setattr(r,f,_receipt_amount(data[f],f,optional=f!='paid_amount'))
+        for field,model in (('budget_line_id',BudgetLine),('cost_item_id',CostItem)):
+            if field in data:
+                value=data[field];key=int(value) if value not in ('',None) else None
+                if key and not db.session.get(model,key):raise ValueError('Zuordnung nicht vorhanden.')
+                setattr(r,field,key)
+        if r.status=='Gebucht':_validate_receipt_booking(r)
+        db.session.commit();return jsonify(_receipt_json(r))
+    except (ValueError,TypeError) as err:
+        db.session.rollback();return jsonify(error=str(err)),400
+
+def _validate_receipt_booking(r):
+    from decimal import Decimal
+    if r.gross_amount is None or r.gross_amount<=0:raise ValueError('Bitte zuerst einen gültigen Bruttobetrag prüfen.')
+    if not r.supplier.strip():raise ValueError('Lieferant fehlt.')
+    if not r.document_date:raise ValueError('Belegdatum fehlt.')
+    if r.kind=='Gutschrift':raise ValueError('Gutschriften müssen separat als Korrektur erfasst werden; derzeit keine automatische Buchung.')
+    if r.paid_amount<0 or r.paid_amount>r.gross_amount:raise ValueError('Gezahlter Betrag darf die Belegsumme nicht überschreiten.')
+    if r.cost_item_id:
+        item=db.session.get(CostItem,r.cost_item_id)
+        if not item or item.state in ('Alternative','Abgelehnt'):raise ValueError('Ungültiger oder abgelehnter Auftrag.')
+        if float(item.paid or 0)>0:raise ValueError('Für diese Kostenposition wurden Zahlungen bereits manuell erfasst. Bitte diese vor der Belegbuchung bereinigen, um Doppelzählung zu vermeiden.')
+        if item.budget_line_id and r.budget_line_id and r.budget_line_id!=item.budget_line_id:raise ValueError('Budgetposition und verknüpfter Auftrag widersprechen sich.')
+        if item.budget_line_id and not r.budget_line_id:r.budget_line_id=item.budget_line_id
+    if r.budget_line_id:
+        line=db.session.get(BudgetLine,r.budget_line_id)
+        if not line or not line.active or line.is_group:raise ValueError('Bitte eine aktive, einzelne Budgetposition wählen.')
+    # Unknown purchases may be booked as explicit extra costs; never auto-link to a category budget.
+
+@app.post('/api/receipts/<int:rid>/book')
+def receipt_book(rid):
+    r=db.session.get(Receipt,rid)
+    if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    if r.status=='Gebucht':return jsonify(_receipt_json(r))
+    try:
+        _validate_receipt_booking(r)
+        # Warn on duplicate reference but rely on identical-file hash as a hard duplicate.
+        if r.invoice_number:
+            other=db.session.scalar(select(Receipt.id).where(Receipt.id!=r.id,Receipt.status=='Gebucht',
+                Receipt.invoice_number==r.invoice_number,Receipt.supplier==r.supplier).limit(1))
+            if other:raise ValueError('Mögliche Doppelbuchung: Lieferant und Rechnungsnummer bereits gebucht (#'+str(other)+').')
+        r.status='Gebucht';db.session.commit();return jsonify(_receipt_json(r))
+    except ValueError as err:
+        db.session.rollback();return jsonify(error=str(err)),409
+
+@app.post('/api/receipts/<int:rid>/unbook')
+def receipt_unbook(rid):
+    r=db.session.get(Receipt,rid)
+    if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    r.status='Entwurf';db.session.commit();return jsonify(_receipt_json(r))
+
+@app.delete('/api/receipts/<int:rid>')
+def receipt_delete(rid):
+    r=db.session.get(Receipt,rid)
+    if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    if r.status=='Gebucht':return jsonify(error='Gebuchten Beleg erst zurücknehmen.'),409
+    path=RECEIPT_ROOT/r.stored_name
+    db.session.delete(r);db.session.commit();path.unlink(missing_ok=True)
+    return jsonify(ok=True)
+
+
+@app.get('/belege')
+def receipts_page():
+    return render_template('belege.html')
 
 @app.get('/kosten')
 def costs_page():return render_template('kosten.html')
@@ -716,11 +944,16 @@ def cost_edit(item_id=None):
     if item_id and obj.offer_id:return jsonify(error='Diese Position stammt aus dem Angebotsimport. Bitte den Angebotsabschnitt bearbeiten.'),409
     try:
         if request.method=='DELETE':
+            if db.session.scalar(select(Receipt.id).where(Receipt.cost_item_id==item_id,Receipt.status=='Gebucht').limit(1)):
+                return jsonify(error='Gebuchte Belege zugeordnet. Bitte die Buchung zuerst zurücknehmen.'),409
             if db.session.scalar(select(Document.id).where(Document.cost_item_id==item_id).limit(1)):
                 return jsonify(error='Dokumente zugeordnet. Bitte diese erst löschen oder umhängen.'),409
             db.session.delete(obj)
         else:
-            update_record(obj,request.get_json(force=True),COST_FIELDS)
+            body=request.get_json(force=True)
+            if item_id and 'paid' in body and float(body['paid'] or 0)>0 and db.session.scalar(select(Receipt.id).where(Receipt.cost_item_id==obj.id,Receipt.status=='Gebucht').limit(1)):
+                raise ValueError('Zu dieser Kostenposition wurden Belege gebucht. Zahlungen bitte im Belegjournal erfassen.')
+            update_record(obj,body,COST_FIELDS)
             db.session.add(obj)
         db.session.commit();return jsonify(ok=True)
     except (ValueError,TypeError) as exc:
@@ -774,6 +1007,8 @@ def budget_line_edit(line_id=None):
         if request.method=='DELETE':
             if db.session.scalar(select(CostItem.id).where(CostItem.budget_line_id==line_id).limit(1)) or db.session.scalar(select(Document.id).where(Document.budget_line_id==line_id).limit(1)):
                 raise ValueError('Es sind Angebote/Beauftragungen verknüpft; zuerst diese Zuordnung entfernen.')
+            if db.session.scalar(select(Receipt.id).where(Receipt.budget_line_id==line_id,Receipt.status=='Gebucht').limit(1)):
+                raise ValueError('Gebuchte Belege verknüpft. Zuerst deren Buchung zurücknehmen.')
             if db.session.scalar(select(BudgetLine.id).where(BudgetLine.parent_code==obj.code).limit(1)):
                 raise ValueError('Gruppenposition kann erst gelöscht werden, wenn die Unterpositionen entfernt wurden.')
             db.session.delete(obj)
