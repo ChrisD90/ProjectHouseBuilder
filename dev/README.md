@@ -1,6 +1,6 @@
 # ProjectHouseBuilder lokal testen (macOS, Windows, Linux)
 
-**Kein eigener App-Code-Fork.** Der Branch `dev/local-testing` erweitert die Synology-Anwendung nur um eine lokale Docker-Konfiguration. Alle produktiven Features sind identisch. Die lokale Datenbank, Belege und Passwörter sind von der NAS vollständig getrennt.
+**Kein eigener App-Code-Fork und kein zusätzlicher Entwicklungsbranch erforderlich.** Verwende `feature/synology-nas` für lokale Tests und für Synology; die Docker-Konfigurationen unterscheiden sich, der Anwendungscode nicht. Alle produktiven Features sind identisch. Die lokale Datenbank, Belege und Passwörter sind von der NAS vollständig getrennt.
 
 ## Voraussetzungen
 
@@ -10,7 +10,7 @@
 
 ## Start auf macOS / Linux
 
-1. Branch `dev/local-testing` klonen bzw. herunterladen.
+1. Branch `feature/synology-nas` klonen bzw. herunterladen.
 2. Im Projektordner: `cp .env.dev.example .env.dev`.
 3. In `.env.dev` drei **verschiedene, sichere** Werte für `DEV_POSTGRES_PASSWORD`, `DEV_APP_PASSWORD` und `DEV_APP_SECRET_KEY` vergeben. Der Datenbankwert sollte ausschließlich alphanumerische/URL-taugliche Zeichen enthalten. Der geheime Schlüssel sollte mindestens 32 zufällige Zeichen besitzen. Diese Datei ist gitignoriert.
 4. `sh dev/start.sh` ausführen. Beim ersten Start lädt Docker die Images und installiert die OCR-Pakete; deshalb ist zunächst Internet erforderlich.
@@ -39,4 +39,4 @@
 
 ## Spätere Synchronisierung
 
-Änderungen am **Code** aus `dev/local-testing` lassen sich per Pull Request in `feature/synology-nas` übernehmen. Die Testdaten bleiben auf dem Mac und werden **nicht** mit GitHub oder der NAS synchronisiert.
+Der Code für Test und NAS liegt im **selben Branch** `feature/synology-nas`. Du testest Änderungen zuerst lokal und startest nach einem Backup später denselben Commit auf der NAS. Die Testdaten bleiben auf dem Mac und werden **nicht** mit GitHub oder der NAS synchronisiert.

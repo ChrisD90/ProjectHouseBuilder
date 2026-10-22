@@ -1,8 +1,22 @@
 # ProjectHouseBuilder – Heimnetz-PWA
 
-Die bestehende Sanierungsplanung mit Gantt, Angeboten, Annahme-/Kostenlogik, Eigenleistungen und Kontakten ist als responsive PWA verfügbar. Für lokale Entwicklung weiterhin `sh start_mac_linux.sh` mit SQLite, für den Heimnetzbetrieb Docker Compose mit PostgreSQL, Caddy und HTTPS.
+Die bestehende Sanierungsplanung mit Gantt, Angeboten, Annahme-/Kostenlogik, Eigenleistungen und Kontakten ist als responsive PWA verfügbar. Für **lokale Tests** und **Synology-Produktion** wird dieselbe Codebasis auf `feature/synology-nas` verwendet. Beide laufen mit PostgreSQL in getrennten Docker-Umgebungen. Der ältere SQLite-Start ist lediglich eine alternative Einzelplatzvariante.
 
-## Heimnetz-Installation (Mac, Linux, Windows mit Docker Desktop)
+## Startübersicht: Test vs. Produktion
+
+| | Lokal testen (Mac/PC) | Produktion (Synology DS223) |
+|---|---|---|
+| Git-Branch | `feature/synology-nas` | `feature/synology-nas` |
+| Compose | `compose.dev.yaml` | `compose.synology.yaml` |
+| Konfiguration | `.env.dev` aus `.env.dev.example` | `.env` aus `.env.synology.example` |
+| Start | `sh dev/start.sh` | Container Manager → Projekt → Erstellen/Starten |
+| URL | `http://localhost:5080` | `https://NAS-IP:8443` |
+| Daten | separate Test-Volumes | separate produktive NAS-Volumes |
+| Details | [`dev/README.md`](dev/README.md) | [`synology/README.md`](synology/README.md) |
+
+**Wichtig:** Test und Produktion teilen weder Datenbank noch Belege. Für die NAS keine Router-Portweiterleitung einrichten.
+
+## Alternative Heimnetz-Installation (Mac, Linux, Windows mit Docker Desktop)
 
 1. Docker Desktop installieren und starten. Stelle sicher, dass kein anderer Dienst die Ports 80 und 443 belegt.
 2. Den Rechner, auf dem Docker läuft, per Router-DHCP-Reservierung auf eine feste interne IP setzen (Beispiel: `192.168.178.50`). **Kein Portforwarding am Router einrichten!**
@@ -42,13 +56,13 @@ Die Heimnetz-Variante verlangt ein Passwort (`APP_PASSWORD`) und ein eigenes Sec
 
 `python -m unittest discover -s tests -v`. Auch GitHub Actions führt die Tests und JavaScript-Syntaxprüfungen aus.
 
-## Synology NAS (separater Feature-Branch)
+## Synology NAS (Produktionsumgebung)
 
 Fuer Synology Container Manager liegt die passende Compose-Konfiguration unter
 [`compose.synology.yaml`](compose.synology.yaml); die genaue Installation steht in
 [`synology/README.md`](synology/README.md). Die App nutzt Port **8443 statt 443**,
 PostgreSQL und getrennte persistente Docker-Volumes. Keine Router-Portweiterleitung
-konfigurieren. Das Projekt ist ein **Feature-Branch** und aendert `main` nicht.
+konfigurieren. Die Synology-Konfiguration liegt gemeinsam mit der lokalen Testkonfiguration auf `feature/synology-nas`; `main` bleibt unverändert.
 
 ### Neu: Belegjournal mit lokaler OCR
 
@@ -69,4 +83,4 @@ Entwürfe; Kosten werden erst nach deiner Buchungsfreigabe verändert.
 
 ## Lokaler Entwicklungs- und Testbetrieb
 
-Ohne Synology kannst du die **gleiche** Anwendung auf dem Mac mit Docker und einer isolierten PostgreSQL-Testdatenbank betreiben. Anleitung: [`dev/README.md`](dev/README.md). Start mit `sh dev/start.sh`, anschließend `http://localhost:5080`. Der Synology-Betrieb bleibt davon unberührt.
+Du kannst die **gleiche** Anwendung aus dem Branch `feature/synology-nas` auf dem Mac mit Docker und einer isolierten PostgreSQL-Testdatenbank betreiben. Anleitung: [`dev/README.md`](dev/README.md). Start mit `sh dev/start.sh`, anschließend `http://localhost:5080`. Der Synology-Betrieb bleibt davon unberührt.
