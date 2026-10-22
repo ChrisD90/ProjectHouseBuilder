@@ -66,3 +66,7 @@ werden bereits vorhandene Zuordnungen in Belegen, Budgetzeilen und Kostenpositio
 Die automatische OCR-Kategorisierung erkennt vorerst die eingebauten Schlüsselwörter;
 selbst angelegte Kategorien wählst du manuell aus. Der Import erfasst weiterhin nur
 Entwürfe; Kosten werden erst nach deiner Buchungsfreigabe verändert.
+
+## Lokaler Entwicklungs- und Testbetrieb
+
+Ohne Synology kannst du die **gleiche** Anwendung auf dem Mac mit Docker und einer isolierten PostgreSQL-Testdatenbank betreiben. Anleitung: [`dev/README.md`](dev/README.md). Start mit `sh dev/start.sh`, anschließend `http://localhost:5080`. Der Synology-Betrieb bleibt davon unberührt.

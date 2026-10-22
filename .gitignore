@@ -21,3 +21,6 @@ backups/
 # Synology-spezifische lokale Daten
 storage/
 caddy-root.crt
+# Lokale Docker-Entwicklung
+.env.dev
+.env.dev.local

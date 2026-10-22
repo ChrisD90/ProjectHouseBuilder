@@ -1,0 +1,51 @@
+# Lokale Entwicklungsumgebung: ausschliesslich an 127.0.0.1 erreichbar.
+# Die Postgres- und Dokument-Volumes sind strikt von Synology/Produktion getrennt.
+name: projecthousebuilder-dev
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sanierung_dev
+      POSTGRES_USER: sanierung_dev
+      POSTGRES_PASSWORD: ${DEV_POSTGRES_PASSWORD:?Setze DEV_POSTGRES_PASSWORD in .env.dev}
+    volumes:
+      - dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sanierung_dev -d sanierung_dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [dev_internal]
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://sanierung_dev:${DEV_POSTGRES_PASSWORD:?Setze DEV_POSTGRES_PASSWORD in .env.dev}@db:5432/sanierung_dev
+      APP_PASSWORD: ${DEV_APP_PASSWORD:?Setze DEV_APP_PASSWORD in .env.dev}
+      APP_SECRET_KEY: ${DEV_APP_SECRET_KEY:?Setze DEV_APP_SECRET_KEY in .env.dev}
+      SECURE_COOKIES: '0' # Nur unter http://localhost fuer die Entwicklung
+      PYTHONDONTWRITEBYTECODE: '1'
+    volumes:
+      - .:/app
+      - dev_private:/app/private
+    ports:
+      - '127.0.0.1:${DEV_PORT:-5080}:5000'
+    command:
+      - sh
+      - -c
+      - >-
+        python -c 'from app import app, initialize; ctx=app.app_context(); ctx.push(); initialize(); ctx.pop()'
+        && exec gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 2 --reload --timeout 120 app:app
+    networks: [dev_internal]
+networks:
+  dev_internal:
+    driver: bridge
+volumes:
+  dev_pgdata:
+  dev_private:
