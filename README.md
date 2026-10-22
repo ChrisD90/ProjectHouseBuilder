@@ -1,22 +1,48 @@
+# ProjectHouseBuilder – lokal auf dem Mac mit SQLite
+
+**Empfohlener Betrieb für eine Person:** Die Anwendung und die aktive `sanierung.db` laufen lokal auf dem Mac. Angebote, Rechnungen und OCR-Belege liegen im lokalen Unterordner `private/`. Ein Cloud-Synchronisationsordner (z. B. Proton Drive) dient ausschließlich als **Backupziel**, nicht als Speicherort der laufenden SQLite-Datenbank.
+
+## Lokaler Start ohne Docker
+
+1. macOS: Python 3.10+ installieren, bei Bedarf über python.org. Die Texterkennung von Scan-PDFs benötigt zusätzlich lokal installierte Systemprogramme `tesseract` mit Deutsch-Sprachdaten sowie `pdftoppm` (Poppler).
+2. Im Projektordner `sh start_mac_linux.sh` ausführen (startet den Flask-Server unter `http://localhost:5000`).
+3. Lokal im Browser öffnen. Alle Arbeitsschritte und Belege werden auf diesem Mac gespeichert.
+
+## Automatische Sicherungen – mit freier Ordnerwahl
+
+1. Einen lokalen Proton-Drive-Synchronisationsordner (oder einen anderen Ordner) im Finder vorbereiten. Er muss für den Mac lokal verfügbar und schreibbar sein, nicht nur als Cloud-Platzhalter.
+2. Im Terminal **einmalig** ausführen: `sh mac/backup-setup.sh`. Dadurch öffnet sich der macOS-Ordnerauswahldialog. Alternativ: `sh mac/backup-setup.sh "/vollständiger/Pfad/Backups"`.
+3. macOS richtet einen benutzerspezifischen **LaunchAgent** ein: Sicherung bei Anmeldung und täglich um **20:00 Uhr**, wenn der Mac läuft. Das Backupziel wird unter `~/Library/Application Support/ProjectHouseBuilder/backup-config.json` gespeichert, nicht im Git-Repository.
+4. Testlauf: `python3 backup_manager.py backup`. Prüfen: `python3 backup_manager.py show` und `python3 backup_manager.py verify "/PFAD/ZU/ProjectHouseBuilder_Backup_....zip"`.
+
+Ein Backup enthält einen **konsistenten SQLite-Snapshot**, sämtliche Dateien unter `private/` (PDF-Angebote, Belege, Verträge, OCR-Originale usw.) sowie eine gegebenenfalls vorhandene private Datei `data/initial_budget.json`. Ein Manifest führt SHA-256-Prüfsummen für alle Einträge. Die letzten **30 erfolgreichen Backups** bleiben im gewählten Zielordner erhalten. Alte Versionen werden nur gelöscht, wenn ein neues Backup vollständig und erfolgreich erstellt wurde.
+
+**Wichtige Grenzen:** Bei ausgeschaltetem Mac läuft keine Sicherung. Wenn Proton Drive nicht erreichbar ist, schlägt das Backup sichtbar in den Logs fehl, statt heimlich woanders zu speichern. Die Live-Datenbank bleibt immer außerhalb des synchronisierten Ordners. Für ein wirklich belastbares Backup gelegentlich zusätzlich auf eine externe Festplatte sichern und die Wiederherstellung testen. Auch Löschungen im synchronisierten Ordner können in Proton Drive repliziert werden.
+
+**Backup-Logs:** `~/Library/Logs/ProjectHouseBuilder-backup.log` sowie `ProjectHouseBuilder-backup-error.log`.
+
+## Wiederherstellung auf einem neuen Mac
+
+1. ProjectHouseBuilder auf den neuen Mac kopieren oder aus GitHub auschecken, Python installieren und die Anwendung **noch nicht starten**.
+2. Ein vollständiges Backup-ZIP aus Proton Drive lokal verfügbar machen. Prüfen: `python3 backup_manager.py verify "/PFAD/ZUM/Backup.zip"`.
+3. Während ProjectHouseBuilder nicht läuft: `python3 backup_manager.py restore "/PFAD/ZUM/Backup.zip" --yes`.
+4. Anschließend mit `sh start_mac_linux.sh` starten. Alle Datenbankinhalte und Dokumente sollten wieder vorhanden sein. Mit `sh mac/backup-setup.sh` das Backupziel für den neuen Mac erneut auswählen.
+
+Bei jeder Wiederherstellung erstellt die Software **vorher** eine lokale Sicherung des bisherigen Stands in `restore-safety-...` im Projektordner. Dieser Ordner ist privat und darf niemals in GitHub hochgeladen werden. Der Wiederherstellungsbefehl ersetzt die lokale Datenbank und den Ordner `private/`; daher unbedingt die Anwendung zuvor beenden.
+
+## Synology und PostgreSQL als optionale Alternativen
+
+Die Docker-Dateien `compose.synology.yaml` und `compose.dev.yaml` bleiben für alternative Umgebungen verfügbar, werden für den empfohlenen lokalen SQLite-Betrieb aber nicht benötigt. Diese Backup-Funktion sichert **nur SQLite**. Für eine separate PostgreSQL-Installation ist weiterhin `pg_dump`/`pg_restore` nötig.
+
+---
+
+## Ältere Docker-/PWA-Installationshinweise (optional)
+
 # ProjectHouseBuilder – Heimnetz-PWA
 
-Die bestehende Sanierungsplanung mit Gantt, Angeboten, Annahme-/Kostenlogik, Eigenleistungen und Kontakten ist als responsive PWA verfügbar. Für **lokale Tests** und **Synology-Produktion** wird dieselbe Codebasis auf `feature/synology-nas` verwendet. Beide laufen mit PostgreSQL in getrennten Docker-Umgebungen. Der ältere SQLite-Start ist lediglich eine alternative Einzelplatzvariante.
+Die bestehende Sanierungsplanung mit Gantt, Angeboten, Annahme-/Kostenlogik, Eigenleistungen und Kontakten ist als responsive PWA verfügbar. Für lokale Entwicklung weiterhin `sh start_mac_linux.sh` mit SQLite, für den Heimnetzbetrieb Docker Compose mit PostgreSQL, Caddy und HTTPS.
 
-## Startübersicht: Test vs. Produktion
-
-| | Lokal testen (Mac/PC) | Produktion (Synology DS223) |
-|---|---|---|
-| Git-Branch | `feature/synology-nas` | `feature/synology-nas` |
-| Compose | `compose.dev.yaml` | `compose.synology.yaml` |
-| Konfiguration | `.env.dev` aus `.env.dev.example` | `.env` aus `.env.synology.example` |
-| Start | `sh dev/start.sh` | Container Manager → Projekt → Erstellen/Starten |
-| URL | `http://localhost:5080` | `https://NAS-IP:8443` |
-| Daten | separate Test-Volumes | separate produktive NAS-Volumes |
-| Details | [`dev/README.md`](dev/README.md) | [`synology/README.md`](synology/README.md) |
-
-**Wichtig:** Test und Produktion teilen weder Datenbank noch Belege. Für die NAS keine Router-Portweiterleitung einrichten.
-
-## Alternative Heimnetz-Installation (Mac, Linux, Windows mit Docker Desktop)
+## Heimnetz-Installation (Mac, Linux, Windows mit Docker Desktop)
 
 1. Docker Desktop installieren und starten. Stelle sicher, dass kein anderer Dienst die Ports 80 und 443 belegt.
 2. Den Rechner, auf dem Docker läuft, per Router-DHCP-Reservierung auf eine feste interne IP setzen (Beispiel: `192.168.178.50`). **Kein Portforwarding am Router einrichten!**
@@ -56,13 +82,13 @@ Die Heimnetz-Variante verlangt ein Passwort (`APP_PASSWORD`) und ein eigenes Sec
 
 `python -m unittest discover -s tests -v`. Auch GitHub Actions führt die Tests und JavaScript-Syntaxprüfungen aus.
 
-## Synology NAS (Produktionsumgebung)
+## Synology NAS (separater Feature-Branch)
 
 Fuer Synology Container Manager liegt die passende Compose-Konfiguration unter
 [`compose.synology.yaml`](compose.synology.yaml); die genaue Installation steht in
 [`synology/README.md`](synology/README.md). Die App nutzt Port **8443 statt 443**,
 PostgreSQL und getrennte persistente Docker-Volumes. Keine Router-Portweiterleitung
-konfigurieren. Die Synology-Konfiguration liegt gemeinsam mit der lokalen Testkonfiguration auf `feature/synology-nas`; `main` bleibt unverändert.
+konfigurieren. Das Projekt ist ein **Feature-Branch** und aendert `main` nicht.
 
 ### Neu: Belegjournal mit lokaler OCR
 
@@ -83,18 +109,21 @@ Entwürfe; Kosten werden erst nach deiner Buchungsfreigabe verändert.
 
 ## Lokaler Entwicklungs- und Testbetrieb
 
-Du kannst die **gleiche** Anwendung aus dem Branch `feature/synology-nas` auf dem Mac mit Docker und einer isolierten PostgreSQL-Testdatenbank betreiben. Anleitung: [`dev/README.md`](dev/README.md). Start mit `sh dev/start.sh`, anschließend `http://localhost:5080`. Der Synology-Betrieb bleibt davon unberührt.
+Ohne Synology kannst du die **gleiche** Anwendung auf dem Mac mit Docker und einer isolierten PostgreSQL-Testdatenbank betreiben. Anleitung: [`dev/README.md`](dev/README.md). Start mit `sh dev/start.sh`, anschließend `http://localhost:5080`. Der Synology-Betrieb bleibt davon unberührt.
 
-## Lokaler Mac-Betrieb mit SQLite und Proton-Drive-Backups
+## VS Code: lokal starten und DB-Schema sicher aktualisieren
 
-Für die Nutzung auf einem einzelnen Mac ist **SQLite ohne Docker** vorgesehen: `sh start_mac_linux.sh`, anschließend `http://localhost:5000`. Die aktive `sanierung.db` und der Ordner `private/` bleiben **lokal** im Projektordner. Eine aktiv geöffnete SQLite-Datenbank gehört niemals direkt in einen Cloud-Synchronisationsordner.
+In VS Code das Projekt öffnen, Anwendung vor dem Update beenden, dann:
 
-**Einmalig Backupziel auswählen:** `sh mac/backup-setup.sh` öffnet unter macOS einen Finder-Ordnerdialog (z. B. Proton Drive/ProjectHouseBuilder/Backups). Alternativ den Pfad als Argument übergeben. Im Benutzerkonto wird ein LaunchAgent eingerichtet, der beim Anmelden und täglich um 20 Uhr ein Backup erstellt, sofern der Mac läuft.
+```sh
+git pull
+sh start_mac_linux.sh
+```
 
-**Jetzt manuell sichern:** `python3 backup_manager.py backup`. **Status:** `python3 backup_manager.py show`. **Archiv prüfen:** `python3 backup_manager.py verify "/Pfad/Backup.zip"`.
+Der Mac-Starter installiert die Python-Abhängigkeiten, prüft anschließend das SQLite-Schema und wendet ausstehende **Alembic-Migrationen** an. **Bei einer vorhandenen Datenbank wird vor jeder notwendigen Migration zwingend ein gültiges ZIP-Backup erstellt (inklusive `private/`), bevor das Schema geändert wird.** Das Backupziel muss zuvor mit `sh mac/backup-setup.sh` konfiguriert werden. Ohne erreichbares Backupziel wird das Upgrade verweigert. Ein frisches, leeres System benötigt noch kein Backup.
 
-Jedes ZIP enthält einen konsistenten SQLite-Snapshot plus alle Dateien unter `private/`, optional `data/initial_budget.json` und ein SHA-256-Prüfsummenmanifest. Standardmäßig werden die letzten 30 Backups aufbewahrt. Ist das gewählte Ziel nicht erreichbar, schlägt das Backup fehl statt auf ein anderes Ziel auszuweichen.
+Versionsskripte stehen in `migrations/versions/`; `alembic_version` speichert die bereits angewendete Revision. `python schema_manager.py --check` zeigt den Stand. Updates ohne ausstehende Migration erzeugen keine zusätzlichen Zwangsbackups (die täglichen Backups bleiben davon unabhängig).
 
-**Auf neuem Mac wiederherstellen:** Projekt kopieren, Python installieren, Anwendung **nicht starten**, ZIP lokal verfügbar machen und `python3 backup_manager.py restore "/Pfad/Backup.zip" --yes` aufrufen. Danach `sh start_mac_linux.sh` und das Backupziel auf dem neuen Mac erneut einrichten. Vor dem Einspielen wird der bisherige lokale Datenstand unter `restore-safety-...` gesichert.
+Ein fehlgeschlagenes Upgrade stoppt den App-Start und meldet das Backup. **Keine automatische Wiederherstellung bei laufenden Prozessen**: Anwendung beenden, Backup prüfen und gezielt mittels `python backup_manager.py restore "/Pfad/Backup.zip" --yes` einspielen.
 
-Backups enthalten private Vertrags-, Kontakt- und Finanzdaten – nur in verschlüsselt geschützten Speichern ablegen, nie in GitHub committen. Proton Drive ist Sync-/Backupziel, **kein laufender Datenbankserver**. Synology und PostgreSQL bleiben optionale alternative Umgebungen.
+Das Schema-Update ist **nur im direkten Mac-/SQLite-Startweg** integriert. Docker-/NAS-Container mit PostgreSQL nutzen weiterhin den bisherigen Initialisierer und sind von diesem SQLite-Migrationsbefehl ausgenommen. Datenbankdateien, `instance/` und `private/` sind gitignoriert.

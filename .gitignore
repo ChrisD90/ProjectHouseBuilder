@@ -25,7 +25,12 @@ caddy-root.crt
 .env.dev
 .env.dev.local
 
-# Lokale SQLite-Wiederherstellungs-Sicherheitskopien
+# SQLite-Backup-/Restore-Konfiguration und Sicherheitskopien
 restore-safety-*/
 .private-prerestore/
 *.restoring
+
+# All SQLite db filenames and SQLAlchemy instance directory
+*.db
+*.sqlite
+instance/
