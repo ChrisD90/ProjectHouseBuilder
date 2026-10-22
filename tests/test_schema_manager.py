@@ -14,9 +14,10 @@ class SchemaUpgradeTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name) / 'application'
+        self.root.mkdir()
         self.db = self.root / 'sanierung.db'
-        self.backups = self.root / 'sync'
+        self.backups = Path(self.temp.name) / 'sync'
         self.backups.mkdir()
         self.patcher = patch.dict(os.environ, {'DATABASE_URL': 'sqlite:///' + str(self.db)})
         self.patcher.start()

@@ -15,6 +15,7 @@ from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from alembic.runtime.migration import MigrationContext
+from alembic.util.exc import CommandError
 import backup_manager
 
 ROOT = Path(__file__).resolve().parent
@@ -54,8 +55,13 @@ def upgrade_database(*, backup_function=None) -> dict:
         if revision == expected:
             return {'status': 'current', 'revision': revision, 'backup': None}
         # Ensure revision is known (also guards accidental checkout of older code).
-        if revision is not None and script.get_revision(revision) is None:
-            raise RuntimeError(f'Unbekannte Datenbankversion {revision}. Bitte passenden Programmstand verwenden.')
+        if revision is not None:
+            try:
+                known_revision = script.get_revision(revision)
+            except CommandError as exc:
+                raise RuntimeError(f'Unbekannte Datenbankversion {revision}. Bitte passenden Programmstand verwenden.') from exc
+            if known_revision is None:
+                raise RuntimeError(f'Unbekannte Datenbankversion {revision}. Bitte passenden Programmstand verwenden.')
         if revision is not None and revision != expected:
             # Full ancestry check rather than allowing downgrades or divergent branches.
             predecessors = {r.revision for r in script.walk_revisions(base='base', head=expected)}
