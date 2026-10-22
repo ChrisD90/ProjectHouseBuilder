@@ -27,6 +27,7 @@ jobs:
           node --check static/costs.js
           node --check static/offers.js
           node --check static/receipts.js
+          node --check static/finanzierung.js
           node --check static/sw.js
   local-compose:
     runs-on: ubuntu-latest

@@ -39,8 +39,8 @@ class SchemaUpgradeTests(unittest.TestCase):
     def test_fresh_database_creates_tables_without_backup(self):
         result = schema_manager.upgrade_database()
         self.assertEqual(result['status'], 'upgraded')
-        self.assertEqual(result['revision'], '0001')
-        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0001',)])
+        self.assertEqual(result['revision'], '0002')
+        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0002',)])
         self.assertIn(('receipt',), self.db_rows("SELECT name FROM sqlite_master WHERE type='table' AND name='receipt'"))
         self.assertFalse(list(self.backups.glob('*.zip')))
 
@@ -71,7 +71,7 @@ class SchemaUpgradeTests(unittest.TestCase):
         self.assertIn('selected', [row[1] for row in self.db_rows('PRAGMA table_info(cost_item)')])
         info = backup_manager.verify_backup(Path(r['backup']))
         self.assertIn('private/receipts/rechnung.pdf', info['files'])
-        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0001',)])
+        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0002',)])
 
     def test_existing_database_without_backup_target_is_untouched(self):
         self.make_legacy_database()
@@ -94,6 +94,24 @@ class SchemaUpgradeTests(unittest.TestCase):
             conn.execute("INSERT INTO alembic_version VALUES ('2099_future_version')")
         with self.assertRaises(RuntimeError):
             schema_manager.upgrade_database()
+
+    def test_upgrade_from_previous_version_keeps_paid_receipt(self):
+        self.setup_backup()
+        schema_manager.upgrade_database()
+        with sqlite3.connect(self.db) as con:
+            con.execute("INSERT INTO receipt (digest,original_name,stored_name,supplier,document_date,status,paid_amount,gross_amount,category,kind,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                        ('a'*64,'rechnung.pdf','alt.pdf','Sanitärfirma','2026-10-21','Gebucht',100,200,'Sanitär','Rechnung','2026-10-22 12:00:00'))
+            con.execute("UPDATE alembic_version SET version_num = '0001'")
+            con.execute("DROP TABLE finance_receipt_payment")
+            con.execute("DROP TABLE finance_event")
+            con.execute("DROP TABLE finance_equity")
+            con.execute("DROP TABLE finance_loan")
+        state = schema_manager.upgrade_database()
+        self.assertEqual(state['status'], 'upgraded')
+        self.assertIsNotNone(state['backup'])
+        self.assertEqual(self.db_rows('SELECT supplier,paid_amount,gross_amount FROM receipt'), [('Sanitärfirma',100,200)])
+        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0002',)])
+        self.assertIn(('finance_loan',), self.db_rows("SELECT name FROM sqlite_master WHERE name='finance_loan'"))
 
     def test_reject_postgresql_in_mac_migrator(self):
         with patch.dict(os.environ, {'DATABASE_URL': 'postgresql://user:pass@localhost/test'}):

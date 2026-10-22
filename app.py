@@ -202,6 +202,7 @@ class Receipt(db.Model):
     supplier=db.Column(db.String(200),default='')
     invoice_number=db.Column(db.String(100),default='')
     document_date=db.Column(db.String(10),default='')
+    due_date=db.Column(db.String(10),default='')
     gross_amount=db.Column(db.Numeric(12,2),nullable=True)
     net_amount=db.Column(db.Numeric(12,2),nullable=True)
     vat_amount=db.Column(db.Numeric(12,2),nullable=True)
@@ -297,6 +298,9 @@ def all_tasks():
 def initialize():
     # Additive migration for existing SQLite/PostgreSQL user databases (never drop old entries).
     db.create_all()
+    receipt_columns={col['name'] for col in sa_inspect(db.engine).get_columns('receipt')}
+    if 'due_date' not in receipt_columns:
+        db.session.execute(text("ALTER TABLE receipt ADD COLUMN due_date VARCHAR(10) NOT NULL DEFAULT ''"))
     task_columns={col['name'] for col in sa_inspect(db.engine).get_columns('task')}
     if 'contractor_id' not in task_columns:
         db.session.execute(text('ALTER TABLE task ADD COLUMN contractor_id INTEGER'))
@@ -765,7 +769,7 @@ RECEIPT_EXTENSIONS={'.pdf','.jpg','.jpeg','.png','.webp'}
 
 def _receipt_json(r, include_text=False):
     obj={'id':r.id,'filename':r.original_name,'source':r.source,'supplier':r.supplier,'invoice_number':r.invoice_number,
-         'document_date':r.document_date,'gross_amount':float(r.gross_amount) if r.gross_amount is not None else None,
+         'document_date':r.document_date,'due_date':r.due_date,'gross_amount':float(r.gross_amount) if r.gross_amount is not None else None,
          'net_amount':float(r.net_amount) if r.net_amount is not None else None,
          'vat_amount':float(r.vat_amount) if r.vat_amount is not None else None,'category':r.category,
          'kind':r.kind,'notes':r.notes,'status':r.status,'paid_amount':float(r.paid_amount or 0),
@@ -918,16 +922,21 @@ def receipt_edit(rid):
     if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','category','supplier','invoice_number','document_date','kind')):
         return jsonify(error='Zum Ändern der Zuordnung oder Belegsumme zunächst Buchung zurücknehmen.'),409
     try:
-        for f in ('supplier','invoice_number','document_date','category','kind','notes'):
+        for f in ('supplier','invoice_number','document_date','due_date','category','kind','notes'):
             if f in data:
                 value=str(data[f] or '')
-                if len(value)>({'supplier':200,'invoice_number':100,'document_date':10,'category':120,'kind':30,'notes':3000}[f]):raise ValueError('Text zu lang: '+f)
+                if len(value)>({'supplier':200,'invoice_number':100,'document_date':10,'due_date':10,'category':120,'kind':30,'notes':3000}[f]):raise ValueError('Text zu lang: '+f)
                 if f=='category' and value not in category_names():raise ValueError('Unbekannte Kategorie.')
                 if f=='kind' and value not in ('Rechnung','Kassenzettel','Gutschrift'):raise ValueError('Ungültige Belegart.')
-                if f=='document_date' and value:date.fromisoformat(value)
+                if f in ('document_date','due_date') and value:date.fromisoformat(value)
                 setattr(r,f,value)
         for f in ('gross_amount','net_amount','vat_amount','paid_amount'):
-            if f in data:setattr(r,f,_receipt_amount(data[f],f,optional=f!='paid_amount'))
+            if f in data:
+                amount=_receipt_amount(data[f],f,optional=f!='paid_amount')
+                if f=='paid_amount':
+                    allocations=db.session.scalar(select(db.func.count(ReceiptFinancingPayment.id)).where(ReceiptFinancingPayment.receipt_id==r.id)) or 0
+                    if allocations and amount != r.paid_amount:raise ValueError('Diese Zahlung ist über die Finanzierungsverwaltung aufgeteilt. Dort bearbeiten.')
+                setattr(r,f,amount)
         for field,model in (('budget_line_id',BudgetLine),('cost_item_id',CostItem)):
             if field in data:
                 value=data[field];key=int(value) if value not in ('',None) else None
@@ -976,6 +985,8 @@ def receipt_book(rid):
 def receipt_unbook(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    if db.session.scalar(select(ReceiptFinancingPayment.id).where(ReceiptFinancingPayment.receipt_id==rid).limit(1)) is not None:
+        return jsonify(error='Zuerst die zugeordneten Zahlungen unter Finanzierung entfernen.'),409
     r.status='Entwurf';db.session.commit();return jsonify(_receipt_json(r))
 
 @app.delete('/api/receipts/<int:rid>')
@@ -983,6 +994,8 @@ def receipt_delete(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
     if r.status=='Gebucht':return jsonify(error='Gebuchten Beleg erst zurücknehmen.'),409
+    if db.session.scalar(select(ReceiptFinancingPayment.id).where(ReceiptFinancingPayment.receipt_id==rid).limit(1)) is not None:
+        return jsonify(error='Zuerst Finanzierungszahlungen entfernen.'),409
     path=RECEIPT_ROOT/r.stored_name
     db.session.delete(r);db.session.commit();path.unlink(missing_ok=True)
     return jsonify(ok=True)
@@ -1243,6 +1256,40 @@ def server_error(err):
     db.session.rollback()
     return jsonify(error='Interner Fehler: Bitte Serverkonsole prüfen.'),500
 
+
+# Shared application code: finance models and routes live in a separate module.
+from financing import register_financing
+(Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment) = register_financing(
+    app, db, Receipt, CostItem, BudgetLine, budget_summary)
+
+@app.get('/api/backup/status')
+def backup_status():
+    import backup_manager
+    if not DATABASE_URL.startswith('sqlite:'):
+        return jsonify(configured=False, error='Manuelle ZIP-Backups sind für die lokale SQLite-Version vorgesehen.')
+    try:
+        config=backup_manager.load_config()
+        files=sorted(config['folder'].glob(backup_manager.PREFIX+'*.zip'),reverse=True)
+        return jsonify(configured=True,folder=str(config['folder']),keep=config['keep'],
+                       latest=files[0].name if files else None, count=len(files))
+    except (ValueError, OSError) as e:
+        return jsonify(configured=False,error=str(e))
+
+@app.post('/api/backup/create')
+def create_manual_backup():
+    import backup_manager
+    if not DATABASE_URL.startswith('sqlite:'):
+        return jsonify(error='Für PostgreSQL bitte den separaten PostgreSQL-Backupweg verwenden.'),409
+    try:
+        destination=backup_manager.make_backup()
+        return jsonify(ok=True, filename=destination.name, verified=True,
+                       bytes=destination.stat().st_size),201
+    except (ValueError, OSError, sqlite3.DatabaseError, zipfile.BadZipFile) as e:
+        return jsonify(error='Backup nicht erstellt: '+str(e)),409
+
 if __name__=='__main__':
+    if DATABASE_URL.startswith('sqlite:'):
+        from schema_manager import upgrade_database
+        upgrade_database()
     with app.app_context():initialize()
     app.run(host=os.environ.get('HOST','127.0.0.1'),port=int(os.environ.get('PORT','5000')),debug=False)
