@@ -91,6 +91,16 @@ class Setting(db.Model):
     key = db.Column(db.String(80), primary_key=True)
     value = db.Column(db.String(255), nullable=False)
 
+class Category(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), unique=True, nullable=False)
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
+
+
+def category_names():
+    return [row.name for row in db.session.scalars(select(Category).order_by(Category.sort_order, Category.name)).all()]
+
+
 class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(30), unique=True, nullable=False)
@@ -298,6 +308,11 @@ def initialize():
     if 'offer_id' not in old_columns:
         db.session.execute(text('ALTER TABLE cost_item ADD COLUMN offer_id INTEGER'))
     db.session.commit()
+    # Seed once only: renamed/deleted defaults must not reappear on restart.
+    if not db.session.scalar(select(Category.id).limit(1)):
+        for index,name in enumerate(CATEGORIES):
+            db.session.add(Category(name=name,sort_order=index))
+        db.session.commit()
     if not db.session.get(Setting,'start'):
         db.session.add(Setting(key='start', value='2027-03-01'))
     if not db.session.scalar(select(Task.id).limit(1)):
@@ -808,17 +823,75 @@ def receipt_upload():
                     invoice_number=guessed['invoice_number'],document_date=guessed['document_date'],
                     gross_amount=_receipt_amount(guessed['gross_amount'],'Bruttobetrag'),
                     net_amount=_receipt_amount(guessed['net_amount'],'Nettobetrag'),
-                    vat_amount=_receipt_amount(guessed['vat_amount'],'Umsatzsteuer'),category=guessed['category'])
+                    vat_amount=_receipt_amount(guessed['vat_amount'],'Umsatzsteuer'),category=guessed['category'] if guessed['category'] in category_names() else 'Sonstiges')
         db.session.add(row);db.session.commit()
         return jsonify(_receipt_json(row,True)),201
     except Exception:
         db.session.rollback();target.unlink(missing_ok=True)
         return jsonify(error='Beleg konnte nicht gespeichert werden.'),500
 
+
+@app.get('/api/categories')
+def categories_list():
+    return jsonify(categories=[{'id':c.id,'name':c.name} for c in db.session.scalars(select(Category).order_by(Category.sort_order,Category.name))])
+
+
+def _category_name(value):
+    name=str(value or '').strip()
+    if not name or len(name)>120 or any(ord(c)<32 for c in name):
+        raise ValueError('Kategorie muss zwischen 1 und 120 Zeichen enthalten.')
+    return name
+
+
+@app.post('/api/categories')
+def categories_add():
+    try:
+        name=_category_name((request.get_json(silent=True) or {}).get('name'))
+        if name.casefold() in {x.casefold() for x in category_names()}:
+            raise ValueError('Diese Kategorie existiert bereits.')
+        record=Category(name=name,sort_order=(db.session.scalar(select(db.func.max(Category.sort_order))) or 0)+1)
+        db.session.add(record);db.session.commit()
+        return jsonify(id=record.id,name=name),201
+    except ValueError as exc:
+        db.session.rollback();return jsonify(error=str(exc)),400
+
+
+@app.patch('/api/categories/<int:cid>')
+def categories_rename(cid):
+    record=db.session.get(Category,cid)
+    if not record:return jsonify(error='Kategorie nicht gefunden.'),404
+    try:
+        name=_category_name((request.get_json(silent=True) or {}).get('name'))
+        if any(x.casefold()==name.casefold() and x!=record.name for x in category_names()):
+            raise ValueError('Diese Kategorie existiert bereits.')
+        old=record.name
+        if old=='Sonstiges':raise ValueError('Die Standardkategorie Sonstiges kann nicht umbenannt werden.')
+        if name!=old:
+            for model in (Receipt,CostItem,BudgetLine):
+                for item in db.session.scalars(select(model).where(model.category==old)):
+                    item.category=name
+            record.name=name
+        db.session.commit()
+        return jsonify(id=record.id,name=record.name)
+    except ValueError as exc:
+        db.session.rollback();return jsonify(error=str(exc)),400
+
+
+@app.delete('/api/categories/<int:cid>')
+def categories_remove(cid):
+    record=db.session.get(Category,cid)
+    if not record:return jsonify(error='Kategorie nicht gefunden.'),404
+    if record.name=='Sonstiges':return jsonify(error='Die Kategorie Sonstiges kann nicht gelöscht werden.'),409
+    for model in (Receipt,CostItem,BudgetLine):
+        if db.session.scalar(select(model.id).where(model.category==record.name).limit(1)) is not None:
+            return jsonify(error='Kategorie wird bereits verwendet. Bitte zuerst umbenennen oder Zuordnungen ändern.'),409
+    db.session.delete(record);db.session.commit()
+    return jsonify(ok=True)
+
 @app.get('/api/receipts')
 def receipt_list():
     rows=db.session.scalars(select(Receipt).order_by(Receipt.id.desc())).all()
-    return jsonify(receipts=[_receipt_json(r) for r in rows],categories=CATEGORIES,
+    return jsonify(receipts=[_receipt_json(r) for r in rows],categories=category_names(),
                    booked_gross=round(sum(float(r.gross_amount or 0) for r in rows if r.status=='Gebucht'),2),
                    paid=round(sum(float(r.paid_amount or 0) for r in rows if r.status=='Gebucht'),2),
                    drafts=sum(r.status=='Entwurf' for r in rows))
@@ -849,7 +922,7 @@ def receipt_edit(rid):
             if f in data:
                 value=str(data[f] or '')
                 if len(value)>({'supplier':200,'invoice_number':100,'document_date':10,'category':120,'kind':30,'notes':3000}[f]):raise ValueError('Text zu lang: '+f)
-                if f=='category' and value not in CATEGORIES:raise ValueError('Unbekannte Kategorie.')
+                if f=='category' and value not in category_names():raise ValueError('Unbekannte Kategorie.')
                 if f=='kind' and value not in ('Rechnung','Kassenzettel','Gutschrift'):raise ValueError('Ungültige Belegart.')
                 if f=='document_date' and value:date.fromisoformat(value)
                 setattr(r,f,value)

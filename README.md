@@ -53,3 +53,16 @@ konfigurieren. Das Projekt ist ein **Feature-Branch** und aendert `main` nicht.
 ### Neu: Belegjournal mit lokaler OCR
 
 Über `/belege` können Rechnungen und Kassenzettel im PDF-, JPG-, PNG- oder WEBP-Format importiert werden. Lesbare PDF-Texte werden direkt extrahiert, Fotos und Scan-PDFs verarbeitet Tesseract lokal (Dockerfile installiert `tesseract-ocr`, `tesseract-ocr-deu`, `tesseract-ocr-eng` und `poppler-utils`). Bei einer lokalen Python-Installation sind diese Systempakete separat erforderlich. Jeder Beleg beginnt als **Entwurf**, OCR-Vorschläge dürfen manuell bearbeitet werden und zählen erst nach **Verbindlich buchen** zu den Projektkosten. Bezahlungen werden getrennt erfasst. Plan- und Auftragszuordnung hilft gegen Doppelzählung. Originale bleiben im privaten Docker-Volume. Keine Beispiel-Belege und keine Rechnungsdaten in GitHub.
+
+## Eigene Belegkategorien
+
+Unter **Belege & Rechnungen → Eigene Kategorien verwalten** kannst du Kategorien
+hinzufügen, umbenennen und unbenutzte Kategorien löschen. Alle Kategorien werden
+in PostgreSQL/SQLite gespeichert und im Zuordnungsmenü angezeigt. Bei Umbenennung
+werden bereits vorhandene Zuordnungen in Belegen, Budgetzeilen und Kostenpositionen
+übernommen. Verwendete Kategorien können nicht gelöscht werden. Die Kategorie
+`Sonstiges` ist als sicherer OCR-Fallback geschützt.
+
+Die automatische OCR-Kategorisierung erkennt vorerst die eingebauten Schlüsselwörter;
+selbst angelegte Kategorien wählst du manuell aus. Der Import erfasst weiterhin nur
+Entwürfe; Kosten werden erst nach deiner Buchungsfreigabe verändert.

@@ -2,13 +2,13 @@
 const $=id=>document.getElementById(id);
 const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
-let selected=null,list=[],overview=null;
+let selected=null,list=[],overview=null,categoryRecords=[];
 async function api(path,opts={}){const res=await fetch(path,opts);let data=await res.json();if(!res.ok)throw new Error(data.error||'Anfrage fehlgeschlagen');return data}
 function notice(msg,err=false){$('message').textContent=msg;$('message').classList.toggle('error',err)}
 function inputs(){return Object.fromEntries(new FormData($('review')))}
 function fillSelect(node,values,getTitle){node.innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${safe(getTitle(x))}</option>`).join('')}
 async function reload(keepId=selected){
- const [r,c]=await Promise.all([api('/api/receipts'),api('/api/costs')]);overview=c;list=r.receipts;
+ const [r,c,cat]=await Promise.all([api('/api/receipts'),api('/api/costs'),api('/api/categories')]);overview=c;list=r.receipts;categoryRecords=cat.categories;renderCategoryManager();
  $('stats').innerHTML=`<span>Entwürfe: <b>${r.drafts}</b></span><span>Gebucht brutto: <b>${money(r.booked_gross)}</b></span><span>Bezahlt: <b>${money(r.paid)}</b></span>`;
  $('categories').innerHTML=r.categories.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');
  fillSelect($('budgetLines'),c.budget_lines.filter(x=>x.active&&!x.is_group),x=>x.category+' · '+x.title);
@@ -33,4 +33,28 @@ $('review').onsubmit=async e=>{e.preventDefault();if(!selected)return;try{await 
 $('book').onclick=async()=>{if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});if(!confirm('Beleg verbindlich in die Kostenübersicht übernehmen? Noch nicht bezahlte Rechnungen bleiben offen.'))return;await api('/api/receipts/'+selected+'/book',{method:'POST'});await reload(selected);notice('Beleg wurde übernommen.')}catch(err){notice(err.message,true)}};
 $('unbook').onclick=async()=>{if(!selected||!confirm('Buchung zurücknehmen? Die Belegausgaben werden aus der Übersicht entfernt.'))return;try{await api('/api/receipts/'+selected+'/unbook',{method:'POST'});await reload(selected)}catch(err){notice(err.message,true)}};
 $('delete').onclick=async()=>{if(!selected||!confirm('Diesen Entwurf einschließlich Originaldatei dauerhaft löschen?'))return;try{await api('/api/receipts/'+selected,{method:'DELETE'});selected=null;await reload(null)}catch(err){notice(err.message,true)}};
+
+function renderCategoryManager(){
+ $('categoryManage').innerHTML=categoryRecords.map(x=>`<div class="category-row" data-cat="${x.id}"><span>${safe(x.name)}</span><button type="button" class="neutral" data-action="rename">Umbenennen</button><button type="button" class="danger" data-action="delete" ${x.name==='Sonstiges'?'disabled':''}>Löschen</button></div>`).join('');
+ $('categoryManage').querySelectorAll('button').forEach(button=>button.onclick=async()=>{
+  const id=Number(button.closest('[data-cat]').dataset.cat),item=categoryRecords.find(x=>x.id===id);
+  if(!item)return;
+  try{
+   if(button.dataset.action==='rename'){
+     const name=prompt('Neuer Kategoriename:',item.name);
+     if(name===null||name.trim()===item.name)return;
+     await api('/api/categories/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name.trim()})});
+   }else{
+     if(!confirm('Kategorie '+item.name+' endgültig löschen? Dies ist nur möglich, wenn sie nicht verwendet wird.'))return;
+     await api('/api/categories/'+id,{method:'DELETE'});
+   }
+   $('categoryMessage').textContent='Kategorie aktualisiert.';await reload(selected);
+  }catch(e){$('categoryMessage').textContent=e.message;}
+ });
+}
+$('categoryCreate').onsubmit=async e=>{e.preventDefault();try{
+ const name=$('categoryNew').value.trim();await api('/api/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+ $('categoryNew').value='';$('categoryMessage').textContent='Kategorie hinzugefügt.';await reload(selected);
+ }catch(err){$('categoryMessage').textContent=err.message;}};
+
 reload().catch(e=>notice(e.message,true));
