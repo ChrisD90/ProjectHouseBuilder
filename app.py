@@ -12,7 +12,8 @@ import tempfile
 import zipfile
 from datetime import date, datetime
 from financials import effective_offer, forecast_lines, monetary_totals
-from offer_parser import parse_pdf
+from offer_parser import parse_pdf, pdf_to_pages, parse_offer
+from receipt_parser import parse_receipt, category_for
 from receipt_parser import parse_receipt, extract_text, CATEGORIES
 from scheduler import schedule
 from pathlib import Path
@@ -228,7 +229,10 @@ class Offer(db.Model):
     net=db.Column(db.Float)
     vat=db.Column(db.Float)
     tax_rate=db.Column(db.Float,default=0)
-    status=db.Column(db.String(30),nullable=False,default='Angebot')
+    status=db.Column(db.String(30),nullable=False,default='Entwurf')
+    category=db.Column(db.String(120),nullable=False,default='Sonstiges')
+    budget_line_id=db.Column(db.Integer,db.ForeignKey('budget_line.id'))
+    notes=db.Column(db.Text,nullable=False,default='')
     reconciled=db.Column(db.Boolean,nullable=False,default=False)
     warnings=db.Column(db.Text,nullable=False,default='[]')
     filename=db.Column(db.String(260),nullable=False)
@@ -572,70 +576,84 @@ def _get_or_add_contractor(name, family):
     db.session.add(obj);db.session.flush();return obj
 
 
-def add_parsed_offer(parsed,digest,source_document=None):
+def add_parsed_offer(parsed, digest, source_document=None, category='Sonstiges'):
+    """Persist a non-binding analysis draft. Its PDF is stored in private/documents."""
     if db.session.scalar(select(Offer.id).where(Offer.digest==digest)):
-        raise ValueError('Dieses PDF-Angebot wurde bereits importiert (identischer Dateiinhalt).')
-    contractor=_get_or_add_contractor(parsed['vendor'],parsed['family'])
+        raise ValueError('Dieses PDF-Angebot wurde bereits hochgeladen.')
+    contractor=_get_or_add_contractor(parsed['vendor'],parsed['family']) if parsed['vendor']!='Firma nicht erkannt' else None
     offer=Offer(digest=digest,document_id=source_document.id if source_document else None,
-                contractor_id=contractor.id,vendor=parsed['vendor'],number=parsed['number'],
-                issued=parsed['issued'],expires=parsed['expires'],net=parsed['net'],vat=parsed['vat'],
-                gross=parsed['gross'],tax_rate=parsed['tax_rate'],status='Angebot',
-                reconciled=parsed['reconciled'],warnings=json.dumps(parsed['warnings'],ensure_ascii=False),
-                filename=parsed['filename'])
+                contractor_id=contractor.id if contractor else None, vendor=parsed['vendor'],
+                number=parsed['number'],issued=parsed['issued'],expires=parsed['expires'],
+                net=parsed['net'],vat=parsed['vat'],gross=parsed['gross'],tax_rate=parsed['tax_rate'],
+                category=category,status='Entwurf',reconciled=parsed['reconciled'],
+                warnings=json.dumps(parsed['warnings'],ensure_ascii=False),filename=parsed['filename'])
     db.session.add(offer);db.session.flush()
     for idx,section in enumerate(parsed['groups']):
-        db.session.add(OfferSection(offer_id=offer.id,name=section['name'],net=section['net'],gross=section['gross'],
-                        budget_line_id=None,sort_order=idx,selected=False))
+        db.session.add(OfferSection(offer_id=offer.id,name=section['name'],net=section['net'],
+                                   gross=section['gross'],sort_order=idx,selected=False))
     for entry in parsed['positions']:
-        db.session.add(OfferPosition(offer_id=offer.id,**{k:entry.get(k) for k in ('number','section','description','quantity','unit','unit_price','net_amount','optional_amount','optional','page')}))
+        db.session.add(OfferPosition(offer_id=offer.id,**{k:entry.get(k) for k in
+                      ('number','section','description','quantity','unit','unit_price',
+                       'net_amount','optional_amount','optional','page')}))
     return offer
 
 
-def _sync_offer_costs(offer):
-    """Synchronize accepted/selected PDF sections into distinct, counted budget costs.
+def _offer_has_dependencies(item):
+    return bool(item.paid or db.session.scalar(select(Document.id).where(Document.cost_item_id==item.id).limit(1))
+        or db.session.scalar(select(Receipt.id).where(Receipt.cost_item_id==item.id).limit(1)))
 
-    An accepted offer includes all non-optional sections. A section without a budget
-    assignment is counted as an extra cost, never silently dropped.
+
+def _sync_offer_costs(offer):
+    """A listed quotation has zero forecast impact; acceptance books exactly one total.
+
+    Previously accepted multi-section legacy orders are retained if they have
+    payments/documents, never merged destructively.
     """
-    existing={x.budget_line_id:x for x in db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id)).all()}
-    grouped={}
-    for section in offer.sections:
-        if not section.selected:continue
-        if not offer.reconciled:raise ValueError('PDF-Gesamtsumme ist nicht abgeglichen; vor Annahme prüfen.')
-        line_id=section.budget_line_id
-        if line_id is not None:
-            line=db.session.get(BudgetLine,line_id)
-            if not line or not line.active or line.is_group:
-                raise ValueError('Zuordnung nur zu einer aktiven Kostenposition möglich.')
-        grouped.setdefault(line_id,[]).append(section)
-    for line_id, sections in grouped.items():
-        if line_id is not None:
-            other=db.session.scalar(select(CostItem.id).where(CostItem.budget_line_id==line_id,
-                    CostItem.selected.is_(True),CostItem.offer_id!=offer.id).limit(1))
-            if other:raise ValueError('Für diese Budgetposition ist bereits ein anderes Angebot gewählt. Bitte Zuordnung korrigieren.')
-        line=db.session.get(BudgetLine,line_id) if line_id else None
-        item=existing.pop(line_id,None)
-        if item is None:item=CostItem(offer_id=offer.id,budget_line_id=line_id,title='',category=line.category if line else 'Nicht zugeordnet')
-        total=round(sum(x.gross for x in sections),2)
-        item.category=line.category if line else 'Nicht zugeordnet'
-        item.title=f'{offer.vendor}: {", ".join(x.name for x in sections)}'[:300]
-        item.contractor_id=offer.contractor_id;item.kind='Fremdleistung'
-        item.offer=total;item.source_ref=offer.number
-        item.state='Beauftragt' if offer.status in ('Angenommen','Beauftragt') else 'Angebot'
-        item.committed=total if offer.status in ('Angenommen','Beauftragt') else 0
-        item.selected=True
-        db.session.add(item)
-    for stale in existing.values():
-        if stale.paid or db.session.scalar(select(Document.id).where(Document.cost_item_id==stale.id).limit(1)):
-            raise ValueError('Diese Position hat Zahlungen/Dokumente und kann nicht automatisch entfernt werden.')
-        db.session.delete(stale)
+    existing=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id).order_by(CostItem.id)).all()
+    if offer.status not in ('Angenommen','Beauftragt'):
+        for item in existing:
+            if _offer_has_dependencies(item):
+                raise ValueError('Das Angebot hat bereits Zahlungen oder verknüpfte Belege. Bitte zuerst prüfen.')
+            db.session.delete(item)
+        return
+    if offer.gross is None or not math.isfinite(offer.gross) or offer.gross<=0:
+        raise ValueError('Vor Annahme muss eine positive Bruttogesamtsumme bestätigt sein.')
+    line=None
+    if offer.budget_line_id is not None:
+        line=db.session.get(BudgetLine,offer.budget_line_id)
+        if not line or not line.active or line.is_group:
+            raise ValueError('Bitte eine aktive Einzelposition im Kostenplan zuordnen.')
+        other=db.session.scalar(select(CostItem.id).where(CostItem.budget_line_id==line.id,
+              CostItem.selected.is_(True),CostItem.offer_id!=offer.id).limit(1))
+        if other:raise ValueError('Diese Kostenplanposition hat bereits ein ausgewähltes Angebot.')
+    if len(existing)>1 and any(_offer_has_dependencies(x) for x in existing):
+        # Old section-based orders with real payments must not be collapsed.
+        # On repeated acceptance preserve their existing accounted positions.
+        return
+    item=existing[0] if existing else CostItem(offer_id=offer.id,title='')
+    for duplicate in existing[1:]:
+        if _offer_has_dependencies(duplicate):
+            raise ValueError('Eine frühere Leistungsgruppe hat Zahlungen oder Belege.')
+        db.session.delete(duplicate)
+    if _offer_has_dependencies(item) and (item.budget_line_id!=offer.budget_line_id
+             or abs(float(item.offer or 0)-float(offer.gross))>0.001):
+        raise ValueError('Betrag oder Zuordnung eines bereits bezahlten Auftrags dürfen nicht still verändert werden.')
+    item.offer_id=offer.id;item.budget_line_id=offer.budget_line_id
+    item.title=(f'{offer.vendor}: Angebot {offer.number or "ohne Nummer"}')[:300]
+    item.category=line.category if line else offer.category
+    item.kind='Fremdleistung';item.contractor_id=offer.contractor_id
+    item.offer=float(offer.gross);item.committed=float(offer.gross)
+    item.state='Beauftragt';item.selected=True;item.source_ref=offer.number
+    db.session.add(item)
 
 
 def offer_dict(o):
     return {'id':o.id,'number':o.number,'vendor':o.vendor,'filename':o.filename,
             'issued':o.issued,'expires':o.expires,'net':o.net,'vat':o.vat,'gross':o.gross,
+            'category':o.category,'budget_line_id':o.budget_line_id,'notes':o.notes,
             'tax_rate':o.tax_rate,'status':o.status,'reconciled':o.reconciled,
-            'warnings':json.loads(o.warnings or '[]'),'document_id':o.document_id,'contractor_id':o.contractor_id,
+            'warnings':json.loads(o.warnings or '[]'),'document_id':o.document_id,
+            'contractor_id':o.contractor_id,
             'sections':[{'id':g.id,'name':g.name,'net':g.net,'gross':g.gross,'budget_line_id':g.budget_line_id,
                          'selected':g.selected} for g in sorted(o.sections,key=lambda x:x.sort_order)],
             'positions':[{'number':p.number,'section':p.section,'description':p.description,
@@ -644,9 +662,52 @@ def offer_dict(o):
                           'optional':p.optional,'page':p.page} for p in o.positions]}
 
 
+def _analyse_pdf_offer(data, name):
+    """Use the detailed parser first, falling back to local OCR and a general total recognizer.
+
+    A parser failure never silently invents a total or prevents manual review.
+    """
+    empty={'filename':name,'family':'Andere','vendor':'Firma nicht erkannt','number':'',
+           'issued':'','expires':'','net':None,'vat':None,'gross':None,'tax_rate':0,
+           'positions':[],'groups':[],'reconciled':False,'warnings':[]}
+    try:
+        text_pages=pdf_to_pages(data)
+        parsed=parse_offer(text_pages,name)
+        content='\n'.join(text_pages)
+    except Exception as exc:
+        if 'Verschlüsseltes PDF' in str(exc):raise ValueError(str(exc)) from exc
+        parsed=dict(empty)
+        parsed['warnings']=['PDF-Texterkennung nicht ausreichend: '+str(exc)]
+        try:
+            content,mode=extract_text(data,name)
+            if content.strip():
+                parsed=parse_offer([content],name)
+                parsed['warnings'].append('Analyse über '+mode+'. Bitte den Gesamtbetrag besonders prüfen.')
+        except Exception as fallback_error:
+            parsed['warnings'].append('OCR nicht verfügbar: '+str(fallback_error)+'. Werte bitte manuell eingeben.')
+            content=''
+    if content.strip():
+        generic=parse_receipt(content)
+        if parsed['gross'] is None and generic.get('gross_amount'):
+            parsed['gross']=float(generic['gross_amount'])
+            parsed['warnings'].append('Gesamtsumme aus allgemeiner Betragserkennung vorgeschlagen. Bitte bestätigen.')
+        if parsed['net'] is None and generic.get('net_amount'):
+            parsed['net']=float(generic['net_amount'])
+        if parsed['vat'] is None and generic.get('vat_amount'):
+            parsed['vat']=float(generic['vat_amount'])
+        if parsed['vendor']=='Firma nicht erkannt' and generic.get('supplier'):
+            parsed['vendor']=generic['supplier']
+        if not parsed['number'] and generic.get('invoice_number'):
+            parsed['number']=generic['invoice_number']
+        if not parsed['issued'] and generic.get('document_date'):
+            parsed['issued']=generic['document_date']
+    return parsed,content
+
+
 @app.get('/api/offers')
 def offers_list():
-    return jsonify(offers=[offer_dict(x) for x in db.session.scalars(select(Offer).order_by(Offer.id.desc()))])
+    return jsonify(offers=[offer_dict(x) for x in db.session.scalars(select(Offer).order_by(Offer.id.desc()))],
+                   categories=category_names())
 
 
 @app.post('/api/offers/import')
@@ -655,82 +716,114 @@ def offers_import():
     if not f or not f.filename or Path(f.filename).suffix.lower()!='.pdf':
         return jsonify(error='Bitte eine PDF-Datei auswählen.'),400
     data=f.read()
-    if not data or not data.startswith(b'%PDF'):
+    if len(data)>15*1024*1024:return jsonify(error='Maximal 15 MB je Angebot.'),413
+    if not data.startswith(b'%PDF'):
         return jsonify(error='Die Datei ist kein gültiges PDF.'),400
     digest=sha256(data).hexdigest()
     if db.session.scalar(select(Offer.id).where(Offer.digest==digest)):
-        return jsonify(error='Dieses PDF wurde bereits als Angebot importiert.'),409
+        return jsonify(error='Dieses PDF wurde bereits hochgeladen.'),409
     name=Path(f.filename).name[:240]
-    try:parsed=parse_pdf(data,name)
-    except Exception as exc:return jsonify(error='PDF konnte nicht ausgewertet werden: '+str(exc)),422
+    try:parsed,content=_analyse_pdf_offer(data,name)
+    except ValueError as exc:return jsonify(error=str(exc)),422
+    suggested=category_for(content) if content else 'Sonstiges'
+    if suggested not in category_names():suggested='Sonstiges'
     DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)
     stored=uuid4().hex+'.pdf'
     (DOCUMENT_ROOT/stored).write_bytes(data)
     try:
         doc=Document(original_name=name,stored_name=stored,kind='Angebot',
-                     notes='Automatisch analysiert; bitte Angebot/Zuordnungen prüfen.')
+                     notes='PDF-Angebot: Analyse als Entwurf gespeichert.')
         db.session.add(doc);db.session.flush()
-        obj=add_parsed_offer(parsed,digest,doc)
+        obj=add_parsed_offer(parsed,digest,doc,category=suggested)
         doc.contractor_id=obj.contractor_id
         db.session.commit()
         return jsonify(ok=True,id=obj.id,offer=offer_dict(obj)),201
-    except (ValueError,Exception) as exc:
+    except Exception as exc:
         db.session.rollback();(DOCUMENT_ROOT/stored).unlink(missing_ok=True)
-        return jsonify(error=str(exc)),400
+        return jsonify(error='Angebot konnte nicht gespeichert werden: '+str(exc)),400
+
+
+def _offer_amount(raw,field):
+    from decimal import Decimal,InvalidOperation
+    if raw is None or raw=='':return None
+    try:
+        v=Decimal(str(raw).strip().replace(',','.'))
+        if not v.is_finite() or v < 0 or v > Decimal('99999999.99') or v.as_tuple().exponent < -2:
+            raise ValueError()
+        return float(v)
+    except (InvalidOperation,ValueError,TypeError):
+        raise ValueError('Ungültiger Betrag für '+field+' (maximal zwei Nachkommastellen).')
+
+
+@app.patch('/api/offers/<int:offer_id>/draft')
+def offer_draft_update(offer_id):
+    offer=db.session.get(Offer,offer_id)
+    if not offer:return jsonify(error='Angebot nicht gefunden.'),404
+    if offer.status not in ('Entwurf','Angebot','Abgelehnt'):
+        return jsonify(error='Ein angenommener Auftrag kann nicht mehr bearbeitet werden.'),409
+    values=request.get_json(silent=True) or {}
+    try:
+        for key,limit in [('vendor',200),('number',100),('issued',20),('expires',20),('notes',2000)]:
+            if key in values:
+                value=str(values[key] or '').strip()
+                if len(value)>limit:raise ValueError(key+': Text ist zu lang.')
+                setattr(offer,key,value)
+        for key in ('gross','net','vat'):
+            if key in values:setattr(offer,key,_offer_amount(values[key],key))
+        if 'category' in values:
+            value=str(values['category'] or '').strip()
+            if value not in category_names():raise ValueError('Bitte eine vorhandene Kategorie auswählen.')
+            offer.category=value
+        if 'budget_line_id' in values:
+            value=values['budget_line_id']
+            if value in ('',None):offer.budget_line_id=None
+            else:
+                try:id_=int(value)
+                except (ValueError,TypeError):raise ValueError('Ungültige Kostenplanposition.')
+                line=db.session.get(BudgetLine,id_)
+                if not line or not line.active or line.is_group:
+                    raise ValueError('Bitte eine aktive Kostenplanposition wählen.')
+                offer.budget_line_id=id_
+        if offer.gross and offer.net:
+            offer.tax_rate=round((offer.gross/offer.net-1)*100,2)
+        db.session.commit();return jsonify(ok=True,offer=offer_dict(offer))
+    except ValueError as exc:
+        db.session.rollback();return jsonify(error=str(exc)),400
 
 
 @app.patch('/api/offers/<int:offer_id>')
 def offer_update(offer_id):
-    obj=db.session.get(Offer,offer_id)
-    if not obj:return jsonify(error='Angebot nicht gefunden.'),404
-    state=(request.get_json(force=True) or {}).get('status')
-    if state not in ('Angebot','Angenommen','Beauftragt'):
-        return jsonify(error='Erlaubt sind Angebot und Angenommen.'),400
+    offer=db.session.get(Offer,offer_id)
+    if not offer:return jsonify(error='Angebot nicht gefunden.'),404
+    target=(request.get_json(silent=True) or {}).get('status')
+    if target not in ('Angebot','Angenommen','Abgelehnt'):
+        return jsonify(error='Erlaubt sind In Liste übernehmen, Annehmen und Ablehnen.'),400
+    if offer.status=='Entwurf' and target!='Angebot':
+        return jsonify(error='Entwurf erst prüfen und in die Angebotsliste übernehmen.'),409
+    if offer.status in ('Angenommen','Beauftragt') and target=='Angenommen':
+        return jsonify(ok=True,offer=offer_dict(offer))
+    if target=='Angebot' and (not offer.vendor.strip() or offer.vendor=='Firma nicht erkannt'
+          or offer.gross is None or not math.isfinite(offer.gross) or offer.gross<=0):
+        return jsonify(error='Vor Übernahme Firma und positive Bruttogesamtsumme prüfen.'),409
+    if target=='Angenommen' and (offer.status not in ('Angebot','Angenommen','Beauftragt')
+          or offer.gross is None or offer.gross<=0):
+        return jsonify(error='Nur ein geprüftes, gelistetes Angebot mit Betrag kann angenommen werden.'),409
     try:
-        if state in ('Angenommen','Beauftragt'):
-            if not obj.reconciled:
-                raise ValueError('Das Angebot hat keine abgeglichene Gesamtsumme. Bitte erst prüfen.')
-            # Accept all base sections. Optional positions are excluded by the parser.
-            for section in obj.sections:section.selected=True
-            if not obj.sections:
-                raise ValueError('Keine auswertbaren Angebotsgruppen vorhanden.')
-            obj.status='Angenommen'
-        else:
-            # Refuse changing a paid/accepted order back to a mere offer.
-            linked=db.session.scalars(select(CostItem).where(CostItem.offer_id==obj.id)).all()
-            if any(x.paid for x in linked):
-                raise ValueError('Zu diesem angenommenen Angebot sind bereits Zahlungen erfasst.')
-            obj.status='Angebot'
-            for section in obj.sections:section.selected=False
-        _sync_offer_costs(obj)
-        db.session.commit();return jsonify(ok=True)
+        offer.status=target
+        _sync_offer_costs(offer)
+        db.session.commit()
+        return jsonify(ok=True,offer=offer_dict(offer))
     except ValueError as exc:
         db.session.rollback();return jsonify(error=str(exc)),409
 
 
 @app.patch('/api/offer-sections/<int:section_id>')
 def offer_section_update(section_id):
-    obj=db.session.get(OfferSection,section_id)
-    if not obj:return jsonify(error='Abschnitt nicht gefunden.'),404
-    body=request.get_json(force=True) or {}
-    try:
-        if 'budget_line_id' in body:
-            raw=body['budget_line_id']; obj.budget_line_id=int(raw) if raw not in ('',None) else None
-        if 'selected' in body:
-            if db.session.get(Offer,obj.offer_id).status in ('Angenommen','Beauftragt') and not body['selected']:
-                raise ValueError('Angenommene Angebote können nicht teilweise deaktiviert werden. Status zuerst zurücksetzen.')
-            if not isinstance(body['selected'],bool):raise ValueError('Ungültiger Auswahlwert.')
-            obj.selected=body['selected']
-        db.session.flush()
-        _sync_offer_costs(db.session.get(Offer,obj.offer_id))
-        db.session.commit();return jsonify(ok=True)
-    except (ValueError,TypeError) as exc:
-        db.session.rollback();return jsonify(error=str(exc)),409
+    return jsonify(error='Leistungsgruppen werden nur angezeigt. Kosten werden ausschließlich über die Angebotsannahme übertragen.'),409
 
 
 @app.patch('/api/offer-costs/<int:item_id>')
 def offer_cost_payment(item_id):
-    """Allow recording real payments without corrupting an imported offer amount."""
     obj=db.session.get(CostItem,item_id)
     if not obj or not obj.offer_id:return jsonify(error='Importierte Kostenposition nicht gefunden.'),404
     data=request.get_json(force=True) or {}
@@ -749,19 +842,19 @@ def offer_cost_payment(item_id):
 
 @app.delete('/api/offers/<int:offer_id>')
 def offer_delete(offer_id):
-    obj=db.session.get(Offer,offer_id)
-    if not obj:return jsonify(error='Angebot nicht gefunden.'),404
+    offer=db.session.get(Offer,offer_id)
+    if not offer:return jsonify(error='Angebot nicht gefunden.'),404
     linked=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer_id)).all()
-    if any(x.paid or x.committed for x in linked):
-        return jsonify(error='Zu diesem Angebot sind Zahlungen oder Aufträge gespeichert. Erst manuell prüfen.'),409
-    doc=db.session.get(Document,obj.document_id) if obj.document_id else None
+    if any(x.committed or _offer_has_dependencies(x) for x in linked):
+        return jsonify(error='Angenommene Angebote mit Aufträgen oder Zahlungen dürfen nicht gelöscht werden.'),409
+    doc=db.session.get(Document,offer.document_id) if offer.document_id else None
     try:
-        for x in linked:db.session.delete(x)
-        db.session.delete(obj)
-        # Linked PDF is preserved as a document (do not discard private documents).
+        for item in linked:db.session.delete(item)
+        db.session.delete(offer)
+        # Uploaded PDF stays as a private document for traceability.
         db.session.commit();return jsonify(ok=True,document_id=doc.id if doc else None)
     except Exception:
-        db.session.rollback();return jsonify(error='Angebot konnte nicht gelöscht werden.'),409
+        db.session.rollback();return jsonify(error='Angebot konnte nicht entfernt werden.'),409
 
 # Receipts are a separate, reviewed ledger; OCR guesses never change financial totals.
 RECEIPT_ROOT=ROOT/'private'/'receipts'
@@ -871,7 +964,7 @@ def categories_rename(cid):
         old=record.name
         if old=='Sonstiges':raise ValueError('Die Standardkategorie Sonstiges kann nicht umbenannt werden.')
         if name!=old:
-            for model in (Receipt,CostItem,BudgetLine):
+            for model in (Receipt,CostItem,BudgetLine,Offer):
                 for item in db.session.scalars(select(model).where(model.category==old)):
                     item.category=name
             record.name=name
@@ -886,7 +979,7 @@ def categories_remove(cid):
     record=db.session.get(Category,cid)
     if not record:return jsonify(error='Kategorie nicht gefunden.'),404
     if record.name=='Sonstiges':return jsonify(error='Die Kategorie Sonstiges kann nicht gelöscht werden.'),409
-    for model in (Receipt,CostItem,BudgetLine):
+    for model in (Receipt,CostItem,BudgetLine,Offer):
         if db.session.scalar(select(model.id).where(model.category==record.name).limit(1)) is not None:
             return jsonify(error='Kategorie wird bereits verwendet. Bitte zuerst umbenennen oder Zuordnungen ändern.'),409
     db.session.delete(record);db.session.commit()
@@ -1020,7 +1113,8 @@ def get_costs():
                     'funding':[funding_dict(x) for x in db.session.scalars(select(Funding).order_by(Funding.id))],
                     'historical':[{'row':x.sheet_row,'name':x.name,'architect_estimate':x.architect_estimate,'own_estimate':x.own_estimate,'supplier_note':x.supplier_note} for x in db.session.scalars(select(HistoricalEstimate).order_by(HistoricalEstimate.sheet_row))],
                     'historical_funding':json.loads(setting('historical_funding','{}')), 'documents':[document_dict(x) for x in db.session.scalars(select(Document).order_by(Document.id.desc()))],
-                    'offers':[offer_dict(x) for x in db.session.scalars(select(Offer).order_by(Offer.id.desc()))]})
+                    'offers':[offer_dict(x) for x in db.session.scalars(select(Offer).order_by(Offer.id.desc()))],
+                    'offer_categories':category_names()})
 
 @app.route('/api/costs/<int:item_id>',methods=['PUT','DELETE'])
 @app.post('/api/costs')

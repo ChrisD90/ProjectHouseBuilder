@@ -1,5 +1,5 @@
 /* Cache only static assets; NEVER cache HTML, API requests, offers or documents. */
-const CACHE = 'projecthousebuilder-static-v3';
+const CACHE = 'projecthousebuilder-static-v4';
 const STATIC = ['/static/style.css','/static/kosten.css','/static/app.js','/static/costs.js','/static/offers.js','/static/receipts.css','/static/receipts.js','/static/finanzierung.css','/static/finanzierung.js','/static/icons/icon-192.png','/static/icons/icon-512.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(STATIC)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});

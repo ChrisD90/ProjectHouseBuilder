@@ -39,8 +39,8 @@ class SchemaUpgradeTests(unittest.TestCase):
     def test_fresh_database_creates_tables_without_backup(self):
         result = schema_manager.upgrade_database()
         self.assertEqual(result['status'], 'upgraded')
-        self.assertEqual(result['revision'], '0002')
-        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0002',)])
+        self.assertEqual(result['revision'], '0003')
+        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0003',)])
         self.assertIn(('receipt',), self.db_rows("SELECT name FROM sqlite_master WHERE type='table' AND name='receipt'"))
         self.assertFalse(list(self.backups.glob('*.zip')))
 
@@ -71,7 +71,7 @@ class SchemaUpgradeTests(unittest.TestCase):
         self.assertIn('selected', [row[1] for row in self.db_rows('PRAGMA table_info(cost_item)')])
         info = backup_manager.verify_backup(Path(r['backup']))
         self.assertIn('private/receipts/rechnung.pdf', info['files'])
-        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0002',)])
+        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0003',)])
 
     def test_existing_database_without_backup_target_is_untouched(self):
         self.make_legacy_database()
@@ -110,7 +110,7 @@ class SchemaUpgradeTests(unittest.TestCase):
         self.assertEqual(state['status'], 'upgraded')
         self.assertIsNotNone(state['backup'])
         self.assertEqual(self.db_rows('SELECT supplier,paid_amount,gross_amount FROM receipt'), [('Sanitärfirma',100,200)])
-        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0002',)])
+        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0003',)])
         self.assertIn(('finance_loan',), self.db_rows("SELECT name FROM sqlite_master WHERE name='finance_loan'"))
 
     def test_reject_postgresql_in_mac_migrator(self):
@@ -128,3 +128,34 @@ class SchemaUpgradeTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class OfferSchemaMigrationTests(unittest.TestCase):
+    """A real file DB at Alembic revision 0002 remains intact after 0003."""
+
+    def test_upgrade_preserves_existing_quotes_and_disables_legacy_preaccept_selections(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'app';root.mkdir()
+            db_file=root/'sanierung.db';sync=Path(td)/'cloud';sync.mkdir()
+            with sqlite3.connect(db_file) as con:
+                con.execute('CREATE TABLE alembic_version (version_num TEXT PRIMARY KEY)')
+                con.execute("INSERT INTO alembic_version VALUES ('0002')")
+                con.execute('CREATE TABLE offer (id INTEGER PRIMARY KEY, status TEXT NOT NULL, vendor TEXT)')
+                con.execute("INSERT INTO offer (id,status,vendor) VALUES (1,'Angebot','Testfirma'),(2,'Angenommen','Andere Firma')")
+                con.execute('CREATE TABLE cost_item (id INTEGER PRIMARY KEY, offer_id INTEGER, selected INTEGER, state TEXT, paid REAL, committed REAL)')
+                con.execute("INSERT INTO cost_item VALUES (11,1,1,'Angebot',0,0),(12,2,1,'Beauftragt',0,300)")
+            import backup_manager, schema_manager
+            with (patch.dict(os.environ,{'DATABASE_URL':'sqlite:///'+str(db_file)}),
+                  patch.object(backup_manager,'ROOT',root),
+                  patch.object(backup_manager,'CONFIG_PATH',root/'backup_config.json')):
+                backup_manager.configure(str(sync))
+                result=schema_manager.upgrade_database()
+                self.assertEqual(result['revision'],'0003')
+                backup_manager.verify_backup(Path(result['backup']))
+            with sqlite3.connect(db_file) as con:
+                self.assertEqual(con.execute('SELECT version_num FROM alembic_version').fetchone()[0],'0003')
+                offer_columns={row[1] for row in con.execute('PRAGMA table_info(offer)')}
+                self.assertTrue({'category','budget_line_id','notes'} <= offer_columns)
+                self.assertEqual(con.execute('SELECT vendor FROM offer WHERE id=1').fetchone()[0],'Testfirma')
+                self.assertEqual(con.execute('SELECT selected,state FROM cost_item WHERE id=11').fetchone(),(0,'Alternative'))
+                self.assertEqual(con.execute('SELECT selected,state,committed FROM cost_item WHERE id=12').fetchone(),(1,'Beauftragt',300))

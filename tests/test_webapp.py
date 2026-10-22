@@ -11,53 +11,32 @@ from sqlalchemy import select
 
 
 class OfferWebappTest(unittest.TestCase):
-    def test_offer_does_not_change_budget_before_explicit_activation(self):
+    def test_offer_requires_promotion_and_acceptance_before_changing_budget(self):
         with app.app_context():
-            db.drop_all()
-            initialize()
+            db.drop_all(); initialize()
             line=BudgetLine(code='DEMO',category='Elektro',title='Testinstallation',estimate=200,sort_order=9000)
-            db.session.add(line)
-            db.session.flush()
-            parsed=parse_offer(['''Test Handwerk GmbH Angebot-Nr.: ABC-7
-PHOTOVOLTAIKANLAGE
-1    1,00 Stk. PHOTOVOLTAIKANLAGE € 100,00 € 100,00
-Summe Photovoltaik: € 100,00
-Listenpreis: € 100,00
-Gesamtsumme: € 100,00'''],'anonym.pdf')
-            self.assertTrue(parsed['reconciled'])
+            db.session.add(line); db.session.flush()
+            parsed=parse_offer(['Test Handwerk GmbH Angebot-Nr.: ABC-7\nPHOTOVOLTAIKANLAGE\n1   1,00 Stk. PHOTOVOLTAIKANLAGE € 100,00 € 100,00\nSumme Photovoltaik: € 100,00\nListenpreis: € 100,00\nGesamtsumme: € 100,00'],'anonym.pdf')
             offer=add_parsed_offer(parsed,'a'*64)
             db.session.commit()
-            section_id=offer.sections[0].id
-            offer_id=offer.id
-            line_id=line.id
-
+            oid=offer.id;section_id=offer.sections[0].id;line_id=line.id
         client=app.test_client()
-        self.assertEqual(client.get('/').status_code,200)
         self.assertEqual(client.get('/kosten').status_code,200)
-        payload=client.get('/api/costs').get_json()
-        self.assertEqual(payload['summary']['planned'],200.0)
-        self.assertEqual(len(payload['offers']),1)
-        self.assertFalse(payload['offers'][0]['sections'][0]['selected'])
-
-        res=client.patch(f'/api/offer-sections/{section_id}',json={'budget_line_id':line_id,'selected':True})
-        self.assertEqual(res.status_code,200,res.get_json())
-        self.assertEqual(client.get('/api/costs').get_json()['summary']['planned'],100.0)
+        self.assertEqual(client.get('/api/costs').json['summary']['planned'],200)
+        self.assertEqual(client.patch(f'/api/offer-sections/{section_id}',json={'selected':True}).status_code,409)
+        self.assertEqual(client.get('/api/costs').json['summary']['planned'],200)
+        self.assertEqual(client.patch(f'/api/offers/{oid}/draft',json={'category':'Elektro','budget_line_id':line_id}).status_code,200)
+        self.assertEqual(client.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)
+        self.assertEqual(client.get('/api/costs').json['summary']['planned'],200)
+        self.assertEqual(client.patch(f'/api/offers/{oid}',json={'status':'Angenommen'}).status_code,200)
+        self.assertEqual(client.get('/api/costs').json['summary']['planned'],100)
         with app.app_context():
-            imported=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer_id)).all()
-            self.assertEqual(len(imported),1)
-            self.assertEqual(imported[0].offer,100)
-            item_id=imported[0].id
-
-        res=client.patch(f'/api/offer-costs/{item_id}',json={'paid':30})
-        self.assertEqual(res.status_code,200,res.get_json())
-        self.assertEqual(client.get('/api/costs').get_json()['summary']['paid'],30)
-        res=client.patch(f'/api/offers/{offer_id}',json={'status':'Angenommen'})
-        self.assertEqual(res.status_code,200,res.get_json())
-        self.assertEqual(client.get('/api/costs').get_json()['summary']['committed'],100)
-        # A paid or accepted assignment must never be removed silently.
-        res=client.patch(f'/api/offer-sections/{section_id}',json={'selected':False})
-        self.assertEqual(res.status_code,409)
-        self.assertEqual(client.get('/api/costs').get_json()['summary']['planned'],100)
+            cost=db.session.scalar(select(CostItem).where(CostItem.offer_id==oid))
+            self.assertIsNotNone(cost);item_id=cost.id
+        self.assertEqual(client.patch(f'/api/offer-costs/{item_id}',json={'paid':30}).status_code,200)
+        self.assertEqual(client.get('/api/costs').json['summary']['paid'],30)
+        self.assertEqual(client.patch(f'/api/offers/{oid}',json={'status':'Abgelehnt'}).status_code,409)
+        self.assertEqual(client.get('/api/costs').json['summary']['planned'],100)
 
 
 if __name__=='__main__':unittest.main()
@@ -81,6 +60,7 @@ Gesamtsumme: € 100,00'''],'dummy.pdf')
             offer=add_parsed_offer(parsed,'b'*64); db.session.commit();oid=offer.id
         client=app.test_client()
         before=client.get('/api/costs').get_json()['summary']
+        self.assertEqual(client.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)
         res=client.patch(f'/api/offers/{oid}',json={'status':'Angenommen'})
         self.assertEqual(res.status_code,200,res.get_json())
         after=client.get('/api/costs').get_json()['summary']
@@ -100,6 +80,7 @@ Gesamtsumme: € 100,00'''],'dummy.pdf')
         with app.app_context():
             offer=add_parsed_offer(parsed,'c'*64);db.session.commit();oid=offer.id
         c=app.test_client()
+        self.assertEqual(c.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)
         self.assertEqual(c.patch(f'/api/offers/{oid}',json={'status':'Angenommen'}).status_code,200)
         self.assertEqual(c.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)
         self.assertEqual(c.get('/api/costs').get_json()['summary']['committed'],0)
