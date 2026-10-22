@@ -16,3 +16,5 @@ backups/
 storage/
 synology/
 compose.synology.yaml
+.env.dev
+.env.dev.local

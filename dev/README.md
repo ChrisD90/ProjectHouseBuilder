@@ -1,0 +1,42 @@
+# ProjectHouseBuilder lokal testen (macOS, Windows, Linux)
+
+**Kein eigener App-Code-Fork.** Der Branch `dev/local-testing` erweitert die Synology-Anwendung nur um eine lokale Docker-Konfiguration. Alle produktiven Features sind identisch. Die lokale Datenbank, Belege und Passwörter sind von der NAS vollständig getrennt.
+
+## Voraussetzungen
+
+- Docker Desktop (macOS/Windows) oder Docker Engine + Compose v2 (Linux)
+- Docker muss gestartet sein.
+- Für Docker Desktop mit ARM-Macs werden ARM64-Basisimages verwendet; auch x86_64 ist unterstützt.
+
+## Start auf macOS / Linux
+
+1. Branch `dev/local-testing` klonen bzw. herunterladen.
+2. Im Projektordner: `cp .env.dev.example .env.dev`.
+3. In `.env.dev` drei **verschiedene, sichere** Werte für `DEV_POSTGRES_PASSWORD`, `DEV_APP_PASSWORD` und `DEV_APP_SECRET_KEY` vergeben. Der Datenbankwert sollte ausschließlich alphanumerische/URL-taugliche Zeichen enthalten. Der geheime Schlüssel sollte mindestens 32 zufällige Zeichen besitzen. Diese Datei ist gitignoriert.
+4. `sh dev/start.sh` ausführen. Beim ersten Start lädt Docker die Images und installiert die OCR-Pakete; deshalb ist zunächst Internet erforderlich.
+5. `http://localhost:5080` öffnen, mit `DEV_APP_PASSWORD` anmelden.
+6. `sh dev/check.sh` prüft, ob die Login-Seite erreichbar ist.
+
+**Windows PowerShell:** `Copy-Item .env.dev.example .env.dev`; Datei bearbeiten; `docker compose --env-file .env.dev -f compose.dev.yaml up --build -d`.
+
+## Arbeiten und Testen
+
+- Dateien unter `app.py`, `templates/` und `static/` werden in den Container eingebunden; Gunicorn `--reload` übernimmt Python-Änderungen automatisch.
+- Änderungen an `requirements.txt` oder am `Dockerfile`: `sh dev/start.sh` erneut ausführen, damit das Image neu gebaut wird.
+- Protokolle: `sh dev/logs.sh`.
+- Stoppen: `sh dev/stop.sh`. **Stoppen löscht keine Daten**.
+- Nur Testdaten komplett löschen: `sh dev/reset.sh --delete-test-data`, danach Sicherheitsabfrage. Dabei werden **nur** die beiden mit `projecthousebuilder-dev` benannten Volumes gelöscht, nicht die NAS-Volumes.
+- Automatisierte Tests ohne Docker: `python -m unittest discover -s tests -v` (benötigt Python-Abhängigkeiten); mit Docker: `docker compose --env-file .env.dev -f compose.dev.yaml exec app python -m unittest discover -s tests -v`.
+
+## Schutz und Grenzen
+
+- Port wird ausschließlich auf `127.0.0.1` gebunden: **Andere Geräte im WLAN können diesen Testserver nicht erreichen.**
+- Lokales HTTP ist **nur** für `localhost` vorgesehen. Kein Portforwarding, keine NAS-IP und keine Freigabe des Testservers ins Netzwerk.
+- PostgreSQL besitzt **keine** veröffentlichte Host-Portfreigabe.
+- Testdaten und private PDF-Belege werden ausschließlich in Docker-Volumes `projecthousebuilder-dev_dev_pgdata` und `projecthousebuilder-dev_dev_private` abgelegt.
+- Die Produktions-NAS nutzt andere Projekt- und Volume-Namen. Keine Backups der NAS in dieses lokale Testsystem importieren, wenn sie echte persönliche Daten enthalten und nicht unbedingt benötigt werden.
+- Browser-PWA auf `localhost` ist grundsätzlich möglich. Der lokale Service Worker cached statische Dateien; er liefert keine Offline-Kopie privater Belege.
+
+## Spätere Synchronisierung
+
+Änderungen am **Code** aus `dev/local-testing` lassen sich per Pull Request in `feature/synology-nas` übernehmen. Die Testdaten bleiben auf dem Mac und werden **nicht** mit GitHub oder der NAS synchronisiert.

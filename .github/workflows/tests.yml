@@ -1,7 +1,7 @@
 name: Tests
 on:
   push:
-    branches: [main, feature/synology-nas]
+    branches: [main, feature/synology-nas, dev/local-testing]
   pull_request:
 jobs:
   python:
@@ -28,3 +28,9 @@ jobs:
           node --check static/offers.js
           node --check static/receipts.js
           node --check static/sw.js
+  local-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate isolated local Compose setup
+        run: docker compose --env-file .env.dev.example -f compose.dev.yaml config --quiet
