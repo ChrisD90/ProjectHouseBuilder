@@ -153,3 +153,15 @@ Erst mit **„In Angebotsliste übernehmen“** erhält der Entwurf den Status `
 Eine angenommene Position lässt sich nur zurücknehmen, wenn weder Bezahlungen noch Rechnungen/Dokumente daran gebunden sind. Bei mehreren Angeboten auf derselben Kostenplanposition kann nicht versehentlich eine zweite Alternative als ausgewählt gebucht werden. Bereits in der früheren App akzeptierte/bezahle Angebote werden durch Migration `0003` **nicht gelöscht oder automatisch zusammengelegt**; ältere noch nicht angenommene Angebotsteile werden für die Prognose deaktiviert. Eigene Kategorien werden wie in der Belegverwaltung auch in Angeboten verwendet; Umbenennungen und Löschschutz berücksichtigen diese Zuordnung.
 
 **Wichtig beim Mac-Update:** `git pull`, Anwendung beenden, dann `sh start_mac_linux.sh`. Ein vorhandener SQLite-Datenbestand erhält vor Migration `0003` zwingend ein überprüftes Komplettbackup. Ohne erreichbaren Backupordner findet keine Migration statt. Jederzeit manuelles vollständiges Backup unter `/finanzierung` oder `python3 backup_manager.py backup`.
+
+## Benutzeroberfläche – Sidebar-Navigation
+
+Die responsive Oberfläche verwendet **Bootstrap 5.3.6 (MIT, lokal eingebunden)** als CSS-Grundlage sowie das gemeinsame Jinja-Partial `templates/_shell_open.html` und das Designsystem `static/shell.css`. Gluestack v5 wurde nicht verwendet, weil es einen React-/Expo-/NativeWind-Stack voraussetzt und unsere bestehende Flask-/Vanilla-JS-Anwendung dafür neu aufgebaut werden müsste. Bootstrap wird lokal ausgeliefert; ein CDN oder JavaScript-Bundler ist nicht nötig.
+
+- Desktop: linke Sidebar für Zeitplan, Kosten, Angebote, Belege, Finanzierung, Eigenleistungen, Firmen & Kontakte sowie Backups. Der Pfeil im Sidebar-Kopf klappt sie platzsparend zusammen (gespeicherte Browserpräferenz).
+- Smartphone/Tablet: Menüknopf öffnet einen zugänglichen Navigations-Drawer; `Esc` bzw. der Hintergrund schließen ihn, die Tastatur bleibt im offenen Menü.
+- Angebote, Eigenleistungen, Kontakte und Backups führen direkt zum passenden Abschnitt ihrer vorhandenen Ansichten. Alle bestehenden API-Endpunkte, Datenbankmodelle, SQLite-Backups und Migrationen bleiben unverändert.
+- Export-Links sind gesammelt unter **Export & Dateien** in der Sidebar.
+- PWA: Styles, JS und lokale SVG-Icons sind im neuen statischen Cache enthalten.
+
+Die Bootstrap-Lizenz liegt in `static/vendor-bootstrap-LICENSE.txt`. Für neue Unterseiten das gemeinsame Partial nutzen, damit Navigation und Bedienung konsistent bleiben.

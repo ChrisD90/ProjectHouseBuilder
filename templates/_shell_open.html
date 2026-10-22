@@ -1,0 +1,57 @@
+{# Shared app chrome. phb_active, phb_title, phb_kicker are set in each page. #}
+{% macro icon(name) -%}<svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#{{ name }}"></use></svg>{%- endmacro %}
+<a href="#phbMain" class="phb-skip">Zum Inhalt springen</a>
+<div class="phb-appshell" id="phbAppShell">
+  <aside class="phb-sidebar" id="phbSidebar" aria-label="Seitennavigation">
+    <div class="phb-sidebar__brand">
+      <a class="phb-brand-link" href="/" aria-label="ProjectHouseBuilder – zur Projektübersicht">
+        <span class="phb-brand-mark">{{ icon('house') }}</span>
+        <span class="phb-brand-text"><strong>ProjectHouseBuilder</strong><small>Sanierung Gartenstraße</small></span>
+      </a>
+      <button class="phb-icon-button phb-collapse-button" id="phbCollapse" type="button" aria-label="Sidebar einklappen" aria-controls="phbSidebar" aria-expanded="true" title="Sidebar einklappen">{{ icon('chevron-left') }}</button>
+    </div>
+    <div class="phb-sidebar__scroll">
+      <div class="phb-nav-label">PROJEKT</div>
+      <nav class="phb-nav" aria-label="Hauptnavigation">
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'zeitplan' else '' }}" data-section="zeitplan" href="/" title="Bauzeitenplan" {% if phb_active == 'zeitplan' %}aria-current="page"{% endif %}>{{ icon('calendar') }}<span class="phb-nav-text">Bauzeitenplan</span></a>
+      </nav>
+      <div class="phb-nav-label">FINANZEN</div>
+      <nav class="phb-nav" aria-label="Finanzen">
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'kosten' else '' }}" data-section="kosten" href="/kosten" title="Kosten & Budget" {% if phb_active == 'kosten' %}aria-current="page"{% endif %}>{{ icon('wallet') }}<span class="phb-nav-text">Kosten &amp; Budget</span></a>
+        <a class="phb-nav-link" data-section="angebote" href="/kosten#imported-offers" title="Angebote">{{ icon('file-check') }}<span class="phb-nav-text">Angebote</span></a>
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'belege' else '' }}" data-section="belege" href="/belege" title="Rechnungen & Belege" {% if phb_active == 'belege' %}aria-current="page"{% endif %}>{{ icon('receipt') }}<span class="phb-nav-text">Rechnungen &amp; Belege</span></a>
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'finanzierung' else '' }}" data-section="finanzierung" href="/finanzierung" title="Finanzierung" {% if phb_active == 'finanzierung' %}aria-current="page"{% endif %}>{{ icon('landmark') }}<span class="phb-nav-text">Finanzierung</span></a>
+      </nav>
+      <div class="phb-nav-label">VERWALTUNG</div>
+      <nav class="phb-nav" aria-label="Verwaltung">
+        <a class="phb-nav-link" data-section="eigenleistungen" href="/kosten#eigenleistungen" title="Eigenleistungen">{{ icon('hammer') }}<span class="phb-nav-text">Eigenleistungen</span></a>
+        <a class="phb-nav-link" data-section="kontakte" href="/kosten#kontakte" title="Firmen & Kontakte">{{ icon('users') }}<span class="phb-nav-text">Firmen &amp; Kontakte</span></a>
+      </nav>
+      <div class="phb-nav-label">DATEN</div>
+      <nav class="phb-nav" aria-label="Datenverwaltung">
+        <a class="phb-nav-link" data-section="backups" href="/finanzierung#sicherung" title="Backups">{{ icon('database') }}<span class="phb-nav-text">Backups</span></a>
+      </nav>
+      <details class="phb-sidebar__exports" id="phbExports">
+        <summary>{{ icon('download') }}<span class="phb-nav-text">Export &amp; Dateien</span>{{ icon('chevron-down') }}</summary>
+        <div class="phb-export-links">
+          <a href="/api/export.csv" download>Arbeitspakete (CSV)</a>
+          <a href="/api/budget.csv" download>Kostenplan (CSV)</a>
+          <a href="/api/costs.csv" download>Kosten &amp; Aufträge (CSV)</a>
+          <a href="/api/project-archive.zip" download>Projektarchiv (ZIP)</a>
+        </div>
+      </details>
+    </div>
+    <div class="phb-sidebar__bottom">
+      <div class="phb-privacy">{{ icon('shield') }}<span class="phb-nav-text"><strong>Lokal &amp; privat</strong><small>Deine Daten bleiben bei dir</small></span></div>
+      <form method="post" action="/logout" class="phb-logout-form"><button type="submit" class="phb-nav-link" title="Abmelden">{{ icon('log-out') }}<span class="phb-nav-text">Abmelden</span></button></form>
+    </div>
+  </aside>
+  <div class="phb-sidebar-scrim" id="phbSidebarScrim" aria-hidden="true"></div>
+  <div class="phb-workspace">
+    <header class="phb-topbar">
+      <div class="phb-topbar__left">
+        <button type="button" class="phb-icon-button phb-menu-button" id="phbMenu" aria-controls="phbSidebar" aria-expanded="false" aria-label="Navigation öffnen">{{ icon('menu') }}</button>
+        <div class="phb-breadcrumb"><span>Sanierung Gartenstraße</span><span aria-hidden="true">/</span><strong>{{ phb_title }}</strong></div>
+      </div>
+      <span class="phb-topbar__status">{{ icon('shield') }} <span>Privater Betrieb</span></span>
+    </header>
