@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -22,6 +23,8 @@ class BackupTests(unittest.TestCase):
         for x in self.patches:
             x.start();self.addCleanup(x.stop)
         self.db=self.root/'sanierung.db'
+        env_patch=patch.dict(os.environ, {'DATABASE_URL': 'sqlite:///' + str(self.db)})
+        env_patch.start(); self.addCleanup(env_patch.stop)
         with sqlite3.connect(self.db) as d:
             d.execute('CREATE TABLE expenses (name text, amount numeric)')
             d.execute("INSERT INTO expenses VALUES ('A', 12)")
