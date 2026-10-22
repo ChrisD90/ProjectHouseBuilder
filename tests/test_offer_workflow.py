@@ -117,6 +117,14 @@ class OfferReviewWorkflowTest(unittest.TestCase):
         self.assertEqual(self.client.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)
         self.assertEqual(self.client.get('/api/costs').json['summary']['committed'],0)
 
+    def test_german_thousands_format_in_review(self):
+        id_=self.upload(b'%PDF-format-18').json['id']
+        response=self.client.patch(f'/api/offers/{id_}/draft',json={'gross':'1.234,56'})
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertEqual(db.session.get(Offer,id_).gross,1234.56)
+        self.assertEqual(self.client.patch(f'/api/offers/{id_}',json={'status':'Angebot'}).status_code,200)
+        self.assertEqual(self.client.get('/api/costs').json['summary']['committed'],0)
+
     def test_reject_bad_amount_and_keep_values(self):
         id_=self.upload(b'%PDF-amount-16').json['id']
         for invalid in ('NaN','Infinity','-2','1.234','100000000'):

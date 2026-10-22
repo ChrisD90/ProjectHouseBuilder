@@ -751,7 +751,17 @@ def _offer_amount(raw,field):
     from decimal import Decimal,InvalidOperation
     if raw is None or raw=='':return None
     try:
-        v=Decimal(str(raw).strip().replace(',','.'))
+        formatted=str(raw).strip()
+        # Accept 1.234,56 as well as 1234,56 and 1234.56; a bare 1.234
+        # stays ambiguous and is rejected rather than silently misread.
+        if ',' in formatted and '.' in formatted:
+            import re
+            if not re.fullmatch(r'\d{1,3}(?:\.\d{3})+,\d{1,2}',formatted):
+                raise ValueError()
+            formatted=formatted.replace('.','').replace(',','.')
+        else:
+            formatted=formatted.replace(',','.')
+        v=Decimal(formatted)
         if not v.is_finite() or v < 0 or v > Decimal('99999999.99') or v.as_tuple().exponent < -2:
             raise ValueError()
         return float(v)
