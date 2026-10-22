@@ -44,6 +44,30 @@ class BackupTests(unittest.TestCase):
         self.assertEqual((self.root/'private'/'receipts'/'rechnung.pdf').read_bytes(),b'%PDF-example')
         self.assertTrue((rollback/'sanierung.db').is_file())
 
+    def test_full_financing_journal_survives_backup_and_restore(self):
+        """New loan, own funds, payment attribution and uploaded PDFs belong in one snapshot."""
+        with sqlite3.connect(self.db) as con:
+            con.execute('CREATE TABLE finance_loan (id INTEGER PRIMARY KEY, name TEXT, principal NUMERIC)')
+            con.execute("INSERT INTO finance_loan VALUES (1,'Kredit A',200000)")
+            con.execute('CREATE TABLE finance_equity (id INTEGER PRIMARY KEY, name TEXT, opening_balance NUMERIC)')
+            con.execute("INSERT INTO finance_equity VALUES (1,'Eigenkapital',30000)")
+            con.execute('CREATE TABLE finance_receipt_payment (id INTEGER PRIMARY KEY, receipt_id INTEGER, loan_id INTEGER, amount NUMERIC)')
+            con.execute('INSERT INTO finance_receipt_payment VALUES (1,14,1,1234.50)')
+        (self.root/'private'/'receipts'/'kassenzettel.jpg').write_bytes(b'Kassenzettel-Inhalt')
+        archive=m.make_backup()
+        info=m.verify_backup(archive)
+        self.assertIn('private/receipts/kassenzettel.jpg',info['files'])
+        with sqlite3.connect(self.db) as con:
+            con.execute('DELETE FROM finance_loan')
+            con.execute('DELETE FROM finance_receipt_payment')
+        (self.root/'private'/'receipts'/'kassenzettel.jpg').unlink()
+        m.restore(archive,yes=True)
+        with sqlite3.connect(self.db) as con:
+            self.assertEqual(con.execute('SELECT name,principal FROM finance_loan').fetchall(), [('Kredit A',200000)])
+            self.assertEqual(con.execute('SELECT amount FROM finance_receipt_payment').fetchall(),[(1234.5,)])
+            self.assertEqual(con.execute('SELECT opening_balance FROM finance_equity').fetchone()[0],30000)
+        self.assertEqual((self.root/'private'/'receipts'/'kassenzettel.jpg').read_bytes(),b'Kassenzettel-Inhalt')
+
     def test_corruption_rejected(self):
         archive=m.make_backup()
         edited=self.dest/'invalid.zip'
