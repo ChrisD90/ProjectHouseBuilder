@@ -599,6 +599,10 @@ def add_parsed_offer(parsed, digest, source_document=None, category='Sonstiges')
 
 
 def _offer_has_dependencies(item):
+    # An unsaved new CostItem has no ID. Querying cost_item_id IS NULL would
+    # accidentally match every unassigned PDF/document in the project.
+    if item.id is None:
+        return bool(item.paid)
     return bool(item.paid or db.session.scalar(select(Document.id).where(Document.cost_item_id==item.id).limit(1))
         or db.session.scalar(select(Receipt.id).where(Receipt.cost_item_id==item.id).limit(1)))
 
