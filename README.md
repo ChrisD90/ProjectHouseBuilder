@@ -1,118 +1,51 @@
-# ProjectHouseBuilder – lokale Projektsteuerung für Sanierungen
+# ProjectHouseBuilder – Heimnetz-PWA
 
-Eine lokal betriebene Webanwendung mit **Gantt-Plan**, Abhängigkeiten, Gewerken, Firmenkontakten, Kostenübersicht, Angeboten/Beauftragungen, Eigenleistungen, Förderungen und lokaler Dokumentenablage. Benutzeroberfläche auf Deutsch.
+Die bestehende Sanierungsplanung mit Gantt, Angeboten, Annahme-/Kostenlogik, Eigenleistungen und Kontakten ist als responsive PWA verfügbar. Für lokale Entwicklung weiterhin `sh start_mac_linux.sh` mit SQLite, für den Heimnetzbetrieb Docker Compose mit PostgreSQL, Caddy und HTTPS.
 
-## Schnellstart auf macOS / Linux
+## Heimnetz-Installation (Mac, Linux, Windows mit Docker Desktop)
 
-Voraussetzung: Python 3.10+ und Internetzugang für den **einmaligen** Download der Python-Bibliotheken.
+1. Docker Desktop installieren und starten. Stelle sicher, dass kein anderer Dienst die Ports 80 und 443 belegt.
+2. Den Rechner, auf dem Docker läuft, per Router-DHCP-Reservierung auf eine feste interne IP setzen (Beispiel: `192.168.178.50`). **Kein Portforwarding am Router einrichten!**
+3. `cp .env.example .env` ausführen und `LAN_HOST`, `POSTGRES_PASSWORD`, `APP_PASSWORD`, `APP_SECRET_KEY` anpassen. Für `APP_SECRET_KEY` mindestens 32 zufällige Bytes verwenden, z. B. `python3 -c 'import secrets; print(secrets.token_urlsafe(48))'`. Ändere die beispielhaften Werte vollständig. Die `.env` ist privat und nicht für GitHub bestimmt.
+4. `sh start_lan.sh` ausführen (oder unter Windows nach Erstellung der `.env`: `docker compose up --build -d`). Bei Unix für `PUID` und `PGID` ggf. die Werte deiner Benutzerkennung in `.env` ergänzen. Die Datenbank wird beim Erststart automatisch angelegt.
+5. Am eigenen Rechner die Anwendung über `https://<LAN_HOST>` öffnen, z. B. `https://192.168.178.50`. Passwort aus `.env` eingeben.
+6. **Zertifikat vertrauen:** Caddy stellt eine lokale HTTPS-Zertifizierungsstelle bereit. Das Root-Zertifikat exportieren:
 
-```bash
-sh start_mac_linux.sh
-```
+   `docker compose cp https:/data/caddy/pki/authorities/local/root.crt ./private/caddy-root.crt`
 
-Alternativ manuell:
+   Dieses Zertifikat auf dem Mac, PC, iPhone oder Android-Gerät, auf dem die App genutzt werden soll, **nach bewusster Prüfung** als vertrauenswürdige Stammzertifizierungsstelle installieren. Auf iOS muss unter „Einstellungen → Allgemein → Info → Zertifikatsvertrauenseinstellungen“ die vollständige Vertrauensstellung zusätzlich aktiviert werden. Ohne Vertrauensstellung ist zwar eventuell Browserzugriff mit Zertifikatswarnung möglich, aber die PWA-/Service-Worker-Funktion nicht zuverlässig nutzbar. **Den privaten CA-Schlüssel niemals exportieren oder weitergeben.**
+7. Anschließend im Browser „Zum Home-Bildschirm“/„App installieren“ wählen. iOS: Safari → Teilen → Zum Home-Bildschirm.
 
-```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -r requirements.txt
-python app.py
-```
+Die App ist ausschließlich im Heimnetz über die IP-Adresse erreichbar, sofern der Router keine Portweiterleitung nutzt und der Host nicht anders öffentlich erreichbar ist. Änderungen an der `LAN_HOST`-IP können eine neue Zertifikatskonfiguration erfordern.
 
-Dann **http://127.0.0.1:5000** im Browser öffnen. Beenden mit `Ctrl+C` im Terminal.
+## Backup (wichtig)
 
-Windows: `start_windows.bat` ausführen.
+`sh backup.sh` erstellt im lokalen, nicht versionierten Ordner `backups/` einen PostgreSQL-Dump **und** ein Archiv von `private/`, also auch hochgeladenen PDF-Dokumenten. Beide Dateien zusammen sicher auf einem zweiten Speichermedium sichern. Eine Wiederherstellung benötigt PostgreSQL `pg_restore` sowie den Inhalt von `private/`. Vor einem Update zuerst ein Backup machen.
 
-Die Daten werden in der lokalen SQLite-Datei `sanierung.db` gespeichert. Beim ersten Start erscheinen **44 anfängliche Arbeitspakete** mit geschätzten Zeitdauern und Abhängigkeiten; Startdatum voreingestellt auf **01.03.2027**. Beides ist frei bearbeitbar. Der Plan arbeitet mit **Kalendertagen**, nicht mit Arbeitstagen oder Feiertagen.
+## Aktualisieren
 
-## Mit PostgreSQL / Docker
+`git pull && docker compose up --build -d` (nur wenn das bisherige Arbeitsverzeichnis bereits die richtige `.env` und `private/` enthält). Keine Daten in das öffentliche GitHub-Repository hochladen; `.env`, `private/`, `backups/` und `data/initial_budget.json` werden ignoriert.
 
-```bash
-cp .env.example .env
-# In .env POSTGRES_PASSWORD durch ein eigenes starkes Passwort ersetzen.
-docker compose up --build -d
-```
+## Bestehende SQLite-Daten übernehmen
 
-Danach ebenfalls **http://127.0.0.1:5000**. SQLite und PostgreSQL sind **alternative Installationen**. Ein Wechsel migriert vorhandene Daten nicht automatisch. `docker compose down` stoppt Container, ohne das Daten-Volume zu löschen; **`docker compose down -v` würde DB-Daten löschen**.
+Ein automatischer SQLite-zu-PostgreSQL-Umzug ist **noch nicht implementiert**. Ein neuer PostgreSQL-Container erhält die unverfänglichen Startaufgaben sowie optional die lokal bereitgestellte Budget-Datei. Für bestehende produktive Daten ist ein gesonderter Migrationsschritt nötig; die alte `sanierung.db` unbedingt sichern und nicht löschen.
 
-## Kostenübersicht und Excel-Import
+## PWA-Einschränkungen
 
-Der **öffentliche GitHub-Code enthält absichtlich keinerlei persönliche Budget-/Vertragsdaten**.
+Die App funktioniert auf macOS, Windows, Linux, Android und iOS im Browser. Die PWA speichert lediglich statische CSS-, Icon- und JS-Dateien im Cache; sensible API-Antworten, Verträge, Finanzdaten und HTML-Seiten bleiben **online-only** und sind bei Verbindungsverlust nicht verfügbar. Es gibt keinen Push-Sync und keine Offline-Bearbeitung.
 
-Für den individuellen Sanierungsplan kann neben dem Programm eine lokale Datei `data/initial_budget.json` abgelegt werden (Schema siehe `data/initial_budget.example.json`). Nur beim **ersten Import** werden daraus Budgetzeilen, Förderungen, Vergleichsschätzungen und unverbindliche Firmenhinweise übernommen. `data/initial_budget.json` ist per `.gitignore` ausgeschlossen. Bei einer bereits initialisierten Datenbank wird die Datei **nicht erneut** eingespielt. Die personalisierte Download-Ausgabe enthält die aus einer bereitgestellten Excel-Vorlage konvertierte JSON-Datei und das Original unter `private/`.
+## Sicherheit
 
-Im Browser unter **„Kosten & Kontakte“**:
+Die Heimnetz-Variante verlangt ein Passwort (`APP_PASSWORD`) und ein eigenes Secret (`APP_SECRET_KEY`), setzt sichere Cookies und verwendet HTTPS mit privater CA. Nutze ein ausreichend langes Passwort. Für Zugriff außerhalb des Heimnetzes wäre zusätzliche Absicherung erforderlich. Die öffentliche GitHub-Version enthält keinerlei reale Angebotsunterlagen, private Kontakte oder `.env`.
 
-- Projektbudget, Prognose, Abweichung, beauftragte Summen, bezahlte Beträge und Eigenleistungsstunden
-- Grobkostenplan mit Gruppen- und Detailzeilen, Bearbeitung und CSV-Export
-- Je Planposition Schätzung, ausgewähltes Angebot und verbindlichen Auftrag unterscheiden. Alternativangebote und abgelehnte Angebote zählen nicht mit.
-- Eigenleistungen mit Materialkosten und Stunden erfassen. Eigene Stunden werden separat kalkulatorisch ausgewiesen, nicht automatisch als Auszahlung gebucht.
-- Förderungen als erwartet/bewilligt/ausgezahlt getrennt verwalten
-- Mehrere Firmen und Kontakte mit Telefon/E-Mail, Verknüpfung von Firma und Gantt-Arbeitspaket
-- PDF-/DOCX-/XLSX-/Bild-Dokumente zu Firmen, Budgetpositionen und Kostenpositionen lokal ablegen
-- Projektarchiv als ZIP inklusive lokaler Dokumente und (bei SQLite) Datenbank-Sicherung herunterladen
+## Tests
 
-**Kostenmethodik:** Jede aktive Budget-Detailzeile wird in der Prognose einmal gezählt. Ausgewählte Angebote ersetzen die Schätzung; eingetragene beauftragte Teilaufträge werden zusammengerechnet. Alternative und abgelehnte Angebote werden nicht addiert. Zusätzliche, unzugeordnete Kostenpositionen erhöhen die Prognose. Tatsächliche Zahlungen werden separat ausgewiesen. Die Eintragungen sind **keine automatische Vertragsprüfung**. Unverbindliche Schätzwerte sind als solche gekennzeichnet.
+`python -m unittest discover -s tests -v`. Auch GitHub Actions führt die Tests und JavaScript-Syntaxprüfungen aus.
 
-## Datenschutz / Backups
+## Synology NAS (separater Feature-Branch)
 
-- Der Server bindet standardmäßig nur an **127.0.0.1**. **Nicht öffentlich ins Internet freigeben.** Es gibt keine Benutzeranmeldung.
-- Private Unterlagen und lokale Daten werden **nicht zu GitHub übertragen**. `.gitignore` schützt `private/`, `sanierung.db`, `.env`, `data/initial_budget.json`. Vor Commits mit `git status` kontrollieren.
-- Für Backups unter **„Projektarchiv ZIP“** herunterladen. Bei SQLite enthält das Archiv eine konsistente Kopie der Datenbank; bei PostgreSQL ist zusätzlich `pg_dump` erforderlich.
-- Lokale Uploads stehen unter `private/documents/`. JSON-Export alleine enthält **nicht** die angehängten PDF-/Bilddateien.
-- Die Anwendung verschlüsselt lokale Dateien nicht; Schutz erfolgt durch macOS-Benutzerkonto und ggf. FileVault.
-
-## Termine / Grenzen
-
-- Vorgänger-Beziehungen sind **Ende-zu-Anfang**. Nachfolger starten am Tag nach Vorgängerende plus eingestellter Kalendertags-Pufferzeit.
-- Fehlende und zirkuläre Vorgänger werden abgefangen. Ist-Daten und Plantermine sind getrennt.
-- **Nicht implementiert:** Feiertagskalender, Ressourcenkonflikte, kritischer Pfad, Rechnungs-PDF-Erkennung, Mehrbenutzerbetrieb, automatische Zahlungsabgleiche, Produktionsauthentifizierung.
-
-## Entwicklung und Tests
-
-```bash
-python -m unittest discover -s tests -v
-python -m compileall -q app.py scheduler.py financials.py
-node --check static/app.js
-node --check static/costs.js
-```
-
-Abhängigkeiten: Flask, Flask-SQLAlchemy, psycopg. Bei Neuinstallationen werden aktuelle kompatible Versionen aus den in `requirements.txt` angegebenen Bereichen aufgelöst.
-
-## Verzeichnisstruktur
-
-- `app.py`: Flask-API, Datenmodelle, Dokumentenablage, SQLite/PostgreSQL
-- `scheduler.py`: berechnete Termine und Abhängigkeiten
-- `financials.py`: Prognose-Berechnung ohne Doppelzählung
-- `seed.json`: 44 initiale Arbeitspakete **ohne Kontakt- oder Vertragsdaten**
-- `data/initial_budget.example.json`: Form der optionalen privaten Importdaten
-- `templates/`, `static/`: Gantt und Kostenoberfläche
-- `tests/`: Unit-Tests für Termin-/Kostenlogik
-- `private/`, `sanierung.db`, `data/initial_budget.json`: persönliche Daten, **nicht committen**
-
-## PDF-Angebote automatisch auswerten (V5)
-
-Unter **Kosten & Kontakte → PDF-Angebote automatisch auswerten** ein *durchsuchbares* PDF auswählen. Die Analyse findet **ausschließlich auf dem eigenen Rechner** mit `pypdf` statt; es wird nichts an eine KI oder einen externen Server geschickt.
-
-1. Die Anwendung liest – soweit im PDF als Text vorhanden – Anbieter, Angebotsnummer, Datum, Nettosumme, MwSt., Bruttosumme sowie Einzelpositionen und Preise.
-2. Einzelpositionen werden nach Leistungsgruppen sortiert. **Optional- und Bedarfspositionen** (z. B. `E.P.`) erscheinen getrennt und werden nicht in den Vertragsbetrag summiert.
-3. Die errechnete Summe der enthaltenen Positionen wird mit der **Nettosumme des PDF** abgeglichen. Nicht abgeglichene PDFs dürfen nicht in den Budgetplan übernommen werden.
-4. Für jede Gruppe eine aktive Budgetzeile wählen, dann die Checkbox „Prognose“ aktivieren. **Erst dann** wird der Angebotsbetrag anstelle der bisherigen Budgetschätzung berücksichtigt. Mehrere Gruppen derselben PDF auf derselben Budgetzeile ergeben genau **eine** zusammengefasste Kostenposition; so entstehen keine Doppelbuchungen.
-5. „Beauftragt“ nur auswählen, wenn der Auftrag tatsächlich erteilt wurde. Die Software kann das **nicht** anhand eines Angebots erkennen. Zahlungen für importierte Angebote können in der Tabelle „Angebote, Aufträge & Ausgaben“ mit dem Button „Zahlung“ erfasst werden.
-
-**Unterstützte PDF-Layouts:** getestet mit textbasierten Positionslisten mit `€`-Spalten (u. a. klassische Angebote mit Positionen und `E.P.`). PDF-Layout und Begriffe variieren zwischen Betrieben stark. **Nicht jedes beliebige Angebot** lässt sich automatisch korrekt analysieren. Bei unlesbaren oder nicht abgeglichenen Dateien: PDF manuell prüfen und das Angebot wie bisher als Kostenposition erfassen. Gescannten PDFs fehlt ohne vorgelagertes OCR die auswertbare Textebene; eine OCR-Funktion ist nicht enthalten. Die Software ist eine Verwaltungshilfe und prüft nicht die rechtliche Bindungswirkung eines Vertrags.
-
-### Datenschutz und Updates
-
-Privat bleiben `private/`, die SQLite-Datei `sanierung.db` und `data/initial_budget.json`  (alle in `.gitignore`). Das **öffentliche** Repository enthält ausschließlich die Software, synthetische Tests und Beispieldaten. ZIP-Versionen können zusätzlich persönlich importierte lokale PDFs enthalten; solche ZIPs bitte **nicht** öffentlich teilen.
-
-Für ein Update der bisherigen lokalen V4-Installation vorher unter **Projektarchiv ZIP** eine Datensicherung erstellen, dann die neuen Quelldateien übernehmen und die bisherige `sanierung.db` und `private/` behalten. SQLAlchemy ergänzt die neue Datenbankstruktur automatisch. Für PostgreSQL zusätzlich `pg_dump` nutzen. Ein Python-Test lässt sich nach Installation der Abhängigkeiten mit `python -m unittest discover -s tests -v` ausführen.
-
-### Individuelle Initialdaten (optional)
-
-Es werden **keine Angebote vorinstalliert oder beim ersten Start automatisch importiert**. PDFs importierst du ausschließlich selbst über „Kosten & Kontakte“. Ein als **Angenommen** markiertes Angebot übernimmt sämtliche regulären (nicht optionalen) Leistungsgruppen als beauftragte Kosten. Unzugeordnete Gruppen werden zusätzlich als eigene Kostenposition erfasst. Bei konkurrierenden Angebotszuordnungen erfolgt keine automatische Überschreibung. Bereits existierende lokale Datenbanken werden niemals beim Start geleert.
-
-
-### Version 6: leere Angebotsverwaltung
-
-Die Anwendung enthält keine vorinstallierten Angebote, PDF-Beispiele aus echten Firmen oder automatische Erstimporte. Selbst importierte Angebote werden in der lokalen Datenbank abgelegt. Der Status **Angenommen** übernimmt alle regulären Positionen als beauftragte Kosten in die Prognose; bislang nicht zugeordnete Positionen zählen zusätzlich. Um Doppelzählungen gegenüber deiner Grobschätzung zu vermeiden, ordne vor der Annahme möglichst sämtliche Leistungsgruppen den Budgetzeilen zu. Die Anwendung löscht niemals stillschweigend Angebote aus einer bestehenden Datenbank. Bei einem Upgrade behältst du deine vorhandene Datenbank unverändert.
+Fuer Synology Container Manager liegt die passende Compose-Konfiguration unter
+[`compose.synology.yaml`](compose.synology.yaml); die genaue Installation steht in
+[`synology/README.md`](synology/README.md). Die App nutzt Port **8443 statt 443**,
+PostgreSQL und getrennte persistente Docker-Volumes. Keine Router-Portweiterleitung
+konfigurieren. Das Projekt ist ein **Feature-Branch** und aendert `main` nicht.

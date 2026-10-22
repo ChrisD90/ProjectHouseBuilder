@@ -1,0 +1,62 @@
+# ProjectHouseBuilder – Synology Container Manager / DSM 7.2+
+# In Container Manager > Projekt: Ordner mit allen Quelldateien als Projektpfad wählen,
+# diese Datei als Compose-Konfiguration importieren (oder in YAML-Editor einfügen).
+# Niemals NAS-Ports 5000/5001 (DSM) oder 80/443 ohne Prüfung belegen.
+name: projecthousebuilder
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sanierung
+      POSTGRES_USER: sanierung
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD in .env setzen}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sanierung -d sanierung"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [internal]
+    # Kein Host-Port: PostgreSQL nur fuer die App erreichbar.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://sanierung:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD in .env setzen}@db:5432/sanierung
+      APP_PASSWORD: ${APP_PASSWORD:?APP_PASSWORD in .env setzen}
+      APP_SECRET_KEY: ${APP_SECRET_KEY:?APP_SECRET_KEY in .env setzen}
+      SECURE_COOKIES: '1'
+    volumes:
+      - private_data:/app/private
+    expose:
+      - '5000'
+    networks: [internal]
+    # Keine privaten Angebotsdaten im Docker-Image oder Git-Repository.
+  https:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    environment:
+      LAN_HOST: ${LAN_HOST:?LAN_HOST in .env setzen}
+    ports:
+      - '${HTTPS_PORT:-8443}:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [internal]
+networks:
+  internal:
+    driver: bridge
+volumes:
+  db_data:
+  private_data:
+  caddy_data:
+  caddy_config:

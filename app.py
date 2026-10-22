@@ -15,12 +15,68 @@ from financials import effective_offer, forecast_lines, monetary_totals
 from offer_parser import parse_pdf
 from scheduler import schedule
 from pathlib import Path
-from flask import Flask, jsonify, render_template, request, Response, send_file
+import hmac
+from werkzeug.middleware.proxy_fix import ProxyFix
+from flask import Flask, jsonify, render_template, request, Response, send_file, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import select, text, inspect as sa_inspect
 
 ROOT = Path(__file__).resolve().parent
 app = Flask(__name__)
+# Authentication is opt-in for local tests, mandatory in the Docker/LAN deployment.
+app.secret_key = os.environ.get('APP_SECRET_KEY', 'development-only-not-for-LAN')
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Strict',
+                  SESSION_COOKIE_SECURE=os.environ.get('SECURE_COOKIES') == '1',
+                  PERMANENT_SESSION_LIFETIME=__import__('datetime').timedelta(days=7))
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+@app.before_request
+def require_local_login():
+    secret = os.environ.get('APP_PASSWORD')
+    if not secret or request.endpoint in ('login','pwa_manifest','service_worker','app_icon','static'):
+        return None
+    if session.get('signed_in') is not True:
+        if request.path.startswith('/api/'):
+            return jsonify(error='Nicht angemeldet'), 401
+        return redirect(url_for('login'))
+    if request.method not in ('GET','HEAD','OPTIONS'):
+        origin = request.headers.get('Origin')
+        if origin and origin.rstrip('/') != request.host_url.rstrip('/'):
+            return jsonify(error='Ungültiger Anfrage-Ursprung'),403
+    return None
+
+@app.route('/login', methods=['GET','POST'])
+def login():
+    if request.method == 'POST':
+        expected=os.environ.get('APP_PASSWORD','')
+        provided=request.form.get('password','')
+        if expected and hmac.compare_digest(provided,expected):
+            session.clear(); session['signed_in']=True;session.permanent=True
+            return redirect('/')
+        return render_template('login.html',error='Passwort nicht korrekt'),401
+    if session.get('signed_in'):return redirect('/')
+    return render_template('login.html',error='')
+
+@app.post('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
+
+@app.get('/manifest.webmanifest')
+def pwa_manifest():
+    return send_file(ROOT/'static'/'manifest.webmanifest',mimetype='application/manifest+json')
+
+@app.get('/sw.js')
+def service_worker():
+    response=send_file(ROOT/'static'/'sw.js',mimetype='text/javascript')
+    response.headers['Service-Worker-Allowed']='/'
+    response.headers['Cache-Control']='no-store'
+    return response
+
+@app.get('/static/icons/<path:filename>')
+def app_icon(filename):
+    return send_file(ROOT/'static'/'icons'/filename)
+
 DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///' + str(ROOT / 'sanierung.db'))
 if DATABASE_URL.startswith('postgres://'):
     DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)

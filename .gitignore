@@ -16,3 +16,8 @@ __pycache__/
 .DS_Store
 .idea/
 .vscode/
+
+backups/
+# Synology-spezifische lokale Daten
+storage/
+caddy-root.crt

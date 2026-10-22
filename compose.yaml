@@ -2,30 +2,51 @@ services:
   db:
     image: postgres:17-alpine
     restart: unless-stopped
+    env_file: .env
     environment:
       POSTGRES_DB: sanierung
       POSTGRES_USER: sanierung
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lokal_aendern}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD missing in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sanierung -d sanierung"]
-      interval: 3s
+      interval: 5s
       timeout: 3s
       retries: 20
   app:
     build: .
+    user: "${PUID:-1000}:${PGID:-1000}"
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
+    env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://sanierung:${POSTGRES_PASSWORD:-lokal_aendern}@db:5432/sanierung
-      HOST: 0.0.0.0
+      DATABASE_URL: postgresql+psycopg://sanierung:${POSTGRES_PASSWORD:?missing}@db:5432/sanierung
+      APP_PASSWORD: ${APP_PASSWORD:?missing}
+      APP_SECRET_KEY: ${APP_SECRET_KEY:?missing}
+      SECURE_COOKIES: "1"
     volumes:
       - ./private:/app/private
       - ./data:/app/data:ro
+    expose:
+      - "5000"
+  https:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      LAN_HOST: ${LAN_HOST:?LAN_HOST missing in .env}
     ports:
-      - "127.0.0.1:5000:5000"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

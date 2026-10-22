@@ -1,0 +1,10 @@
+https://{$LAN_HOST} {
+    tls internal
+    encode zstd gzip
+    reverse_proxy app:5000
+    header {
+      X-Content-Type-Options nosniff
+      Referrer-Policy same-origin
+      X-Frame-Options DENY
+    }
+}

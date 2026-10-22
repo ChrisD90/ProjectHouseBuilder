@@ -103,3 +103,22 @@ Gesamtsumme: € 100,00'''],'dummy.pdf')
         self.assertEqual(c.patch(f'/api/offers/{oid}',json={'status':'Angenommen'}).status_code,200)
         self.assertEqual(c.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)
         self.assertEqual(c.get('/api/costs').get_json()['summary']['committed'],0)
+
+
+class LanAuthenticationTest(unittest.TestCase):
+    def test_password_protects_data_and_allows_login(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, {'APP_PASSWORD':'local-test-only'}):
+            client=app.test_client()
+            self.assertEqual(client.get('/api/project').status_code,401)
+            self.assertEqual(client.get('/').status_code,302)
+            self.assertEqual(client.get('/static/style.css').status_code,200)
+            self.assertEqual(client.post('/login',data={'password':'wrong'}).status_code,401)
+            self.assertEqual(client.post('/login',data={'password':'local-test-only'}).status_code,302)
+            self.assertEqual(client.get('/api/project').status_code,200)
+            self.assertEqual(client.post('/logout').status_code,302)
+            self.assertEqual(client.get('/api/project').status_code,401)
+    def test_pwa_manifest_and_worker(self):
+        client=app.test_client()
+        self.assertEqual(client.get('/manifest.webmanifest').status_code,200)
+        self.assertEqual(client.get('/sw.js').status_code,200)
