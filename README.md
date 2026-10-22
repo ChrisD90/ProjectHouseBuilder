@@ -84,3 +84,17 @@ Entwürfe; Kosten werden erst nach deiner Buchungsfreigabe verändert.
 ## Lokaler Entwicklungs- und Testbetrieb
 
 Du kannst die **gleiche** Anwendung aus dem Branch `feature/synology-nas` auf dem Mac mit Docker und einer isolierten PostgreSQL-Testdatenbank betreiben. Anleitung: [`dev/README.md`](dev/README.md). Start mit `sh dev/start.sh`, anschließend `http://localhost:5080`. Der Synology-Betrieb bleibt davon unberührt.
+
+## Lokaler Mac-Betrieb mit SQLite und Proton-Drive-Backups
+
+Für die Nutzung auf einem einzelnen Mac ist **SQLite ohne Docker** vorgesehen: `sh start_mac_linux.sh`, anschließend `http://localhost:5000`. Die aktive `sanierung.db` und der Ordner `private/` bleiben **lokal** im Projektordner. Eine aktiv geöffnete SQLite-Datenbank gehört niemals direkt in einen Cloud-Synchronisationsordner.
+
+**Einmalig Backupziel auswählen:** `sh mac/backup-setup.sh` öffnet unter macOS einen Finder-Ordnerdialog (z. B. Proton Drive/ProjectHouseBuilder/Backups). Alternativ den Pfad als Argument übergeben. Im Benutzerkonto wird ein LaunchAgent eingerichtet, der beim Anmelden und täglich um 20 Uhr ein Backup erstellt, sofern der Mac läuft.
+
+**Jetzt manuell sichern:** `python3 backup_manager.py backup`. **Status:** `python3 backup_manager.py show`. **Archiv prüfen:** `python3 backup_manager.py verify "/Pfad/Backup.zip"`.
+
+Jedes ZIP enthält einen konsistenten SQLite-Snapshot plus alle Dateien unter `private/`, optional `data/initial_budget.json` und ein SHA-256-Prüfsummenmanifest. Standardmäßig werden die letzten 30 Backups aufbewahrt. Ist das gewählte Ziel nicht erreichbar, schlägt das Backup fehl statt auf ein anderes Ziel auszuweichen.
+
+**Auf neuem Mac wiederherstellen:** Projekt kopieren, Python installieren, Anwendung **nicht starten**, ZIP lokal verfügbar machen und `python3 backup_manager.py restore "/Pfad/Backup.zip" --yes` aufrufen. Danach `sh start_mac_linux.sh` und das Backupziel auf dem neuen Mac erneut einrichten. Vor dem Einspielen wird der bisherige lokale Datenstand unter `restore-safety-...` gesichert.
+
+Backups enthalten private Vertrags-, Kontakt- und Finanzdaten – nur in verschlüsselt geschützten Speichern ablegen, nie in GitHub committen. Proton Drive ist Sync-/Backupziel, **kein laufender Datenbankserver**. Synology und PostgreSQL bleiben optionale alternative Umgebungen.
