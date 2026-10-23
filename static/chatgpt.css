@@ -18,6 +18,12 @@
 .phb-ai-confirm{display:flex;align-items:start;gap:8px;line-height:1.4;font-size:13px}
 .phb-ai-confirm input{margin-top:3px;flex:none}
 .phb-ai-disclosure{font-size:12px;color:#536573}
+.phb-ai-diagnostics{margin:10px 0 16px;border:1px solid #d6e0e7;border-radius:10px;background:#f8fafb;font-size:13px}
+.phb-ai-diagnostics[hidden]{display:none}
+.phb-ai-diagnostics summary{cursor:pointer;padding:11px 13px;font-weight:650;color:#21455a;list-style-position:inside}
+.phb-ai-diagnostics summary:hover{background:#edf3f6}
+.phb-ai-diagnostics summary:focus-visible{outline:2px solid #0e7782;outline-offset:2px}
+.phb-ai-diagnostics-content{margin:0;padding:12px 14px 15px;border-top:1px solid #d6e0e7;white-space:pre-wrap;overflow-wrap:anywhere;max-height:45vh;overflow:auto;font-size:12px;line-height:1.6;color:#354e5f;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
 .phb-ai-report{white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto;background:#f5f8fa;color:#2a4151;border:1px solid #e2eaf0;border-radius:12px;padding:18px;font:inherit;line-height:1.55}
 .phb-ai-offer-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin:14px 0}
 .phb-ai-offer-choices label{display:flex;align-items:center;gap:9px;border:1px solid #e2e7ea;border-radius:8px;padding:10px 12px}
