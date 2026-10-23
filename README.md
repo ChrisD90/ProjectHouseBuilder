@@ -122,3 +122,44 @@ verknüpft; die bestätigte neue Bruttosumme wird zum aktuellen Auftragswert.
 Eine Änderung der Kostenplanposition ist bei bestehenden Rechnungen oder
 Zahlungen aus Sicherheitsgründen gesperrt.
 Vor der Schema-Migration `0007` wird automatisch ein vollständiges Backup verlangt.
+
+
+## Optionales ChatGPT-Konto auf dem lokalen Mac (nur Plannutzung)
+
+Das ChatGPT-Konto kann auf **http://127.0.0.1:5055/** über die Schaltfläche im Header
+verbunden werden. Die Anmeldung verwendet die öffentlich dokumentierte dynamische
+Open-Source-Registrierung von OpenAI mit PKCE/OIDC. Ein API-Schlüssel und ein
+separater kostenpflichtiger API-Fallback sind weder erforderlich noch vorhanden.
+OpenAI-Authentifizierung, Konto-/Workspace-Auswahl und Plannutzungsfreigabe erfolgen
+im Systembrowser. Nur Plus-/Pro- beziehungsweise jeweils berechtigte Konten können
+entsprechende KI-Funktionen verwenden; Verfügbarkeit variiert.
+
+**Kostenhinweis:** Falls die Nutzung zusätzlicher Credits für Apps in ChatGPT
+aktiviert ist, können nach Ende des Plankontingents Credits verbraucht werden.
+Die Anwendung kann diese fremde Kontoeinstellung **nicht prüfen** und deshalb
+auch keine absolute Zero-Cost-Garantie bieten. Vor jeder KI-Anfrage muss deshalb
+bestätigt werden, dass die Nutzung zusätzlicher Credits in ChatGPT → Einstellungen
+→ Nutzung deaktiviert ist. Bei Modell-/Nutzungsfehlern bricht die Anwendung ab,
+ohne zusätzliche API-Schlüssel oder eine andere Rechnungsroute zu verwenden.
+
+Die Zugangstokens werden **außerhalb** des Repositories und der vollständigen
+Projektbackups in `~/.config/ProjectHouseBuilder/chatgpt/` als Dateien mit
+Besitzerzugriff (0600) abgelegt. Browser-JavaScript erhält nie ein Token.
+Sign-in- und KI-Endpunkte sind nur auf Loopback verfügbar; für LAN-/Docker-Zugriff
+sind sie absichtlich nicht aktiviert. Die bestehenden lokalen Funktionen bleiben
+jederzeit unabhängig von ChatGPT nutzbar.
+
+- Angebote: Analyseart lokal oder ChatGPT auswählen; KI-Ergebnisse sind *Entwürfe*,
+  die vor Übernahme geprüft und bearbeitet werden. Auch neue Angebotsversionen.
+- Angebotsvergleich: Zwei bis acht geprüfte Angebote auswählen. Nur Angebotsdaten
+  und Positionen, nicht die PDFs, werden übertragen; es entsteht ein Bericht,
+  **keine** automatisch gebuchte Kostenzahl.
+- Zeitplan: KI-Vorschläge für einen leeren Plan können nach Vorschau bestätigt
+  übernommen werden; für bestehende Pläne gibt es zunächst Änderungsempfehlungen
+  ohne automatische Änderung. Aufgaben werden wie vorher auf Zyklen geprüft.
+
+Referenz: https://developers.openai.com/siwc/token-sharing-open-source/sign-in
+und https://developers.openai.com/siwc/token-sharing-open-source/models-and-inference
+
+Die Anmeldung selbst benötigt eine echte Zustimmung im Browser und kann nicht in
+CI simuliert werden. Automatisierte Tests verwenden keine echten Zugangsdaten.

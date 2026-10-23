@@ -1,0 +1,295 @@
+"""Local-only Sign in with ChatGPT integration (OSS dynamic registration).
+
+Never accepts an API key or client secret. Credentials are stored outside the
+project/backup tree in owner-only local files. No implicit paid fallback.
+"""
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import os
+from pathlib import Path
+import secrets
+import threading
+import time
+from urllib.parse import urlencode
+from uuid import uuid4
+
+import jwt
+from jwt import PyJWKClient
+import requests
+
+AUTHORIZATION = 'https://auth.openai.com/api/accounts/authorize'
+TOKEN = 'https://auth.openai.com/api/accounts/oauth/token'
+JWKS = 'https://auth.openai.com/.well-known/jwks.json'
+REVOCATION_CONFIG = 'https://auth.openai.com/.well-known/openid-configuration'
+RESOURCE = 'https://api.openai.com/v1'
+ISSUER = 'https://auth.openai.com'
+USAGE_URL = 'https://chatgpt.com/#settings/usage'
+REQUIRED_SCOPES = {'resource.invoke', 'chatgpt.tokens.use.direct'}
+SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct'
+MAX_STREAM_TEXT = 140_000
+
+class AIError(Exception):
+    """Safe, user-facing error from ChatGPT plan usage."""
+
+
+def _profile_home():
+    # Not in a git checkout, uploaded documents or complete project backups.
+    return Path(os.environ.get('PHB_CHATGPT_HOME') or
+                (Path.home() / '.config' / 'ProjectHouseBuilder' / 'chatgpt')).expanduser().resolve()
+
+
+def _ensure_home():
+    root = _profile_home()
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if root.is_symlink():
+        raise AIError('Zugangsdatenordner darf kein symbolischer Link sein.')
+    os.chmod(root, 0o700)
+    return root
+
+
+def _write_secret(name, data):
+    root = _ensure_home()
+    dest = root / name
+    tmp = root / ('.' + secrets.token_hex(10))
+    try:
+        fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(fd, 'w', encoding='utf-8') as file:
+            json.dump(data, file, ensure_ascii=False)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(tmp, dest)
+        os.chmod(dest, 0o600)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _read_secret(name):
+    path = _profile_home() / name
+    if not path.exists(): return None
+    if path.is_symlink(): raise AIError('Unsicherer Zugangsdatenpfad.')
+    with path.open('r', encoding='utf-8') as file:
+        return json.load(file)
+
+
+def _host_id():
+    record = _read_secret('host.json')
+    if record and str(record.get('host_id', '')).startswith('urn:uuid:'):
+        return record['host_id']
+    host = 'urn:uuid:' + str(uuid4())
+    _write_secret('host.json', {'host_id': host})
+    return host
+
+
+def _urlsafe(data):
+    return base64.urlsafe_b64encode(data).rstrip(b'=').decode('ascii')
+
+
+class ChatGPTLocal:
+    def __init__(self):
+        self._pending = {}
+        self._lock = threading.RLock()
+        self._jwk = None
+
+    def _profile(self):
+        profile = _read_secret('profile.json')
+        return profile if isinstance(profile, dict) else None
+
+    def status(self):
+        record = self._profile()
+        scopes = set(record.get('scopes', [])) if record else set()
+        return {'connected': bool(record and record.get('refresh_token')),
+                'sharing': bool(record and record.get('refresh_token') and REQUIRED_SCOPES <= scopes),
+                'email': record.get('email', '') if record else '',
+                'usage_url': USAGE_URL,
+                'local_only': True, 'api_keys_supported': False,
+                'credits_warning': 'Credits in ChatGPT Einstellungen → Nutzung für Apps deaktivieren. Die App kann dies nicht auslesen.'}
+
+    def begin(self, redirect_uri, browser_nonce):
+        # Exact 127.0.0.1 loopback redirect is required by dynamic registration.
+        if not redirect_uri.startswith('http://127.0.0.1:') or not redirect_uri.endswith('/auth/callback'):
+            raise AIError('ChatGPT-Anmeldung ist nur über http://127.0.0.1:PORT/auth/callback möglich.')
+        state = secrets.token_urlsafe(32)
+        nonce = secrets.token_urlsafe(32)
+        verifier = secrets.token_urlsafe(64)
+        challenge = _urlsafe(hashlib.sha256(verifier.encode('ascii')).digest())
+        record = self._profile()
+        client = record.get('client_id') if record else 'dynamic_agent_client'
+        params = {'client_id': client, 'ext_agent_host_id': _host_id(),
+                  'redirect_uri': redirect_uri, 'response_type': 'code', 'scope': SCOPES,
+                  'resource': RESOURCE, 'state': state, 'nonce': nonce,
+                  'code_challenge_method': 'S256', 'code_challenge': challenge}
+        if client == 'dynamic_agent_client':
+            params['agent_name_hint'] = 'ProjectHouseBuilder'
+        else:
+            if record.get('id_token'):params['id_token_hint'] = record['id_token']
+            if record.get('email'):params['login_hint'] = record['email']
+        with self._lock:
+            self._pending = {state: {'nonce': nonce, 'verifier': verifier,
+                                      'client_id': client, 'browser_nonce': browser_nonce,
+                                      'redirect_uri': redirect_uri, 'started': time.monotonic()}}
+        return AUTHORIZATION + '?' + urlencode(params)
+
+    def finish(self, args, browser_nonce):
+        state = args.get('state', '')
+        with self._lock:
+            txn = self._pending.pop(state, None)
+        if not txn or time.monotonic() - txn['started'] > 600 or not secrets.compare_digest(txn['browser_nonce'], browser_nonce or ''):
+            raise AIError('Anmeldung abgelaufen oder nicht verifiziert. Bitte erneut verbinden.')
+        if args.get('error'):
+            raise AIError('ChatGPT-Anmeldung wurde abgebrochen oder nicht erlaubt.')
+        if not args.get('code'):
+            raise AIError('ChatGPT hat keinen Anmeldecode zurückgegeben.')
+        issued = args.get('client_id') or (txn['client_id'] if txn['client_id']!='dynamic_agent_client' else None)
+        if not issued or not issued.startswith('oaiapp_'):
+            raise AIError('Kein gültiger ChatGPT-Client für die Anmeldung zurückgegeben.')
+        if txn['client_id'] != 'dynamic_agent_client' and txn['client_id'] != issued:
+            raise AIError('Die ChatGPT-Registrierung stimmt nicht überein.')
+        token = self._token_request({'grant_type': 'authorization_code', 'client_id': issued,
+                                     'code': args['code'], 'code_verifier': txn['verifier'],
+                                     'redirect_uri': txn['redirect_uri'], 'resource': RESOURCE})
+        claims = self._verify_identity(token.get('id_token'), issued, txn['nonce'])
+        old = self._profile()
+        if old and old.get('client_id') == issued and old.get('subject') != claims['sub']:
+            raise AIError('Die Anmeldung gehört nicht zum zuvor verbundenen ChatGPT-Konto.')
+        if not token.get('access_token') or not token.get('refresh_token'):
+            raise AIError('ChatGPT hat keine erneuerbaren Zugangsdaten geliefert.')
+        stored = {'client_id': issued, 'host_id': _host_id(), 'subject': claims['sub'],
+                  'email': claims.get('email', ''), 'id_token': token['id_token'],
+                  'access_token': token['access_token'], 'refresh_token': token['refresh_token'],
+                  'scopes': token.get('scope', '').split(),
+                  'expires_at': time.time()+int(token.get('expires_in', 3600))}
+        _write_secret('profile.json', stored)
+        return self.status()
+
+    def _verify_identity(self, raw, client_id, nonce):
+        if not raw: raise AIError('ChatGPT hat kein Identitätstoken ausgestellt.')
+        if self._jwk is None:
+            self._jwk = PyJWKClient(JWKS)
+        try:
+            key = self._jwk.get_signing_key_from_jwt(raw)
+            claims = jwt.decode(raw, key.key, algorithms=['RS256'],
+                                audience=client_id, issuer=ISSUER,
+                                options={'require': ['sub', 'exp', 'iat', 'iss', 'aud']})
+            if not secrets.compare_digest(str(claims.get('nonce', '')), nonce):
+                raise AIError('ChatGPT-Sicherheitsprüfung fehlgeschlagen (Nonce).')
+            return claims
+        except (jwt.PyJWTError, ValueError) as exc:
+            raise AIError('ChatGPT-Identität konnte nicht sicher bestätigt werden.') from exc
+
+    def _token_request(self, form):
+        try:
+            r = requests.post(TOKEN, data=form, timeout=25)
+            data = r.json()
+        except (requests.RequestException, ValueError) as exc:
+            raise AIError('ChatGPT-Anmeldedienst ist nicht erreichbar.') from exc
+        if r.status_code != 200 or not isinstance(data, dict):
+            code = data.get('error', 'OAuth-Fehler') if isinstance(data, dict) else 'OAuth-Fehler'
+            raise AIError('ChatGPT-Zugriff fehlgeschlagen: ' + str(code)[:90])
+        return data
+
+    def token(self):
+        with self._lock:
+            p = self._profile()
+            if not p or not p.get('refresh_token') or not REQUIRED_SCOPES <= set(p.get('scopes', [])):
+                raise AIError('Bitte mit ChatGPT verbinden und die Nutzung deines Plans erlauben.')
+            if float(p.get('expires_at', 0)) > time.time()+90:
+                return p['access_token']
+            try:
+                updated = self._token_request({'grant_type':'refresh_token',
+                    'client_id':p['client_id'], 'refresh_token':p['refresh_token'], 'resource':RESOURCE})
+            except AIError:
+                raise AIError('ChatGPT-Sitzung konnte nicht erneuert werden. Bitte erneut anmelden.')
+            if not updated.get('refresh_token') or not updated.get('access_token'):
+                raise AIError('ChatGPT-Erneuerung fehlgeschlagen; bitte neu anmelden.')
+            p.update(access_token=updated['access_token'], refresh_token=updated['refresh_token'],
+                     scopes=updated.get('scope','').split(),
+                     expires_at=time.time()+int(updated.get('expires_in',3600)))
+            if not REQUIRED_SCOPES <= set(p['scopes']):
+                raise AIError('Die Berechtigung zur ChatGPT-Plannutzung fehlt.')
+            _write_secret('profile.json', p)
+            return p['access_token']
+
+    def disconnect(self):
+        with self._lock:
+            p=self._profile()
+            warning=''
+            if p and p.get('refresh_token'):
+                try:
+                    info=requests.get(REVOCATION_CONFIG, timeout=12).json()
+                    endpoint=info.get('revocation_endpoint')
+                    if endpoint and endpoint.startswith('https://auth.openai.com/'):
+                        result=requests.post(endpoint, data={'token':p['refresh_token'],
+                            'token_type_hint':'refresh_token', 'client_id':p['client_id']},timeout=12)
+                        if result.status_code!=200: warning='Remote-Widerruf nicht bestätigt. App zusätzlich in ChatGPT trennen.'
+                    else:warning='Remote-Widerruf nicht verfügbar. App zusätzlich in ChatGPT trennen.'
+                except (requests.RequestException,ValueError):
+                    warning='Remote-Widerruf nicht bestätigt. App zusätzlich in ChatGPT trennen.'
+            path=_profile_home()/'profile.json'
+            path.unlink(missing_ok=True)
+            return {'ok':True,'warning':warning}
+
+    def models(self):
+        try:
+            res=requests.get(RESOURCE+'/models', headers={'Authorization':'Bearer '+self.token()},timeout=25)
+            if res.status_code!=200:raise AIError('Verfügbare ChatGPT-Modelle konnten nicht abgerufen werden.')
+            data=res.json()
+            return [{'slug':x['slug'],'name':x.get('display_name',x['slug'])}
+                    for x in data.get('models', []) if x.get('visibility')=='list' and isinstance(x.get('slug'),str)]
+        except (requests.RequestException,ValueError,KeyError) as exc:
+            raise AIError('ChatGPT-Modellliste nicht verfügbar.') from exc
+
+    def run(self, input_data, instructions, model):
+        if not isinstance(model,str) or not model or len(model)>100:
+            raise AIError('Bitte ein verfügbares ChatGPT-Modell auswählen.')
+        catalog=self.models()
+        if model not in {x['slug'] for x in catalog}:
+            raise AIError('Das gewählte Modell steht für dieses Konto nicht zur Verfügung.')
+        payload={'model':model,'input':input_data,'instructions':instructions,
+                 'store':False,'stream':True}
+        output=[];total=0;complete=False
+        try:
+            with requests.post(RESOURCE+'/responses', json=payload,headers={
+                'Authorization':'Bearer '+self.token(), 'Content-Type':'application/json',
+                'Accept':'text/event-stream'}, stream=True,timeout=(20,145)) as response:
+                if response.status_code!=200:
+                    try:detail=response.json()
+                    except ValueError:detail={}
+                    err=detail.get('error',detail) if isinstance(detail,dict) else {}
+                    code=err.get('code',err.get('detail','ChatGPT nicht verfügbar')) if isinstance(err,dict) else 'ChatGPT nicht verfügbar'
+                    raise AIError('ChatGPT-Anfrage abgelehnt: '+str(code)[:150])
+                for raw in response.iter_lines(decode_unicode=True):
+                    if isinstance(raw,bytes):raw=raw.decode('utf-8','replace')
+                    if not raw or not raw.startswith('data: '):continue
+                    try:event=json.loads(raw[6:])
+                    except ValueError:continue
+                    typ=event.get('type')
+                    if typ=='response.output_text.delta':
+                        delta=event.get('delta','')
+                        total+=len(delta)
+                        if total>MAX_STREAM_TEXT:raise AIError('Antwort überschreitet die maximale Länge.')
+                        output.append(delta)
+                    elif typ=='response.completed':complete=True
+                    elif typ in ('response.failed','error','response.incomplete'):
+                        detail=event.get('response',{}).get('error') or event.get('error') or {}
+                        code=detail.get('code','Anfrage fehlgeschlagen') if isinstance(detail,dict) else 'Anfrage fehlgeschlagen'
+                        raise AIError('KI-Anfrage nicht abgeschlossen: '+str(code)[:130])
+        except requests.RequestException as exc:
+            raise AIError('ChatGPT-Verbindung unterbrochen. Es wurden keine Projektdaten verändert.') from exc
+        if not complete:raise AIError('ChatGPT-Antwort unvollständig. Es wurden keine Projektdaten verändert.')
+        result=''.join(output).strip()
+        if not result:raise AIError('ChatGPT hat keine auswertbare Antwort zurückgegeben.')
+        return result
+
+
+chatgpt = ChatGPTLocal()
+
+
+def extract_json(text):
+    result=text.strip()
+    if result.startswith('```'):
+        result=result.split('\n',1)[-1].rsplit('```',1)[0].strip()
+    try:return json.loads(result)
+    except ValueError as exc:raise AIError('KI hat kein gültiges JSON geliefert. Bitte erneut versuchen oder lokal auswerten.') from exc

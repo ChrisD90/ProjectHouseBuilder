@@ -161,6 +161,7 @@
   function versionUpload(o) {
     return `<form class="offer-version-upload" data-version-upload="${o.id}">
       <label>Neue PDF-Version hochladen<input type="file" name="file" accept=".pdf,application/pdf" required></label>
+      <label>Analyseart<select name="analysis_mode"><option value="local">Lokal</option><option value="ai">ChatGPT</option></select></label>
       <button type="submit" class="mini">Neue Version analysieren</button>
       <span data-version-upload-status="${o.id}" role="status"></span></form>`;
   }
@@ -219,16 +220,22 @@
     const order={Angebot:0,Angenommen:1,Beauftragt:1,Abgelehnt:2};
     visible.sort((a,b)=>a.category.localeCompare(b.category,'de')||(order[a.status]??9)-(order[b.status]??9)||(a.gross??Infinity)-(b.gross??Infinity));
     $('offerList').innerHTML=visible.length ? visible.map(renderListed).join('') : '<p class="offer-empty">Noch keine Angebote in der Liste. Du kannst oben manuell ein Angebot anlegen oder ein PDF hochladen und prüfen.</p>';
+    if ($('aiOfferChoices')) {
+      const previous=new Set([...$('aiOfferChoices').querySelectorAll('input:checked')].map(x=>Number(x.value)));
+      $('aiOfferChoices').innerHTML=visible.map(o=>`<label><input type="checkbox" name="ai-compare" value="${o.id}" ${previous.has(o.id)?'checked':''}><span>${esc(o.vendor)} · ${esc(o.category)} · ${fmt(o.gross)}</span></label>`).join('')||'<p>Mindestens zwei geprüfte Angebote benötigt.</p>';
+    }
+
     const cat=$('offerManualCategory'), oldcat=cat.value;
     cat.innerHTML=categoryOptions(categories.includes(oldcat)?oldcat:'Sonstiges');
     const bud=$('offerManualBudget'), oldbudget=bud.value;
     bud.innerHTML=budgetOptions(oldbudget);
   }
 
-  async function request(url,{method='GET',data=null,formData=null}={}) {
+  async function request(url,{method='GET',data=null,formData=null,ai=false}={}) {
     const opts={method};
+    if (ai)opts.headers={'X-PHB-AI':'1'};
     if (formData) opts.body=formData;
-    else if (data!==null) {opts.headers={'Content-Type':'application/json'};opts.body=JSON.stringify(data)}
+    else if (data!==null) {opts.headers={...(opts.headers||{}),'Content-Type':'application/json'};opts.body=JSON.stringify(data)}
     const resp=await fetch(url,opts);
     let body;
     try {body=await resp.json()} catch {throw Error('Der Server hat keine gültige Antwort gesendet.')} 
@@ -259,11 +266,22 @@
   $('offerMethodPdf').addEventListener('click',()=>switchMethod('pdf'));
   $('offerMethodManual').addEventListener('click',()=>switchMethod('manual'));
   $('offerCategoryFilter').addEventListener('change',refreshUI);
+  const aiAppend=form=>{
+    const data=new FormData(form);
+    if(data.get('analysis_mode')==='ai'){
+      const settings=window.PHBAI?.selection();
+      if(!settings)throw Error('ChatGPT ist nicht verbunden.');
+      data.set('model',settings.model);
+      data.set('plan_only','true');
+    }
+    return data;
+  };
   $('offerImportForm').addEventListener('submit',async event=>{
     event.preventDefault(); const form=event.currentTarget;
-    inform('offerImportStatus','PDF wird auf deinem Rechner analysiert …');
+    inform('offerImportStatus',form.elements.analysis_mode.value==='ai'?'PDF wird mit ChatGPT analysiert …':'PDF wird lokal analysiert …');
     try {
-      await request('/api/offers/import',{method:'POST',formData:new FormData(form)});
+      const formData=aiAppend(form);
+      await request('/api/offers/import',{method:'POST',formData,ai:formData.get('analysis_mode')==='ai'});
       form.reset(); await reload();
       inform('offerImportStatus','PDF gespeichert. Bitte die erkannten Angaben unten prüfen.');
       $('angebote-pruefen').scrollIntoView({behavior:'smooth',block:'start'});
@@ -335,7 +353,8 @@
     const button=form.querySelector('button[type="submit"]');
     button.disabled=true; status.textContent='Neue Version wird lokal analysiert …';
     try{
-      await request(offerUrl(id)+'/versions',{method:'POST',formData:new FormData(form)});
+      const formData=aiAppend(form);
+      await request(offerUrl(id)+'/versions',{method:'POST',formData,ai:formData.get('analysis_mode')==='ai'});
       await reload();
       $('angebote-pruefen').scrollIntoView({behavior:'smooth',block:'start'});
     }catch(err){status.textContent='Fehler: '+err.message;button.disabled=false;}
@@ -417,6 +436,20 @@
     const btn=e.target.closest('[data-edit-cancel]');if(!btn)return;
     const box=$('offerEditor'+btn.dataset.editCancel);
     if(box){box.hidden=true;box.innerHTML=''}
+  });
+  $('aiCompareOffers')?.addEventListener('click',async()=>{
+    const checked=[...$('aiOfferChoices').querySelectorAll('input:checked')].map(x=>Number(x.value));
+    const status=$('aiCompareStatus'),output=$('aiCompareResult');
+    try{
+      if(checked.length<2||checked.length>8)throw Error('Bitte zwischen 2 und 8 Angebote auswählen.');
+      const permission=window.PHBAI?.selection();
+      if(!permission)throw Error('Bitte ChatGPT verbinden.');
+      status.textContent='Angebote werden verglichen …';output.hidden=true;
+      const result=await request('/api/ai/offers/compare',{method:'POST',ai:true,
+          data:{...permission,offer_ids:checked}});
+      output.textContent=result.analysis;output.hidden=false;
+      status.textContent='KI-Vorschlag – Angaben anhand der Originalangebote prüfen.';
+    }catch(e){status.textContent=e.message;}
   });
   reload().catch(error=>{
     $('offerList').textContent='Angebote konnten nicht geladen werden: '+error.message;

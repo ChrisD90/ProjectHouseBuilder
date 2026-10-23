@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de"><head><link rel="stylesheet" href="/static/vendor-bootstrap-5.3.6.min.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Kosten & Kontakte · Sanierungsprojekt</title><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/kosten.css"><meta name="theme-color" content="#0e7782"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="apple-touch-icon" href="/static/icons/icon-192.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/static/shell.css"></head>
+<html lang="de"><head><link rel="stylesheet" href="/static/vendor-bootstrap-5.3.6.min.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Kosten & Kontakte · Sanierungsprojekt</title><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/kosten.css"><meta name="theme-color" content="#0e7782"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="apple-touch-icon" href="/static/icons/icon-192.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/static/shell.css"><link rel="stylesheet" href="/static/chatgpt.css"></head>
 <body class="phb-app phb-page-kosten">
 {% set phb_active = 'kosten' %}{% set phb_title = 'Kosten & Budget' %}{% include '_shell_open.html' %}
 
@@ -32,4 +32,25 @@
   </div>
 </div>
 <dialog id="editor"><div class="dialog-head"><h2 id="editTitle"></h2><button type="button" id="closeDialog" class="subtle">Schließen</button></div><form id="editForm"><div class="dialog-grid" id="editFields"></div><p id="formError" role="alert"></p><div class="dialog-actions"><button type="button" id="remove" class="danger">Löschen</button><span style="flex:1"></span><button type="button" id="cancelDialog" class="subtle">Abbrechen</button><button type="submit" class="primary">Speichern</button></div></form></dialog>
-<script src="/static/costs.js"></script><script>if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js").catch(console.warn);</script><script src="/static/shell.js"></script></body></html>
+<script src="/static/costs.js"></script><script>if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js").catch(console.warn);</script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+  <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
+  <h2 id="phbAITitle">ChatGPT verbinden</h2>
+  <p id="phbAIConnection">Verbindung wird geprüft …</p>
+  <div class="phb-ai-controls">
+    <button type="button" id="phbAIConnect" class="phb-ai-primary">Mit ChatGPT anmelden</button>
+    <button type="button" id="phbAIDisconnect" hidden>Verbindung trennen</button>
+    <label id="phbAIModelWrap" hidden>ChatGPT-Modell <select id="phbAIModel"></select></label>
+  </div>
+  <div class="phb-ai-warning">
+    <strong>Keine API-Schlüssel und kein kostenpflichtiger Fallback.</strong>
+    <p>Wichtig: ChatGPT kann nach Erreichen des Plankontingents zusätzliche Credits verwenden,
+       falls du dies in deinem ChatGPT-Konto für Apps erlaubt hast. ProjectHouseBuilder kann
+       diese Kontoeinstellung nicht auslesen und daher keine absolute Kostensperre garantieren.</p>
+    <p><a href="https://chatgpt.com/#settings/usage" target="_blank" rel="noopener noreferrer">ChatGPT Einstellungen → Nutzung / App-Limits öffnen ↗</a></p>
+    <label class="phb-ai-confirm"><input type="checkbox" id="phbAINoCredits"> Ich habe die Nutzung kostenpflichtiger Credits für Apps in ChatGPT deaktiviert und erlaube ausdrücklich KI-Anfragen aus dieser Anwendung.</label>
+  </div>
+  <p class="phb-ai-disclosure">Nur mit KI gestartete Anfragen übertragen ausgewählte PDF- oder Projektinformationen an OpenAI. Ergebnisse bleiben Vorschläge, bis du sie prüfst und übernimmst. Zugangstokens bleiben lokal außerhalb der Projektbackups.</p>
+  <p id="phbAIMessage" role="status"></p>
+</dialog>
+<script src="/static/chatgpt.js"></script>
+<script src="/static/shell.js"></script></body></html>

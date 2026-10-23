@@ -1,0 +1,28 @@
+/* Compact AI connection surface. Existing layout/brand remain unchanged. */
+.phb-topbar-right{display:flex;align-items:center;gap:10px}
+.phb-ai-topbar{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border:1px solid #d8dfe7;border-radius:24px;padding:7px 11px;background:#fff;color:#243747;font-weight:650;font-size:12px;cursor:pointer}
+.phb-ai-topbar:hover{border-color:#7b95a4;background:#f8fafb}
+.phb-ai-logo{width:20px;height:20px}
+.phb-ai-status-dot{height:7px;width:7px;background:#98a4ad;border-radius:50%}
+.phb-ai-dot-on{background:#238568}
+.phb-ai-dialog{width:min(94vw,590px);max-height:85vh;border:1px solid #dbe4e8;border-radius:16px;padding:24px;background:white;color:#223847;box-shadow:0 25px 95px #0b2a3b40}
+.phb-ai-dialog::backdrop{background:#132e3c90}
+.phb-ai-dialog h2{margin:0 0 6px;font-size:22px}
+.phb-ai-dialog p{margin:8px 0 14px;line-height:1.5}
+.phb-ai-close{position:absolute;top:10px;right:12px;border:0;background:transparent;font-size:26px;cursor:pointer}
+.phb-ai-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:18px 0}
+.phb-ai-controls button,.phb-ai-controls select,.phb-ai-schedule button{border-radius:8px;padding:9px 12px}
+.phb-ai-primary{background:#0f5366;color:white;border:1px solid #0f5366}
+.phb-ai-warning{background:#f5f8fb;border:1px solid #e0e7eb;border-radius:10px;padding:14px}
+.phb-ai-warning p{font-size:13px}
+.phb-ai-confirm{display:flex;align-items:start;gap:8px;line-height:1.4;font-size:13px}
+.phb-ai-confirm input{margin-top:3px;flex:none}
+.phb-ai-disclosure{font-size:12px;color:#536573}
+.phb-ai-report{white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto;background:#f5f8fa;color:#2a4151;border:1px solid #e2eaf0;border-radius:12px;padding:18px;font:inherit;line-height:1.55}
+.phb-ai-offer-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin:14px 0}
+.phb-ai-offer-choices label{display:flex;align-items:center;gap:9px;border:1px solid #e2e7ea;border-radius:8px;padding:10px 12px}
+.phb-ai-offer-choices input{flex:none}
+.phb-ai-schedule{margin-bottom:22px}
+.phb-ai-schedule label{display:block}
+.phb-ai-schedule textarea{display:block;width:100%;margin:8px 0 14px}
+@media(max-width:700px){.phb-ai-topbar{padding:8px}.phb-ai-topbar #phbChatGPTLabel{display:none}.phb-ai-dialog{padding:19px}.phb-topbar-right{gap:5px}}

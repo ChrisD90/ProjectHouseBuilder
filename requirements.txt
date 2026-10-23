@@ -5,3 +5,5 @@ pypdf>=5,<7
 gunicorn>=22,<24
 Pillow>=10,<13
 alembic>=1.14,<2
+requests>=2.31,<3
+PyJWT[crypto]>=2.8,<3

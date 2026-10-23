@@ -38,3 +38,47 @@ $('taskForm').onsubmit=async e=>{e.preventDefault();let f=$('taskForm'),data={};
 $('delete').onclick=async()=>{if(!confirm('Arbeitspaket wirklich löschen?'))return;try{await api('/api/tasks/'+editing,{method:'DELETE'});closeModal();await reload();message('Arbeitspaket gelöscht')}catch(e){$('error').textContent=e.message}};
 $('today').onclick=()=>{let container=document.querySelector('.ganttwrap');let origin=firstMonday(project.start);let n=diff(origin,new Date().toISOString().slice(0,10));container.scrollLeft=Math.max(0,n*($('scale').value==='week'?26:7)-320)};
 reload();loadTemplatePreview();
+
+/* ChatGPT plan-funded schedule suggestions: preview-only until explicit import. */
+(() => {
+  let preview=null;
+  const button=document.getElementById('aiScheduleSuggest');
+  if(!button)return;
+  const $=id=>document.getElementById(id);
+  const report=msg=>{$('aiScheduleStatus').textContent=msg;};
+  button.onclick=async()=>{
+    try{
+      const perm=window.PHBAI?.selection();
+      if(!perm)throw Error('ChatGPT ist nicht verbunden.');
+      button.disabled=true;preview=null;$('aiScheduleApply').hidden=true;$('aiScheduleDetails').hidden=true;
+      report('Bauzeitenvorschlag wird erstellt …');
+      const response=await fetch('/api/ai/schedule/suggest',{method:'POST',headers:{'Content-Type':'application/json','X-PHB-AI':'1'},
+        body:JSON.stringify({...perm,requirements:$('aiScheduleNeeds').value})});
+      const data=await response.json();if(!response.ok)throw Error(data.error||'KI nicht verfügbar.');
+      $('aiScheduleOverview').textContent=data.overview;
+      preview=data.can_apply?data.tasks:null;
+      $('aiScheduleApply').hidden=!preview;
+      $('aiScheduleDetails').hidden=!preview;
+      $('aiScheduleList').replaceChildren();
+      for(const t of (data.tasks||[])){
+        const row=document.createElement('div');row.className='template-step';
+        row.textContent=`${t.code} · ${t.name} · ${t.execution_type} · ${t.duration} Tage · Vorgänger: ${(t.predecessors||[]).join(', ')}`;
+        $('aiScheduleList').append(row);
+      }
+      report(data.notice||'Vorschlag erstellt.');
+    }catch(e){report(e.message);}finally{button.disabled=false;}
+  };
+  $('aiScheduleApply').onclick=async()=>{
+    if(!preview)return;
+    if(!confirm('Alle geprüften KI-Aufgaben wirklich in den LEEREN Bauzeitenplan übernehmen? Bestehende Aufgaben werden nicht überschrieben.'))return;
+    const button=$('aiScheduleApply');button.disabled=true;
+    try{
+      const res=await fetch('/api/ai/schedule/apply',{method:'POST',
+        headers:{'Content-Type':'application/json','X-PHB-AI':'1'},
+        body:JSON.stringify({confirm:true,tasks:preview})});
+      const data=await res.json();if(!res.ok)throw Error(data.error||'Übernahme fehlgeschlagen.');
+      preview=null;button.hidden=true;$('aiScheduleDetails').hidden=true;
+      await reload();report(data.created+' KI-Arbeitspakete übernommen.');
+    }catch(e){report(e.message);}finally{button.disabled=false;}
+  };
+})();

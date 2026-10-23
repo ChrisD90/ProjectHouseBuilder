@@ -54,5 +54,11 @@
         <button type="button" class="phb-icon-button phb-menu-button" id="phbMenu" aria-controls="phbSidebar" aria-expanded="false" aria-label="Navigation öffnen">{{ icon('menu') }}</button>
         <div class="phb-breadcrumb"><span>Sanierung Gartenstraße</span><span aria-hidden="true">/</span><strong>{{ phb_title }}</strong></div>
       </div>
-      <span class="phb-topbar__status">{{ icon('shield') }} <span>Privater Betrieb</span></span>
+      <div class="phb-topbar-right">
+        <span class="phb-topbar__status">{{ icon('shield') }} <span>Privater Betrieb</span></span>
+        <button id="phbChatGPTButton" class="phb-ai-topbar" type="button" title="Mit ChatGPT verbinden" aria-label="ChatGPT-Verbindung verwalten">
+          <img id="phbChatGPTLogo" class="phb-ai-logo" src="/static/icons/chatgpt-mark.svg" alt="ChatGPT" hidden>
+          <span id="phbChatGPTLabel">ChatGPT verbinden</span><span class="phb-ai-status-dot" id="phbChatGPTDot"></span>
+        </button>
+      </div>
     </header>
