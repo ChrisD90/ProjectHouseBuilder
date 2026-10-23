@@ -22,7 +22,7 @@ from sample_schedule import load_schedule_template, schedule_template_summary
 from pathlib import Path
 import hmac
 from werkzeug.middleware.proxy_fix import ProxyFix
-from chatgpt_local import chatgpt, AIError, extract_json
+from chatgpt_local import chatgpt, AIError, IdentityValidationError, extract_json
 import base64
 import time
 import secrets
@@ -409,6 +409,25 @@ def _ai_safe_callback_diagnostic(error, browser_nonce, args):
                    'unauthorized_client', 'access_denied', 'invalid_scope',
                    'unsupported_grant_type'}
         code = oauth_code if oauth_code in allowed else 'token_exchange_rejected'
+    if isinstance(error, IdentityValidationError):
+        # Never expose exception text, JWT headers, key IDs or identity claims.
+        identity_reasons = {
+            'jwks_unavailable': 'Der öffentliche OpenAI-Signaturschlüsseldienst war nicht erreichbar. Netzwerk, TLS und Proxy prüfen.',
+            'jwks_signing_key_missing': 'Der benötigte OpenAI-Signaturschlüssel konnte nicht gefunden werden.',
+            'id_token_malformed': 'Das ID-Token konnte nicht als gültiges JWT verarbeitet werden.',
+            'id_token_expired': 'Das ID-Token ist bereits abgelaufen. Systemzeit des Macs prüfen.',
+            'id_token_time_invalid': 'Das ID-Token ist laut Zeitangaben noch nicht gültig. Systemzeit des Macs prüfen.',
+            'id_token_audience_mismatch': 'Der Empfänger (aud) des ID-Tokens stimmt nicht mit der registrierten Client-ID überein.',
+            'id_token_issuer_mismatch': 'Der Herausgeber (iss) des ID-Tokens stimmt nicht mit OpenAI überein.',
+            'id_token_claim_missing': 'Ein für die sichere Identitätsprüfung benötigtes JWT-Feld fehlt.',
+            'id_token_signature_invalid': 'Die kryptografische Signatur des ID-Tokens ist ungültig.',
+            'id_token_algorithm_invalid': 'Der Signaturalgorithmus des ID-Tokens ist nicht erlaubt (erwartet: RS256).',
+            'id_token_subject_invalid': 'Das ID-Token enthält keine gültige Kontoidentität (sub).',
+            'id_token_invalid': 'Die JWT-Prüfung hat das ID-Token abgelehnt.'
+        }
+        phase = 'Identitätsprüfung'
+        code = error.reason_code if error.reason_code in identity_reasons else 'id_token_validation_failed'
+        explanation = identity_reasons.get(code, 'Die Identitätsprüfung ist fehlgeschlagen.')
     return {
         'reference': secrets.token_hex(4), 'code': code,
         'phase': phase, 'explanation': explanation, 'checks': checks
