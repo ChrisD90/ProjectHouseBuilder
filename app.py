@@ -795,7 +795,7 @@ def project_documents_page():
     return render_template('dokumente.html')
 
 
-@app.get('/api/documents')
+@app.get('/api/project-documents')
 def project_documents_list():
     docs=db.session.scalars(select(ProjectDocument).order_by(
         ProjectDocument.uploaded_at.desc(),ProjectDocument.id.desc())).all()
@@ -806,7 +806,7 @@ def project_documents_list():
     return response
 
 
-@app.post('/api/documents')
+@app.post('/api/project-documents')
 def project_document_upload():
     upload=request.files.get('file')
     if not upload or not upload.filename:
@@ -841,7 +841,7 @@ def project_document_upload():
         return jsonify(error='Projektunterlage konnte nicht sicher gespeichert werden.'),500
 
 
-@app.patch('/api/documents/<int:did>')
+@app.patch('/api/project-documents/<int:did>')
 def project_document_edit(did):
     record=db.session.get(ProjectDocument,did)
     if not record:return jsonify(error='Dokument nicht gefunden.'),404
@@ -860,7 +860,7 @@ def project_document_edit(did):
         return jsonify(error=str(exc)),400
 
 
-@app.get('/api/documents/<int:did>/download')
+@app.get('/api/project-documents/<int:did>/download')
 def project_document_download(did):
     record=db.session.get(ProjectDocument,did)
     if not record:return jsonify(error='Dokument nicht gefunden.'),404
@@ -872,7 +872,7 @@ def project_document_download(did):
     return response
 
 
-@app.delete('/api/documents/<int:did>')
+@app.delete('/api/project-documents/<int:did>')
 def project_document_delete(did):
     record=db.session.get(ProjectDocument,did)
     if not record:return jsonify(error='Dokument nicht gefunden.'),404
@@ -883,7 +883,7 @@ def project_document_delete(did):
     return jsonify(ok=True)
 
 
-@app.get('/api/documents/suggest')
+@app.get('/api/project-documents/suggest')
 def project_document_suggest():
     q=str(request.args.get('q',''))[:1000]
     docs=db.session.scalars(select(ProjectDocument).where(
