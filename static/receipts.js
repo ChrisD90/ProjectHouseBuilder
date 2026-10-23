@@ -7,6 +7,19 @@ const navigation=new URLSearchParams(window.location.search);
 const linkOffer=Number(navigation.get('offer_id'))||null;
 const linkReceipt=Number(navigation.get('receipt_id'))||null;
 let linkedCostItem=null;
+function assignmentLabel(r){
+  if(r.assignment_type==='Eigenleistung')return 'Eigenleistung';
+  if(r.assignment_type==='Betrieb'){
+    const contractor=(overview?.contractors||[]).find(c=>c.id===r.contractor_id);
+    return 'Betrieb: '+(contractor?.name||'Unbekannt');
+  }
+  if(r.assignment_type==='Angebot'){
+    const offer=(overview?.offers||[]).find(o=>o.id===r.offer_id);
+    return 'Angebot: '+(offer?.vendor||'Angenommen');
+  }
+  if(r.assignment_type==='Kostenposition')return 'Bisherige Kostenposition';
+  return 'Zuordnung noch offen';
+}
 function renderCostItems(){
   const accepted=new Map((overview?.offers||[]).filter(o=>['Angenommen','Beauftragt'].includes(o.status)).map(o=>[o.id,o]));
   const itemList=overview?.items||[];
@@ -80,7 +93,7 @@ async function reload(keepId=selected){
  $('categories').innerHTML=r.categories.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');
  fillSelect($('budgetLines'),c.budget_lines.filter(x=>x.active&&!x.is_group),x=>x.category+' · '+x.title);
  renderCostItems();
- $('list').innerHTML=list.map(x=>`<button type="button" data-id="${x.id}" class="entry ${keepId===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span><strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} neu abgerechnet · ${safe(x.category)}</small></button>`).join('')||'<p>Du hast noch keine Belege erfasst.</p>';
+ $('list').innerHTML=list.map(x=>`<button type="button" data-id="${x.id}" class="entry ${keepId===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span><strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} neu abgerechnet · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small></button>`).join('')||'<p>Du hast noch keine Belege erfasst.</p>';
  document.querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
  if(keepId&&list.some(x=>x.id===keepId))await open(keepId);
  else if(linkReceipt&&list.some(x=>x.id===linkReceipt))await open(linkReceipt);
