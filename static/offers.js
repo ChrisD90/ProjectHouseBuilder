@@ -4,6 +4,18 @@
   const $ = id => document.getElementById(id);
   if (!$('offerImportForm') || !$('offerList')) return;
   let offers = [], categories = [], budgets = [], versionDrafts = [];
+  let comparingOffers = false;
+  const defaultCompareLabel = 'Ausgewählte Angebote mit KI vergleichen';
+  function updateAICompareSelection() {
+    const choices=$('aiOfferChoices'),button=$('aiCompareOffers');
+    if(!choices||!button)return;
+    const count=choices.querySelectorAll('input:checked').length;
+    button.disabled=comparingOffers||count<2||count>8;
+    button.textContent=comparingOffers?'Vergleich läuft …':defaultCompareLabel;
+    button.setAttribute('aria-busy',String(comparingOffers));
+    const indicator=$('aiCompareSelectionCount');
+    if(indicator)indicator.textContent=count+' ausgewählt · 2 bis 8 erforderlich';
+  }
   const fmt = n => n == null ? 'Bitte Betrag prüfen' : new Intl.NumberFormat('de-DE', {style:'currency',currency:'EUR'}).format(Number(n));
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const option = (value,label,selected) => `<option value="${esc(value)}" ${String(value)===String(selected??'')?'selected':''}>${esc(label)}</option>`;
@@ -222,7 +234,8 @@
     $('offerList').innerHTML=visible.length ? visible.map(renderListed).join('') : '<p class="offer-empty">Noch keine Angebote in der Liste. Du kannst oben manuell ein Angebot anlegen oder ein PDF hochladen und prüfen.</p>';
     if ($('aiOfferChoices')) {
       const previous=new Set([...$('aiOfferChoices').querySelectorAll('input:checked')].map(x=>Number(x.value)));
-      $('aiOfferChoices').innerHTML=visible.map(o=>`<label><input type="checkbox" name="ai-compare" value="${o.id}" ${previous.has(o.id)?'checked':''}><span>${esc(o.vendor)} · ${esc(o.category)} · ${fmt(o.gross)}</span></label>`).join('')||'<p>Mindestens zwei geprüfte Angebote benötigt.</p>';
+      $('aiOfferChoices').innerHTML=visible.map(o=>`<label><input type="checkbox" name="ai-compare" value="${o.id}" ${previous.has(o.id)?'checked':''}><span>${esc(o.vendor)} · ${esc(o.category)} · ${fmt(o.gross)}</span></label>`).join('')||'<p class="offer-empty">Mindestens zwei geprüfte Angebote benötigt.</p>';
+      updateAICompareSelection();
     }
 
     const cat=$('offerManualCategory'), oldcat=cat.value;
@@ -437,19 +450,34 @@
     const box=$('offerEditor'+btn.dataset.editCancel);
     if(box){box.hidden=true;box.innerHTML=''}
   });
+  $('aiOfferChoices')?.addEventListener('change',()=>{
+    $('aiCompareResult').hidden=true;
+    inform('aiCompareStatus','');
+    updateAICompareSelection();
+  });
   $('aiCompareOffers')?.addEventListener('click',async()=>{
+    if(comparingOffers)return;
     const checked=[...$('aiOfferChoices').querySelectorAll('input:checked')].map(x=>Number(x.value));
     const status=$('aiCompareStatus'),output=$('aiCompareResult');
+    comparingOffers=true;
+    updateAICompareSelection();
+    output.hidden=true;
     try{
       if(checked.length<2||checked.length>8)throw Error('Bitte zwischen 2 und 8 Angebote auswählen.');
       const permission=window.PHBAI?.selection();
       if(!permission)throw Error('Bitte ChatGPT verbinden.');
-      status.textContent='Angebote werden verglichen …';output.hidden=true;
+      inform('aiCompareStatus','Angebote werden verglichen …');
       const result=await request('/api/ai/offers/compare',{method:'POST',ai:true,
           data:{...permission,offer_ids:checked}});
-      output.textContent=result.analysis;output.hidden=false;
-      status.textContent='KI-Vorschlag – Angaben anhand der Originalangebote prüfen.';
-    }catch(e){status.textContent=e.message;}
+      output.textContent=result.analysis;
+      output.hidden=false;
+      inform('aiCompareStatus','KI-Vorschlag – Angaben anhand der Originalangebote prüfen.');
+    }catch(e){
+      inform('aiCompareStatus',e.message,true);
+    }finally{
+      comparingOffers=false;
+      updateAICompareSelection();
+    }
   });
   reload().catch(error=>{
     $('offerList').textContent='Angebote konnten nicht geladen werden: '+error.message;
