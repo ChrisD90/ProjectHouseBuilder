@@ -51,6 +51,17 @@ receipt_file.write_bytes(b'%PDF Fake personal document')
 (root/'private'/'documents').mkdir(parents=True,exist_ok=True)
 (root/'private'/'documents'/'angebot.pdf').write_bytes(b'%PDF private offer')
 client = package.app.test_client()
+from io import BytesIO
+upload=client.post('/api/project-documents',data={
+    'file':(BytesIO(b'Project notes for electric floor plan'), 'elektroplan.txt'),
+    'title':'Elektroplan Bestand','category':'Bauplan','area':'Elektrik','status':'Aktuell',
+    'tags':'Leitungen'},content_type='multipart/form-data')
+assert upload.status_code==201, upload.json
+document_id=upload.json['document']['id']
+with package.app.app_context():
+    from app import ProjectDocument
+    path=package.PROJECT_DOCUMENT_ROOT/db.session.get(ProjectDocument,document_id).stored_name
+    assert path.is_file()
 assert client.get('/daten').status_code == 200
 assert client.get('/',headers={'User-Agent':'Mozilla/5.0 Chrome/131'}).status_code == 200
 assert client.get('/api/project').status_code == 200
@@ -138,8 +149,10 @@ assert archive.exists()
 manifest=backup.verify_backup(archive)
 assert 'private/receipts/beleg.pdf' in manifest['files']
 assert 'private/documents/angebot.pdf' in manifest['files']
+assert any(name.startswith('private/project-documents/') for name in manifest['files'])
 assert 'data/initial_budget.json' not in manifest['files']
 assert not receipt_file.exists()
+assert not path.exists()
 with package.app.app_context():
     for model in [Task, BudgetLine, Contractor, Receipt, Loan, EquityAccount, ReceiptFinancingPayment, Offer, CostItem]:
         assert db.session.query(model).count()==0, model.__name__
@@ -190,6 +203,7 @@ with sqlite3.connect(b.ROOT/'sanierung.db') as c:
     assert c.execute('SELECT supplier FROM receipt').fetchone()[0]=='Test'
     assert c.execute('SELECT COUNT(*) FROM task').fetchone()[0]>0
 assert (b.ROOT/'private'/'receipts'/'beleg.pdf').read_bytes()==b'%PDF Fake personal document'
+assert len(list((b.ROOT/'private'/'project-documents').glob('*.txt')))==1
 print('RESTORED')
 """
             restored=subprocess.run([sys.executable,'-c',restore_code,str(root),str(archive)],
