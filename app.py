@@ -1217,7 +1217,8 @@ def upload_offer_version(offer_id):
         return jsonify(error='Dieses PDF gehört bereits zur Versionshistorie dieses Angebots.'),409
     name=Path(f.filename).name[:240]
     try:parsed,content=_analyse_offer_with_mode(data,name)
-    except (ValueError,AIError) as exc:return jsonify(error=str(exc)),422
+    except AIError as exc:return jsonify(error=str(exc)),403
+    except ValueError as exc:return jsonify(error=str(exc)),422
     root=DOCUMENT_ROOT
     root.mkdir(parents=True,exist_ok=True)
     stored=uuid4().hex+'.pdf'
@@ -1407,7 +1408,8 @@ def offers_import():
         return jsonify(error='Dieses PDF wurde bereits hochgeladen.'),409
     name=Path(f.filename).name[:240]
     try:parsed,content=_analyse_offer_with_mode(data,name)
-    except (ValueError,AIError) as exc:return jsonify(error=str(exc)),422
+    except AIError as exc:return jsonify(error=str(exc)),403
+    except ValueError as exc:return jsonify(error=str(exc)),422
     suggested=category_for(content) if content else 'Sonstiges'
     if suggested not in category_names():suggested='Sonstiges'
     DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)

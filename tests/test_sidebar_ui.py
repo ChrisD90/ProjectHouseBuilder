@@ -90,7 +90,11 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('aria-current', shell)
         for name in ('index', 'kosten', 'angebote', 'belege', 'finanzierung', 'daten'):
             html = self.render(name)
-            self.assertNotRegex(html, r'(src|href)="https?://[^\"]+"')
+            # Navigational links to an official account settings page are fine.
+            # Only remote static dependencies (CDNs, scripts, CSS, images) are banned.
+            self.assertNotRegex(html, r'<script[^>]*src="https?://')
+            self.assertNotRegex(html, r'<link[^>]*href="https?://')
+            self.assertNotRegex(html, r'<img[^>]*src="https?://')
 
 
 if __name__ == '__main__':
