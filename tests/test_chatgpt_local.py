@@ -316,6 +316,46 @@ class ChatGPTLocalTests(unittest.TestCase):
             self.assertEqual(self.client.get('/api/costs').json['summary']['committed'],0)
             self.assertIn('input_file',str(run.call_args))
 
+    def test_run_uses_responses_message_list_for_text_and_preserves_multimodal(self):
+        from chatgpt_local import ChatGPTLocal, RESOURCE
+        local=ChatGPTLocal()
+        class SuccessfulStream:
+            status_code=200
+            def __enter__(self):return self
+            def __exit__(self,*_):return False
+            def iter_lines(self,**_):
+                yield b'data: {"type":"response.output_text.delta","delta":"Ergebnis"}'
+                yield b'data: {"type":"response.completed"}'
+
+        pdf_message=[{'role':'user','content':[
+            {'type':'input_text','text':'Bitte auswerten'},
+            {'type':'input_file','filename':'angebot.pdf','file_data':'data:application/pdf;base64,cGRm'}
+        ]}]
+        with patch.object(local,'models',return_value=[{'slug':'m1'}]), \
+             patch.object(local,'token',return_value='local-token'), \
+             patch('chatgpt_local.requests.post',return_value=SuccessfulStream()) as post:
+            self.assertEqual(local.run('[{"vendor":"Firma A"},{"vendor":"Firma B"}]',
+                                       'Vergleichsanweisung','m1'),'Ergebnis')
+            self.assertEqual(local.run(pdf_message,'PDF-Anweisung','m1'),'Ergebnis')
+            self.assertEqual(local.run('Bauzeitenplan','Planungsanweisung','m1'),'Ergebnis')
+
+        self.assertEqual(post.call_count,3)
+        first=post.call_args_list[0]
+        self.assertEqual(first.args[0],RESOURCE+'/responses')
+        self.assertEqual(first.kwargs['json']['input'],[
+            {'role':'user','content':'[{"vendor":"Firma A"},{"vendor":"Firma B"}]'}])
+        self.assertEqual(first.kwargs['json']['instructions'],'Vergleichsanweisung')
+        self.assertIs(first.kwargs['json']['store'],False)
+        self.assertIs(first.kwargs['json']['stream'],True)
+        self.assertEqual(post.call_args_list[1].kwargs['json']['input'],pdf_message)
+        self.assertEqual(post.call_args_list[2].kwargs['json']['input'],[
+            {'role':'user','content':'Bauzeitenplan'}])
+        with patch.object(local,'models',return_value=[{'slug':'m1'}]), \
+             patch('chatgpt_local.requests.post') as not_sent:
+            with self.assertRaises(AIError):
+                local.run({'vendor':'not-a-list'},'Ungültige Eingabe','m1')
+            not_sent.assert_not_called()
+
     def test_ai_compare_is_report_without_db_change(self):
         self.profile()
         ids=[]
