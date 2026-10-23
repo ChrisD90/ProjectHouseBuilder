@@ -257,10 +257,10 @@ body.phb-app [hidden]{display:none!important}
 /* Cross-page harmonization for older bare buttons and global label rules. */
 body.phb-app .phb-theme-control{flex-direction:row;white-space:nowrap}
 body.phb-app .phb-theme-control select{flex:none}
-body.phb-app main.phb-main button:not(.primary):not(.danger):not(.offer-method):not(.phb-icon-button):not(.phb-ai-primary):not(.phb-ai-topbar):not(.phb-nav-link):not([data-phb-busy]){
+body.phb-app main.phb-main button:not(.primary):not(.danger):not(.offer-method):not(.phb-icon-button):not(.phb-ai-primary):not(.phb-ai-topbar):not(.phb-nav-link):not(.schedule-chat-fab):not([data-phb-busy]){
   background:var(--ui-soft);color:var(--ui-ink-soft);border:1px solid var(--ui-line-strong);
 }
-body.phb-app main.phb-main button:not(.primary):not(.danger):not(.offer-method):not(.phb-icon-button):hover:not(:disabled){
+body.phb-app main.phb-main button:not(.primary):not(.danger):not(.offer-method):not(.phb-icon-button):not(.schedule-chat-fab):hover:not(:disabled){
   background:var(--ui-soft-accent);border-color:var(--ui-accent);
 }
 body.phb-app main.phb-main button:is(.primary,.danger){font-weight:700}
