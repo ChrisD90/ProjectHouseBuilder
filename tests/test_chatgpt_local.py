@@ -147,7 +147,7 @@ class ChatGPTLocalTests(unittest.TestCase):
             (signed({'iss':'https://other.example'}),'id_token_issuer_mismatch'),
             (signed({'exp':now-3600}),'id_token_expired'),
             (signed({'iat':now+3600}),'id_token_time_invalid'),
-            (signed({'sub':None}),'id_token_subject_invalid'),
+            (signed({'sub':None}),'id_token_claim_missing'),
             (signed(key=rsa.generate_private_key(public_exponent=65537,key_size=2048)),
              'id_token_signature_invalid'),
         ]
