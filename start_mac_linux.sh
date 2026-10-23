@@ -3,7 +3,9 @@ set -eu
 cd "$(dirname "$0")"
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install -r requirements.txt
+# Avoid a source build of cryptography on unsupported macOS/Python combinations.
+# RS256 ChatGPT identity checks require this dependency; never omit it.
+python -m pip install --only-binary=cryptography -r requirements.txt
 # Fail closed: migrations & required verified backups must succeed before server start.
 python schema_manager.py
 export HOST="${HOST:-127.0.0.1}"

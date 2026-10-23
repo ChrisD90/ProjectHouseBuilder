@@ -8,6 +8,11 @@
 2. Updates einspielen: `git pull origin feature/synology-nas` (vorher laufende App beenden).
 3. **Einmalig** den Backupordner auswählen: `sh mac/backup-setup.sh` (z. B. in Proton Drive). Die aktive Datenbank bleibt **außerhalb** synchronisierter Ordner.
 4. Starten: `sh start_mac_linux.sh`.
+
+**Intel-Mac mit Python 3.13:** Seit `cryptography` 49 existieren keine vorgebauten macOS-x86_64-Pakete mehr.
+ProjectHouseBuilder verwendet deshalb auf Intel-Macs automatisch die letzte kompatible 48.x-Version mit fertigem Wheel, ohne OpenSSL/Rust aus dem Quellcode bauen zu müssen.
+Die RS256-Signaturprüfung für ChatGPT-OAuth bleibt aktiv. Der Start verweigert einen Quellcode-Build von `cryptography`, anstatt halb installiert weiterzulaufen.
+Falls die Abhängigkeitsinstallation fehlschlägt: `git pull origin feature/synology-nas` und anschließend `sh start_mac_linux.sh` erneut ausführen.
 5. In Chrome/Safari öffnen: **http://127.0.0.1:5055**.
 
 Port **5055** ist absichtlich gewählt. macOS belegt **5000** häufig mit dem AirPlay-Empfänger; der Browser meldet dann eventuell 403 von AirPlay statt die Flask-App anzuzeigen. Wenn der Port geändert werden soll: `PORT=5056 sh start_mac_linux.sh`. Bei Bedarf belegte Ports mit `lsof -nP -iTCP:5000 -sTCP:LISTEN` oder `lsof -nP -iTCP:5055 -sTCP:LISTEN` prüfen. Die lokale App lauscht nur auf `127.0.0.1`.

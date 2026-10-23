@@ -7,3 +7,6 @@ Pillow>=10,<13
 alembic>=1.14,<2
 requests>=2.31,<3
 PyJWT[crypto]>=2.8,<3
+# cryptography 49+ no longer ships macOS Intel (x86_64) wheels.
+# Keep RS256 verification for Sign in with ChatGPT; prefer a compatible wheel.
+cryptography>=48.0.1,<49; sys_platform == "darwin" and platform_machine == "x86_64"
