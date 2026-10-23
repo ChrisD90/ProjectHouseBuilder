@@ -234,6 +234,8 @@ class Receipt(db.Model):
     paid_amount=db.Column(db.Numeric(12,2),nullable=False,default=0)
     budget_line_id=db.Column(db.Integer,db.ForeignKey('budget_line.id'))
     cost_item_id=db.Column(db.Integer,db.ForeignKey('cost_item.id'))
+    contractor_id=db.Column(db.Integer,db.ForeignKey('contractor.id'),nullable=True)
+    assignment_type=db.Column(db.String(24),nullable=False,default='',server_default='')
     created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
 
 class Offer(db.Model):
@@ -1765,11 +1767,45 @@ def offer_delete(offer_id):
 RECEIPT_ROOT=ROOT/'private'/'receipts'
 RECEIPT_EXTENSIONS={'.pdf','.jpg','.jpeg','.png','.webp'}
 
+def _validate_receipt_assignment(r):
+    """Offer, contractor and own-work attribution are mutually exclusive.
+
+    'Kostenposition' is retained only for historical standalone cost links.
+    Blank legacy attribution remains possible; the new UI prompts for a choice.
+    """
+    mode=r.assignment_type or ''
+    if mode not in ('', 'Angebot', 'Betrieb', 'Eigenleistung', 'Kostenposition'):
+        raise ValueError('Unbekannte Rechnungszuordnung.')
+    if mode=='Angebot':
+        if not r.cost_item_id or r.contractor_id:
+            raise ValueError('Für eine Angebotsrechnung ausschließlich ein angenommenes Angebot auswählen.')
+        item=db.session.get(CostItem,r.cost_item_id)
+        if not item or not item.offer_id:
+            raise ValueError('Bitte ein angenommenes Angebot auswählen.')
+    elif mode=='Betrieb':
+        if not r.contractor_id or r.cost_item_id:
+            raise ValueError('Für eine Betriebsrechnung ausschließlich einen Betrieb auswählen.')
+        if not db.session.get(Contractor,r.contractor_id):
+            raise ValueError('Ausgewählter Betrieb existiert nicht.')
+    elif mode=='Eigenleistung':
+        if r.contractor_id or r.cost_item_id:
+            raise ValueError('Eigenleistung darf nicht gleichzeitig einem Angebot oder Betrieb zugeordnet sein.')
+    elif mode=='Kostenposition':
+        if not r.cost_item_id or r.contractor_id:
+            raise ValueError('Historische Kostenposition nicht gültig.')
+        item=db.session.get(CostItem,r.cost_item_id)
+        if not item or item.offer_id:
+            raise ValueError('Historische Kostenpositionszuordnung ungültig.')
+    elif r.cost_item_id or r.contractor_id:
+        raise ValueError('Bitte genau eine Art der Rechnungszuordnung angeben.')
+
+
 def _validate_accepted_invoice_link(r):
     """Reject *any* receipt linkage to an unaccepted offer, even via API calls.
 
     Standalone cost positions remain available independently of offers.
     """
+    _validate_receipt_assignment(r)
     if not r.cost_item_id:
         return None
     item=db.session.get(CostItem,r.cost_item_id)
@@ -1822,6 +1858,7 @@ def _receipt_json(r, include_text=False):
          'kind':r.kind,'billing_type':r.billing_type,'advance_deduction':float(r.advance_deduction or 0),
          'counted_amount':float(_receipt_increment(r)),'notes':r.notes,'status':r.status,'paid_amount':float(r.paid_amount or 0),
          'budget_line_id':r.budget_line_id,'cost_item_id':r.cost_item_id,
+         'contractor_id':r.contractor_id,'assignment_type':r.assignment_type or ('Angebot' if _accepted_receipt_offer(r) else 'Kostenposition' if r.cost_item_id else ''),
          'offer_id':_accepted_receipt_offer(r).id if _accepted_receipt_offer(r) else None,
          'warnings':json.loads(r.warnings or '[]'),'created_at':r.created_at.isoformat()}
     if include_text:obj['ocr_text']=r.ocr_text
@@ -1968,7 +2005,7 @@ def receipt_edit(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
     data=request.get_json(silent=True) or {}
-    if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','category','supplier','invoice_number','document_date','kind','billing_type','advance_deduction')):
+    if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','contractor_id','assignment_type','category','supplier','invoice_number','document_date','kind','billing_type','advance_deduction')):
         return jsonify(error='Zum Ändern der Zuordnung oder Belegsumme zunächst Buchung zurücknehmen.'),409
     try:
         for f in ('supplier','invoice_number','document_date','due_date','category','kind','billing_type','notes'):
@@ -1987,11 +2024,23 @@ def receipt_edit(rid):
                     allocations=db.session.scalar(select(db.func.count(ReceiptFinancingPayment.id)).where(ReceiptFinancingPayment.receipt_id==r.id)) or 0
                     if allocations and amount != r.paid_amount:raise ValueError('Diese Zahlung ist über die Finanzierungsverwaltung aufgeteilt. Dort bearbeiten.')
                 setattr(r,f,amount)
-        for field,model in (('budget_line_id',BudgetLine),('cost_item_id',CostItem)):
+        for field,model in (('budget_line_id',BudgetLine),('cost_item_id',CostItem),('contractor_id',Contractor)):
             if field in data:
                 value=data[field];key=int(value) if value not in ('',None) else None
                 if key and not db.session.get(model,key):raise ValueError('Zuordnung nicht vorhanden.')
                 setattr(r,field,key)
+        if 'assignment_type' in data:
+            mode=str(data['assignment_type'] or '')
+            if mode not in ('','Angebot','Betrieb','Eigenleistung','Kostenposition'):
+                raise ValueError('Unbekannte Rechnungszuordnung.')
+            r.assignment_type=mode
+        elif 'cost_item_id' in data and 'contractor_id' not in data and not r.contractor_id:
+            # Compatible with historic API callers linking a cost item directly.
+            item=db.session.get(CostItem,r.cost_item_id) if r.cost_item_id else None
+            r.assignment_type=('Angebot' if item and item.offer_id else 'Kostenposition' if item else '')
+        elif 'contractor_id' in data and 'cost_item_id' not in data and not r.cost_item_id:
+            r.assignment_type='Betrieb' if r.contractor_id else ''
+        _validate_receipt_assignment(r)
         if 'billing_type' in data and r.billing_type!='Schlussrechnung' and 'advance_deduction' not in data:
             r.advance_deduction=0
         _validate_accepted_invoice_link(r)
@@ -2006,6 +2055,7 @@ def receipt_edit(rid):
 
 def _validate_receipt_booking(r):
     from decimal import Decimal
+    _validate_receipt_assignment(r)
     if r.gross_amount is None or r.gross_amount<=0:raise ValueError('Bitte zuerst einen gültigen Bruttobetrag prüfen.')
     if not r.supplier.strip():raise ValueError('Lieferant fehlt.')
     if not r.document_date:raise ValueError('Belegdatum fehlt.')
@@ -2125,7 +2175,7 @@ def contractor_edit(item_id=None):
     if item_id and not obj:return jsonify(error='Firma nicht gefunden.'),404
     try:
         if request.method=='DELETE':
-            if db.session.scalar(select(CostItem.id).where(CostItem.contractor_id==item_id).limit(1)) or db.session.scalar(select(Document.id).where(Document.contractor_id==item_id).limit(1)) or db.session.scalar(select(Task.id).where(Task.contractor_id==item_id).limit(1)):
+            if db.session.scalar(select(CostItem.id).where(CostItem.contractor_id==item_id).limit(1)) or db.session.scalar(select(Document.id).where(Document.contractor_id==item_id).limit(1)) or db.session.scalar(select(Task.id).where(Task.contractor_id==item_id).limit(1)) or db.session.scalar(select(Receipt.id).where(Receipt.contractor_id==item_id).limit(1)):
                 return jsonify(error='Firma ist mit Kostenpositionen verknüpft.'),409
             db.session.delete(obj)
         else:
