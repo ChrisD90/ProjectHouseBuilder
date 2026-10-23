@@ -24,19 +24,7 @@
       <button id="backupNow" type="button" class="primary">Jetzt vollständiges Backup erstellen</button>
       <p class="phb-data-footnote">Den Zielordner richtest du einmalig im VS-Code-Terminal mit <code>sh mac/backup-setup.sh</code> ein. Er kann in deinem Proton Drive liegen.</p>
     </section>
-    <section class="panel phb-data-card phb-danger" aria-labelledby="resetHeading">
-      <div class="phb-data-symbol" aria-hidden="true">↻</div>
-      <h2 id="resetHeading">Projekt vollständig zurücksetzen</h2>
-      <p>Löscht unwiderruflich <strong>alle Projektdaten</strong>: Aufgaben, Angebote, Kosten, Rechnungen, Finanzierungen, Firmen, eigene Kategorien und hochgeladene Dokumente.</p>
-      <p>Die App legt vorher <strong>verpflichtend ein geprüftes Komplettbackup</strong> im ausgewählten Ordner an. Ist das nicht möglich, findet kein Reset statt. Systemkategorien und das Datenbankschema bleiben erhalten; die Projektliste ist anschließend leer.</p>
-      <form id="resetForm" autocomplete="off">
-        <label class="phb-data-verify"><input id="resetUnderstand" type="checkbox" required> Ich habe verstanden, dass sämtliche Einträge und Dateien aus der aktiven Anwendung entfernt werden.</label>
-        <label class="phb-reset-label" for="resetText">Zur Bestätigung exakt <strong>ALLE DATEN LÖSCHEN</strong> eingeben:</label>
-        <input id="resetText" type="text" placeholder="ALLE DATEN LÖSCHEN" autocorrect="off" autocapitalize="off" spellcheck="false" required>
-        <button id="resetButton" class="danger" type="submit" disabled>Projekt endgültig zurücksetzen</button>
-      </form>
-      <p class="phb-data-footnote">Nur bei lokalem SQLite-Betrieb verfügbar. NAS/PostgreSQL und gespeicherte Backups werden nicht gelöscht.</p>
-    </section>
+
   </div>
   <section class="panel phb-data-help phb-export-panel" id="exporte">
     <div class="phb-export-intro"><h2>Daten exportieren</h2>
@@ -49,6 +37,22 @@
       <a href="/api/project-archive.zip" download><strong>Projektarchiv herunterladen</strong><span>ZIP mit Projektdateien; bei PostgreSQL keine vollständige Datenbanksicherung</span></a>
     </div>
   </section>
+  <details class="panel phb-data-more phb-danger">
+    <summary><strong>Erweiterte Aktionen</strong><span>Projekt vollständig zurücksetzen – nur bei Bedarf öffnen</span></summary>
+    <div class="phb-danger-content">
+      <div class="phb-data-symbol" aria-hidden="true">↻</div>
+      <h2 id="resetHeading">Projekt vollständig zurücksetzen</h2>
+      <p>Löscht unwiderruflich <strong>alle Projektdaten</strong>: Aufgaben, Angebote, Kosten, Rechnungen, Finanzierungen, Firmen, eigene Kategorien und hochgeladene Dokumente.</p>
+      <p>Die App legt vorher <strong>verpflichtend ein geprüftes Komplettbackup</strong> im ausgewählten Ordner an. Ist das nicht möglich, findet kein Reset statt. Systemkategorien und das Datenbankschema bleiben erhalten; die Projektliste ist anschließend leer.</p>
+      <form id="resetForm" autocomplete="off">
+        <label class="phb-data-verify"><input id="resetUnderstand" type="checkbox" required> Ich habe verstanden, dass sämtliche Einträge und Dateien aus der aktiven Anwendung entfernt werden.</label>
+        <label class="phb-reset-label" for="resetText">Zur Bestätigung exakt <strong>ALLE DATEN LÖSCHEN</strong> eingeben:</label>
+        <input id="resetText" type="text" placeholder="ALLE DATEN LÖSCHEN" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+        <button id="resetButton" class="danger" type="submit" disabled>Projekt endgültig zurücksetzen</button>
+      </form>
+      <p class="phb-data-footnote">Nur bei lokalem SQLite-Betrieb verfügbar. NAS/PostgreSQL und gespeicherte Backups werden nicht gelöscht.</p>
+    </div>
+  </details>
   <div id="dataNotice" role="status" aria-live="polite" class="phb-data-notice" hidden></div>
   <section class="panel phb-data-help">
     <h2>Wiederherstellen</h2>
