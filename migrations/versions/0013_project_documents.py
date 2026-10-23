@@ -33,6 +33,11 @@ def upgrade():
                       server_default=sa.func.current_timestamp()),
         )
         op.create_index('idx_project_document_digest','project_document',['digest'])
+    if inspector.has_table('schedule_history'):
+        columns={item['name'] for item in inspector.get_columns('schedule_history')}
+        if 'source_documents' not in columns:
+            op.add_column('schedule_history',sa.Column(
+                'source_documents',sa.Text(),nullable=False,server_default='[]'))
 
 
 def downgrade():
