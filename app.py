@@ -1911,6 +1911,13 @@ def _ai_receipt_guess(data, filename, ext):
     def amount(key):
         value=result.get(key)
         if value in (None,''):return None
+        if isinstance(value,str) and ',' in value:
+            # Accept German decimal strings while rejecting ambiguous US formatting.
+            import re
+            clean=value.strip().replace('€','').replace('EUR','').strip()
+            if not re.fullmatch(r'(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}',clean):
+                raise AIError('ChatGPT hat einen ungültigen Betrag für '+key+' ausgegeben.')
+            value=clean.replace('.','').replace(',','.')
         try:
             return _receipt_amount(value,key)
         except ValueError:
