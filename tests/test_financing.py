@@ -79,6 +79,47 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertEqual(self.state()['summary']['loan_debt'],300)
         self.assertEqual(self.state()['summary']['loan_unallocated'],400)
 
+    def test_existing_loan_can_be_supplemented_without_changing_bookings(self):
+        lid=self.loan()
+        self.assertEqual(self.event('loan_drawdown','400',loan_id=lid).status_code,201)
+        previous=self.state()
+        loan_before=next(x for x in previous['loans'] if x['id']==lid)
+        before_drawn=loan_before['balance']['drawn']
+
+        # A patch may add individual terms without re-entering the entire contract.
+        updated=self.client.patch(f'/api/financing/loans/{lid}',json={
+            'bank':'Neue Bankbezeichnung',
+            'notes':'Nachtrag laut Schreiben vom 23.10.2026',
+            'reference':'AZ-4711',
+            'interest_rate':'4.125',
+            'fixed_until':'2037-10-23'})
+        self.assertEqual(updated.status_code,200,updated.json)
+        self.assertEqual(updated.json['bank'],'Neue Bankbezeichnung')
+        self.assertEqual(updated.json['reference'],'AZ-4711')
+        self.assertEqual(updated.json['notes'],'Nachtrag laut Schreiben vom 23.10.2026')
+        self.assertEqual(updated.json['interest_rate'],4.125)
+        self.assertEqual(updated.json['principal'],1000)
+        self.assertEqual(updated.json['monthly_payment'],100)
+        self.assertEqual(updated.json['fixed_until'],'2037-10-23')
+        self.assertEqual(updated.json['balance']['drawn'],before_drawn)
+        self.assertEqual(len(self.state()['events']),len(previous['events']))
+
+        # Editing core terms must not invalidate committed drawdowns.
+        rejected=self.client.patch(f'/api/financing/loans/{lid}',json={'principal':'399'})
+        self.assertEqual(rejected.status_code,400,rejected.json)
+        current=next(x for x in self.state()['loans'] if x['id']==lid)
+        self.assertEqual(current['principal'],1000)
+        self.assertEqual(current['notes'],'Nachtrag laut Schreiben vom 23.10.2026')
+        self.assertEqual(current['balance']['drawn'],400)
+
+    def test_financing_page_explicitly_offers_editing_and_additional_details(self):
+        page=self.client.get('/finanzierung')
+        self.assertEqual(page.status_code,200)
+        self.assertIn(b'id="loanSaveStatus"',page.data)
+        self.assertIn(b'id="loanSaveButton"',page.data)
+        self.assertIn(b'id="loanAiOverwrite"',page.data)
+        self.assertIn(b'id="loanDialogTitle"',page.data)
+
     def test_equity_account_reserve_and_overdraft(self):
         eid=self.equity()
         self.assertEqual(self.state()['summary']['equity_available'],600)
