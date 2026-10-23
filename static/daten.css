@@ -22,3 +22,18 @@
 .phb-data-help h2{font-size:18px}.phb-data-help p{color:#54717d;line-height:1.6;font-size:14px}
 .phb-data-help code{display:block;overflow-wrap:anywhere;word-break:break-word;background:#f1f6f6;border-radius:8px;padding:14px;color:#134953}
 @media(max-width:850px){.phb-data-grid{grid-template-columns:1fr}.phb-data-card{padding:20px}}
+
+/* A single home for downloads, archives and verified backups. */
+.phb-page-daten #sicherung,.phb-page-daten #exporte{scroll-margin-top:96px}
+.phb-page-daten .phb-export-panel{margin:0 0 22px;padding:24px}
+.phb-page-daten .phb-export-intro h2{margin:0 0 8px;color:#23444d}
+.phb-page-daten .phb-export-intro p{max-width:920px;color:#687f87;font-size:13px;line-height:1.6;margin:0 0 20px}
+.phb-page-daten .phb-export-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.phb-page-daten .phb-export-grid a{display:flex;flex-direction:column;justify-content:center;gap:7px;min-height:92px;padding:16px 18px;border:1px solid #d8e7e7;background:#f7fbfb;border-radius:11px;text-decoration:none}
+.phb-page-daten .phb-export-grid a:hover{border-color:#60aca4;background:#edf8f5}
+.phb-page-daten .phb-export-grid a strong{font-size:13px;color:#205663}
+.phb-page-daten .phb-export-grid a span{font-size:12px;line-height:1.5;color:#71858d}
+@media(max-width:600px){
+ .phb-page-daten .phb-export-panel{padding:18px}
+ .phb-page-daten .phb-export-grid{grid-template-columns:minmax(0,1fr)}
+}
