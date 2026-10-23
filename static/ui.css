@@ -1,0 +1,256 @@
+/* ProjectHouseBuilder design system: consistent sizing, surfaces, contrast, and dark mode. */
+:root {
+  --ui-bg:#f5f8fa;--ui-surface:#ffffff;--ui-raised:#ffffff;--ui-soft:#f0f6f7;
+  --ui-soft-accent:#e8f5f2;--ui-line:#dce6e9;--ui-line-strong:#c5d6db;
+  --ui-ink:#18313b;--ui-ink-soft:#38535e;--ui-muted:#647d86;--ui-muted-light:#78909a;
+  --ui-accent:#087e83;--ui-accent-hover:#09676d;--ui-success:#1c765e;
+  --ui-warning:#93641e;--ui-danger:#a63f4d;
+  --ui-ring:rgba(5,139,142,.26);--ui-shadow:0 2px 8px rgba(18,48,60,.038),0 14px 35px rgba(16,50,64,.025);
+  --ui-shadow-raised:0 18px 55px rgba(16,42,55,.16);
+  --ui-radius:15px;--ui-radius-sm:10px;
+  --ui-gutter:clamp(16px,2.15vw,36px);
+  color-scheme:light;
+}
+:root[data-phb-theme="dark"]{
+  --ui-bg:#101822;--ui-surface:#1c2835;--ui-raised:#233242;--ui-soft:#202e3d;
+  --ui-soft-accent:#193f41;--ui-line:#334353;--ui-line-strong:#425667;
+  --ui-ink:#eef6f8;--ui-ink-soft:#d0dfe5;--ui-muted:#aec0ca;--ui-muted-light:#9db2bd;
+  --ui-accent:#37b6b2;--ui-accent-hover:#52d1c9;--ui-success:#7bc8ac;
+  --ui-warning:#f0bf79;--ui-danger:#ff999c;
+  --ui-ring:rgba(54,196,192,.31);--ui-shadow:0 8px 32px rgba(0,0,0,.15);
+  --ui-shadow-raised:0 28px 70px rgba(0,0,0,.45);
+  color-scheme:dark;
+}
+html{background:var(--ui-bg)}
+body.phb-app{background:var(--ui-bg)!important;color:var(--ui-ink)!important}
+body.phb-app .phb-appshell{font-feature-settings:"tnum" 1}
+body.phb-app .phb-workspace{background:var(--ui-bg)}
+body.phb-app main.phb-main{padding:clamp(18px,2.1vw,32px) var(--ui-gutter) 58px}
+body.phb-app main.phb-main> :first-child{scroll-margin-top:84px}
+body.phb-app .phb-sidebar{background:linear-gradient(160deg,#122b3b 0%,#0f2533 68%,#0b202b 100%)}
+body.phb-app .phb-sidebar__brand{min-height:78px}
+body.phb-app .phb-nav{gap:4px}
+body.phb-app .phb-nav-link{min-height:44px}
+body.phb-app .phb-nav-link:not(.is-current){transition:background-color .16s,color .16s}
+body.phb-app .phb-topbar{
+  min-height:72px;background:var(--ui-surface)!important;
+  border-bottom:1px solid var(--ui-line);box-shadow:0 1px 10px rgba(18,48,60,.04);
+  color:var(--ui-ink);padding:12px var(--ui-gutter);
+}
+body.phb-app .phb-breadcrumb{color:var(--ui-muted)}
+body.phb-app .phb-breadcrumb strong{color:var(--ui-ink)}
+body.phb-app .phb-topbar__status{background:var(--ui-soft-accent);border-color:var(--ui-line);color:var(--ui-success)}
+body.phb-app .phb-topbar-right{flex-wrap:nowrap;gap:9px;min-width:0}
+body.phb-app .phb-page-intro,body.phb-app .heading,body.phb-app .intro,body.phb-app .hero{
+  margin-bottom:22px;row-gap:16px;
+}
+body.phb-app :is(.phb-page-intro,.heading,.intro,.hero) h1{
+  color:var(--ui-ink);letter-spacing:-.025em;font-weight:780;line-height:1.17;
+}
+body.phb-app :is(.phb-page-intro,.heading,.intro,.hero) p{color:var(--ui-muted);line-height:1.62}
+body.phb-app .phb-page-kicker{color:var(--ui-accent)}
+body.phb-app :is(h1,h2,h3,h4){text-wrap:pretty}
+body.phb-app h1,body.phb-app h2,body.phb-app h3,body.phb-app h4{color:var(--ui-ink)}
+body.phb-app a:not(.phb-nav-link):not(.phb-brand-link):not(.primary){color:var(--ui-accent)}
+body.phb-app a:hover{text-decoration-thickness:1.5px}
+body.phb-app main.phb-main :is(.panel,.budget-panel,.tile,.kpi,.smallcard,.offer-card,.receipt-assignment,.master-panel){
+  border-color:var(--ui-line);color:var(--ui-ink);
+}
+body.phb-app main.phb-main :is(.panel,.budget-panel){background:var(--ui-surface);border-radius:var(--ui-radius);box-shadow:var(--ui-shadow)}
+body.phb-app main.phb-main :is(.metrics article,.kpi,.kpi-grid .kpi,.tile,.offers-stats>div,.stats span){
+  background:var(--ui-surface);border-color:var(--ui-line);border-radius:var(--ui-radius);
+  box-shadow:var(--ui-shadow);min-width:0;
+}
+body.phb-app main.phb-main :is(.kpi strong,.tile strong,.offers-stats strong,.metrics b){color:var(--ui-ink)}
+body.phb-app main.phb-main :is(.kpi span,.kpi small,.tile span,.offers-stats span,.metrics span){color:var(--ui-muted)}
+body.phb-app main.phb-main :is(.offer-card,.smallcard,.master-tag-row,.record,.entry){
+  border-color:var(--ui-line);background:var(--ui-surface);color:var(--ui-ink);
+}
+body.phb-app main.phb-main :is(.panelbar,.panel-title,.master-panel-head){row-gap:12px}
+body.phb-app main.phb-main :is(.panelbar,.panel-title) h2{color:var(--ui-ink);line-height:1.35}
+body.phb-app main.phb-main :is(.panelbar,.panel-title,.master-panel-head) p{color:var(--ui-muted);line-height:1.55}
+body.phb-app :is(input,textarea,select):not([type=checkbox]):not([type=radio]):not([type=range]),
+body.phb-app :is(.form-control,.form-select){
+  background-color:var(--ui-surface);color:var(--ui-ink);border:1px solid var(--ui-line-strong);
+  border-radius:var(--ui-radius-sm);min-height:41px;padding:9px 12px;
+  transition:border-color .16s,box-shadow .16s,background-color .16s;
+}
+body.phb-app textarea{line-height:1.55}
+body.phb-app input[type=file]{max-width:100%;font-size:13px}
+body.phb-app :is(input,select,textarea)::placeholder{color:var(--ui-muted-light);opacity:1}
+body.phb-app :is(input,select,textarea):disabled{background:var(--ui-soft);color:var(--ui-muted);opacity:.76}
+body.phb-app :is(input,select,textarea):focus:not([type=checkbox]):not([type=radio]){
+  outline:0;border-color:var(--ui-accent);box-shadow:0 0 0 3px var(--ui-ring);
+}
+body.phb-app :is(input,select,textarea):focus-visible:not([type=checkbox]):not([type=radio]){outline:0;box-shadow:0 0 0 3px var(--ui-ring)}
+body.phb-app :is(label,small,.note,.hint,.muted,.section-note,.meta,.footnote){line-height:1.55}
+body.phb-app label{color:var(--ui-ink-soft)}
+body.phb-app :is(.note,.hint,.muted,.section-note,.meta,.footnote){color:var(--ui-muted)}
+body.phb-app :is(button,.mini,a.subtle):not(.phb-icon-button):not(.phb-nav-link){
+  border-radius:var(--ui-radius-sm);min-height:36px;
+  transition:background-color .15s,border-color .15s,box-shadow .15s;
+}
+body.phb-app button:disabled{opacity:.57;cursor:not-allowed}
+body.phb-app .primary,body.phb-app button.primary{
+  background:var(--ui-accent);border-color:var(--ui-accent);color:#fff;
+}
+:root[data-phb-theme=dark] body.phb-app .primary,
+:root[data-phb-theme=dark] body.phb-app button.primary{background:#178f92;border-color:#178f92;color:#fff}
+body.phb-app button.primary:hover:not(:disabled){background:var(--ui-accent-hover);border-color:var(--ui-accent-hover)}
+body.phb-app :is(button.neutral,.subtle,button.subtle,button.mini,.mini):not(.primary){
+  background:var(--ui-soft);border:1px solid var(--ui-line-strong);color:var(--ui-ink-soft);
+}
+body.phb-app :is(.danger,button.danger){color:var(--ui-danger);border-color:var(--ui-line-strong);background:var(--ui-surface)}
+body.phb-app :is(.tablewrap,.master-table-scroll){scrollbar-color:var(--ui-line-strong) transparent}
+body.phb-app :is(table,.master-table){color:var(--ui-ink);border-collapse:collapse}
+body.phb-app :is(th,.master-table th){
+  color:var(--ui-muted);background:var(--ui-soft);border-bottom:1px solid var(--ui-line);
+  letter-spacing:.018em;
+}
+body.phb-app :is(td,.master-table td){color:var(--ui-ink-soft);border-bottom:1px solid var(--ui-line)}
+body.phb-app tbody tr:hover{background:var(--ui-soft)}
+body.phb-app .status{border:1px solid var(--ui-line);background:var(--ui-soft);color:var(--ui-ink-soft)}
+body.phb-app .panelbar h1,body.phb-app .panelbar h2{color:var(--ui-ink)}
+body.phb-app :is(.notice,.alert,.warning,.phb-data-status,.phb-data-footnote){line-height:1.6}
+body.phb-app :is(dialog,.modal,.overlay .modal,.master-dialog){
+  background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-line);
+  box-shadow:var(--ui-shadow-raised);
+}
+body.phb-app :is(dialog,.master-dialog)::backdrop{background:rgba(3,10,18,.7)}
+body.phb-app .overlay{background:rgba(3,10,18,.68)}
+body.phb-app :is(.formgrid,.fields,.master-fields){gap:16px}
+body.phb-app :is(.formgrid label,.fields label,.master-fields label){line-height:1.45}
+body.phb-app .actions,body.phb-app .modal-actions{gap:12px}
+body.phb-app :is(.ganttwrap,.tablewrap){border-color:var(--ui-line)}
+body.phb-app .gantt-label{background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-line)}
+body.phb-app .gantt-header .gantt-label,body.phb-app .gantt-header{background:var(--ui-soft)}
+body.phb-app .gantt-timeline{border-color:var(--ui-line)}
+body.phb-app .gantt-row:hover .gantt-label{background:var(--ui-soft)}
+body.phb-app .gantt-label code{color:var(--ui-muted)}
+body.phb-app .axis{color:var(--ui-muted)}
+body.phb-app :is(.offer-method,.offer-inline-edit,.offer-empty,.offer-accepted-note,
+  .receipt-assignment,.phb-ai-report,.phb-ai-warning,.phb-ai-diagnostics,
+  .phb-data-status,.phb-data-help,.master-tag-row,.loan-ai-assistant,
+  .loan-documents,.loan-doc-row,.template-summary,.template-step,.schedule-chat-messages,
+  .schedule-chat-bubble,.schedule-chat-preview,.schedule-diff-item,.schedule-history-entry,
+  .month,.smallcard,.record,.budget-panel .group-row,.funding-footer){
+  border-color:var(--ui-line);color:var(--ui-ink-soft);
+}
+body.phb-app .phb-ai-topbar{
+  background:var(--ui-surface);color:var(--ui-ink-soft);border-color:var(--ui-line-strong)
+}
+body.phb-app .phb-ai-topbar:hover{background:var(--ui-soft)}
+body.phb-app .phb-ai-dialog{background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-line)}
+body.phb-app .phb-ai-dialog #phbAIConnection{color:var(--ui-muted)}
+body.phb-app .phb-ai-dialog .phb-ai-disclosure{color:var(--ui-muted)}
+body.phb-app .phb-ai-dialog .phb-ai-warning{background:var(--ui-soft);border-color:var(--ui-line)}
+body.phb-app .phb-ai-report{background:var(--ui-soft);border-color:var(--ui-line);color:var(--ui-ink)}
+body.phb-app .phb-ai-diagnostics{background:var(--ui-soft);border-color:var(--ui-line)}
+body.phb-app .phb-ai-diagnostics-content{color:var(--ui-ink-soft);border-color:var(--ui-line)}
+body.phb-app .phb-ai-offer-choices label{border-color:var(--ui-line);background:var(--ui-surface);color:var(--ui-ink)}
+body.phb-app .phb-ai-offer-choices label:hover{background:var(--ui-soft)}
+body.phb-app .phb-page-actions :is(input,select){min-width:0}
+body.phb-app .phb-data-card .phb-data-status{background:var(--ui-soft)}
+body.phb-app :is(.phb-export-grid a,.master-jump a){background:var(--ui-soft);border-color:var(--ui-line);color:var(--ui-ink)}
+body.phb-app :is(.master-tag-row,.master-contact-info,.loan-documents,.loan-doc-row){background:var(--ui-surface)}
+body.phb-app :is(.master-table th,.master-table td){padding:13px 14px}
+body.phb-app :is(.loan-ai-assistant,.receipt-assignment){background:var(--ui-soft);border-color:var(--ui-line)}
+/* Dark mode: override the old page-specific hardcoded light fills after legacy styles. */
+:root[data-phb-theme="dark"] body.phb-app .phb-topbar{background:#1c2835!important}
+:root[data-phb-theme="dark"] body.phb-app :is(.phb-page-intro h1,.heading h1,
+  .hero h1,.intro h1,.offers-stats strong,.offer-card-head h3,.offer-sum strong,
+  .kpi strong,.tile strong,.main-kpi strong,.smallcard h3,.modalhead h2,
+  .master-panel-head h2,.phb-export-intro h2,.schedule-section-header h2,
+  .schedule-chat-preview h3,.master-dialog-head h2){color:var(--ui-ink)}
+:root[data-phb-theme="dark"] body.phb-app :is(.offers-how,.offers-clarity,
+  .offers-stats>div,.offer-method,.offer-method.is-selected,.offer-card,.offer-inline-edit,
+  .offer-empty,.offer-accepted-note,.offer-ai-content .phb-ai-offer-choices label,
+  .offer-compare-section>.section-note,.funding-footer,.group-row,.section-note,
+  .entry,.entry.active,.stats span,.receipt-assignment,.phb-data-card,.phb-data-help,
+  .phb-data-more,.phb-export-grid a,.master-jump a,.master-tag-row,.master-dialog-inner,
+  .master-table th,.master-table td,.master-create,.master-notice,.master-contact-info,
+  .tiles .tile,.tile,.smallcard,.loan-ai-assistant,.loan-documents,.loan-doc-row,
+  .warning,.notice,.month,.backup-status,.formgrid,.gantt-header,.gantt-timeline,
+  .template-summary,.template-step,.template-list,.template-panel,.template-details,
+  .schedule-chat-messages,.schedule-chat-preview,.schedule-diff-item,
+  .schedule-history-entry,.schedule-chat-user,.schedule-chat-assistant,
+  .schedule-history-content,.schedule-history-diff,.phb-ai-warning,.phb-ai-report,
+  .phb-ai-diagnostics,.phb-ai-diagnostics-content,.phb-ai-confirm,.phb-ai-offer-choices label,
+  .phb-ai-dialog){background:var(--ui-soft);color:var(--ui-ink-soft);border-color:var(--ui-line)}
+:root[data-phb-theme="dark"] body.phb-app :is(.offer-card,.smallcard,.tile,.master-dialog-inner,
+  .schedule-chat-assistant,.loan-doc-row,.master-table td,.stats span){background:var(--ui-surface)}
+:root[data-phb-theme="dark"] body.phb-app :is(.offers-how p,.offers-clarity p,
+  .offer-card p,.offer-card small,.offer-method small,.offer-notes,.offer-mapping,
+  .section-note,.funding-footer,.hint,.note,.meta,.month,
+  .smallcard .meta,.smallcard .values,.record span,.template-intro p,
+  .template-message,.schedule-history-entry p,.schedule-chat-status,
+  .schedule-chat-messages p,.schedule-chat-author,
+  .schedule-history-content p,.schedule-chat-compose-actions small,
+  .loan-ai-assistant p,.master-panel-head p,.phb-data-footnote,
+  .phb-data-help p,.phb-export-grid a span){color:var(--ui-muted)}
+:root[data-phb-theme="dark"] body.phb-app :is(.status.Erledigt,.status.Pausiert,
+  .status.In-Arbeit,.work-chip.self,.work-chip.external,.work-chip.unknown,
+  .hint-pill,.phase-chip,.phb-ai-dot-on){filter:saturate(.78)}
+:root[data-phb-theme="dark"] body.phb-app .gantt-timeline{
+  background-image:linear-gradient(to right,rgba(142,173,186,.11) 1px,transparent 1px)
+}
+:root[data-phb-theme="dark"] body.phb-app .gantt-header .gantt-timeline{
+  background-image:linear-gradient(to right,rgba(142,173,186,.16) 1px,transparent 1px)
+}
+:root[data-phb-theme="dark"] body.phb-app .bartext{color:#c8e4f0}
+:root[data-phb-theme="dark"] body.phb-app pre, 
+:root[data-phb-theme="dark"] body.phb-app code{background:var(--ui-soft);color:var(--ui-ink-soft)}
+/* Topbar appearance preference */
+body.phb-app .phb-theme-control{display:inline-flex;align-items:center;gap:7px;min-width:0}
+body.phb-app .phb-theme-control svg{height:17px;width:17px;color:var(--ui-muted);flex:none}
+body.phb-app .phb-theme-control select{
+  width:auto;min-height:35px!important;padding:6px 24px 6px 9px!important;
+  font-size:12px;font-weight:700;border:1px solid var(--ui-line)!important;
+  background-color:var(--ui-surface)!important;color:var(--ui-ink-soft)!important;cursor:pointer
+}
+body.phb-app .phb-theme-control span{font-size:11px;font-weight:700;color:var(--ui-muted)}
+/* Activity feedback with no fictitious percentage or completion promise. */
+#phbLoadTrack{position:fixed;left:0;right:0;top:0;height:3px;z-index:9999;overflow:hidden;background:rgba(34,185,179,.16)}
+#phbLoadTrack[hidden],#phbBusyOverlay[hidden]{display:none!important}
+#phbLoadTrack::after{content:"";position:absolute;inset:0;width:34%;background:linear-gradient(90deg,transparent,#3ed5c6 35%,#087e83 85%,transparent);animation:phb-track 1.2s ease-in-out infinite}
+@keyframes phb-track{0%{transform:translateX(-110%)}100%{transform:translateX(395%)}}
+#phbBusyOverlay{position:fixed;z-index:9000;bottom:24px;right:24px;width:min(390px,calc(100vw - 32px));pointer-events:none}
+.phb-busy-panel{display:flex;align-items:flex-start;gap:14px;padding:18px;border-radius:16px;
+  background:var(--ui-raised);color:var(--ui-ink);border:1px solid var(--ui-line);
+  box-shadow:var(--ui-shadow-raised)}
+.phb-busy-spinner{width:30px;height:30px;border:3px solid var(--ui-line-strong);border-top-color:var(--ui-accent);border-radius:50%;flex:0 0 30px;animation:phb-spin .75s linear infinite}
+@keyframes phb-spin{to{transform:rotate(360deg)}}
+.phb-busy-panel strong{display:block;font-size:13px;margin-bottom:5px}
+.phb-busy-panel p{font-size:12px;margin:0;color:var(--ui-muted);line-height:1.55}
+body.phb-app button[data-phb-busy="true"]{position:relative;padding-right:max(37px,2.6em);cursor:progress}
+body.phb-app button[data-phb-busy="true"]::after{
+ content:"";position:absolute;right:11px;top:calc(50% - 7px);height:14px;width:14px;
+ border:2px solid currentColor;border-right-color:transparent;border-radius:50%;
+ animation:phb-spin .65s linear infinite;pointer-events:none
+}
+body.phb-app :is(.panel,.kpi,.tile,.offers-stats>div,.smallcard,.offer-card){
+  transition:box-shadow .18s,border-color .18s
+}
+body.phb-app .phb-skip{background:var(--ui-raised);color:var(--ui-ink)}
+body.phb-app [hidden]{display:none!important}
+@media(max-width:900px){
+ body.phb-app .phb-topbar{min-height:65px}
+ body.phb-app .phb-theme-control span{display:none}
+ body.phb-app .phb-theme-control select{max-width:105px}
+}
+@media(max-width:600px){
+ body.phb-app main.phb-main{padding:18px 13px 40px}
+ body.phb-app .phb-topbar{gap:10px;padding:11px 12px}
+ body.phb-app .phb-topbar-right{gap:6px}
+ body.phb-app .phb-theme-control svg{display:none}
+ body.phb-app .phb-theme-control select{max-width:88px;min-height:33px!important;padding:5px 19px 5px 7px!important;font-size:11px}
+ body.phb-app .phb-breadcrumb{font-size:12px}
+ body.phb-app .phb-ai-topbar{min-height:33px}
+ #phbBusyOverlay{right:12px;bottom:12px}
+ .phb-busy-panel{padding:14px}
+}
+@media(prefers-reduced-motion:reduce){
+ #phbLoadTrack::after,.phb-busy-spinner,
+ body.phb-app button[data-phb-busy="true"]::after{animation-duration:2.5s}
+ body.phb-app :is(.panel,.kpi,.tile,.offer-card){transition:none}
+}
