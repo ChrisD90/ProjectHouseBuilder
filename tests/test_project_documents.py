@@ -19,7 +19,7 @@ class ProjectDocumentTests(unittest.TestCase):
             (PROJECT_DOCUMENT_ROOT/d.stored_name).unlink(missing_ok=True)
         db.session.remove();db.drop_all();self.ctx.pop()
     def upload(self,blob=b'%PDF-1.4\nTest document\n',name='zeichnung.pdf',**meta):
-        return self.client.post('/api/documents',data={
+        return self.client.post('/api/project-documents',data={
           'file':(io.BytesIO(blob),name),'title':'Elektroplan OG',
           'area':'Elektrik','category':'Technische Zeichnung','status':'Aktuell',
           'tags':'Elektro Leitungen','description':'Verteilung',**meta
@@ -36,27 +36,27 @@ class ProjectDocumentTests(unittest.TestCase):
         self.assertFalse(doc['has_searchable_text'])
         self.assertTrue(doc['extraction_note'])
         self.assertEqual(self.upload(pdf.getvalue()).status_code,409)
-        records=self.client.get('/api/documents').json['documents']
+        records=self.client.get('/api/project-documents').json['documents']
         self.assertEqual(len(records),1)
         self.assertEqual(records[0]['title'],'Elektroplan OG')
-        fetched=self.client.get('/api/documents/'+str(did)+'/download')
+        fetched=self.client.get('/api/project-documents/'+str(did)+'/download')
         self.assertEqual(fetched.data,pdf.getvalue())
         self.assertEqual(fetched.headers['Cache-Control'],'no-store')
-        changed=self.client.patch('/api/documents/'+str(did),json={
+        changed=self.client.patch('/api/project-documents/'+str(did),json={
             'title':'Elektroplanung – freigegeben','status':'Überholt','tags':'Altstand'})
         self.assertEqual(changed.status_code,200,changed.json)
         self.assertEqual(changed.json['document']['status'],'Überholt')
-        self.assertEqual(self.client.get('/api/documents/suggest?q=Elektro').json['suggestions'],[])
-        self.assertEqual(self.client.patch('/api/documents/'+str(did),
+        self.assertEqual(self.client.get('/api/project-documents/suggest?q=Elektro').json['suggestions'],[])
+        self.assertEqual(self.client.patch('/api/project-documents/'+str(did),
             json={'stored_name':'../attack'}).status_code,400)
-        self.assertEqual(self.client.delete('/api/documents/'+str(did)).status_code,200)
-        self.assertEqual(self.client.get('/api/documents/'+str(did)+'/download').status_code,404)
+        self.assertEqual(self.client.delete('/api/project-documents/'+str(did)).status_code,200)
+        self.assertEqual(self.client.get('/api/project-documents/'+str(did)+'/download').status_code,404)
 
     def test_metadata_and_utf8_text_suggested_locally(self):
         uploaded=self.upload('Dachkonstruktion im OG'.encode(),name='notizen.txt',
             title='Treppenhinweise',area='Innenausbau',category='Protokoll',tags='Treppe Statik')
         self.assertEqual(uploaded.status_code,201,uploaded.json)
-        result=self.client.get('/api/documents/suggest?q=Treppenhinweise').json
+        result=self.client.get('/api/project-documents/suggest?q=Treppenhinweise').json
         self.assertEqual(result['suggestions'][0]['id'],uploaded.json['document']['id'])
         self.assertGreater(result['suggestions'][0]['score'],0)
 
@@ -65,7 +65,7 @@ class ProjectDocumentTests(unittest.TestCase):
         self.assertEqual(self.upload(b'invalid',name='a.docx').status_code,400)
         self.assertEqual(self.upload(b'abc',name='evil.exe').status_code,400)
         self.assertEqual(self.upload(b'a'*(12*1024*1024+1),name='a.txt').status_code,400)
-        self.assertEqual(self.client.get('/api/documents').json['documents'],[])
+        self.assertEqual(self.client.get('/api/project-documents').json['documents'],[])
 
     def test_drawing_is_never_sent_without_selection_and_is_audited(self):
         from PIL import Image
@@ -113,7 +113,7 @@ class ProjectDocumentTests(unittest.TestCase):
             self.assertEqual(call([123456]).status_code,400)
             self.assertEqual(call([did]*4).status_code,400)
             self.assertEqual(call(['1']).status_code,400)
-            self.client.patch('/api/documents/'+str(did),json={'status':'Überholt'})
+            self.client.patch('/api/project-documents/'+str(did),json={'status':'Überholt'})
             self.assertEqual(call([did]).status_code,400)
             mocked.assert_not_called()
 
