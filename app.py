@@ -211,8 +211,8 @@ class Receipt(db.Model):
     kind=db.Column(db.String(30),default='Rechnung')
     # A final invoice may state the full contract amount including prior invoices.
     # Only the incremental portion is counted in costs and the payment ledger.
-    billing_type=db.Column(db.String(24),nullable=False,default='Normal')
-    advance_deduction=db.Column(db.Numeric(12,2),nullable=False,default=0)
+    billing_type=db.Column(db.String(24),nullable=False,default='Normal',server_default='Normal')
+    advance_deduction=db.Column(db.Numeric(12,2),nullable=False,default=0,server_default='0')
     notes=db.Column(db.Text,default='')
     status=db.Column(db.String(20),nullable=False,default='Entwurf')
     paid_amount=db.Column(db.Numeric(12,2),nullable=False,default=0)
@@ -553,7 +553,14 @@ def budget_summary(items):
     linked={}
     for x in valid:
         if x.budget_line_id:linked.setdefault(x.budget_line_id,[]).append(x)
-    outside=sum(effective_offer(x) for x in extras)
+    # For unlinked accepted orders the budget has no plan-line ceiling.
+    # Once cumulative invoice increments exceed the contracted value, expose the
+    # real overrun in the forecast instead of silently retaining offer.gross.
+    booked_by_item={}
+    for receipt in booked:
+        if receipt.cost_item_id is not None:
+            booked_by_item[receipt.cost_item_id]=booked_by_item.get(receipt.cost_item_id,0)+float(_receipt_increment(receipt))
+    outside=sum(max(effective_offer(x),booked_by_item.get(x.id,0)) for x in extras)
     extra_receipts=sum(float(_receipt_increment(x)) for x in unplanned_receipts)
     forecast=sum(previews.values())+outside+extra_receipts
     spent=sum(x.paid for x in items)+sum(float(x.paid_amount or 0) for x in booked)
@@ -568,7 +575,7 @@ def budget_summary(items):
         group['estimate']+=line.estimate;group['planned']+=previews[line.id];group['paid']+=sum(x.paid for x in linked.get(line.id,[]))
     for x in extras:
         group=grouped.setdefault(x.category,{'category':x.category,'estimate':0,'planned':0,'paid':0})
-        group['planned']+=effective_offer(x);group['paid']+=x.paid
+        group['planned']+=max(effective_offer(x),booked_by_item.get(x.id,0));group['paid']+=x.paid
     for r in booked:
         category=next((line.category for line in active if line.id==r.budget_line_id),r.category)
         group=grouped.setdefault(category,{'category':category,'estimate':0,'planned':0,'paid':0})
