@@ -787,7 +787,7 @@ def schedule_chat():
     if len(snapshot)>180:
         return jsonify(error='Der Änderungsassistent unterstützt höchstens 180 Arbeitspakete pro Plan.'),409
     history=db.session.scalars(select(ScheduleHistory).where(
-        ScheduleHistory.status.in_(['Umgesetzt','Besprochen'])).order_by(
+        ScheduleHistory.status.in_(['Umgesetzt','Besprochen','Verworfen'])).order_by(
         ScheduleHistory.id.desc()).limit(8)).all()
     conversation={
         'project_start':setting('start'),
@@ -795,7 +795,7 @@ def schedule_chat():
             'code','name','phase','trade','execution_type','duration','lag_days',
             'earliest_start','predecessors','status','progress','notes',
             'start','end')} for t in snapshot],
-        'recent_decisions':[{'request':h.request_text[:250],
+        'recent_decisions':[{'request':h.request_text[:250], 'status':h.status,
                              'decision':h.decision[:450] or h.answer_text[:450]}
                             for h in reversed(history)],
         'new_message':prompt.strip()
