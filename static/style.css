@@ -47,3 +47,6 @@ button:disabled{cursor:not-allowed;opacity:.55}
 .template-step code{color:#788b91;font-size:11px}
 .template-step small{display:block;color:#788b91;margin-top:3px}
 @media(max-width:580px){.template-step{grid-template-columns:33px minmax(0,1fr)}.template-step .work-chip{grid-column:2;justify-self:start}}
+
+#clearSchedule{background:#fff;border:1px solid #e6b5b9;color:#ae3140}
+#clearSchedule:hover{background:#fff6f6}

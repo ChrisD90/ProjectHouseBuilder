@@ -57,6 +57,47 @@ assert client.get('/api/project').status_code == 200
 before = client.get('/api/costs').json
 assert before['budget_lines'] and before['contractors']
 
+if sys.argv[2]=='schedule-clear':
+    url='/api/tasks/clear'
+    token={'X-PHB-Schedule-Reset':'1'}
+    payload={'confirmation':'BAUZEITPLAN LEEREN'}
+    assert client.post(url,json=payload).status_code==403
+    assert client.post(url,json={'confirmation':'no'},headers=token).status_code==400
+    assert client.post(url,json=payload,headers={**token,'Origin':'http://attacker.invalid'}).status_code==403
+    assert client.post(url,json=payload,headers=token,environ_overrides={'REMOTE_ADDR':'198.51.100.23'}).status_code==403
+    assert client.post(url,json=payload,headers=token).status_code==409  # no backup configured
+    with package.app.app_context():
+        task=db.session.query(Task).first()
+        protected=CostItem(title='Planverknüpfung',category='Elektro',task_id=task.id)
+        db.session.add(protected)
+        db.session.commit()
+    sync=root.parent/'cloud'
+    sync.mkdir()
+    backup.configure(str(sync),keep=30)
+    blocked=client.post(url,json=payload,headers=token)
+    assert blocked.status_code==409,blocked.json  # no deletion while referenced
+    with package.app.app_context():
+        db.session.delete(db.session.query(CostItem).filter_by(title='Planverknüpfung').first())
+        db.session.commit()
+    success=client.post(url,json=payload,headers=token)
+    assert success.status_code==200,success.json
+    archive=Path(success.json['backup'])
+    assert archive.is_file()
+    backup.verify_backup(archive)
+    with package.app.app_context():
+        assert db.session.query(Task).count()==0
+        assert db.session.query(Loan).count()==1
+        assert db.session.query(Receipt).count()==1
+        assert db.session.query(BudgetLine).count()==1
+        assert db.session.query(Category).filter_by(name='Meine Spezialkategorie').count()==1
+    assert receipt_file.is_file()
+    assert (root/'private'/'documents'/'angebot.pdf').is_file()
+    reinit=client.post('/api/tasks/initialize',json={'confirm':True})
+    assert reinit.status_code==201,reinit.json
+    assert len(client.get('/api/project').json['tasks'])==69
+    print('OK isolated schedule reset, verified backup, retained finance, reimport')
+    sys.exit(0)
+
 RESET_URL = '/api/data/reset'
 payload={'confirmation':'ALLE DATEN LÖSCHEN'}
 headers={'X-PHB-Reset':'1'}
@@ -155,6 +196,9 @@ print('RESTORED')
                                     env=env,cwd=ROOT,capture_output=True,text=True,timeout=45)
             self.assertEqual(restored.returncode,0,restored.stderr)
             self.assertIn('RESTORED',restored.stdout)
+
+    def test_schedule_only_reset_preserves_finances_and_requires_backup(self):
+        self.scenario('schedule-clear')
 
     def test_no_backup_configuration_prevents_reset(self):
         self.scenario('no-backup')

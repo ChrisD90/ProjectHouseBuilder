@@ -392,6 +392,47 @@ def tasks_initialize_from_template():
         return jsonify(error='Musterplan konnte nicht vollständig initialisiert werden. Keine Aufgaben übernommen.'),500
 
 
+@app.post('/api/tasks/clear')
+def clear_schedule_after_backup():
+    """Clear ONLY the schedule, after a verified full backup and typed approval.
+
+    Other user data (costs, offers, receipts, financing, uploads) is untouched.
+    A task linked to a cost item blocks deletion until resolved.
+    """
+    if db.engine.url.get_backend_name() != 'sqlite' or db.engine.url.database in (None, ':memory:'):
+        return jsonify(error='Der gezielte Zeitplan-Reset ist nur für lokales SQLite verfügbar.'),409
+    try:
+        localhost=ipaddress.ip_address(request.remote_addr or '').is_loopback
+    except ValueError:
+        localhost=False
+    origin=request.headers.get('Origin')
+    if (not localhost or request.headers.get('X-PHB-Schedule-Reset') != '1'
+        or (origin and origin.rstrip('/') != request.host_url.rstrip('/'))):
+        return jsonify(error='Der Zeitplan-Reset ist nur in der lokalen Anwendung erlaubt.'),403
+    body=request.get_json(silent=True)
+    if not isinstance(body,dict) or body.get('confirmation')!='BAUZEITPLAN LEEREN':
+        return jsonify(error='Bitte den Bestätigungstext BAUZEITPLAN LEEREN eingeben.'),400
+    if db.session.scalar(select(CostItem.id).where(CostItem.task_id.is_not(None)).limit(1)) is not None:
+        return jsonify(error='Mindestens eine Kostenposition ist mit einem Arbeitspaket verknüpft. Bitte die Zuordnung zuerst entfernen.'),409
+    import backup_manager
+    if Path(db.engine.url.database).resolve() != backup_manager.db_path().resolve():
+        return jsonify(error='Aktive Datenbank stimmt nicht mit der Sicherungsdatenbank überein.'),409
+    try:
+        archive=backup_manager.make_backup()
+        backup_manager.verify_backup(archive)
+    except (ValueError,OSError,sqlite3.DatabaseError,zipfile.BadZipFile) as exc:
+        return jsonify(error='Zeitplan unverändert: Vollständige Sicherung fehlgeschlagen: '+str(exc)),409
+    try:
+        db.session.execute(db.delete(Dependency))
+        db.session.execute(db.delete(Task))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Zeitplan-Reset fehlgeschlagen. Backup: %s',archive)
+        return jsonify(error='Zeitplan konnte nicht geleert werden. Sicherung: '+str(archive)),500
+    return jsonify(ok=True,backup=str(archive))
+
+
 @app.patch('/api/project')
 def update_project():
     body=request.get_json(force=True)
