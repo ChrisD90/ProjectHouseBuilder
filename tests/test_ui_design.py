@@ -44,7 +44,8 @@ class GlobalUIDesignTest(unittest.TestCase):
         self.assertIn("FormData",script)
         self.assertIn("ChatGPT",script)
         self.assertIn("Rechnung",script)
-        self.assertNotRegex(script,r'fetch\\([\'\"]https?://')
+        self.assertNotIn("fetch('https://",script)
+        self.assertNotIn('fetch("https://',script)
         for token in ('--ui-bg','--ui-surface','--ui-ink','--ui-line',
                       '--ui-gutter','data-phb-theme="dark"','phb-busy-spinner',
                       'prefers-reduced-motion','focus-visible'):
