@@ -413,6 +413,15 @@ def _ai_safe_callback_diagnostic(error, browser_nonce, args):
         # Never expose exception text, JWT headers, key IDs or identity claims.
         identity_reasons = {
             'jwks_unavailable': 'Der öffentliche OpenAI-Signaturschlüsseldienst war nicht erreichbar. Netzwerk, TLS und Proxy prüfen.',
+            'jwks_tls_error': 'Der sichere HTTPS-Aufbau zum OpenAI-Schlüsseldienst ist fehlgeschlagen (TLS/Zertifikat).',
+            'jwks_timeout': 'Der OpenAI-Schlüsseldienst hat nicht rechtzeitig geantwortet.',
+            'jwks_network_error': 'Der OpenAI-Schlüsseldienst konnte über das Netzwerk nicht erreicht werden.',
+            'jwks_http_403': 'Der Schlüsseldienst hat den lokalen Abruf mit HTTP 403 abgewiesen (möglicherweise Proxy oder Schutzfilter).',
+            'jwks_http_429': 'Der Schlüsseldienst hat den Abruf vorübergehend begrenzt (HTTP 429).',
+            'jwks_http_error': 'Der Schlüsseldienst hat keine erfolgreiche HTTP-Antwort geliefert.',
+            'jwks_unexpected_redirect': 'Der Schlüsseldienst wollte auf eine andere URL weiterleiten; das wurde aus Sicherheitsgründen abgelehnt.',
+            'jwks_invalid_payload': 'Der Schlüsseldienst hat keine gültige JSON-Schlüsselliste geliefert.',
+            'jwks_endpoint_invalid': 'Die konfigurierte JWKS-Adresse wurde aus Sicherheitsgründen abgelehnt.',
             'jwks_signing_key_missing': 'Der benötigte OpenAI-Signaturschlüssel konnte nicht gefunden werden.',
             'id_token_malformed': 'Das ID-Token konnte nicht als gültiges JWT verarbeitet werden.',
             'id_token_expired': 'Das ID-Token ist bereits abgelaufen. Systemzeit des Macs prüfen.',
