@@ -6,7 +6,7 @@
 {% set phb_active = 'finanzierung' %}{% set phb_title = 'Finanzierung' %}{% include '_shell_open.html' %}
 
 <main id="phbMain" class="phb-main">
-<section class="intro"><div><span class="phb-page-kicker">Finanzen / Liquidität</span><h1>Kredite, Eigenkapital und Rechnungen</h1><p>Jede Zahlung erhält eine nachvollziehbare Finanzierungsquelle. Projektkosten werden dabei nicht doppelt berechnet.</p></div><a href="#sicherung" class="backup-link">↘ Jetzt alles sichern</a></section>
+<section class="intro"><div><span class="phb-page-kicker">Finanzen / Liquidität</span><h1>Kredite, Eigenkapital und Rechnungen</h1><p>Jede Zahlung erhält eine nachvollziehbare Finanzierungsquelle. Projektkosten werden dabei nicht doppelt berechnet.</p></div><a href="/daten#sicherung" class="backup-link">↗ Backup &amp; Export</a></section>
 <div id="notice" role="status" class="notice" hidden></div>
 <section class="tiles" id="totals"><p>Lade Finanzierungsübersicht …</p></section>
 <section id="warnings" class="alerts" aria-live="polite"></section>
@@ -22,8 +22,6 @@
 <p class="hint">Ein bereits manuell als bezahlt markierter Beleg muss vor der ersten Finanzierungszuordnung korrigiert werden. Die Beleg-Gesamtsumme und der bezahlte Betrag werden nicht doppelt addiert.</p><div id="payments" class="records"></div></div>
 </section>
 <section class="panel"><div class="panel-title"><div><h2>Liquiditätsvorschau</h2><p>Fällige, gebuchte und noch unbezahlte Rechnungen – erwartete Termine sind keine verbindliche Prognose für alle künftigen Baukosten.</p></div></div><div id="monthly" class="months"></div><p id="undated" class="hint"></p></section>
-<section class="panel" id="sicherung"><div class="panel-title"><div><h2>Komplettbackup – jederzeit</h2><p>SQLite-Datenbank <strong>und sämtliche hochgeladenen PDFs, Fotos und Dokumente</strong> als geprüftes ZIP in deinem gewählten Backupordner sichern.</p></div><button type="button" class="primary" id="backupButton">Jetzt vollständiges Backup erstellen</button></div>
-<div id="backupStatus" class="backup-status"></div><p class="hint">Backupziel einmalig auf dem Mac mit <code>sh mac/backup-setup.sh</code> auswählen. Die tägliche automatische Sicherung bleibt zusätzlich aktiv. Wiederherstellung auf einem neuen Mac bei beendeter App: <code>python3 backup_manager.py restore "/Pfad/Backup.zip" --yes</code>. Vor Schemaänderungen erstellt der Starter weiterhin automatisch ein Pflichtbackup.</p></section>
 <dialog id="loanDialog" class="loan-dialog">
 <form id="loanForm" class="modal">
   <div class="modal-head"><h2 id="loanDialogTitle">Kredit anlegen</h2><button type="button" class="secondary" id="closeLoan">Schließen</button></div>
