@@ -51,13 +51,13 @@ function refresh(){
    info.append(meta,heading,details,subtitle);
    if(doc.extraction_note){const note=document.createElement('small');note.textContent=doc.extraction_note;info.append(note);}
    const actions=document.createElement('div');actions.className='docs-item-actions';
-   const link=document.createElement('a');link.href='/api/documents/'+doc.id+'/download';link.textContent='Original herunterladen';
+   const link=document.createElement('a');link.href='/api/project-documents/'+doc.id+'/download';link.textContent='Original herunterladen';
    const button=document.createElement('button');button.type='button';button.textContent='Bearbeiten';button.onclick=()=>edit(doc.id);
    actions.append(link,button);row.append(info,actions);container.append(row);
  }
 }
 async function reload(){
- const result=await api('/api/documents');records=result.documents||[];
+ const result=await api('/api/project-documents');records=result.documents||[];
  if(!options){options=result;setup();}
  refresh();
 }
@@ -80,7 +80,7 @@ $('projectDocumentUpload').onsubmit=async e=>{
  e.preventDefault();
  const form=$('projectDocumentUpload'),btn=$('docUploadButton');
  btn.disabled=true;report('Dokument wird lokal geprüft und gespeichert …');
- try{const result=await api('/api/documents','POST',new FormData(form));form.reset();await reload();
+ try{const result=await api('/api/project-documents','POST',new FormData(form));form.reset();await reload();
    report('Dokument „'+result.document.title+'“ lokal gespeichert. Eine KI-Übertragung erfolgt nur nach ausdrücklicher Auswahl.');}
  catch(err){report(err.message,true);}
  finally{btn.disabled=false;}
@@ -89,14 +89,14 @@ $('docClose').onclick=()=>$('docEditDialog').close();
 $('docEditForm').onsubmit=async e=>{
  e.preventDefault();const data=Object.fromEntries(new FormData($('docEditForm')));
  const id=data.id;delete data.id;
- try{await api('/api/documents/'+id,'PATCH',data);
+ try{await api('/api/project-documents/'+id,'PATCH',data);
    $('docEditDialog').close();await reload();report('Dokumentdetails gespeichert.');}
  catch(err){report(err.message,true,'docEditMessage');}
 };
 $('docDelete').onclick=async()=>{
  const id=$('docEditForm').elements.namedItem('id').value;
  if(!confirm('Originaldokument endgültig löschen? Der Quellenvermerk in der Entscheidungshistorie bleibt erhalten.'))return;
- try{await api('/api/documents/'+id,'DELETE');$('docEditDialog').close();
+ try{await api('/api/project-documents/'+id,'DELETE');$('docEditDialog').close();
    await reload();report('Dokument gelöscht.');}
  catch(err){report(err.message,true,'docEditMessage');}
 };
