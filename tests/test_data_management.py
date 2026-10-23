@@ -23,6 +23,7 @@ import schema_manager
 package.ROOT = root
 package.DOCUMENT_ROOT = root/'private'/'documents'
 package.RECEIPT_ROOT = root/'private'/'receipts'
+package.PROJECT_DOCUMENT_ROOT = root/'private'/'project-documents'
 backup.ROOT = root
 backup.CONFIG_PATH = root/'backup-config.json'
 # Real SQLite migration, not a mocked DB
