@@ -18,7 +18,7 @@
       <div class="phb-nav-label">FINANZEN</div>
       <nav class="phb-nav" aria-label="Finanzen">
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'kosten' else '' }}" data-section="kosten" href="/kosten" title="Kosten & Budget" {% if phb_active == 'kosten' %}aria-current="page"{% endif %}>{{ icon('wallet') }}<span class="phb-nav-text">Kosten &amp; Budget</span></a>
-        <a class="phb-nav-link" data-section="angebote" href="/kosten#imported-offers" title="Angebote">{{ icon('file-check') }}<span class="phb-nav-text">Angebote</span></a>
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'angebote' else '' }}" data-section="angebote" href="/angebote" title="Angebote" {% if phb_active == 'angebote' %}aria-current="page"{% endif %}>{{ icon('file-check') }}<span class="phb-nav-text">Angebote</span></a>
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'belege' else '' }}" data-section="belege" href="/belege" title="Rechnungen & Belege" {% if phb_active == 'belege' %}aria-current="page"{% endif %}>{{ icon('receipt') }}<span class="phb-nav-text">Rechnungen &amp; Belege</span></a>
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'finanzierung' else '' }}" data-section="finanzierung" href="/finanzierung" title="Finanzierung" {% if phb_active == 'finanzierung' %}aria-current="page"{% endif %}>{{ icon('landmark') }}<span class="phb-nav-text">Finanzierung</span></a>
       </nav>

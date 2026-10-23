@@ -35,7 +35,8 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 
 - **Bauzeitenplan:** Gantt mit Abhängigkeiten, Terminen, Status, Eigenleistungen und Firmen.
 - **Kosten & Budget:** eigene Budgetpositionen und Schätzwerte, Beauftragungen, Förderungen und Kostenprognose.
-- **Angebote:** PDF hochladen und auslesen, Entwurf bearbeiten, Kategorie und Gesamtbruttopreis prüfen, in Angebotsliste übernehmen und später annehmen/ablehnen. Nur angenommene Angebote wirken sich als Auftrag auf die Kosten aus.
+- **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, korrigieren, annehmen oder ablehnen. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.
+- **Kosten & Budget (`/kosten`):** Ausschließlich Kostenschätzungen und zusätzliche Ausgaben planen; keine zweite Angebotsverwaltung. Angenommene Angebote werden automatisch eingerechnet, aber nicht nochmals bearbeitbar als manuelle Kostenposition angezeigt.
 - **Belege:** Rechnungen/Kassenzettel als PDF oder Foto importieren, optional lokal mit Tesseract OCR lesen, prüfen, kategorisieren und erst nach Freigabe buchen.
 - **Finanzierung:** Kredite, Eigenkapital, Kreditabrufe, Tilgungen, aufgeteilte Rechnungszahlungen und Liquiditätsvorschau.
 - **Datenverwaltung:** Backup auf Knopfdruck, vollständiger Projekt-Reset mit Pflichtbackup.
@@ -50,3 +51,13 @@ OCR von Bildern benötigt zusätzlich Tesseract und Poppler auf dem Mac; bei les
 ## Tests
 
 `python -m unittest discover -s tests -v` prüft die Geschäftslogik, Backups, Migrationen, Sidebar sowie API- und Reset-Sicherheitsbedingungen. GitHub Actions prüft zusätzlich JavaScript-Syntax und Docker Compose.
+
+## Angebotsverwaltung: Einfacher Ablauf
+
+1. In der **linken Sidebar → Angebote** öffnen (`http://127.0.0.1:5055/angebote`).
+2. **PDF hochladen** → die App liest lokal aus und legt einen prüfbaren Entwurf an. Firma, Bruttosumme, Kategorie und optional Kostenplanposition kontrollieren und auf „Geprüft – in Liste übernehmen“ klicken. **Oder:** **Manuell erfassen** → Anbieter, Bruttosumme und Kategorie eintragen; direkt „Angebot speichern“ drücken.
+3. Alle Angebote in einer Liste nach Gewerk und Gesamtbetrag vergleichen. **Annehmen** überträgt den Preis als beauftragten Wert in die Kostenprognose; Ablehnen behält das Angebot zum Vergleich ohne Kostenwirkung.
+4. **Kosten & Budget** dient nur für Schätzungen, zusätzliche Ausgaben und die Gesamtübersicht. Wenn ein Angebot einer Planposition zugeordnet ist, ersetzt der angenommene Preis deren Schätzwert; ohne Zuordnung gilt es als zusätzlicher Auftrag.
+5. **Rechnungen & Belege** erfasst tatsächliche Rechnungen, Zahlungen und Finanzierung.
+
+Es ist **keine zusätzliche Datenbankmigration** für diese UI-Vereinfachung nötig. Die manuelle Angebotserfassung nutzt die bestehende Angebotstabelle. Vollständige Sicherungen umfassen weiterhin alle Angebote und privaten PDFs.

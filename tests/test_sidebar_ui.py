@@ -21,7 +21,7 @@ class SidebarUITest(unittest.TestCase):
         return self.env.get_template(page + '.html').render()
 
     def test_every_app_page_has_one_shared_navigation_and_topbar(self):
-        for name in ('index', 'kosten', 'belege', 'finanzierung', 'daten'):
+        for name in ('index', 'kosten', 'angebote', 'belege', 'finanzierung', 'daten'):
             with self.subTest(page=name):
                 content = self.render(name)
                 self.assertEqual(content.count('id="phbSidebar"'), 1)
@@ -33,6 +33,9 @@ class SidebarUITest(unittest.TestCase):
                 self.assertIn('/static/shell.js', content)
                 self.assertIn('/static/shell.css', content)
                 self.assertIn('/static/vendor-bootstrap-5.3.6.min.css', content)
+                if name == 'angebote':
+                    self.assertIn('/static/angebote.css', content)
+                    self.assertIn('/static/offers.js', content)
                 if name == 'daten':
                     self.assertIn('/static/daten.js', content)
                     self.assertIn('/static/daten.css', content)
@@ -42,18 +45,19 @@ class SidebarUITest(unittest.TestCase):
 
     def test_navigation_lists_costs_offers_receipts_loans_and_backup(self):
         rendered = self.render('index')
-        for target in ('/', '/kosten', '/kosten#imported-offers', '/belege',
+        for target in ('/', '/kosten', '/angebote', '/belege',
                        '/finanzierung', '/kosten#eigenleistungen',
                        '/kosten#kontakte', '/finanzierung#sicherung', '/daten'):
             self.assertIn('href="' + target + '"', rendered)
-        for anchor in ('imported-offers', 'eigenleistungen', 'kontakte'):
+        for anchor in ('extra-expenses', 'eigenleistungen', 'kontakte'):
             self.assertIn('id="' + anchor + '"', self.render('kosten'))
         self.assertIn('id="sicherung"', self.render('finanzierung'))
 
     def test_existing_interactive_form_ids_are_unchanged(self):
         for page, identifiers in {
             'index': ('projectStart', 'saveStart', 'newTask', 'taskForm', 'gantt'),
-            'kosten': ('offerImportForm', 'offerDrafts', 'offerList', 'budgetrows', 'editForm'),
+            'kosten': ('budgetrows', 'costrows', 'editForm'),
+            'angebote': ('offerImportForm', 'offerManualForm', 'offerDrafts', 'offerList', 'offerCategoryFilter'),
             'belege': ('upload', 'categoryCreate', 'review'),
             'finanzierung': ('loanForm', 'paymentForm', 'eventForm'),
             'daten': ('backupNow', 'resetForm', 'resetButton', 'resetUnderstand', 'resetText')
@@ -69,7 +73,7 @@ class SidebarUITest(unittest.TestCase):
     def test_pwa_cache_includes_offline_shell_and_never_api_or_html(self):
         worker = (STATIC / 'sw.js').read_text()
         for static_path in ('/static/shell.css', '/static/shell.js',
-                            '/static/vendor-bootstrap-5.3.6.min.css', '/static/daten.js', '/static/daten.css',
+                            '/static/vendor-bootstrap-5.3.6.min.css', '/static/daten.js', '/static/daten.css', '/static/angebote.css', '/static/offers.js',
                             '/static/icons/ui-icons.svg'):
             self.assertIn(static_path, worker)
         self.assertNotIn("'/api/", worker)
@@ -84,7 +88,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("'Escape'", shell)
         self.assertIn('phb-nav-open', shell)
         self.assertIn('aria-current', shell)
-        for name in ('index', 'kosten', 'belege', 'finanzierung', 'daten'):
+        for name in ('index', 'kosten', 'angebote', 'belege', 'finanzierung', 'daten'):
             html = self.render(name)
             self.assertNotRegex(html, r'(src|href)="https?://[^\"]+"')
 

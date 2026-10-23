@@ -676,6 +676,30 @@ def _analyse_pdf_offer(data, name):
     return parsed,content
 
 
+@app.post('/api/offers/manual')
+def offers_manual():
+    """Create a reviewed, list-ready offer without a PDF; no forecast until acceptance."""
+    values = request.get_json(silent=True)
+    if not isinstance(values, dict):
+        return jsonify(error='Bitte Angebotsdaten eingeben.'), 400
+    obj = Offer(
+        digest=sha256(('manual:' + uuid4().hex).encode('utf-8')).hexdigest(),
+        filename='Manuell erfasst', vendor='', number='', category='Sonstiges',
+        status='Angebot', warnings='[]', reconciled=False)
+    try:
+        _apply_offer_fields(obj, values)
+        if not obj.vendor.strip() or obj.vendor == 'Firma nicht erkannt':
+            raise ValueError('Bitte einen Anbieter angeben.')
+        if obj.gross is None or obj.gross <= 0:
+            raise ValueError('Bitte einen positiven Bruttogesamtbetrag eingeben.')
+        db.session.add(obj)
+        db.session.commit()
+        return jsonify(ok=True, id=obj.id, offer=offer_dict(obj)), 201
+    except (ValueError, TypeError) as exc:
+        db.session.rollback()
+        return jsonify(error=str(exc)), 400
+
+
 @app.get('/api/offers')
 def offers_list():
     return jsonify(offers=[offer_dict(x) for x in db.session.scalars(select(Offer).order_by(Offer.id.desc()))],
@@ -737,40 +761,57 @@ def _offer_amount(raw,field):
         raise ValueError('Ungültiger Betrag für '+field+' (maximal zwei Nachkommastellen).')
 
 
+def _apply_offer_fields(offer, values):
+    """Shared validation for PDF corrections and manually entered offers."""
+    for key, limit in [('vendor', 200), ('number', 100), ('issued', 20),
+                       ('expires', 20), ('notes', 2000)]:
+        if key in values:
+            value = str(values[key] or '').strip()
+            if len(value) > limit:
+                raise ValueError(key + ': Text ist zu lang.')
+            setattr(offer, key, value)
+    for key in ('gross', 'net', 'vat'):
+        if key in values:
+            setattr(offer, key, _offer_amount(values[key], key))
+    if 'category' in values:
+        category = str(values['category'] or '').strip()
+        if category not in category_names():
+            raise ValueError('Bitte eine vorhandene Kategorie auswählen.')
+        offer.category = category
+    if 'budget_line_id' in values:
+        candidate = values['budget_line_id']
+        if candidate in ('', None):
+            offer.budget_line_id = None
+        else:
+            try:
+                line_id = int(candidate)
+            except (ValueError, TypeError):
+                raise ValueError('Ungültige Kostenplanposition.')
+            line = db.session.get(BudgetLine, line_id)
+            if not line or not line.active or line.is_group:
+                raise ValueError('Bitte eine aktive Kostenplanposition wählen.')
+            offer.budget_line_id = line_id
+    if offer.gross and offer.net:
+        offer.tax_rate = round((offer.gross / offer.net - 1) * 100, 2)
+
+
 @app.patch('/api/offers/<int:offer_id>/draft')
 def offer_draft_update(offer_id):
-    offer=db.session.get(Offer,offer_id)
-    if not offer:return jsonify(error='Angebot nicht gefunden.'),404
-    if offer.status not in ('Entwurf','Angebot','Abgelehnt'):
-        return jsonify(error='Ein angenommener Auftrag kann nicht mehr bearbeitet werden.'),409
-    values=request.get_json(silent=True) or {}
+    offer = db.session.get(Offer, offer_id)
+    if not offer:
+        return jsonify(error='Angebot nicht gefunden.'), 404
+    if offer.status not in ('Entwurf', 'Angebot', 'Abgelehnt'):
+        return jsonify(error='Ein angenommener Auftrag kann nicht mehr bearbeitet werden.'), 409
+    values = request.get_json(silent=True) or {}
+    if not isinstance(values, dict):
+        return jsonify(error='Bitte gültige Angebotsdaten senden.'), 400
     try:
-        for key,limit in [('vendor',200),('number',100),('issued',20),('expires',20),('notes',2000)]:
-            if key in values:
-                value=str(values[key] or '').strip()
-                if len(value)>limit:raise ValueError(key+': Text ist zu lang.')
-                setattr(offer,key,value)
-        for key in ('gross','net','vat'):
-            if key in values:setattr(offer,key,_offer_amount(values[key],key))
-        if 'category' in values:
-            value=str(values['category'] or '').strip()
-            if value not in category_names():raise ValueError('Bitte eine vorhandene Kategorie auswählen.')
-            offer.category=value
-        if 'budget_line_id' in values:
-            value=values['budget_line_id']
-            if value in ('',None):offer.budget_line_id=None
-            else:
-                try:id_=int(value)
-                except (ValueError,TypeError):raise ValueError('Ungültige Kostenplanposition.')
-                line=db.session.get(BudgetLine,id_)
-                if not line or not line.active or line.is_group:
-                    raise ValueError('Bitte eine aktive Kostenplanposition wählen.')
-                offer.budget_line_id=id_
-        if offer.gross and offer.net:
-            offer.tax_rate=round((offer.gross/offer.net-1)*100,2)
-        db.session.commit();return jsonify(ok=True,offer=offer_dict(offer))
-    except ValueError as exc:
-        db.session.rollback();return jsonify(error=str(exc)),400
+        _apply_offer_fields(offer, values)
+        db.session.commit()
+        return jsonify(ok=True, offer=offer_dict(offer))
+    except (ValueError, TypeError) as exc:
+        db.session.rollback()
+        return jsonify(error=str(exc)), 400
 
 
 @app.patch('/api/offers/<int:offer_id>')
@@ -1082,6 +1123,9 @@ def receipts_page():
 
 @app.get('/kosten')
 def costs_page():return render_template('kosten.html')
+
+@app.get('/angebote')
+def offers_page():return render_template('angebote.html')
 
 @app.get('/api/costs')
 def get_costs():

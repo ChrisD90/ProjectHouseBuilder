@@ -1,138 +1,185 @@
 'use strict';
-/* Separate steps: import -> editable draft -> listed quote -> accepted/rejected.
-   Reading or listing PDF data never commits costs. */
-window.renderOffers=function renderOffers(){
- const drafts=document.getElementById('offerDrafts'), list=document.getElementById('offerList');
- if(!drafts || !list || typeof state==='undefined')return;
- const offers=state.offers||[];
- const categories=state.offer_categories||[];
- const budgets=(state.budget_lines||[]).filter(b=>b.active&&!b.is_group);
- const money=n=>n==null?'Noch nicht erkannt':new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(n);
- const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const pick=(choices,value,empty)=> (empty?`<option value="">${esc(empty)}</option>`:'')+choices.map(c=>`<option value="${esc(c.value)}" ${String(c.value)===String(value??'')?'selected':''}>${esc(c.label)}</option>`).join('');
- const cats=value=>pick(categories.map(x=>({value:x,label:x})),value);
- const lines=value=>pick(budgets.map(x=>({value:x.id,label:x.category+' · '+x.title})),value,'Keine (zusätzliche Kostenposition)');
- const pdf=o=>o.document_id?`<a class="subtle" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Original-PDF ansehen</a>`:'Original-PDF nicht verknüpft';
- const details=o=>{
-   const positions=o.positions||[];
-   return positions.length?`<details class="offer-details"><summary>Erkannte Einzelpositionen (${positions.length}, nur zur Information)</summary><div class="tablewrap"><table><thead><tr><th>Pos.</th><th>Beschreibung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${positions.map(x=>`<tr><td>${esc(x.number)}</td><td>${esc(x.description)}</td><td>${esc(x.quantity)} ${esc(x.unit)}</td><td>${money(x.net_amount)}</td></tr>`).join('')}</tbody></table></div></details>`:'';
- };
- const notices=o=>(o.warnings||[]).length?`<details class="offer-warnings"><summary>Hinweise aus der PDF-Analyse (${o.warnings.length})</summary><ul>${o.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>`:'';
- const renderEditable=(o,isDraft)=>`<article class="offer-card" data-offer-card="${o.id}">
-   <div class="offer-card-head"><div><h3>${esc(isDraft?'Entwurf':'Angebot')} · ${esc(o.filename)}</h3><p class="muted">${pdf(o)} · Bruttobetrag wird vor der Übernahme geprüft</p></div><span class="offer-stage ${isDraft?'stage-draft':'stage-listed'}">${esc(o.status)}</span></div>
-   ${notices(o)}
-   <form class="offer-review-form" data-offer-review="${o.id}">
-     <label>Firma / Anbieter <input name="vendor" maxlength="200" value="${esc(o.vendor==='Firma nicht erkannt'?'':o.vendor)}" required></label>
-     <label>Angebotsnummer <input name="number" maxlength="100" value="${esc(o.number)}"></label>
-     <label>Datum laut Angebot <input name="issued" maxlength="20" value="${esc(o.issued)}" placeholder="z. B. 22.10.2026"></label>
-     <label>Gültig bis <input name="expires" maxlength="20" value="${esc(o.expires)}"></label>
-     <label>Netto € <input name="net" inputmode="decimal" value="${o.net==null?'':esc(o.net)}" placeholder="Optional"></label>
-     <label>MwSt. € <input name="vat" inputmode="decimal" value="${o.vat==null?'':esc(o.vat)}" placeholder="Optional"></label>
-     <label>Bruttogesamtbetrag € <input name="gross" inputmode="decimal" value="${o.gross==null?'':esc(o.gross)}" placeholder="Bitte prüfen" required></label>
-     <label>Kategorie / Gewerk <select name="category">${cats(o.category)}</select></label>
-     <label class="wide">Kostenplanposition <select name="budget_line_id">${lines(o.budget_line_id)}</select></label>
-     <label class="wide">Notiz <textarea name="notes" rows="2" maxlength="2000">${esc(o.notes)}</textarea></label>
-     <div class="offer-form-actions"><button type="submit" class="mini">Änderungen speichern</button>
-       ${isDraft?`<button type="button" class="primary" data-offer-promote="${o.id}">In Angebotsliste übernehmen</button>`:`<button type="button" class="mini" data-offer-accept="${o.id}">Angebot annehmen</button><button type="button" class="mini" data-offer-reject="${o.id}">Ablehnen</button>`}
-       <button type="button" class="mini" data-offer-delete="${o.id}">Auswertung entfernen</button></div>
-   </form>${details(o)}
- </article>`;
- const draftOffers=offers.filter(o=>o.status==='Entwurf');
- drafts.innerHTML=draftOffers.length?draftOffers.map(o=>renderEditable(o,true)).join(''):'<p class="muted">Keine offenen Entwürfe. Beim PDF-Upload entsteht automatisch ein bearbeitbarer Entwurf.</p>';
- const listed=offers.filter(o=>o.status!=='Entwurf');
- const filters=document.getElementById('offerCategoryFilter');
- const previous=filters.value;
- filters.innerHTML='<option value="">Alle Kategorien</option>'+categories.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
- filters.value=categories.includes(previous)?previous:'';
- const available=listed.filter(o=>!filters.value||o.category===filters.value);
- const sorter=[...available].sort((a,b)=>a.category.localeCompare(b.category,'de') || (a.gross??Infinity)-(b.gross??Infinity));
- list.innerHTML=sorter.length?sorter.map(o=>{
-   const status=o.status;
-   const accepted=['Angenommen','Beauftragt'].includes(status);
-   return `<article class="offer-card offer-list-card"><div class="offer-card-head"><div><h3>${esc(o.vendor)} <span class="offer-number">${esc(o.number)}</span></h3><div class="muted">${esc(o.category)} · ${esc(o.issued||'Ohne Datum')} · ${pdf(o)}</div></div><div><strong>${money(o.gross)}</strong><span class="offer-stage ${accepted?'stage-accepted':status==='Abgelehnt'?'stage-rejected':'stage-listed'}">${esc(status)}</span></div></div>
-   <div class="offer-facts"><span>Netto: ${money(o.net)}</span><span>Zuordnung: ${esc(budgets.find(x=>x.id===o.budget_line_id)?.title||'Zusätzliche Position')}</span><span>Gültig bis: ${esc(o.expires||'–')}</span></div>
-   ${o.notes?`<p>${esc(o.notes)}</p>`:''}${notices(o)}
-   <div class="offer-form-actions">
-    ${accepted?`<button class="mini" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`:`<button class="mini" data-offer-edit="${o.id}">Angaben bearbeiten</button><button class="primary" data-offer-accept="${o.id}">Annehmen → Kosten übernehmen</button>${status!=='Abgelehnt'?`<button class="mini" data-offer-reject="${o.id}">Ablehnen</button>`:`<button class="mini" data-offer-relist="${o.id}">Wieder berücksichtigen</button>`}`}
-   </div>
-   <div data-offer-inline-edit="${o.id}" class="offer-inline-edit" hidden></div>
-   ${details(o)}
-   </article>`;
- }).join(''):'<p class="muted">Noch keine passenden Angebote. Übernimm zuerst einen geprüften Entwurf.</p>';
- // Handler for drafts and inline edit panels.
- async function save(form){
-  const id=form.dataset.offerReview;
-  const body=Object.fromEntries(new FormData(form));
-  await send(`/api/offers/${id}/draft`,body);
- }
- async function send(url,body,method='PATCH'){
-  const resp=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const data=await resp.json();
-  if(!resp.ok)throw Error(data.error||'Änderung nicht möglich');
-  await reload();return data;
- }
- document.querySelectorAll('[data-offer-review]').forEach(form=>form.addEventListener('submit',async e=>{
-  e.preventDefault();try{await save(form)}catch(err){alert(err.message)}
- }));
- document.querySelectorAll('[data-offer-promote]').forEach(btn=>btn.addEventListener('click',async()=>{
-  const form=btn.closest('form');
-  try{
-   const body=Object.fromEntries(new FormData(form));
-   const response=await fetch(`/api/offers/${btn.dataset.offerPromote}/draft`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-   const data=await response.json();if(!response.ok)throw Error(data.error||'Entwurf konnte nicht gespeichert werden.');
-   await send(`/api/offers/${btn.dataset.offerPromote}`,{status:'Angebot'});
-   document.getElementById('offerList').scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(err){alert(err.message)}
- }));
- document.querySelectorAll('[data-offer-accept]').forEach(btn=>btn.addEventListener('click',async()=>{
-  if(!confirm('Angebot verbindlich annehmen? Die Bruttogesamtsumme wird jetzt genau einmal als beauftragt in die Kostenprognose übernommen.'))return;
-  try{await send('/api/offers/'+btn.dataset.offerAccept,{status:'Angenommen'})}catch(e){alert(e.message)}
- }));
- document.querySelectorAll('[data-offer-reject]').forEach(btn=>btn.addEventListener('click',async()=>{
-  try{await send('/api/offers/'+btn.dataset.offerReject,{status:'Abgelehnt'})}catch(e){alert(e.message)}
- }));
- document.querySelectorAll('[data-offer-relist]').forEach(btn=>btn.addEventListener('click',async()=>{
-  try{await send('/api/offers/'+btn.dataset.offerRelist,{status:'Angebot'})}catch(e){alert(e.message)}
- }));
- document.querySelectorAll('[data-offer-unaccept]').forEach(btn=>btn.addEventListener('click',async()=>{
-  if(!confirm('Annahme zurücknehmen? Der Auftrag wird aus den beauftragten Kosten entfernt, sofern noch keine Zahlungen oder Belege verknüpft sind.'))return;
-  try{await send('/api/offers/'+btn.dataset.offerUnaccept,{status:'Angebot'})}catch(e){alert(e.message)}
- }));
- document.querySelectorAll('[data-offer-delete]').forEach(btn=>btn.addEventListener('click',async()=>{
-  if(!confirm('Analyse entfernen? Das Original-PDF bleibt unter Dokumente archiviert.'))return;
-  try{const r=await fetch('/api/offers/'+btn.dataset.offerDelete,{method:'DELETE'});const d=await r.json();if(!r.ok)throw Error(d.error||'Löschen fehlgeschlagen.');await reload()}catch(e){alert(e.message)}
- }));
- document.querySelectorAll('[data-offer-edit]').forEach(btn=>btn.addEventListener('click',()=>{
-  const panel=document.querySelector(`[data-offer-inline-edit="${btn.dataset.offerEdit}"]`);
-  const offer=offers.find(x=>x.id===Number(btn.dataset.offerEdit));
-  if(!offer)return;
-  panel.innerHTML=renderEditable(offer,false);
-  panel.hidden=false;
-  // Avoid duplicating nested form handler; bind edit controls locally.
-  const form=panel.querySelector('form');
-  form.addEventListener('submit',async e=>{e.preventDefault();try{await save(form)}catch(err){alert(err.message)}});
-  form.querySelector('[data-offer-accept]').addEventListener('click',async()=>{
-   try{await saveWithoutReload(form);if(confirm('Annehmen und als Kosten übernehmen?'))await send('/api/offers/'+offer.id,{status:'Angenommen'})}catch(e){alert(e.message)}
+/* Dedicated, independent offers screen. Neither drafts nor listed quotes affect costs. */
+(() => {
+  const $ = id => document.getElementById(id);
+  if (!$('offerImportForm') || !$('offerList')) return;
+  let offers = [], categories = [], budgets = [];
+  const fmt = n => n == null ? 'Bitte Betrag prüfen' : new Intl.NumberFormat('de-DE', {style:'currency',currency:'EUR'}).format(Number(n));
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const option = (value,label,selected) => `<option value="${esc(value)}" ${String(value)===String(selected??'')?'selected':''}>${esc(label)}</option>`;
+  const categoryOptions = selected => categories.map(c => option(c,c,selected)).join('');
+  const budgetOptions = selected => option('','Keine Zuordnung (zusätzlicher Auftrag)',selected) + budgets.map(b => option(b.id,b.category+' · '+b.title,selected)).join('');
+  const offerUrl = id => '/api/offers/'+encodeURIComponent(id);
+  const sourceLabel = o => o.document_id
+    ? `<a class="offer-document" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Original-PDF öffnen ↗</a>`
+    : '<span class="muted">Manuell eingegeben</span>';
+  const budgetLabel = o => budgets.find(b => b.id===o.budget_line_id)?.title || 'Keiner Planposition zugeordnet';
+  const stage = o => ({Entwurf:['Noch prüfen','stage-draft'],Angebot:['Zum Vergleich','stage-listed'],Angenommen:['Angenommen','stage-accepted'],Beauftragt:['Angenommen','stage-accepted'],Abgelehnt:['Abgelehnt','stage-rejected']}[o.status] || [o.status,'stage-listed']);
+  const notice = o => (o.warnings||[]).length
+    ? `<details class="offer-warnings"><summary>Hinweise zur Erkennung (${o.warnings.length})</summary><ul>${o.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>` : '';
+  const parsedPositions = o => (o.positions||[]).length ? `<details class="offer-details"><summary>Erkannte Einzelpositionen (${o.positions.length}) – nur zur Kontrolle</summary><div class="tablewrap"><table><thead><tr><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td>${esc(p.number)}</td><td>${esc(p.description)}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div></details>` : '';
+
+  function fields(o) {
+    return `<label>Anbieter / Firma<input name="vendor" maxlength="200" value="${esc(o.vendor==='Firma nicht erkannt'?'':o.vendor)}" required placeholder="Name des Handwerkers"></label>
+      <label>Bruttogesamtbetrag (€)<input name="gross" inputmode="decimal" value="${o.gross==null?'':esc(o.gross)}" required placeholder="z. B. 12.450,00"></label>
+      <label>Kategorie / Gewerk<select name="category" required>${categoryOptions(o.category)}</select></label>
+      <label>Kostenplanposition <select name="budget_line_id">${budgetOptions(o.budget_line_id)}</select></label>
+      <details class="offer-extra-fields offer-wide"><summary>Weitere Angaben (optional)</summary><div class="offer-extra-grid">
+        <label>Angebotsnummer<input name="number" value="${esc(o.number)}" maxlength="100"></label>
+        <label>Datum<input name="issued" value="${esc(o.issued)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
+        <label>Gültig bis<input name="expires" value="${esc(o.expires)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
+        <label>Netto (€)<input name="net" inputmode="decimal" value="${o.net==null?'':esc(o.net)}"></label>
+        <label>MwSt. (€)<input name="vat" inputmode="decimal" value="${o.vat==null?'':esc(o.vat)}"></label>
+        <label class="offer-wide">Notiz<textarea name="notes" rows="2" maxlength="2000">${esc(o.notes)}</textarea></label>
+      </div></details>`;
+  }
+
+  function renderDraft(o) {
+    const [label,color] = stage(o);
+    return `<article class="offer-card offer-draft-card" data-offer-card="${o.id}"><div class="offer-card-head"><div><span class="offer-stage ${color}">${label}</span><h3>${esc(o.filename)}</h3><p>${sourceLabel(o)} · Werte bitte vor der Übernahme prüfen.</p></div></div>
+      ${notice(o)}<form class="offer-review-form" data-review="${o.id}">${fields(o)}
+      <div class="offer-form-actions"><button type="button" class="primary" data-offer-promote="${o.id}">Geprüft – in Liste übernehmen</button><button type="submit" class="mini">Entwurf zwischenspeichern</button><button type="button" class="offer-text-danger" data-offer-delete="${o.id}">Entwurf löschen</button></div></form>${parsedPositions(o)}</article>`;
+  }
+
+  function renderListed(o) {
+    const [label,color] = stage(o);
+    const accepted = ['Angenommen','Beauftragt'].includes(o.status);
+    const rejected = o.status==='Abgelehnt';
+    const extras = o.notes ? `<p class="offer-notes">${esc(o.notes)}</p>` : '';
+    return `<article class="offer-card offer-list-card" data-offer-card="${o.id}"><div class="offer-card-head"><div><span class="offer-stage ${color}">${label}</span><h3>${esc(o.vendor)} <small>${esc(o.number)}</small></h3><p>${esc(o.category)} · ${esc(o.issued || 'Ohne Datum')} · ${sourceLabel(o)}</p></div><div class="offer-sum"><span>Brutto</span><strong>${fmt(o.gross)}</strong></div></div>
+      <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>${extras}
+      <div class="offer-actions">${accepted
+          ? `<span class="offer-accepted-note">✓ In der Kostenprognose berücksichtigt</span><a class="mini" href="/belege">Rechnung erfassen</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
+          : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder berücksichtigen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`}
+      </div><div class="offer-inline-edit" id="offerEditor${o.id}" hidden></div>${notice(o)}${parsedPositions(o)}</article>`;
+  }
+
+  function refreshUI() {
+    const drafts=offers.filter(o=>o.status==='Entwurf');
+    const listed=offers.filter(o=>o.status==='Angebot');
+    const accepted=offers.filter(o=>['Angenommen','Beauftragt'].includes(o.status));
+    $('offersCountDraft').textContent=String(drafts.length);
+    $('offersCountListed').textContent=String(listed.length);
+    $('offersCountAccepted').textContent=String(accepted.length);
+    $('offersDraftBadge').textContent=drafts.length?`(${drafts.length})`:'';
+    $('offerDrafts').innerHTML=drafts.length ? drafts.map(renderDraft).join('') : '<p class="offer-empty">Keine offenen PDF-Entwürfe. Neue PDF-Dateien kannst du oben hochladen.</p>';
+    const filter=$('offerCategoryFilter'), prev=filter.value;
+    filter.innerHTML=option('','Alle Kategorien',prev)+categories.map(c=>option(c,c,prev)).join('');
+    filter.value=categories.includes(prev)?prev:'';
+    const visible=offers.filter(o=>o.status!=='Entwurf'&&(!filter.value||o.category===filter.value));
+    const order={Angebot:0,Angenommen:1,Beauftragt:1,Abgelehnt:2};
+    visible.sort((a,b)=>a.category.localeCompare(b.category,'de')||(order[a.status]??9)-(order[b.status]??9)||(a.gross??Infinity)-(b.gross??Infinity));
+    $('offerList').innerHTML=visible.length ? visible.map(renderListed).join('') : '<p class="offer-empty">Noch keine Angebote in der Liste. Du kannst oben manuell ein Angebot anlegen oder ein PDF hochladen und prüfen.</p>';
+    const cat=$('offerManualCategory'), oldcat=cat.value;
+    cat.innerHTML=categoryOptions(categories.includes(oldcat)?oldcat:'Sonstiges');
+    const bud=$('offerManualBudget'), oldbudget=bud.value;
+    bud.innerHTML=budgetOptions(oldbudget);
+  }
+
+  async function request(url,{method='GET',data=null,formData=null}={}) {
+    const opts={method};
+    if (formData) opts.body=formData;
+    else if (data!==null) {opts.headers={'Content-Type':'application/json'};opts.body=JSON.stringify(data)}
+    const resp=await fetch(url,opts);
+    let body;
+    try {body=await resp.json()} catch {throw Error('Der Server hat keine gültige Antwort gesendet.')} 
+    if (!resp.ok) throw Error(body.error||'Aktion fehlgeschlagen.');
+    return body;
+  }
+  async function reload() {
+    const [o,c] = await Promise.all([request('/api/offers'),request('/api/costs')]);
+    offers=o.offers||[]; categories=o.categories||[];
+    budgets=(c.budget_lines||[]).filter(b=>b.active&&!b.is_group);
+    refreshUI();
+  }
+  const readForm=form=>Object.fromEntries(new FormData(form).entries());
+  function inform(id,message,isError=false) {
+    const node=$(id); if(!node)return;
+    node.textContent=message;node.classList.toggle('offer-error',isError);
+  }
+  async function update(id,payload) {await request(offerUrl(id)+'/draft',{method:'PATCH',data:payload})}
+  async function changeStatus(id,status) {await request(offerUrl(id),{method:'PATCH',data:{status}});await reload()}
+  function switchMethod(which) {
+    const isPdf=which==='pdf';
+    $('offerImportForm').hidden=!isPdf; $('offerManualForm').hidden=isPdf;
+    $('offerMethodPdf').classList.toggle('is-selected',isPdf);
+    $('offerMethodManual').classList.toggle('is-selected',!isPdf);
+    $('offerMethodPdf').setAttribute('aria-pressed',String(isPdf));
+    $('offerMethodManual').setAttribute('aria-pressed',String(!isPdf));
+  }
+  $('offerMethodPdf').addEventListener('click',()=>switchMethod('pdf'));
+  $('offerMethodManual').addEventListener('click',()=>switchMethod('manual'));
+  $('offerCategoryFilter').addEventListener('change',refreshUI);
+  $('offerImportForm').addEventListener('submit',async event=>{
+    event.preventDefault(); const form=event.currentTarget;
+    inform('offerImportStatus','PDF wird auf deinem Rechner analysiert …');
+    try {
+      await request('/api/offers/import',{method:'POST',formData:new FormData(form)});
+      form.reset(); await reload();
+      inform('offerImportStatus','PDF gespeichert. Bitte die erkannten Angaben unten prüfen.');
+      $('angebote-pruefen').scrollIntoView({behavior:'smooth',block:'start'});
+    } catch(err) {inform('offerImportStatus','Fehler: '+err.message,true)}
   });
-  form.querySelector('[data-offer-reject]').addEventListener('click',async()=>{
-   try{await send('/api/offers/'+offer.id,{status:'Abgelehnt'})}catch(e){alert(e.message)}
+  $('offerManualForm').addEventListener('submit',async event=>{
+    event.preventDefault();const form=event.currentTarget;
+    inform('offerManualStatus','Angebot wird gespeichert …');
+    try {
+      await request('/api/offers/manual',{method:'POST',data:readForm(form)});
+      form.reset();await reload();
+      inform('offerManualStatus','Angebot gespeichert. Du kannst es unten vergleichen oder annehmen.');
+      $('angebotsliste').scrollIntoView({behavior:'smooth',block:'start'});
+    } catch(err) {inform('offerManualStatus','Fehler: '+err.message,true)}
   });
-  form.querySelector('[data-offer-delete]').addEventListener('click',()=>alert('Zum Entfernen bitte zuerst den Status überprüfen.'));
- }));
- async function saveWithoutReload(form){
-  const body=Object.fromEntries(new FormData(form));
-  const r=await fetch('/api/offers/'+form.dataset.offerReview+'/draft',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const data=await r.json();if(!r.ok)throw Error(data.error||'Speichern fehlgeschlagen');
- }
-};
-const offerForm=document.getElementById('offerImportForm');
-if(offerForm)offerForm.addEventListener('submit',async event=>{
- event.preventDefault();const msg=document.getElementById('offerImportStatus');msg.textContent='PDF wird lokal analysiert …';
- try{const r=await fetch('/api/offers/import',{method:'POST',body:new FormData(offerForm)});
-  const d=await r.json();if(!r.ok)throw Error(d.error||'Upload fehlgeschlagen');
-  msg.textContent='Entwurf angelegt. Bitte Firma, Betrag und Kategorie prüfen.';
-  offerForm.reset();await reload();document.getElementById('offerDrafts').scrollIntoView({behavior:'smooth',block:'start'});
- }catch(e){msg.textContent='Fehler: '+e.message}
-});
-const filter=document.getElementById('offerCategoryFilter');
-if(filter)filter.addEventListener('change',()=>window.renderOffers());
+  document.addEventListener('submit',async e=>{
+    const form=e.target.closest('[data-review]');if(!form)return;
+    e.preventDefault();
+    try {await update(form.dataset.review,readForm(form)); await reload()}
+    catch(err){alert(err.message)}
+  });
+  document.addEventListener('click',async e=>{
+    const button=e.target.closest('button[data-offer-promote],button[data-offer-accept],button[data-offer-reject],button[data-offer-relist],button[data-offer-unaccept],button[data-offer-edit],button[data-offer-delete]');
+    if(!button)return;
+    const dataset=button.dataset;
+    const key=Object.keys(dataset).find(k=>k.startsWith('offer'));
+    const id=dataset[key];
+    try {
+      if(key==='offerEdit'){
+        const box=$('offerEditor'+id),o=offers.find(item=>String(item.id)===String(id));
+        if(!box||!o)return;
+        if(!box.hidden){box.hidden=true;button.textContent='Bearbeiten';return}
+        box.innerHTML=`<h4>Angaben korrigieren</h4><form class="offer-review-form" data-review="${id}">${fields(o)}<div class="offer-form-actions"><button type="submit" class="primary">Änderungen speichern</button><button type="button" class="mini" data-edit-cancel="${id}">Abbrechen</button></div></form>`;
+        box.hidden=false;button.textContent='Bearbeitung schließen';
+        return;
+      }
+      if(key==='offerPromote'){
+        const form=button.closest('form');
+        if(!form.reportValidity())return;
+        await update(id,readForm(form));await changeStatus(id,'Angebot');
+        $('angebotsliste').scrollIntoView({behavior:'smooth',block:'start'});
+      }
+      if(key==='offerAccept'){
+        if(!confirm('Dieses Angebot verbindlich annehmen? Der Bruttogesamtbetrag wird dadurch einmalig in deine Kostenprognose übernommen.'))return;
+        await changeStatus(id,'Angenommen');
+      }
+      if(key==='offerReject') await changeStatus(id,'Abgelehnt');
+      if(key==='offerRelist') await changeStatus(id,'Angebot');
+      if(key==='offerUnaccept'){
+        if(!confirm('Annahme zurücknehmen? Das ist nur möglich, solange keine Rechnungen oder Zahlungen verknüpft sind.'))return;
+        await changeStatus(id,'Angebot');
+      }
+      if(key==='offerDelete'){
+        if(!confirm('Entwurf entfernen? Ein bereits hochgeladenes Originaldokument bleibt im Archiv.'))return;
+        await request(offerUrl(id),{method:'DELETE'});await reload();
+      }
+    } catch(err) {alert(err.message)}
+  });
+  document.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-edit-cancel]');if(!btn)return;
+    const box=$('offerEditor'+btn.dataset.editCancel);
+    if(box){box.hidden=true;box.innerHTML=''}
+  });
+  reload().catch(error=>{
+    $('offerList').textContent='Angebote konnten nicht geladen werden: '+error.message;
+    $('offerDrafts').textContent='Verbindung zur Angebotsverwaltung fehlgeschlagen.';
+  });
+})();

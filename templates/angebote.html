@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Angebote · ProjectHouseBuilder</title>
+<link rel="stylesheet" href="/static/vendor-bootstrap-5.3.6.min.css"><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/kosten.css"><link rel="stylesheet" href="/static/shell.css"><link rel="stylesheet" href="/static/angebote.css"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0e7782"></head>
+<body class="phb-app phb-page-angebote">
+{% set phb_active = 'angebote' %}{% set phb_title = 'Angebote' %}{% include '_shell_open.html' %}
+<main id="phbMain" class="budget-main phb-main offers-page">
+  <div class="heading offers-heading"><div><span class="phb-page-kicker">Finanzen / Handwerkerangebote</span><h1>Angebote</h1><p>Alle Angebote an einem Ort: per PDF einlesen oder direkt eingeben, vergleichen und später entscheiden.</p></div><a class="mini" href="/kosten">Kostenübersicht ansehen →</a></div>
+  <div class="offers-how" aria-label="So funktioniert die Angebotsverwaltung">
+    <span><b>1</b> Angebot erfassen</span><span class="offers-how-arrow" aria-hidden="true">→</span>
+    <span><b>2</b> PDF-Daten prüfen</span><span class="offers-how-arrow" aria-hidden="true">→</span>
+    <span><b>3</b> Angebot annehmen oder ablehnen</span>
+  </div>
+  <p class="offers-clarity">Erst wenn du <strong>„Annehmen“</strong> auswählst, wird die Bruttosumme in <a href="/kosten">Kosten & Budget</a> übernommen. Hochladen, Speichern oder Vergleichen kostet noch nichts.</p>
+  <div class="offers-stats" aria-live="polite"><div><span>Zu prüfen</span><strong id="offersCountDraft">–</strong></div><div><span>Im Vergleich</span><strong id="offersCountListed">–</strong></div><div><span>Angenommen</span><strong id="offersCountAccepted">–</strong></div></div>
+  <section class="panel budget-panel offers-create" id="angebot-erfassen"><div class="panelbar"><div><h2>Neues Angebot erfassen</h2><p>Wähle den für dich einfachsten Weg. Beide landen in derselben Angebotsliste.</p></div></div>
+   <div class="offer-entry-switch" role="group" aria-label="Art der Angebotserfassung">
+     <button type="button" id="offerMethodPdf" class="offer-method is-selected" aria-pressed="true">PDF hochladen <small>Automatisch auslesen & prüfen</small></button>
+     <button type="button" id="offerMethodManual" class="offer-method" aria-pressed="false">Manuell erfassen <small>Firma und Gesamtbetrag eingeben</small></button>
+   </div>
+   <form id="offerImportForm" class="offer-entry-form"><label class="offer-file-label">Angebots-PDF auswählen <input type="file" name="file" accept=".pdf,application/pdf" required></label>
+     <button type="submit" class="primary">PDF analysieren</button><p class="offer-import-status" id="offerImportStatus" role="status">Die PDF wird lokal analysiert. Erkannte Daten kannst du vor dem Speichern korrigieren.</p></form>
+   <form id="offerManualForm" class="offer-entry-form offer-manual-form" hidden>
+    <label>Firma / Anbieter <input name="vendor" maxlength="200" required placeholder="z. B. Elektro Mustermann"></label>
+    <label>Bruttogesamtsumme (€) <input name="gross" inputmode="decimal" required placeholder="z. B. 8.500,00"></label>
+    <label>Gewerk / Kategorie <select name="category" id="offerManualCategory" required></select></label>
+    <label>Kostenplanposition (optional) <select name="budget_line_id" id="offerManualBudget"></select></label>
+    <details class="offer-manual-more"><summary>Weitere Angaben (optional)</summary><div class="offer-optional-fields">
+      <label>Angebotsnummer <input name="number" maxlength="100"></label>
+      <label>Datum <input name="issued" maxlength="20" placeholder="TT.MM.JJJJ"></label>
+      <label>Gültig bis <input name="expires" maxlength="20" placeholder="TT.MM.JJJJ"></label>
+      <label>Netto (€) <input name="net" inputmode="decimal"></label>
+      <label>MwSt. (€) <input name="vat" inputmode="decimal"></label>
+      <label class="offer-wide">Notizen <textarea name="notes" rows="2" maxlength="2000"></textarea></label>
+    </div></details>
+    <div class="offer-manual-actions"><button class="primary" type="submit">Angebot speichern</button><span id="offerManualStatus" class="offer-import-status" role="status">Das Angebot erscheint direkt in der Liste. Es wird noch nicht beauftragt.</span></div>
+   </form>
+  </section>
+  <section class="panel budget-panel offer-review-section" id="angebote-pruefen"><div class="panelbar"><div><h2>PDF-Angebote prüfen <span id="offersDraftBadge" class="offers-counter"></span></h2><p>Nur falls du eine PDF hochgeladen hast: Prüfe die vorgeschlagenen Daten und übernimm sie mit einem Klick.</p></div><a class="mini" href="/belege">Kategorien verwalten ↗</a></div><div id="offerDrafts" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div></section>
+  <section class="panel budget-panel offer-compare-section" id="angebotsliste"><div class="panelbar"><div><h2>Deine Angebote</h2><p>Preise vergleichen, bearbeiten und entscheiden. Abgelehnte Angebote bleiben als Vergleich erhalten.</p></div><label class="offers-filter">Gewerk <select id="offerCategoryFilter"><option value="">Alle Kategorien</option></select></label></div>
+   <div id="offerList" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div>
+   <p class="section-note">Bei angenommener Leistung wird der Bruttogesamtbetrag genau einmal übernommen. Wenn du eine Kostenplanposition zuordnest, ersetzt der angenommene Preis deren Schätzung. Rechnungen und Zahlungen werden unter <a href="/belege">Rechnungen & Belege</a> erfasst.</p>
+  </section>
+</main></div></div>
+<script src="/static/offers.js"></script><script src="/static/shell.js"></script><script>if('serviceWorker' in navigator&&window.isSecureContext)navigator.serviceWorker.register('/sw.js').catch(console.warn);</script>
+</body></html>

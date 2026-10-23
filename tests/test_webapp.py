@@ -22,6 +22,7 @@ class OfferWebappTest(unittest.TestCase):
             oid=offer.id;section_id=offer.sections[0].id;line_id=line.id
         client=app.test_client()
         self.assertEqual(client.get('/kosten').status_code,200)
+        self.assertEqual(client.get('/angebote').status_code,200)
         self.assertEqual(client.get('/api/costs').json['summary']['planned'],200)
         self.assertEqual(client.patch(f'/api/offer-sections/{section_id}',json={'selected':True}).status_code,409)
         self.assertEqual(client.get('/api/costs').json['summary']['planned'],200)
