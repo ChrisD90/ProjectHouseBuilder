@@ -3,7 +3,9 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const panel = $('aiScheduleChatPanel');
-  if (!panel) return;
+  const fab = $('scheduleChatFab');
+  if (!panel || !fab) return;
+  let isOpen = false;
   let history = [];
   let taskCount = 0;
   let connected = false;
@@ -155,9 +157,48 @@
     renderHistory();
     renderConversation();
   }
-  function visibility() {
-    panel.hidden = !(taskCount>0 && connected);
+  function available() {
+    return taskCount>0 && connected;
   }
+  function setPopoverOpen(open,restoreFocus=false) {
+    isOpen=Boolean(open) && available();
+    panel.hidden=!isOpen;
+    fab.setAttribute('aria-expanded',String(isOpen));
+    fab.setAttribute('aria-label',isOpen
+      ?'ChatGPT-Bauzeitenplan-Chat schließen'
+      :'ChatGPT-Bauzeitenplan-Chat öffnen');
+    fab.title=isOpen?'Chat schließen':'Mit ChatGPT über den Bauzeitenplan sprechen';
+    if(isOpen){
+      $('scheduleChatInput').focus({preventScroll:true});
+    }else if(restoreFocus && !fab.hidden){
+      fab.focus({preventScroll:true});
+    }
+  }
+  function visibility() {
+    const canChat=available();
+    fab.hidden=!canChat;
+    if(!canChat)setPopoverOpen(false,false);
+  }
+  fab.addEventListener('click',()=>setPopoverOpen(!isOpen,true));
+  // A pointer interaction outside closes the popover, but does not block the click
+  // that the user intended on the underlying Gantt chart.
+  document.addEventListener('pointerdown',event=>{
+    if(isOpen && !panel.contains(event.target) && !fab.contains(event.target))
+      setPopoverOpen(false,false);
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape' && isOpen){
+      event.preventDefault();
+      event.stopPropagation();
+      setPopoverOpen(false,true);
+    }
+  });
+  // Keep keyboard focus inside a meaningful place when navigating out of the
+  // non-modal popup. Nothing is trapped; the Gantt chart remains accessible.
+  document.addEventListener('focusin',event=>{
+    if(isOpen && !panel.contains(event.target) && !fab.contains(event.target))
+      setPopoverOpen(false,false);
+  });
   document.addEventListener('phb-schedule-updated',event=>{
     taskCount=event.detail.taskCount;
     visibility();
