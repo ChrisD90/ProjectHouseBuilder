@@ -254,3 +254,33 @@ body.phb-app [hidden]{display:none!important}
  body.phb-app button[data-phb-busy="true"]::after{animation-duration:2.5s}
  body.phb-app :is(.panel,.kpi,.tile,.offer-card){transition:none}
 }
+/* Cross-page harmonization for older bare buttons and global label rules. */
+body.phb-app .phb-theme-control{flex-direction:row;white-space:nowrap}
+body.phb-app .phb-theme-control select{flex:none}
+body.phb-app main.phb-main button:not(.primary):not(.danger):not(.offer-method):not(.phb-icon-button):not(.phb-ai-primary):not(.phb-ai-topbar):not(.phb-nav-link):not([data-phb-busy]){
+  background:var(--ui-soft);color:var(--ui-ink-soft);border:1px solid var(--ui-line-strong);
+}
+body.phb-app main.phb-main button:not(.primary):not(.danger):not(.offer-method):not(.phb-icon-button):hover:not(:disabled){
+  background:var(--ui-soft-accent);border-color:var(--ui-accent);
+}
+body.phb-app main.phb-main button:is(.primary,.danger){font-weight:700}
+body.phb-app .phb-topbar-right :is(label,button){margin:0}
+body.phb-app main.phb-main :is(.offer-entry-form,.offer-review-form,.fields,.formgrid,.offer-manual-form,.receipt-assignment-fields,.master-fields) >label{min-width:0}
+body.phb-app main.phb-main :is(.offer-entry-form,.offer-review-form,.fields,.formgrid,.offer-manual-form,.receipt-assignment-fields,.master-fields) :is(input,select,textarea){max-width:100%}
+body.phb-app main.phb-main :is(.modal-head,.modal-actions,.offer-actions,.offer-ai-actions,.master-dialog-actions){gap:12px}
+body.phb-app main.phb-main :is(.schedule-chat-bubble,.offer-notes,.offer-mapping,.note,.hint,p){overflow-wrap:anywhere}
+:root[data-phb-theme="dark"] body.phb-app .phb-menu-button{background:var(--ui-soft);border-color:var(--ui-line);color:var(--ui-ink)}
+:root[data-phb-theme="dark"] body.phb-app .phb-topbar__status{color:var(--ui-success)}
+:root[data-phb-theme="dark"] body.phb-app :is(.offer-method.is-selected,
+  .phb-ai-offer-choices label:has(input:checked),.entry.active,.master-jump a:hover){
+  background:var(--ui-soft-accent);border-color:var(--ui-accent);color:var(--ui-ink)
+}
+:root[data-phb-theme="dark"] body.phb-app :is(.master-table strong,
+  .loan-doc-row a,.master-tag-row strong,.record strong,.kpi strong,.smallcard .values b,
+  .offer-sum strong,.offer-card-head h3,.receipt-assignment strong,
+  .schedule-diff-item strong,.template-step,.template-summary>strong,
+  .schedule-history-heading strong){color:var(--ui-ink)}
+:root[data-phb-theme="dark"] body.phb-app .phb-ai-confirm input[type=checkbox]{accent-color:var(--ui-accent)}
+:root[data-phb-theme="dark"] body.phb-app .phb-ai-topbar{background:var(--ui-soft)}
+:root[data-phb-theme="dark"] body.phb-app .offers-how b{background:#178f92}
+:root[data-phb-theme="dark"] body.phb-app .phb-ai-warning>strong{color:var(--ui-ink)}
