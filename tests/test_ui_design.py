@@ -44,7 +44,6 @@ class GlobalUIDesignTest(unittest.TestCase):
         self.assertIn("FormData",script)
         self.assertIn("ChatGPT",script)
         self.assertIn("Rechnung",script)
-        self.assertIn("Backup",script) if False else None
         self.assertNotRegex(script,r'fetch\\([\'\"]https?://')
         for token in ('--ui-bg','--ui-surface','--ui-ink','--ui-line',
                       '--ui-gutter','data-phb-theme="dark"','phb-busy-spinner',
@@ -55,6 +54,7 @@ class GlobalUIDesignTest(unittest.TestCase):
         worker=(STATIC/'sw.js').read_text()
         self.assertIn("'/static/ui.css'",worker)
         self.assertIn("'/static/ui.js'",worker)
+        self.assertIn('id="sun"',(STATIC/'icons'/'ui-icons.svg').read_text())
         self.assertIn("url.pathname.startsWith('/static/')",worker)
         self.assertNotIn("'/api/",worker)
 
