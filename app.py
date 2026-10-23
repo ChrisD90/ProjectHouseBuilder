@@ -2520,8 +2520,10 @@ def server_error(err):
 
 # Shared application code: finance models and routes live in a separate module.
 from financing import register_financing
-(Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment) = register_financing(
-    app, db, Receipt, CostItem, BudgetLine, budget_summary)
+(Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument) = register_financing(
+    app, db, Receipt, CostItem, BudgetLine, budget_summary,
+    root=ROOT, ai_request_required=_ai_request_required,
+    chatgpt=chatgpt, extract_json=extract_json)
 
 @app.get('/api/backup/status')
 def backup_status():
