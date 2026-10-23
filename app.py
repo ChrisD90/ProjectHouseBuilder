@@ -18,6 +18,7 @@ from offer_parser import parse_pdf, pdf_to_pages, parse_offer
 from receipt_parser import parse_receipt, category_for
 from receipt_parser import parse_receipt, extract_text, CATEGORIES
 from scheduler import schedule
+from sample_schedule import load_schedule_template, schedule_template_summary
 from pathlib import Path
 import hmac
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -109,6 +110,7 @@ class Task(db.Model):
     code = db.Column(db.String(30), unique=True, nullable=False)
     phase = db.Column(db.String(140), nullable=False, default='Allgemein')
     trade = db.Column(db.String(140), nullable=False, default='Sonstiges')
+    execution_type = db.Column(db.String(24), nullable=False, default='Noch offen', server_default='Noch offen')
     name = db.Column(db.String(300), nullable=False)
     company = db.Column(db.String(300), nullable=False, default='')
     contractor_id = db.Column(db.Integer, db.ForeignKey('contractor.id'), nullable=True)
@@ -283,7 +285,7 @@ def serialize(tasks):
     output = []
     for t in tasks:
         s,e = sched[t.id]
-        output.append({'id':t.id,'code':t.code,'phase':t.phase,'trade':t.trade,'name':t.name,'company':t.company,'contractor_id':t.contractor_id,
+        output.append({'id':t.id,'code':t.code,'phase':t.phase,'trade':t.trade,'execution_type':t.execution_type,'name':t.name,'company':t.company,'contractor_id':t.contractor_id,
                        'duration':t.duration,'lag_days':t.lag_days,'earliest_start':t.earliest_start.isoformat() if t.earliest_start else '',
                        'actual_start':t.actual_start.isoformat() if t.actual_start else '',
                        'actual_end':t.actual_end.isoformat() if t.actual_end else '',
@@ -304,6 +306,8 @@ def initialize():
     task_columns={col['name'] for col in sa_inspect(db.engine).get_columns('task')}
     if 'contractor_id' not in task_columns:
         db.session.execute(text('ALTER TABLE task ADD COLUMN contractor_id INTEGER'))
+    if 'execution_type' not in task_columns:
+        db.session.execute(text("ALTER TABLE task ADD COLUMN execution_type VARCHAR(24) NOT NULL DEFAULT 'Noch offen'"))
     old_columns={col['name'] for col in sa_inspect(db.engine).get_columns('cost_item')}
     if 'budget_line_id' not in old_columns:
         db.session.execute(text('ALTER TABLE cost_item ADD COLUMN budget_line_id INTEGER'))
@@ -319,21 +323,10 @@ def initialize():
         db.session.commit()
     if not db.session.get(Setting,'start'):
         db.session.add(Setting(key='start', value='2027-03-01'))
-    first_setup = db.session.get(Setting, 'project_initialized') is None
-    if first_setup and not db.session.scalar(select(Task.id).limit(1)):
-        initial = json.loads((ROOT/'seed.json').read_text(encoding='utf-8'))
-        for i,data in enumerate(initial):
-            db.session.add(Task(code=data['code'], phase=data['phase'],trade=data['trade'],name=data['name'],
-                                company=data['company'],duration=data['duration'],lag_days=data['lag_days'],
-                                earliest_start=parse_date(data['earliest_start']), status=data['status'],
-                                progress=data['progress'], actual_start=parse_date(data['actual_start']),
-                                actual_end=parse_date(data['actual_end']), notes=data['notes'],position=i))
-        db.session.flush()
-        by_code={t.code:t.id for t in all_tasks()}
-        for data in initial:
-            for code in data['predecessors']:
-                db.session.add(Dependency(task_id=by_code[data['code']], predecessor_id=by_code[code]))
-    if first_setup:
+    # Intentionally no automatic schedule seed. The user can import the
+    # curated template explicitly after reviewing it; never silently refill
+    # an empty or previously reset project.
+    if db.session.get(Setting, 'project_initialized') is None:
         db.session.add(Setting(key='project_initialized', value='1'))
     db.session.commit()
 
@@ -346,6 +339,58 @@ def project():
     tasks=serialize(all_tasks())
     contractors=db.session.scalars(select(Contractor).order_by(Contractor.name)).all()
     return jsonify({'start':setting('start'), 'tasks':tasks,'contractors':[{'id':x.id,'name':x.name,'trade':x.trade,'phone':x.phone,'email':x.email} for x in contractors]})
+
+@app.get('/api/tasks/template')
+def tasks_template_preview():
+    """Read-only preview; loading templates never modifies project data."""
+    try:
+        steps=load_schedule_template(ROOT / 'seed.json')
+        summary=schedule_template_summary(steps)
+        summary['can_initialize']=not bool(db.session.scalar(select(Task.id).limit(1)))
+        return jsonify(summary)
+    except (ValueError, OSError) as exc:
+        return jsonify(error='Mustervorlage konnte nicht geladen werden: '+str(exc)),500
+
+
+@app.post('/api/tasks/initialize')
+def tasks_initialize_from_template():
+    """Atomic, opt-in one-time import into a COMPLETELY EMPTY schedule.
+
+    An existing plan is never deleted, replaced, or merged. The user can
+    still create and edit tasks manually afterwards.
+    """
+    if db.session.scalar(select(Task.id).limit(1)) is not None:
+        return jsonify(error='Ein Bauzeitenplan existiert bereits. Der Musterplan kann nur bei leerer Aufgabenliste eingefügt werden; bestehende Arbeitsschritte bleiben erhalten.'),409
+    body=request.get_json(silent=True)
+    if not isinstance(body,dict) or body.get('confirm') is not True:
+        return jsonify(error='Bitte die Musterplan-Initialisierung ausdrücklich bestätigen.'),400
+    try:
+        steps=load_schedule_template(ROOT / 'seed.json')
+        # Make errors (including duplicate codes / broken links) fail before
+        # committing any of the draft tasks.
+        start=parse_date(setting('start','2027-03-01'))
+        for i,row in enumerate(steps):
+            db.session.add(Task(code=row['code'], phase=row['phase'],trade=row['trade'],
+                   name=row['name'],execution_type=row['execution_type'],company='',
+                   duration=row['duration'],lag_days=row['lag_days'],status='Offen',
+                   progress=0,notes=row['notes'],position=i))
+        db.session.flush()
+        codes={t.code:t.id for t in all_tasks()}
+        for row in steps:
+            for pred in row['predecessors']:
+                db.session.add(Dependency(task_id=codes[row['code']],predecessor_id=codes[pred]))
+        db.session.flush()
+        schedule(all_tasks(),start)
+        db.session.commit()
+        return jsonify(ok=True,created=len(steps),summary=schedule_template_summary(steps)),201
+    except (ValueError,TypeError,OSError) as exc:
+        db.session.rollback()
+        return jsonify(error=str(exc)),400
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Musterplan-Initialisierung fehlgeschlagen')
+        return jsonify(error='Musterplan konnte nicht vollständig initialisiert werden. Keine Aufgaben übernommen.'),500
+
 
 @app.patch('/api/project')
 def update_project():
@@ -360,7 +405,7 @@ def update_project():
     except (ValueError,TypeError) as err:
         db.session.rollback();return jsonify(error=str(err)),400
 
-FIELDS={'code','phase','trade','name','company','contractor_id','duration','lag_days','earliest_start','actual_start','actual_end','status','progress','notes','position'}
+FIELDS={'code','phase','trade','execution_type','name','company','contractor_id','duration','lag_days','earliest_start','actual_start','actual_end','status','progress','notes','position'}
 
 def update_task_fields(t,body):
     for f in FIELDS:
@@ -375,6 +420,7 @@ def update_task_fields(t,body):
     if not t.code.strip():raise ValueError('ID fehlt.')
     if t.duration<1 or t.lag_days<0 or t.progress<0 or t.progress>100:raise ValueError('Ungültige Dauer, Abstand oder Fortschritt.')
     if t.status not in ('Offen','In Arbeit','Erledigt','Pausiert'):raise ValueError('Ungültiger Status.')
+    if t.execution_type not in ('Eigenleistung','Fremdleistung','Noch offen'):raise ValueError('Ungültige Ausführungsart.')
     if t.contractor_id and not db.session.get(Contractor,t.contractor_id):raise ValueError('Firma existiert nicht.')
 
 def set_predecessors(t,codes):
@@ -433,7 +479,7 @@ def delete_task(task_id):
 
 @app.get('/api/export.csv')
 def export_csv():
-    data=serialize(all_tasks());buf=io.StringIO();fields=['code','phase','trade','name','company','predecessors','lag_days','duration','earliest_start','start','end','status','progress','actual_start','actual_end','notes']
+    data=serialize(all_tasks());buf=io.StringIO();fields=['code','phase','trade','execution_type','name','company','predecessors','lag_days','duration','earliest_start','start','end','status','progress','actual_start','actual_end','notes']
     writer=csv.DictWriter(buf,fieldnames=fields,extrasaction='ignore',delimiter=';');writer.writeheader()
     for row in data:writer.writerow({**row,'predecessors':', '.join(row['predecessors'])})
     return Response('\ufeff'+buf.getvalue(),mimetype='text/csv; charset=utf-8',headers={'Content-Disposition':'attachment; filename=Sanierungsprojekt_Plan.csv'})

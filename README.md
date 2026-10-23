@@ -27,13 +27,13 @@ Die alten Excel-Kostenplanvorlagen und ihr automatischer Import sind **entfernt*
 
 ## Datenbankschema und Updates
 
-`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Neue Version `0004` entfernt nicht mehr benötigte Excel-Metadatentabellen/-spalten. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
+`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung und `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
 
 Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.db-shm`, `private/`, `backups/`, `.env`, `instance/` aus. Diese Dateien niemals in GitHub einchecken. Die Datenbank nie in einem Cloud-Sync-Ordner betreiben; nur vollständige Backups synchronisieren.
 
 ## Funktionen
 
-- **Bauzeitenplan:** Gantt mit Abhängigkeiten, Terminen, Status, Eigenleistungen und Firmen.
+- **Bauzeitenplan (`/`):** Ein ausdrücklich gestarteter, individuell auf die Altbausanierung zugeschnittener **Musterplan mit 69 Arbeitsschritten** (21 Eigenleistungen / 48 Fremdleistungen, 9 Bauphasen) inklusive Abhängigkeiten. Ein Import ist **nur in den leeren Bauzeitenplan** möglich; vorhandene Aufgaben werden niemals überschrieben. Aufgaben können danach bearbeitet, gelöscht, neu erstellt und nach Eigen-/Fremdleistung gefiltert werden. Das Gantt kennzeichnet die Ausführungsart unabhängig vom Fortschrittsstatus.
 - **Kosten & Budget:** eigene Budgetpositionen und Schätzwerte, Beauftragungen, Förderungen und Kostenprognose.
 - **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, korrigieren, annehmen oder ablehnen. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.
 - **Kosten & Budget (`/kosten`):** Ausschließlich Kostenschätzungen und zusätzliche Ausgaben planen; keine zweite Angebotsverwaltung. Angenommene Angebote werden automatisch eingerechnet, aber nicht nochmals bearbeitbar als manuelle Kostenposition angezeigt.
@@ -86,3 +86,22 @@ nach Zurücknehmen der Buchung umhängen. Zahlungen und Rechnungswerte bleiben g
 Die neuen Spalten werden per Migration `0005` angelegt. Bei einer vorhandenen SQLite-DB
 erstellt der Mac-Start vor der Migration wie gewohnt zwingend ein vollständiges,
 geprüftes Backup einschließlich aller Originaldateien.
+
+
+## Bauzeitenplan: optionalen Musterplan laden
+
+1. **Bauzeitenplan** in der linken Sidebar öffnen: `http://127.0.0.1:5055/`.
+2. Im Abschnitt **„Muster-Bauzeitplan übernehmen“** die neun Bauphasen sowie die Zahl von Eigen- und Fremdleistungen ansehen.
+3. Einwilligung ankreuzen und **„Musterplan einfügen“** wählen. Es werden 69 Arbeitsschritte und ihre zeitlichen Abhängigkeiten hinzugefügt; alle sind anfänglich „Offen“.
+4. Danach jede Aufgabe, Dauer, Vorgänger, Ausführungsart und gegebenenfalls Firma individuell bearbeiten. Über den Filter **„Eigenleistung / Fremdleistung“** kannst du den eigenen Arbeitsanteil isoliert betrachten; CSV-/JSON-Export enthält die Kennzeichnung.
+
+Der Musterplan **wird auf neuen Installationen und nach einem Reset nicht mehr automatisch geladen**. Er wird nie auf einen vorhandenen Plan übertragen; eigene Aufgaben und reale Termine bleiben erhalten. Frühere Bestandsaufgaben werden durch Migration `0006` nicht gelöscht. Ihre Ausführungsart lautet zunächst „Noch offen“, wenn sie nicht eindeutig an der alten Gewerkbezeichnung zu erkennen ist. Vor jedem Schema-Upgrade vorhandener SQLite-Daten ist weiterhin das geprüfte vollständige Backup Pflicht.
+
+Der Inhalt ist ein **unverbindlicher Planvorschlag** für das Haus mit Dach-/Kniestockerhöhung, Terrasse, teilweise gedämmter Fassade, Wärmepumpe, Elektro, Bädern, PV und Smart Home. Die **Dauerangaben sind grobe Kalendertag-Platzhalter**, keine verbindliche Termin- oder Baugenehmigungszusage. Sicherheit, Statik, Förderung, Trocknungszeiten sowie die Gewerke-Reihenfolge müssen anhand des tatsächlichen Bauzustands und der Architekten-/Fachplanung freigegeben werden. Bei Schadstoffen, tragenden Bauteilen, Elektroanschlüssen und Kältemittelanlagen sind entsprechende Fachbetriebe nötig. Baustellenkoordination und mögliche SiGeKo-Pflichten mit der Bauleitung abklären.
+
+**Fachliche Grundlagen des allgemeinen Ablaufs (die individuellen Arbeiten sind daraus abgeleitet, nicht wortwörtlich übernommen):**
+
+- Verbraucherzentrale, [individueller Sanierungsfahrplan / iSFP](https://www.verbraucherzentrale.de/wissen/energie/energetische-sanierung/individueller-sanierungsfahrplan-isfp-modernisieren-mit-koepfchen-59828)
+- [Musterbericht Sanierungsfahrplan Baden-Württemberg](https://um.baden-wuerttemberg.de/fileadmin/redaktion/m-um/intern/Dateien/Dokumente/5_Energie/Beratung_und_Information/SanierungsfahrplanBW/Musterbericht_SFP_Anmerkungen_f%C3%BCr_Energieberater.pdf) – Maßnahmenpakete und technisch sinnvolle Abfolge
+- BG BAU, [Baustellenverordnung und Koordination](https://bgbauaktuell.bgbau.de/bg-bau-aktuell-12021/artikel-12021/schwerpunkt-baustellenverordnung)
+- [Altbausanierung und gewerkeübergreifende Reihenfolge](https://www.schulten-bau.de/blog/die-richtige-reihenfolge-bei-einer-sanierung-welche-gewerke-wann-kommen) – als nichtamtliche Ergänzung für Ausführungsabhängigkeiten

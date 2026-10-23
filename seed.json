@@ -1,827 +1,1361 @@
 [
   {
-    "code": "T01",
-    "phase": "Vorbereitung",
-    "trade": "Planung",
-    "name": "Bestandsaufnahme, Aufmaß und Schadstoffprüfung",
-    "company": "",
+    "phase": "01 Planung & Vergabe",
+    "trade": "Bauplanung",
+    "name": "Bestandsaufnahme und Aufmaß Altbau",
+    "execution_type": "Fremdleistung",
+    "duration": 10,
     "predecessors": [],
-    "lag_days": 0,
-    "duration": 14,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Abstimmung Statik, Schadstoffe, Feuchte"
-  },
-  {
-    "code": "T02",
-    "phase": "Vorbereitung",
-    "trade": "Architekt / Statik",
-    "name": "Genehmigungsplanung für Dach, Gaube und Kniestock",
+    "notes": "Baujahr ca. 1914; Holzbalkendecken, Mauerwerk, Gewölbekeller und Terrasse mit Stahlträgern dokumentieren.",
+    "code": "S01",
     "company": "",
-    "predecessors": [
-      "T01"
-    ],
     "lag_days": 0,
-    "duration": 45,
     "earliest_start": null,
     "status": "Offen",
     "progress": 0,
     "actual_start": null,
-    "actual_end": null,
-    "notes": "Genehmigungspflicht örtlich klären"
+    "actual_end": null
   },
   {
-    "code": "T03",
-    "phase": "Vorbereitung",
-    "trade": "Energieberatung",
-    "name": "Energiekonzept, iSFP / Förderprüfung und Heizlast",
-    "company": "",
-    "predecessors": [
-      "T01"
-    ],
-    "lag_days": 0,
-    "duration": 30,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Förderfristen vor Beauftragung beachten"
-  },
-  {
-    "code": "T04",
-    "phase": "Vorbereitung",
+    "phase": "01 Planung & Vergabe",
     "trade": "Bauherrschaft",
-    "name": "Kostenrahmen, Finanzierung und Vergabeplan",
-    "company": "",
+    "name": "Fotos, Raumliste und vorhandene Installationen dokumentieren",
+    "execution_type": "Eigenleistung",
+    "duration": 7,
     "predecessors": [
-      "T01"
+      "S01"
     ],
+    "notes": "Unterlagen und Fotos sammeln; Bestandspläne mit Architekt abgleichen.",
+    "code": "S02",
+    "company": "",
     "lag_days": 0,
-    "duration": 28,
     "earliest_start": null,
     "status": "Offen",
     "progress": 0,
     "actual_start": null,
-    "actual_end": null,
-    "notes": "Budget und Reserven freigeben"
+    "actual_end": null
   },
   {
-    "code": "T05",
-    "phase": "Vorbereitung",
-    "trade": "Behörden",
-    "name": "Baugenehmigung / Freigabe Baumaßnahmen",
-    "company": "",
+    "phase": "01 Planung & Vergabe",
+    "trade": "Schadstoffgutachten",
+    "name": "Schadstoffprüfung vor Eingriffen und Rückbau",
+    "execution_type": "Fremdleistung",
+    "duration": 12,
     "predecessors": [
-      "T02"
+      "S01"
     ],
+    "notes": "Bei verdächtigen Materialien fachkundige Prüfung und Entsorgung festlegen; keine Eigenleistung bei schadstoffbelastetem Material.",
+    "code": "S03",
+    "company": "",
     "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "01 Planung & Vergabe",
+    "trade": "Tragwerksplanung",
+    "name": "Statik Dachaufstockung, Gaube und Terrasse prüfen",
+    "execution_type": "Fremdleistung",
+    "duration": 28,
+    "predecessors": [
+      "S01"
+    ],
+    "notes": "Kniestockerhöhung, Dachlasten, Holzbalkendecken und eingreifende Terrassen-Stahlträger ausdrücklich untersuchen.",
+    "code": "S04",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "01 Planung & Vergabe",
+    "trade": "Architektur",
+    "name": "Genehmigungs- und Ausführungsplanung Dachumbau",
+    "execution_type": "Fremdleistung",
+    "duration": 42,
+    "predecessors": [
+      "S04"
+    ],
+    "notes": "Bauamt klärt, welche Genehmigungen für Kniestock, Gaube, Umbau und Änderungen an Tragwerk erforderlich sind.",
+    "code": "S05",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "01 Planung & Vergabe",
+    "trade": "Genehmigung",
+    "name": "Baugenehmigung / Baubeginnfreigabe abwarten",
+    "execution_type": "Fremdleistung",
     "duration": 75,
+    "predecessors": [
+      "S05"
+    ],
+    "notes": "Schätzwert: Dauer und Auflagen der Behörde sind projektspezifisch; statisch relevante Arbeiten erst nach Freigabe.",
+    "code": "S06",
+    "company": "",
+    "lag_days": 0,
     "earliest_start": null,
     "status": "Offen",
     "progress": 0,
     "actual_start": null,
-    "actual_end": null,
-    "notes": "Platzhalter bis tatsächlicher Bescheid vorliegt"
+    "actual_end": null
   },
   {
-    "code": "T06",
-    "phase": "Vorbereitung",
-    "trade": "Bauleitung",
-    "name": "Leistungsbeschreibungen und Angebotsvergleich",
-    "company": "",
-    "predecessors": [
-      "T02",
-      "T03",
-      "T04"
-    ],
-    "lag_days": 0,
-    "duration": 35,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Gewerke / Schnittstellen schriftlich abgrenzen"
-  },
-  {
-    "code": "T07",
-    "phase": "Vorbereitung",
-    "trade": "Bauherrschaft",
-    "name": "Vergaben, Lieferzeiten und Bemusterung",
-    "company": "",
-    "predecessors": [
-      "T05",
-      "T06"
-    ],
-    "lag_days": 0,
-    "duration": 21,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Fenster, Dach, WP, Sanitär frühzeitig bestellen"
-  },
-  {
-    "code": "T08",
-    "phase": "Vorbereitung",
-    "trade": "Bauleitung",
-    "name": "Baustelleneinrichtung und Schutzmaßnahmen",
-    "company": "",
-    "predecessors": [
-      "T07"
-    ],
-    "lag_days": 0,
-    "duration": 5,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Terrasse / Tragkonstruktion schützen"
-  },
-  {
-    "code": "T09",
-    "phase": "Rohbau",
-    "trade": "Eigenleistung",
-    "name": "Entkernung, Rückbau innen und Entsorgung",
-    "company": "",
-    "predecessors": [
-      "T08"
-    ],
-    "lag_days": 0,
-    "duration": 21,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Vor Rückbau Schadstoffe ausschließen"
-  },
-  {
-    "code": "T10",
-    "phase": "Rohbau",
-    "trade": "Statiker / Zimmerer",
-    "name": "Abfangungen / Tragwerksmaßnahmen für Dach",
-    "company": "",
-    "predecessors": [
-      "T09"
-    ],
-    "lag_days": 0,
-    "duration": 10,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Terrassen-Stahlträger statisch berücksichtigen"
-  },
-  {
-    "code": "T11",
-    "phase": "Rohbau",
-    "trade": "Dachdecker / Zimmerer",
-    "name": "Dachrückbau und Wetterschutz",
-    "company": "",
-    "predecessors": [
-      "T10"
-    ],
-    "lag_days": 0,
-    "duration": 7,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Witterungsreserve"
-  },
-  {
-    "code": "T12",
-    "phase": "Rohbau",
-    "trade": "Maurer / Zimmerer",
-    "name": "Kniestock anheben, Dachstuhl und Gaube",
-    "company": "",
-    "predecessors": [
-      "T11"
-    ],
-    "lag_days": 0,
-    "duration": 28,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Statik / Genehmigung verbindlich"
-  },
-  {
-    "code": "T13",
-    "phase": "Rohbau",
-    "trade": "Dachdecker",
-    "name": "Dach eindecken und Dachabdichtung",
-    "company": "",
-    "predecessors": [
-      "T12"
-    ],
-    "lag_days": 0,
-    "duration": 14,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Haus wieder wetterdicht"
-  },
-  {
-    "code": "T14",
-    "phase": "Rohbau",
-    "trade": "Fensterbauer",
-    "name": "Fenster und Außentüren OG / DG ersetzen",
-    "company": "",
-    "predecessors": [
-      "T13"
-    ],
-    "lag_days": 0,
-    "duration": 12,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "3-fach OG / DG nach Planung"
-  },
-  {
-    "code": "T15",
-    "phase": "Rohbau",
-    "trade": "Rohbauer",
-    "name": "Mauerwerksöffnungen, Schlitze, Durchbrüche",
-    "company": "",
-    "predecessors": [
-      "T09",
-      "T12"
-    ],
-    "lag_days": 0,
-    "duration": 14,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Statik und Trassenabstimmung"
-  },
-  {
-    "code": "T16",
-    "phase": "Gebäudehülle",
-    "trade": "Dachdecker / Dämmung",
-    "name": "Dachdämmung, Luftdichtheit und Dampfbremse",
-    "company": "",
-    "predecessors": [
-      "T13",
-      "T14"
-    ],
-    "lag_days": 0,
-    "duration": 18,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Feuchteschutzkonzept verbindlich"
-  },
-  {
-    "code": "T17",
-    "phase": "Gebäudehülle",
-    "trade": "Fassadenbauer",
-    "name": "Außendämmung OG/DG und Anschluss EG",
-    "company": "",
-    "predecessors": [
-      "T14",
-      "T13"
-    ],
-    "lag_days": 0,
-    "duration": 21,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Dämmkeil, Sockel und Balkonanschlüsse prüfen"
-  },
-  {
-    "code": "T18",
-    "phase": "Gebäudehülle",
-    "trade": "Fensterbauer",
-    "name": "Fenster EG prüfen / ggf. erneuern",
-    "company": "",
-    "predecessors": [
-      "T15"
-    ],
-    "lag_days": 0,
-    "duration": 8,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "2-fach oder Bestand nach Entscheidung"
-  },
-  {
-    "code": "T19",
-    "phase": "Haustechnik",
-    "trade": "Elektro / Eigenleistung",
-    "name": "Elektro-Rohinstallation EG / OG / DG",
-    "company": "",
-    "predecessors": [
-      "T15",
-      "T14"
-    ],
-    "lag_days": 0,
+    "phase": "01 Planung & Vergabe",
+    "trade": "Energieberatung",
+    "name": "Sanierungskonzept, Wärmebrücken, Luftdichtheit und iSFP abstimmen",
+    "execution_type": "Fremdleistung",
     "duration": 25,
+    "predecessors": [
+      "S01"
+    ],
+    "notes": "Besonderer Übergang Dämmung OG/DG zu ungedämmtem EG; Dach, Feuchte und Fensteranschlüsse koordinieren.",
+    "code": "S07",
+    "company": "",
+    "lag_days": 0,
     "earliest_start": null,
     "status": "Offen",
     "progress": 0,
     "actual_start": null,
-    "actual_end": null,
-    "notes": "Leerrohre, Shelly, Stromkreise, UV"
+    "actual_end": null
   },
   {
-    "code": "T20",
-    "phase": "Haustechnik",
-    "trade": "Sanitär",
-    "name": "Neue Steigleitungen, Abwasser und Rohinstallation",
-    "company": "",
-    "predecessors": [
-      "T15",
-      "T14"
-    ],
-    "lag_days": 0,
-    "duration": 20,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Bad OG, Bad DG, Gäste-WC"
-  },
-  {
-    "code": "T21",
-    "phase": "Haustechnik",
-    "trade": "Heizung / Sanitär",
-    "name": "Wärmepumpe, Hydraulik und Technikraum vorbereiten",
-    "company": "",
-    "predecessors": [
-      "T03",
-      "T20"
-    ],
-    "lag_days": 0,
+    "phase": "01 Planung & Vergabe",
+    "trade": "Heizungsplanung",
+    "name": "Heizlast und Wärmepumpe/Heizflächen dimensionieren",
+    "execution_type": "Fremdleistung",
     "duration": 15,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Aufstellort / Schall / elektrische Anschlüsse"
-  },
-  {
-    "code": "T22",
-    "phase": "Haustechnik",
-    "trade": "Heizung / Eigenleistung",
-    "name": "Fußbodenheizung und Niedertemperaturheizkörper",
-    "company": "",
     "predecessors": [
-      "T20",
-      "T21"
+      "S07"
     ],
-    "lag_days": 0,
-    "duration": 18,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Selbstmontage und Anschluss koordinieren"
-  },
-  {
-    "code": "T23",
-    "phase": "Haustechnik",
-    "trade": "Klimatechnik",
-    "name": "Leitungen und Montagepunkte für Split-Klimageräte",
+    "notes": "Raumweise Heizlast nach geplantem Dämmzustand; Heizflächen, zentrale Warmwasserbereitung, Splitgeräte.",
+    "code": "S08",
     "company": "",
-    "predecessors": [
-      "T19",
-      "T20"
-    ],
     "lag_days": 0,
-    "duration": 10,
     "earliest_start": null,
     "status": "Offen",
     "progress": 0,
     "actual_start": null,
-    "actual_end": null,
-    "notes": "4 Innengeräte / Außengerät"
+    "actual_end": null
   },
   {
-    "code": "T24",
-    "phase": "Haustechnik",
-    "trade": "Lüftung / Bauleitung",
-    "name": "Feuchte- und Lüftungskonzept / Durchführungen",
-    "company": "",
-    "predecessors": [
-      "T16",
-      "T20"
-    ],
-    "lag_days": 0,
-    "duration": 8,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Besonders Keller und neue luftdichte Hülle"
-  },
-  {
-    "code": "T25",
-    "phase": "Innenausbau",
-    "trade": "Trockenbauer",
-    "name": "Ständerwände, Vorwände und Dachausbau",
-    "company": "",
-    "predecessors": [
-      "T16",
-      "T19",
-      "T20"
-    ],
-    "lag_days": 0,
-    "duration": 24,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Installationen für Bäder berücksichtigen"
-  },
-  {
-    "code": "T26",
-    "phase": "Innenausbau",
-    "trade": "Bauleitung",
-    "name": "Abnahme Rohinstallationen / Fotodokumentation",
-    "company": "",
-    "predecessors": [
-      "T19",
-      "T20",
-      "T23"
-    ],
-    "lag_days": 0,
-    "duration": 4,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Vor Schließen der Wände"
-  },
-  {
-    "code": "T27",
-    "phase": "Innenausbau",
-    "trade": "Trockenbauer",
-    "name": "Decken und Wände schließen",
-    "company": "",
-    "predecessors": [
-      "T25",
-      "T26"
-    ],
-    "lag_days": 0,
-    "duration": 17,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Luftdichtheit und Revisionsöffnungen"
-  },
-  {
-    "code": "T28",
-    "phase": "Innenausbau",
-    "trade": "Estrichleger",
-    "name": "Untergrund, Dämmung und Estrich / Trockenestrich",
-    "company": "",
-    "predecessors": [
-      "T22",
-      "T26"
-    ],
-    "lag_days": 0,
-    "duration": 15,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Bodenaufbau / Holzbalken Statik prüfen"
-  },
-  {
-    "code": "T29",
-    "phase": "Innenausbau",
-    "trade": "Bauleitung",
-    "name": "Estrich trocknen / Belegreife nachweisen",
-    "company": "",
-    "predecessors": [
-      "T28"
-    ],
-    "lag_days": 0,
-    "duration": 28,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Feuchtemessung maßgeblich, Beispielwert"
-  },
-  {
-    "code": "T30",
-    "phase": "Innenausbau",
-    "trade": "Putzer",
-    "name": "Innenputz und Spachtelarbeiten",
-    "company": "",
-    "predecessors": [
-      "T27",
-      "T26"
-    ],
-    "lag_days": 0,
-    "duration": 18,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Trocknungszeiten berücksichtigen"
-  },
-  {
-    "code": "T31",
-    "phase": "Innenausbau",
-    "trade": "Fliesenleger",
-    "name": "Abdichtungen und Fliesen in Bädern",
-    "company": "",
-    "predecessors": [
-      "T29",
-      "T30"
-    ],
-    "lag_days": 0,
-    "duration": 16,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Bodengleiche Dusche / DIN 18534"
-  },
-  {
-    "code": "T32",
-    "phase": "Innenausbau",
-    "trade": "Sanitär",
-    "name": "Sanitärobjekte, Armaturen und WW anschließen",
-    "company": "",
-    "predecessors": [
-      "T31",
-      "T21"
-    ],
-    "lag_days": 0,
-    "duration": 12,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Bad OG, Bad DG und Gäste-WC"
-  },
-  {
-    "code": "T33",
-    "phase": "Innenausbau",
-    "trade": "Bodenleger / Eigenleistung",
-    "name": "Bodenbeläge EG / OG / DG",
-    "company": "",
-    "predecessors": [
-      "T29",
-      "T30"
-    ],
-    "lag_days": 0,
-    "duration": 18,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Feuchtemessung vor Belegung"
-  },
-  {
-    "code": "T34",
-    "phase": "Innenausbau",
-    "trade": "Maler / Eigenleistung",
-    "name": "Malerarbeiten, Oberflächen und Türen",
-    "company": "",
-    "predecessors": [
-      "T30",
-      "T33"
-    ],
-    "lag_days": 0,
-    "duration": 18,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Endbeschichtung in Bad nach System"
-  },
-  {
-    "code": "T35",
-    "phase": "Haustechnik",
-    "trade": "Elektro",
-    "name": "Schalter, Leuchten, Unterverteilungen, Endmontage",
-    "company": "",
-    "predecessors": [
-      "T27",
-      "T34"
-    ],
-    "lag_days": 0,
-    "duration": 13,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Home Assistant / Shelly Abstimmung"
-  },
-  {
-    "code": "T36",
-    "phase": "Haustechnik",
-    "trade": "Heizungsbauer",
-    "name": "Wärmepumpe installieren, befüllen, in Betrieb nehmen",
-    "company": "",
-    "predecessors": [
-      "T21",
-      "T22",
-      "T35"
-    ],
-    "lag_days": 0,
-    "duration": 8,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Heizlast und hydraulischer Abgleich"
-  },
-  {
-    "code": "T37",
-    "phase": "Haustechnik",
-    "trade": "PV / Elektro",
-    "name": "PV, Wechselrichter, Speicher, Wallbox anschließen",
-    "company": "",
-    "predecessors": [
-      "T13",
-      "T35"
-    ],
-    "lag_days": 0,
-    "duration": 12,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Netzbetreiberanmeldung / Fachbetrieb"
-  },
-  {
-    "code": "T38",
-    "phase": "Haustechnik",
-    "trade": "Klimatechnik",
-    "name": "Splitgeräte montieren, prüfen und in Betrieb nehmen",
-    "company": "",
-    "predecessors": [
-      "T23",
-      "T34"
-    ],
-    "lag_days": 0,
-    "duration": 7,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Kältemittelarbeiten nur Fachbetrieb"
-  },
-  {
-    "code": "T39",
-    "phase": "Keller / Außen",
-    "trade": "Keller / Putz",
-    "name": "Kellerputz und feuchteverträgliche Oberflächen",
-    "company": "",
-    "predecessors": [
-      "T09"
-    ],
-    "lag_days": 0,
-    "duration": 14,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Keine dichte Beschichtung auf feuchtem Mauerwerk"
-  },
-  {
-    "code": "T40",
-    "phase": "Keller / Außen",
-    "trade": "Außenanlagen",
-    "name": "Terrassenanschlüsse, Hof und Entwässerung",
-    "company": "",
-    "predecessors": [
-      "T17",
-      "T13"
-    ],
-    "lag_days": 0,
-    "duration": 18,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Tragkonstruktion Terrasse nicht verändern ohne Statik"
-  },
-  {
-    "code": "T41",
-    "phase": "Abschluss",
-    "trade": "Bauleitung / Gewerke",
-    "name": "Prüfprotokolle, Funktionsprüfung, Mängelliste",
-    "company": "",
-    "predecessors": [
-      "T32",
-      "T35",
-      "T36"
-    ],
-    "lag_days": 0,
-    "duration": 10,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Elektro, Heizung, Abdichtung, Druckprobe"
-  },
-  {
-    "code": "T42",
-    "phase": "Abschluss",
-    "trade": "Elektro / Bauherrschaft",
-    "name": "Smart Home, Sensoren und Automationen konfigurieren",
-    "company": "",
-    "predecessors": [
-      "T35",
-      "T37"
-    ],
-    "lag_days": 0,
-    "duration": 10,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "PV / Speicher / WP einbinden"
-  },
-  {
-    "code": "T43",
-    "phase": "Abschluss",
-    "trade": "Bauleitung",
-    "name": "Mängelbeseitigung und behördliche Abnahmen",
-    "company": "",
-    "predecessors": [
-      "T41",
-      "T38",
-      "T40"
-    ],
-    "lag_days": 0,
-    "duration": 14,
-    "earliest_start": null,
-    "status": "Offen",
-    "progress": 0,
-    "actual_start": null,
-    "actual_end": null,
-    "notes": "Dokumentation / Gewährleistung sammeln"
-  },
-  {
-    "code": "T44",
-    "phase": "Abschluss",
+    "phase": "01 Planung & Vergabe",
     "trade": "Bauherrschaft",
-    "name": "Bauendreinigung, Möbel und Einzug",
-    "company": "",
+    "name": "Förderanträge, Kreditabrufe und Finanzierungsreserve prüfen",
+    "execution_type": "Eigenleistung",
+    "duration": 14,
     "predecessors": [
-      "T43",
-      "T42"
+      "S07"
     ],
+    "notes": "Förderbedingungen und verbindlichen Maßnahmenbeginn mit Energieberater klären.",
+    "code": "S09",
+    "company": "",
     "lag_days": 0,
-    "duration": 10,
     "earliest_start": null,
     "status": "Offen",
     "progress": 0,
     "actual_start": null,
-    "actual_end": null,
-    "notes": "Einzug erst nach Sicherheit / Freigaben"
+    "actual_end": null
+  },
+  {
+    "phase": "01 Planung & Vergabe",
+    "trade": "Bauherrschaft",
+    "name": "Leistungsverzeichnisse, Angebote und Schnittstellen klären",
+    "execution_type": "Eigenleistung",
+    "duration": 28,
+    "predecessors": [
+      "S05",
+      "S08"
+    ],
+    "notes": "Eigenleistungen schriftlich abgrenzen; Verantwortlichkeiten für Prüfungen und Anschlüsse festhalten.",
+    "code": "S10",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "01 Planung & Vergabe",
+    "trade": "Bauherrschaft",
+    "name": "Betriebe beauftragen und lange Lieferzeiten einplanen",
+    "execution_type": "Eigenleistung",
+    "duration": 21,
+    "predecessors": [
+      "S10",
+      "S06",
+      "S09"
+    ],
+    "notes": "Termine von Zimmerer, Fensterbauer, Elektro, Sanitär, WP, PV und Klimaanlage aufeinander abstimmen.",
+    "code": "S11",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "01 Planung & Vergabe",
+    "trade": "Bauleitung",
+    "name": "Bauablauf, Arbeitsschutz und Baustellenkoordination prüfen",
+    "execution_type": "Fremdleistung",
+    "duration": 7,
+    "predecessors": [
+      "S11"
+    ],
+    "notes": "Bei mehreren Unternehmen Koordination und mögliche SiGeKo-Pflichten prüfen; Schutzmaßnahmen festlegen.",
+    "code": "S12",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "02 Rückbau & Entkernung",
+    "trade": "Bauherrschaft",
+    "name": "Baustelle einrichten, Schutzfolien und Entsorgung organisieren",
+    "execution_type": "Eigenleistung",
+    "duration": 5,
+    "predecessors": [
+      "S12"
+    ],
+    "notes": "",
+    "code": "S13",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "02 Rückbau & Entkernung",
+    "trade": "Elektro / Sanitär",
+    "name": "Altanlagen spannungsfrei stellen und Leitungen sichern",
+    "execution_type": "Fremdleistung",
+    "duration": 5,
+    "predecessors": [
+      "S13"
+    ],
+    "notes": "Elektro/Sanitär absperren und dokumentieren; keine Arbeiten an spannungsführenden Anlagen in Eigenleistung.",
+    "code": "S14",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "02 Rückbau & Entkernung",
+    "trade": "Bauherrschaft",
+    "name": "Räume leerräumen, Bauteile vor Beschädigung schützen",
+    "execution_type": "Eigenleistung",
+    "duration": 6,
+    "predecessors": [
+      "S14"
+    ],
+    "notes": "",
+    "code": "S15",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "02 Rückbau & Entkernung",
+    "trade": "Bauherrschaft",
+    "name": "Innenwände und alte Bekleidungen kontrolliert zurückbauen",
+    "execution_type": "Eigenleistung",
+    "duration": 14,
+    "predecessors": [
+      "S03",
+      "S15"
+    ],
+    "notes": "Nur freigegebene, nicht tragende Bauteile; Statikerentscheidung für Eingriffe in Tragwerk.",
+    "code": "S16",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "02 Rückbau & Entkernung",
+    "trade": "Bauherrschaft",
+    "name": "Alte Fußbodenaufbauten öffnen und Holzdecken prüfen",
+    "execution_type": "Eigenleistung",
+    "duration": 10,
+    "predecessors": [
+      "S16"
+    ],
+    "notes": "Holzdielen, Schüttungen und Feuchteschäden dokumentieren; Tragfähigkeit und Schallschutz abstimmen.",
+    "code": "S17",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "02 Rückbau & Entkernung",
+    "trade": "Bauherrschaft",
+    "name": "Kellerputz vorsichtig entfernen und Feuchtestellen erfassen",
+    "execution_type": "Eigenleistung",
+    "duration": 8,
+    "predecessors": [
+      "S03",
+      "S15"
+    ],
+    "notes": "Granitgewölbekeller: Feuchte und Salzbelastung dokumentieren, keine dichten Beschichtungen ungeprüft verwenden.",
+    "code": "S18",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "02 Rückbau & Entkernung",
+    "trade": "Bauherrschaft",
+    "name": "Rückbaumaterial fachgerecht sortieren und entsorgen",
+    "execution_type": "Eigenleistung",
+    "duration": 8,
+    "predecessors": [
+      "S16",
+      "S17"
+    ],
+    "notes": "Schadstoffe ausschließlich gemäß Untersuchung durch befugte Fachleute entsorgen.",
+    "code": "S19",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "03 Rohbau & Dach",
+    "trade": "Rohbau / Statik",
+    "name": "Tragende Balken, Auflager und Durchbrüche instand setzen",
+    "execution_type": "Fremdleistung",
+    "duration": 14,
+    "predecessors": [
+      "S17",
+      "S04",
+      "S06"
+    ],
+    "notes": "Holzbalkendecken und Mauerwerk; tragende Eingriffe nur nach Statik und Freigabe.",
+    "code": "S20",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "03 Rohbau & Dach",
+    "trade": "Gerüstbau",
+    "name": "Gerüst und Absturzsicherung stellen",
+    "execution_type": "Fremdleistung",
+    "duration": 5,
+    "predecessors": [
+      "S06",
+      "S13"
+    ],
+    "notes": "Betrieb stellt und prüft Gerüst; Bauleitung kontrolliert Schutz- und Zugangsbereiche.",
+    "code": "S21",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "03 Rohbau & Dach",
+    "trade": "Zimmerer / Dachdecker",
+    "name": "Dach abdecken und temporären Wetterschutz sichern",
+    "execution_type": "Fremdleistung",
+    "duration": 8,
+    "predecessors": [
+      "S21",
+      "S20"
+    ],
+    "notes": "Fenster zum wetterdichten Umbau fest terminieren; Nässe in Holzbalkendecken verhindern.",
+    "code": "S22",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "03 Rohbau & Dach",
+    "trade": "Zimmerer / Maurer",
+    "name": "Kniestock erhöhen und Tragkonstruktion anpassen",
+    "execution_type": "Fremdleistung",
+    "duration": 18,
+    "predecessors": [
+      "S22"
+    ],
+    "notes": "Tragwerksplanung verbindlich; geplante gerade Wände im 1. OG.",
+    "code": "S23",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "03 Rohbau & Dach",
+    "trade": "Zimmerer",
+    "name": "Mansarddach, Dachgaube und Dachgeschossaufbau errichten",
+    "execution_type": "Fremdleistung",
+    "duration": 24,
+    "predecessors": [
+      "S23"
+    ],
+    "notes": "DG Elternschlafzimmer / kleines Bad; Dachanschlüsse und Durchdringungen abstimmen.",
+    "code": "S24",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "03 Rohbau & Dach",
+    "trade": "Dachdecker",
+    "name": "Dach eindecken, abdichten und Entwässerung fertigstellen",
+    "execution_type": "Fremdleistung",
+    "duration": 14,
+    "predecessors": [
+      "S24"
+    ],
+    "notes": "Regensichere Ebene und späteren PV-Aufbau koordinieren.",
+    "code": "S25",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "03 Rohbau & Dach",
+    "trade": "Rohbauer",
+    "name": "Geplante Mauerwerksöffnungen und Durchbrüche herstellen",
+    "execution_type": "Fremdleistung",
+    "duration": 10,
+    "predecessors": [
+      "S20"
+    ],
+    "notes": "Öffnungen und Kernbohrungen entsprechend statischer und Leitungsplanung.",
+    "code": "S26",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "03 Rohbau & Dach",
+    "trade": "Statik / Metallbau",
+    "name": "Terrassen-Stahlträger und Wandanschlüsse begutachten",
+    "execution_type": "Fremdleistung",
+    "duration": 8,
+    "predecessors": [
+      "S04"
+    ],
+    "notes": "Feuchte- und Wärmebrückenanschluss der erhaltenen Terrasse prüfen.",
+    "code": "S27",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "04 Dach & Gebäudehülle",
+    "trade": "Dachdecker / Dämmung",
+    "name": "Dach dämmen, luftdichte Ebene und Anschlüsse herstellen",
+    "execution_type": "Fremdleistung",
+    "duration": 18,
+    "predecessors": [
+      "S25"
+    ],
+    "notes": "Luftdichtheitsdetails im Dach und an der Gaube dokumentieren und prüfen.",
+    "code": "S28",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "04 Dach & Gebäudehülle",
+    "trade": "Fensterbau",
+    "name": "Fenster und Außentüren im 1. OG / DG erneuern",
+    "execution_type": "Fremdleistung",
+    "duration": 12,
+    "predecessors": [
+      "S25",
+      "S26"
+    ],
+    "notes": "Geplante dreifache Verglasung, luft- und schlagregendichte Anschlüsse.",
+    "code": "S29",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "04 Dach & Gebäudehülle",
+    "trade": "Fensterbau",
+    "name": "EG-Fenster kontrollieren und ggf. austauschen",
+    "execution_type": "Fremdleistung",
+    "duration": 7,
+    "predecessors": [
+      "S26"
+    ],
+    "notes": "Austausch nach Entscheidung; EG-Fassade soll weitgehend ungedämmt bleiben.",
+    "code": "S30",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "04 Dach & Gebäudehülle",
+    "trade": "Fassadenbau",
+    "name": "Dämmung OG/DG und Anschluss an ungedämmtes EG",
+    "execution_type": "Fremdleistung",
+    "duration": 20,
+    "predecessors": [
+      "S29",
+      "S28",
+      "S27"
+    ],
+    "notes": "Dämmkeil, Wärmebrücken und Feuchteschutz am Natursteinsockel planen.",
+    "code": "S31",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "04 Dach & Gebäudehülle",
+    "trade": "Energieberatung",
+    "name": "Luftdichtheit und kritische Anschlüsse kontrollieren",
+    "execution_type": "Fremdleistung",
+    "duration": 4,
+    "predecessors": [
+      "S31",
+      "S28",
+      "S30"
+    ],
+    "notes": "Prüfung vor dauerhaftem Verschließen der Anschlüsse; ggf. Blower-Door-Test.",
+    "code": "S32",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "TGA-Planung",
+    "name": "Leitungswege und Installationszonen abstimmen",
+    "execution_type": "Fremdleistung",
+    "duration": 7,
+    "predecessors": [
+      "S26",
+      "S08"
+    ],
+    "notes": "Elektro, Sanitär, Heizung und Klima kollisionsfrei planen; Unterverteilungen vorsehen.",
+    "code": "S33",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Sanitär",
+    "name": "Steigleitungen, Trinkwasser und Abwasser roh verlegen",
+    "execution_type": "Fremdleistung",
+    "duration": 18,
+    "predecessors": [
+      "S33",
+      "S29"
+    ],
+    "notes": "EG Gäste-WC, großes Bad OG und kleines Bad DG.",
+    "code": "S34",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Bauherrschaft",
+    "name": "Elektroschlitze und Unterputzdosen vorbereiten",
+    "execution_type": "Eigenleistung",
+    "duration": 12,
+    "predecessors": [
+      "S33"
+    ],
+    "notes": "Nur nach Elektroplanung und Prüfung tragender Bauteile; keine Verteilung/Anschluss in Eigenleistung.",
+    "code": "S35",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Bauherrschaft",
+    "name": "Leerrohre und Leitungen nach Fachplanung verlegen",
+    "execution_type": "Eigenleistung",
+    "duration": 14,
+    "predecessors": [
+      "S35"
+    ],
+    "notes": "Leitungsführung, Querschnitte und spätere Prüfung durch Elektrofachbetrieb vorgeben lassen.",
+    "code": "S36",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Elektro",
+    "name": "Zähleranlage, Unterverteilungen und Rohinstallation prüfen",
+    "execution_type": "Fremdleistung",
+    "duration": 12,
+    "predecessors": [
+      "S36"
+    ],
+    "notes": "Fachbetrieb übernimmt Anschlüsse, Messungen und Freigaben.",
+    "code": "S37",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Heizung / Sanitär",
+    "name": "Wärmepumpenstandort und Heizkreisverteiler vorbereiten",
+    "execution_type": "Fremdleistung",
+    "duration": 11,
+    "predecessors": [
+      "S33",
+      "S34"
+    ],
+    "notes": "Technikraum im Keller; Außenaufstellung, Schall, Kondensat und Rohrwege berücksichtigen.",
+    "code": "S38",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Bauherrschaft",
+    "name": "Fußbodenheizflächen und Untergründe vorbereiten",
+    "execution_type": "Eigenleistung",
+    "duration": 9,
+    "predecessors": [
+      "S17",
+      "S38"
+    ],
+    "notes": "Aufbauhöhe, Dämmung, Holzbalkendecken und Systemgewicht abstimmen.",
+    "code": "S39",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Bauherrschaft",
+    "name": "Fußbodenheizungsrohre nach Verlegeplan verlegen",
+    "execution_type": "Eigenleistung",
+    "duration": 11,
+    "predecessors": [
+      "S39"
+    ],
+    "notes": "Eigenleistung nur nach Verlegeplan; Prüfungen und Anschluss bleiben beim Heizungsbetrieb.",
+    "code": "S40",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Heizungsbau",
+    "name": "Flächenheizung / Niedertemperaturheizkörper anschließen und prüfen",
+    "execution_type": "Fremdleistung",
+    "duration": 9,
+    "predecessors": [
+      "S40",
+      "S34"
+    ],
+    "notes": "Druckprüfung und Dokumentation vor Schließen der Bauteile.",
+    "code": "S41",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Klimatechnik",
+    "name": "Kältemittel-/Kondensatwege und Klimageräte vorbereiten",
+    "execution_type": "Fremdleistung",
+    "duration": 10,
+    "predecessors": [
+      "S33",
+      "S25"
+    ],
+    "notes": "Vier Innengeräte; fachgerechter Kältemittelanschluss durch Fachbetrieb.",
+    "code": "S42",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Bauherrschaft",
+    "name": "Smart-Home-Sensorpositionen und Automation vorbereiten",
+    "execution_type": "Eigenleistung",
+    "duration": 8,
+    "predecessors": [
+      "S36"
+    ],
+    "notes": "Home Assistant, Shelly, Hue; dauerhafte Versorgung und Wartungszugang sicherstellen.",
+    "code": "S43",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Sanitär",
+    "name": "Vorwandinstallationen und Badanschlüsse vorbereiten",
+    "execution_type": "Fremdleistung",
+    "duration": 10,
+    "predecessors": [
+      "S34"
+    ],
+    "notes": "Großes Bad 1. OG, neues DG-Bad, Gäste-WC; Duschabdichtung beachten.",
+    "code": "S44",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "05 Haustechnik Rohbau",
+    "trade": "Bauleitung / Fachbetriebe",
+    "name": "Rohinstallationen prüfen und fotografisch abnehmen",
+    "execution_type": "Fremdleistung",
+    "duration": 4,
+    "predecessors": [
+      "S37",
+      "S41",
+      "S44",
+      "S42"
+    ],
+    "notes": "Vor Schließen von Decken/Wänden: Elektro, Wasser, Heizung und Klimaleitungen dokumentieren.",
+    "code": "S45",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Trockenbau",
+    "name": "Ständerwände, Vorwände und Dachausbau stellen",
+    "execution_type": "Fremdleistung",
+    "duration": 20,
+    "predecessors": [
+      "S28",
+      "S34",
+      "S37"
+    ],
+    "notes": "Schallschutz, Luftdichtheit und Brandanforderungen mit Fachplanung abstimmen.",
+    "code": "S46",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Trockenbau",
+    "name": "Decken und Wände nach Rohinstallationsprüfung schließen",
+    "execution_type": "Fremdleistung",
+    "duration": 14,
+    "predecessors": [
+      "S46",
+      "S45"
+    ],
+    "notes": "",
+    "code": "S47",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Putz",
+    "name": "Innenputz, Feuchträume und Spachtelarbeiten",
+    "execution_type": "Fremdleistung",
+    "duration": 16,
+    "predecessors": [
+      "S47"
+    ],
+    "notes": "Untergrund- und Feuchteverträglichkeit beachten.",
+    "code": "S48",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Estrich",
+    "name": "Estrich / trockener Bodenaufbau einschließlich Dämmung",
+    "execution_type": "Fremdleistung",
+    "duration": 14,
+    "predecessors": [
+      "S41",
+      "S45"
+    ],
+    "notes": "Bodenaufbau im Altbau prüfen; Fachplanung für Holzbalkendecken.",
+    "code": "S49",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Bauleitung / Estrich",
+    "name": "Estrich trocknen, aufheizen und Belegreife messen",
+    "execution_type": "Fremdleistung",
+    "duration": 28,
+    "predecessors": [
+      "S49"
+    ],
+    "notes": "28 Tage sind nur ein Platzhalter; tatsächliche Restfeuchte und Belegreife fachlich nachweisen.",
+    "code": "S50",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Abdichtung / Fliesen",
+    "name": "Bäder abdichten, Duschen und Fliesen ausführen",
+    "execution_type": "Fremdleistung",
+    "duration": 17,
+    "predecessors": [
+      "S48",
+      "S50"
+    ],
+    "notes": "Bodengleiche Dusche, durchgehende Abdichtung, passende Feuchtigkeitsbeanspruchung.",
+    "code": "S51",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Bauherrschaft",
+    "name": "Bodenbeläge EG/OG und Sockel montieren",
+    "execution_type": "Eigenleistung",
+    "duration": 12,
+    "predecessors": [
+      "S50",
+      "S48"
+    ],
+    "notes": "Geplante Vinyl-/Parkettvarianten; Freigabe Untergrund, Feuchte und Trennlagen.",
+    "code": "S52",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Bauherrschaft",
+    "name": "Wände/Decken vorbereiten und streichen",
+    "execution_type": "Eigenleistung",
+    "duration": 12,
+    "predecessors": [
+      "S48"
+    ],
+    "notes": "Diffusionsoffene Oberflächen dort, wo bauphysikalisch sinnvoll.",
+    "code": "S53",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Tischler",
+    "name": "Innentüren, Treppenanpassungen und Geländer montieren",
+    "execution_type": "Fremdleistung",
+    "duration": 11,
+    "predecessors": [
+      "S52",
+      "S53"
+    ],
+    "notes": "Steile Holztreppe und sichere Geländersituation gesondert prüfen.",
+    "code": "S54",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Sanitär",
+    "name": "Sanitärobjekte, Armaturen und Warmwasser fertig montieren",
+    "execution_type": "Fremdleistung",
+    "duration": 10,
+    "predecessors": [
+      "S51",
+      "S38"
+    ],
+    "notes": "",
+    "code": "S55",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "06 Innenausbau",
+    "trade": "Küchenbau",
+    "name": "Küche einbauen und Anschlüsse prüfen",
+    "execution_type": "Fremdleistung",
+    "duration": 9,
+    "predecessors": [
+      "S52",
+      "S53",
+      "S37"
+    ],
+    "notes": "Küchenanschluss mit Elektro- und Sanitärfachbetrieb abstimmen.",
+    "code": "S56",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "07 Inbetriebnahme",
+    "trade": "Heizungsbau",
+    "name": "Wärmepumpe montieren, hydraulisch abgleichen und in Betrieb nehmen",
+    "execution_type": "Fremdleistung",
+    "duration": 9,
+    "predecessors": [
+      "S41",
+      "S38",
+      "S37"
+    ],
+    "notes": "Herstellerinbetriebnahme, Einstellung der Heizkurve und hydraulischer Abgleich.",
+    "code": "S57",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "07 Inbetriebnahme",
+    "trade": "Elektro",
+    "name": "Schalter, Steckdosen, Messungen und E-Check",
+    "execution_type": "Fremdleistung",
+    "duration": 11,
+    "predecessors": [
+      "S47",
+      "S53",
+      "S37"
+    ],
+    "notes": "Nur Elektrofachbetrieb schließt an und prüft/abnimmt.",
+    "code": "S58",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "07 Inbetriebnahme",
+    "trade": "PV / Elektro",
+    "name": "PV, Wechselrichter, Speicher und Wallbox installieren",
+    "execution_type": "Fremdleistung",
+    "duration": 13,
+    "predecessors": [
+      "S25",
+      "S58"
+    ],
+    "notes": "Netzbetreiber, Speicheranbindung und Wallbox-Inbetriebnahme einplanen.",
+    "code": "S59",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "07 Inbetriebnahme",
+    "trade": "Klimatechnik",
+    "name": "Klimainnengeräte montieren und Anlage in Betrieb nehmen",
+    "execution_type": "Fremdleistung",
+    "duration": 7,
+    "predecessors": [
+      "S42",
+      "S53"
+    ],
+    "notes": "Fachbetrieb prüft Dichtheit und Funktion.",
+    "code": "S60",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "07 Inbetriebnahme",
+    "trade": "Bauherrschaft",
+    "name": "Home Assistant und Smart-Home-Abläufe einrichten",
+    "execution_type": "Eigenleistung",
+    "duration": 9,
+    "predecessors": [
+      "S58",
+      "S59"
+    ],
+    "notes": "Bewegungsmelder und Leuchten testen; Sicherheitsfunktionen nicht von Automationen abhängig machen.",
+    "code": "S61",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "08 Keller & Außenanlagen",
+    "trade": "Keller / Putz",
+    "name": "Feuchteverträgliche Kellerausbesserung und Lagerflächen",
+    "execution_type": "Fremdleistung",
+    "duration": 12,
+    "predecessors": [
+      "S18"
+    ],
+    "notes": "Ziel Lagerkeller, nicht vollständig abdichten ohne Feuchtekonzept.",
+    "code": "S62",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "08 Keller & Außenanlagen",
+    "trade": "Bau / Metallbau",
+    "name": "Terrassenanschlüsse instand setzen und abdichten",
+    "execution_type": "Fremdleistung",
+    "duration": 11,
+    "predecessors": [
+      "S31",
+      "S27"
+    ],
+    "notes": "Terrasse bleibt erhalten; Stahlträger und Wärmebrücken sichern.",
+    "code": "S63",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "08 Keller & Außenanlagen",
+    "trade": "Außenanlagen",
+    "name": "Hof, Entwässerung und gegebenenfalls Rampe herstellen",
+    "execution_type": "Fremdleistung",
+    "duration": 18,
+    "predecessors": [
+      "S63",
+      "S25"
+    ],
+    "notes": "Zufahrt/Podest nur mit statischer Planung, insbesondere für hohe Lasten.",
+    "code": "S64",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "09 Übergabe & Einzug",
+    "trade": "Bauleitung",
+    "name": "Gewerkeabnahme, Prüfprotokolle und Restpunktliste",
+    "execution_type": "Fremdleistung",
+    "duration": 9,
+    "predecessors": [
+      "S58",
+      "S55",
+      "S57",
+      "S60",
+      "S54"
+    ],
+    "notes": "Dokumentation, Wartung, Einregulierung, Mängel mit Fristen und Ansprechpartnern.",
+    "code": "S65",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "09 Übergabe & Einzug",
+    "trade": "Fachbetriebe",
+    "name": "Mängel beheben und nachprüfen",
+    "execution_type": "Fremdleistung",
+    "duration": 12,
+    "predecessors": [
+      "S65"
+    ],
+    "notes": "",
+    "code": "S66",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "09 Übergabe & Einzug",
+    "trade": "Bauherrschaft",
+    "name": "Revisionsunterlagen, Gewährleistungen und Fotos archivieren",
+    "execution_type": "Eigenleistung",
+    "duration": 7,
+    "predecessors": [
+      "S65"
+    ],
+    "notes": "PV, WP, Elektro und Sanitär Prüfprotokolle sowie Sicherungen ablegen.",
+    "code": "S67",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "09 Übergabe & Einzug",
+    "trade": "Bauherrschaft",
+    "name": "Bauendreinigung und Schutzfolien entfernen",
+    "execution_type": "Eigenleistung",
+    "duration": 6,
+    "predecessors": [
+      "S66",
+      "S56"
+    ],
+    "notes": "",
+    "code": "S68",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
+  },
+  {
+    "phase": "09 Übergabe & Einzug",
+    "trade": "Bauherrschaft",
+    "name": "Möbel einräumen und einziehen",
+    "execution_type": "Eigenleistung",
+    "duration": 7,
+    "predecessors": [
+      "S68",
+      "S67",
+      "S61"
+    ],
+    "notes": "Erst nach sicheren Abnahmen, notwendigem Brandschutz und funktionierender Haustechnik.",
+    "code": "S69",
+    "company": "",
+    "lag_days": 0,
+    "earliest_start": null,
+    "status": "Offen",
+    "progress": 0,
+    "actual_start": null,
+    "actual_end": null
   }
 ]
