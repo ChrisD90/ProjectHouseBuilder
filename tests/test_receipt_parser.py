@@ -57,6 +57,45 @@ class ReceiptParserTest(unittest.TestCase):
         self.assertEqual(parsed['gross_amount'],'')
         self.assertTrue(parsed['warnings'])
 
+    def test_labor_amount_extracted_separately_without_materials(self):
+        invoice=('Elektrofachbetrieb Beispiel\nRechnung 4711\n'
+                 'Material Kabel 500,00 EUR\n'
+                 'Lohnkosten brutto 595,00 EUR\n'
+                 'Gesamtbetrag 1.095,00 EUR')
+        parsed=parse_receipt(invoice)
+        self.assertEqual(parsed['gross_amount'],'1095.00')
+        self.assertEqual(parsed['labor_amount'],'595.00')
+
+    def test_labor_net_converted_only_with_explicit_single_vat_rate(self):
+        invoice=('Maler GmbH\nArbeitslohn netto 500,00 EUR\n'
+                 'Umsatzsteuer 19 % 95,00 EUR\n'
+                 'Gesamtbetrag brutto 595,00 EUR')
+        parsed=parse_receipt(invoice)
+        self.assertEqual(parsed['labor_amount'],'595.00')
+
+    def test_labor_net_without_clear_tax_rate_remains_unfilled(self):
+        parsed=parse_receipt('Maler GmbH\nLohnanteil netto 500,00 EUR\n'
+                             'Gesamtbetrag brutto 595,00 EUR')
+        self.assertIsNone(parsed['labor_amount'])
+        self.assertTrue(any('USt-Satz nicht eindeutig' in w for w in parsed['warnings']))
+
+    def test_labor_missing_and_material_only_are_not_inferred(self):
+        parsed=parse_receipt('Baumarkt GmbH\nMontagematerial 120,00 EUR\n'
+                             'Gesamtbetrag 120,00 EUR')
+        self.assertIsNone(parsed['labor_amount'])
+
+    def test_gross_labor_greater_than_invoice_total_is_rejected(self):
+        parsed=parse_receipt('Sanitär GmbH\nArbeitskosten brutto 3.000,00 EUR\n'
+                             'Rechnungsbetrag 1.000,00 EUR')
+        self.assertIsNone(parsed['labor_amount'])
+        self.assertTrue(any('über dem Rechnungsbrutto' in w for w in parsed['warnings']))
+
+    def test_unlabeled_labor_basis_has_review_warning(self):
+        parsed=parse_receipt('Firma GmbH\nLohnkosten 100,00 EUR\n'
+                             'Gesamtbetrag 180,00 EUR')
+        self.assertEqual(parsed['labor_amount'],'100.00')
+        self.assertTrue(any('Netto-/Bruttoausweis unklar' in w for w in parsed['warnings']))
+
     def test_category(self):
         self.assertEqual(category_for('Makita Akkuschrauber'),'Werkzeug')
         self.assertEqual(category_for('Unbekannter Posten'),'Sonstiges')
