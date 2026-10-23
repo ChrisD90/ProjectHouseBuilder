@@ -1,0 +1,61 @@
+/* Dedicated master data: focused workspace rather than maintenance on work pages. */
+.phb-page-stammdaten .phb-main{max-width:1500px}
+.phb-page-stammdaten .master-jump{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 24px}
+.phb-page-stammdaten .master-jump a{display:inline-flex;padding:9px 14px;background:#e9f5f3;border:1px solid #cce9e4;border-radius:9px;color:#146c70;text-decoration:none;font-size:13px;font-weight:700}
+.phb-page-stammdaten .master-jump a:hover{background:#d9efea}
+.phb-page-stammdaten .master-notice{margin:0 0 18px;padding:13px 16px;border:1px solid #c7e4d9;border-radius:10px;background:#edf8f3;color:#22584c}
+.phb-page-stammdaten .master-notice[hidden]{display:none}
+.phb-page-stammdaten .master-notice.error{color:#963d31;background:#fff0ec;border-color:#ecc5bd}
+.phb-page-stammdaten .master-panel{padding:22px 24px;margin:0 0 20px;scroll-margin-top:95px;min-width:0}
+.phb-page-stammdaten .master-panel-head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.phb-page-stammdaten .master-panel-head h2{margin:0 0 6px;font-size:20px;font-weight:750;color:#264752}
+.phb-page-stammdaten .master-panel-head p{margin:0;font-size:13px;line-height:1.6;color:#70838b;max-width:750px}
+.phb-page-stammdaten .master-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.phb-page-stammdaten .master-toolbar label{font-size:13px;color:#526a73}
+.phb-page-stammdaten input,.phb-page-stammdaten select,.phb-page-stammdaten textarea{padding:10px 11px;border:1px solid #cbdde0;border-radius:8px;max-width:100%;background:white;color:#1b3e47}
+.phb-page-stammdaten .master-toolbar input{min-width:min(310px,100%);flex:0 1 360px}
+.phb-page-stammdaten .master-count{font-size:12px;color:#7a8b92;margin-left:auto}
+.phb-page-stammdaten .master-table-scroll{overflow-x:auto}
+.phb-page-stammdaten .master-table{width:100%;border-collapse:collapse;table-layout:auto}
+.phb-page-stammdaten .master-table th{text-transform:uppercase;font-size:10px;letter-spacing:.55px;color:#78909a;text-align:left;padding:10px 12px;background:#f6f9f9;white-space:nowrap}
+.phb-page-stammdaten .master-table td{font-size:13px;color:#3a535c;padding:15px 12px;border-top:1px solid #e4ebed;vertical-align:top}
+.phb-page-stammdaten .master-table td:first-child{min-width:140px}
+.phb-page-stammdaten .master-table td:last-child{text-align:right;white-space:nowrap}
+.phb-page-stammdaten .master-table strong{font-weight:700;color:#244952}
+.phb-page-stammdaten .master-source{display:block;font-size:11px;color:#738c80;margin-top:5px}
+.phb-page-stammdaten .master-contact-info{display:grid;gap:4px;min-width:160px;overflow-wrap:anywhere}
+.phb-page-stammdaten .master-contact-info small{font-size:11px;color:#7f9099}
+.phb-page-stammdaten .master-two-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.phb-page-stammdaten .master-create{margin:0 0 17px}
+.phb-page-stammdaten .master-create>label{display:block;font-size:12px;color:#607680;margin:0 0 6px}
+.phb-page-stammdaten .master-create>div{display:flex;gap:9px;align-items:center}
+.phb-page-stammdaten .master-create input{flex:1;min-width:0}
+.phb-page-stammdaten .master-tag-list{max-height:540px;overflow:auto}
+.phb-page-stammdaten .master-tag-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #e8eeef;padding:11px 0}
+.phb-page-stammdaten .master-tag-row strong{font-size:13px;color:#35545c;overflow-wrap:anywhere}
+.phb-page-stammdaten .master-tag-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.phb-page-stammdaten .master-tag-actions button{font-size:12px;padding:7px 10px}
+.phb-page-stammdaten .master-empty{font-size:13px;color:#74848b}
+.phb-page-stammdaten .master-dialog{width:min(800px,calc(100vw - 24px));max-height:90dvh;overflow:auto;border:0;border-radius:15px;padding:0;box-shadow:0 16px 60px #163b4a55}
+.phb-page-stammdaten .master-dialog::backdrop{background:#163b4a77}
+.phb-page-stammdaten .master-dialog-inner{padding:24px}
+.phb-page-stammdaten .master-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.phb-page-stammdaten .master-dialog-head h2{font-size:20px;margin:0}
+.phb-page-stammdaten .master-description{margin:8px 0 20px;color:#627982;font-size:13px}
+.phb-page-stammdaten .master-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.phb-page-stammdaten .master-fields label{display:grid;gap:6px;font-size:13px;color:#526870}
+.phb-page-stammdaten .master-fields .wide{grid-column:1/-1}
+.phb-page-stammdaten .master-fields input,.phb-page-stammdaten .master-fields textarea,.phb-page-stammdaten .master-fields select{width:100%;min-width:0}
+.phb-page-stammdaten .master-dialog-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 0}
+.phb-page-stammdaten .master-form-status{font-size:12px;color:#a23b2f;margin:10px 0 0}
+.phb-page-stammdaten .master-form-status:empty{display:none}
+@media(max-width:850px){.phb-page-stammdaten .master-two-columns{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:620px){
+ .phb-page-stammdaten .master-panel{padding:17px 15px}
+ .phb-page-stammdaten .master-fields{grid-template-columns:minmax(0,1fr)}
+ .phb-page-stammdaten .master-fields .wide{grid-column:auto}
+ .phb-page-stammdaten .master-dialog-inner{padding:18px}
+ .phb-page-stammdaten .master-dialog-actions{flex-wrap:wrap}
+ .phb-page-stammdaten .master-create>div{flex-wrap:wrap}
+ .phb-page-stammdaten .master-create button{flex:1}
+}
