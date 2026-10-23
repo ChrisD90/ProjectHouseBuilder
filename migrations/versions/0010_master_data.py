@@ -31,7 +31,9 @@ def upgrade():
     existing={x[0].casefold() for x in bind.execute(sa.text('SELECT name FROM trade')).all()}
     names=set()
     for table in ('contractor','task'):
-        if inspector.has_table(table):
+        # Some supported old databases contain partial task/contractor schemas.
+        if inspector.has_table(table) and 'trade' in {
+                c['name'] for c in inspector.get_columns(table)}:
             names.update(str(row[0]).strip() for row in bind.execute(
                 sa.text('SELECT DISTINCT trade FROM '+table+' WHERE trade IS NOT NULL')).all())
     for name in sorted(names):
