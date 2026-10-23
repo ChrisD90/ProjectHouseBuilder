@@ -248,6 +248,8 @@ class Receipt(db.Model):
     gross_amount=db.Column(db.Numeric(12,2),nullable=True)
     net_amount=db.Column(db.Numeric(12,2),nullable=True)
     vat_amount=db.Column(db.Numeric(12,2),nullable=True)
+    labor_amount=db.Column(db.Numeric(12,2),nullable=True)
+    labor_source=db.Column(db.String(20),nullable=False,default='',server_default='')
     category=db.Column(db.String(120),default='Sonstiges')
     kind=db.Column(db.String(30),default='Rechnung')
     # A final invoice may state the full contract amount including prior invoices.
@@ -2156,7 +2158,9 @@ def _receipt_json(r, include_text=False):
     obj={'id':r.id,'filename':r.original_name,'source':r.source,'supplier':r.supplier,'invoice_number':r.invoice_number,
          'document_date':r.document_date,'due_date':r.due_date,'gross_amount':float(r.gross_amount) if r.gross_amount is not None else None,
          'net_amount':float(r.net_amount) if r.net_amount is not None else None,
-         'vat_amount':float(r.vat_amount) if r.vat_amount is not None else None,'category':r.category,
+         'vat_amount':float(r.vat_amount) if r.vat_amount is not None else None,
+         'labor_amount':float(r.labor_amount) if r.labor_amount is not None else None,
+         'labor_source':r.labor_source or '', 'category':r.category,
          'kind':r.kind,'billing_type':r.billing_type,'advance_deduction':float(r.advance_deduction or 0),
          'counted_amount':float(_receipt_increment(r)),'notes':r.notes,'status':r.status,'paid_amount':float(r.paid_amount or 0),
          'budget_line_id':r.budget_line_id,'cost_item_id':r.cost_item_id,
@@ -2193,7 +2197,15 @@ def _ai_receipt_guess(data, filename, ext):
     instructions=(
        'Extrahiere aus dieser deutschen Rechnung oder diesem Kassenbeleg NUR ein JSON-Objekt '
        'mit supplier, invoice_number, document_date (YYYY-MM-DD), due_date (YYYY-MM-DD), '
-       'gross_amount, net_amount, vat_amount, category, kind, billing_type, warnings. '
+       'gross_amount, net_amount, vat_amount, labor_amount, category, kind, billing_type, warnings. '
+       'labor_amount ist der gesondert in Rechnung gestellte Brutto-Anteil für Arbeits-/Lohnkosten '
+       '(inklusive darauf entfallender Umsatzsteuer), NICHT die komplette Rechnung und NICHT '
+       'Material. Nur ausdrücklich bezifferte Arbeit/Lohn-/Montageleistungen übernehmen. '
+       'Falls nur der Netto-Lohnanteil angegeben ist, nur bei eindeutig ausgewiesenem '
+       'Umsatzsteuersatz auf brutto umrechnen. Ist der Anteil nicht getrennt beziffert, '
+       'das Brutto-/Netto-Verhältnis unklar oder die Zuordnung unsicher, labor_amount=null '
+       'setzen und einen Prüfhinweis in warnings geben. Maschinen-, Fahrt- und Materialkosten '
+       'nicht ungefragt als Lohnkosten hinzurechnen. '
        'Alle Beträge sind positive Euro-Zahlen oder null. Unklare Daten null/leer lassen; '
        'keine Beträge erfinden. category muss eine der folgenden Kategorien sein: '+
        ', '.join(category_names())+
@@ -2233,6 +2245,12 @@ def _ai_receipt_guess(data, filename, ext):
     raw_warnings=result.get('warnings')
     warnings=[short(w,220) for w in raw_warnings[:12] if isinstance(w,str) and w.strip()] if isinstance(raw_warnings,list) else []
     gross=amount('gross_amount');net=amount('net_amount');vat=amount('vat_amount')
+    labor=amount('labor_amount')
+    if gross is not None and labor is not None and labor>gross:
+        warnings.append('ChatGPT-Lohnanteil übersteigt das Rechnungsbrutto; bitte manuell prüfen.')
+        labor=None
+    if labor is None:
+        warnings.append('Arbeits-/Lohnkostenanteil nicht sicher erkannt. Nur bei gesondertem Ausweis im Beleg ergänzen.')
     if gross is None:warnings.append('Gesamtbetrag nicht sicher erkannt. Bitte manuell prüfen.')
     supplier=short(result.get('supplier'),200)
     if not supplier:warnings.append('Lieferant nicht sicher erkannt.')
@@ -2242,6 +2260,7 @@ def _ai_receipt_guess(data, filename, ext):
     return {'supplier':supplier,'invoice_number':short(result.get('invoice_number'),100),
             'document_date':date_value('document_date'),'due_date':date_value('due_date'),
             'gross_amount':gross,'net_amount':net,'vat_amount':vat,
+            'labor_amount':labor,
             'category':cat if cat in category_names() else 'Sonstiges',
             'kind':kind if kind in ('Rechnung','Kassenzettel','Gutschrift') else 'Rechnung',
             'billing_type':billing if billing in ('Normal','Abschlagsrechnung','Schlussrechnung') else 'Normal',
@@ -2282,7 +2301,7 @@ def receipt_upload():
         except Exception as err:
             # Local OCR failure may still be edited manually, without AI fallback.
             content='';source='Nicht ausgelesen';guessed={'supplier':'','invoice_number':'','document_date':'',
-              'gross_amount':None,'net_amount':None,'vat_amount':None,'category':'Sonstiges',
+              'gross_amount':None,'net_amount':None,'vat_amount':None,'labor_amount':None,'category':'Sonstiges',
               'warnings':['Lokale Erkennung fehlgeschlagen: '+str(err)[:180]]}
     RECEIPT_ROOT.mkdir(parents=True,exist_ok=True)
     stored=uuid4().hex+ext; target=RECEIPT_ROOT/stored
@@ -2295,7 +2314,10 @@ def receipt_upload():
                     billing_type=guessed.get('billing_type','Normal'),
                     gross_amount=_receipt_amount(guessed['gross_amount'],'Bruttobetrag'),
                     net_amount=_receipt_amount(guessed['net_amount'],'Nettobetrag'),
-                    vat_amount=_receipt_amount(guessed['vat_amount'],'Umsatzsteuer'),category=guessed['category'] if guessed['category'] in category_names() else 'Sonstiges')
+                    vat_amount=_receipt_amount(guessed['vat_amount'],'Umsatzsteuer'),
+                    labor_amount=_receipt_amount(guessed.get('labor_amount'),'Arbeitslohn'),
+                    labor_source='Erkannt' if guessed.get('labor_amount') not in (None,'') else '',
+                    category=guessed['category'] if guessed['category'] in category_names() else 'Sonstiges')
         db.session.add(row);db.session.commit()
         return jsonify(_receipt_json(row,True)),201
     except Exception:
@@ -2387,7 +2409,7 @@ def receipt_edit(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
     data=request.get_json(silent=True) or {}
-    if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','contractor_id','assignment_type','category','supplier','invoice_number','document_date','kind','billing_type','advance_deduction')):
+    if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','contractor_id','assignment_type','category','supplier','invoice_number','document_date','kind','billing_type','advance_deduction','labor_amount')):
         return jsonify(error='Zum Ändern der Zuordnung oder Belegsumme zunächst Buchung zurücknehmen.'),409
     try:
         for f in ('supplier','invoice_number','document_date','due_date','category','kind','billing_type','notes'):
@@ -2399,13 +2421,17 @@ def receipt_edit(rid):
                 if f=='billing_type' and value not in ('Normal','Abschlagsrechnung','Schlussrechnung'):raise ValueError('Ungültige Rechnungsart.')
                 if f in ('document_date','due_date') and value:date.fromisoformat(value)
                 setattr(r,f,value)
-        for f in ('gross_amount','net_amount','vat_amount','paid_amount','advance_deduction'):
+        for f in ('gross_amount','net_amount','vat_amount','labor_amount','paid_amount','advance_deduction'):
             if f in data:
                 amount=_receipt_amount(data[f],f,optional=f not in ('paid_amount','advance_deduction'))
                 if f=='paid_amount':
                     allocations=db.session.scalar(select(db.func.count(ReceiptFinancingPayment.id)).where(ReceiptFinancingPayment.receipt_id==r.id)) or 0
                     if allocations and amount != r.paid_amount:raise ValueError('Diese Zahlung ist über die Finanzierungsverwaltung aufgeteilt. Dort bearbeiten.')
                 setattr(r,f,amount)
+                if f=='labor_amount':
+                    r.labor_source='Manuell' if amount is not None else ''
+        if r.labor_amount is not None and r.gross_amount is not None and r.labor_amount>r.gross_amount:
+            raise ValueError('Der Arbeits-/Lohnkostenanteil darf den Bruttobetrag nicht überschreiten.')
         for field,model in (('budget_line_id',BudgetLine),('cost_item_id',CostItem),('contractor_id',Contractor)):
             if field in data:
                 value=data[field];key=int(value) if value not in ('',None) else None
