@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projektdokumente · ProjectHouseBuilder</title>
+<link rel="stylesheet" href="/static/vendor-bootstrap-5.3.6.min.css">
+<link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/shell.css">
+<link rel="stylesheet" href="/static/chatgpt.css"><link rel="stylesheet" href="/static/dokumente.css">
+<link rel="stylesheet" href="/static/ui.css"><script src="/static/ui.js"></script></head>
+<body class="phb-app phb-page-dokumente">
+{% set phb_active = 'dokumente' %}{% set phb_title = 'Projektdokumente' %}{% include '_shell_open.html' %}
+<main id="phbMain" class="phb-main">
+<div class="phb-page-intro"><div><span class="phb-page-kicker">Projekt / Dokumentation</span><h1>Projektdokumente</h1>
+<p>Baupläne, technische Zeichnungen, Verträge, Versicherungen und Genehmigungen zentral verwalten.</p></div></div>
+<div class="docs-columns">
+<section class="panel docs-upload"><h2>Dokument ablegen</h2>
+<form id="projectDocumentUpload" class="docs-form">
+<label class="docs-wide">Datei (PDF, DOCX, TXT oder Bild, bis 12 MB)<input name="file" type="file" required accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"></label>
+<label class="docs-wide">Titel<input name="title" maxlength="200" placeholder="z. B. Treppenplanung Variante 2"></label>
+<label>Kategorie<select name="category" id="docUploadCategory"></select></label>
+<label>Bereich<select name="area" id="docUploadArea"></select></label>
+<label>Status<select name="status" id="docUploadStatus"></select></label>
+<label>Schlagworte<input name="tags" maxlength="400" placeholder="Treppe, DG, Statik"></label>
+<label class="docs-wide">Beschreibung<textarea name="description" rows="2" maxlength="1500"></textarea></label>
+<button type="submit" id="docUploadButton" class="primary">Dokument speichern</button></form>
+<p id="docMessage" role="status"></p></section>
+<aside class="panel docs-guide"><h2>Wissen für ChatGPT</h2>
+<p>Dokumente werden lokal gespeichert und indexiert. Im Bauzeitenplan-Chat kannst du passende Unterlagen auswählen.</p>
+<p>Nur ausdrücklich ausgewählte Originaldokumente werden bei einer ChatGPT-Anfrage übertragen. Quellen werden als DOK-ID gekennzeichnet und in der Historie erfasst.</p>
+<p>Technische Zeichnungen werden nicht ungeprüft in verbindliche Planungsentscheidungen umgewandelt. Maße, Statik und Elektroplanung fachlich prüfen.</p></aside></div>
+<section class="panel docs-library"><h2>Dokumentenbibliothek</h2><p id="docCount"></p>
+<div class="docs-toolbar"><label>Suche<input type="search" id="docSearch" placeholder="Titel, Gewerk, Schlagworte …"></label>
+<label>Bereich<select id="docFilterArea"><option value="">Alle Bereiche</option></select></label>
+<label>Status<select id="docFilterStatus"><option value="">Alle</option></select></label></div>
+<div id="docList" class="docs-list"></div></section>
+<dialog id="docEditDialog" class="docs-dialog"><form id="docEditForm" class="docs-dialog-inner">
+<div class="docs-dialog-head"><h2>Dokument pflegen</h2><button type="button" id="docClose">Schließen</button></div>
+<input type="hidden" name="id">
+<label>Titel<input name="title" required maxlength="200"></label>
+<label>Kategorie<select name="category" id="docEditCategory"></select></label>
+<label>Bereich<select name="area" id="docEditArea"></select></label>
+<label>Status<select name="status" id="docEditStatus"></select></label>
+<label>Schlagworte<input name="tags" maxlength="400"></label>
+<label>Beschreibung<textarea name="description" rows="3" maxlength="1500"></textarea></label>
+<p>Überholte oder vorläufige Dokumente bleiben archiviert, werden aber nicht mit ChatGPT geteilt.</p>
+<div class="docs-actions"><button type="button" id="docDelete" class="danger">Löschen</button><button type="submit" class="primary">Speichern</button></div>
+<p id="docEditMessage" role="status"></p></form></dialog></main>
+</div></div>
+<script src="/static/dokumente.js"></script>
+<div id="phbChatGPTConnection" hidden></div>
+<script src="/static/chatgpt.js"></script><script src="/static/shell.js"></script></body></html>
