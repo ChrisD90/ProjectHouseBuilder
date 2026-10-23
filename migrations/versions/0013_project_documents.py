@@ -13,7 +13,8 @@ depends_on=None
 
 
 def upgrade():
-    if not sa.inspect(op.get_bind()).has_table('project_document'):
+    inspector=sa.inspect(op.get_bind())
+    if not inspector.has_table('project_document'):
         op.create_table('project_document',
             sa.Column('id',sa.Integer(),primary_key=True),
             sa.Column('title',sa.String(200),nullable=False),
