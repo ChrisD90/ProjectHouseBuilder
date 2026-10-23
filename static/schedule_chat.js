@@ -89,7 +89,7 @@
   }
   async function loadDocuments(){
     try {
-      const data=await request('/api/documents');
+      const data=await request('/api/project-documents');
       library=(data.documents||[]).filter(d=>d.status==='Aktuell');
       for(const id of [...selectedDocuments]){
         if(!library.some(d=>d.id===id))selectedDocuments.delete(id);
@@ -161,7 +161,7 @@
         item.source_documents.forEach((doc,index)=>{
           if(index)sources.append(document.createTextNode(' · '));
           const link=document.createElement('a');
-          link.href='/api/documents/'+doc.id+'/download';
+          link.href='/api/project-documents/'+doc.id+'/download';
           link.textContent=(doc.label||'DOK-'+doc.id)+' '+doc.title;
           link.title='Original herunterladen (falls noch vorhanden)';
           sources.append(link);
