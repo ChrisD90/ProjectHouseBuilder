@@ -44,6 +44,7 @@ class MasterDataTest(unittest.TestCase):
         created=self.client.post('/api/trades',json={'name':'Altbau Spezial'})
         self.assertEqual(created.status_code,201,created.json)
         tid=created.json['id']
+        self.assertIn('Altbau Spezial',self.client.get('/api/project').json['trades'])
         self.assertEqual(self.client.post('/api/trades',json={'name':'altbau spezial'}).status_code,400)
         contractor=Contractor(name='Beispielhandwerker',trade='Altbau Spezial')
         task=Task(code='T-100',name='Mauer ausbessern',trade='Altbau Spezial',phase='Rohbau')
