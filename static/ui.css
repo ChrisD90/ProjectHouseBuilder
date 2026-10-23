@@ -462,3 +462,16 @@ body.phb-app.phb-page-zeitplan:has(#scheduleChatFab:not([hidden])) #toast{
   right:100px;bottom:clamp(17px,2.5vw,28px);
   max-width:calc(100vw - 128px);overflow-wrap:anywhere
 }
+
+/* Opt-in document context stays compact inside the floating Gantt assistant. */
+body.phb-app.phb-page-zeitplan .schedule-chat-documents{flex:0 1 auto;min-height:0;border:1px solid var(--ui-line);border-radius:10px;padding:0;margin:0;background:var(--ui-soft);overflow:auto}
+body.phb-app.phb-page-zeitplan .schedule-chat-documents>summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;padding:10px 12px;cursor:pointer;font-size:12px;color:var(--ui-ink);font-weight:750}
+body.phb-app.phb-page-zeitplan .schedule-chat-documents>summary span{font-size:10px;font-weight:600;color:var(--ui-muted)}
+body.phb-app.phb-page-zeitplan .schedule-chat-documents>p{margin:0 12px 10px;color:var(--ui-muted);font-size:11px;line-height:1.55}
+body.phb-app.phb-page-zeitplan .schedule-chat-documents>a{display:block;margin:10px 12px;font-size:11px}
+body.phb-app.phb-page-zeitplan .schedule-doc-list{max-height:190px;overflow-y:auto;display:grid;gap:5px;padding:0 10px}
+body.phb-app.phb-page-zeitplan .schedule-doc-choice{display:flex;align-items:flex-start;gap:9px;background:var(--ui-surface);border:1px solid var(--ui-line);padding:9px 10px;border-radius:9px;cursor:pointer}
+body.phb-app.phb-page-zeitplan .schedule-doc-choice input{margin-top:2px;width:16px;height:16px;flex:none}
+body.phb-app.phb-page-zeitplan .schedule-doc-choice strong{display:block;font-size:11px;font-weight:750;color:var(--ui-ink);overflow-wrap:anywhere}
+body.phb-app.phb-page-zeitplan .schedule-doc-choice small{display:block;font-size:10px;color:var(--ui-muted);line-height:1.45;margin-top:3px}
+body.phb-app.phb-page-zeitplan .schedule-history-sources{border-top:1px solid var(--ui-line);padding-top:7px;font-size:11px}
