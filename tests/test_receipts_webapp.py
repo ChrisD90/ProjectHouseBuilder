@@ -84,8 +84,8 @@ class ReceiptWebappTest(unittest.TestCase):
         start=self.client.get('/api/costs').json['summary']['paid']
         result=json.dumps({
             'supplier':'Baumarkt AI','invoice_number':'AI-11',
-            'document_date':'2026-10-22','gross_amount':119,
-            'net_amount':100,'vat_amount':19,'category':'Werkzeug',
+            'document_date':'2026-10-22','gross_amount':'1.190,00',
+            'net_amount':'1.000,00','vat_amount':'190,00','category':'Werkzeug',
             'kind':'Rechnung','billing_type':'Normal','warnings':['Preis prüfen']
         })
         with patch.object(chatgpt,'status',return_value={'sharing':True}), \
@@ -99,7 +99,9 @@ class ReceiptWebappTest(unittest.TestCase):
         self.assertEqual(run.call_count,1)
         self.assertEqual(yes.json['source'],'ChatGPT')
         self.assertEqual(yes.json['supplier'],'Baumarkt AI')
-        self.assertEqual(yes.json['gross_amount'],119.0)
+        self.assertEqual(yes.json['gross_amount'],1190.0)
+        self.assertEqual(yes.json['net_amount'],1000.0)
+        self.assertEqual(yes.json['vat_amount'],190.0)
         self.assertEqual(yes.json['status'],'Entwurf')
         self.assertEqual(self.client.get('/api/costs').json['summary']['paid'],start)
         self.assertEqual(self.client.get('/api/receipts').json['drafts'],1)
