@@ -1,6 +1,8 @@
 """Financing integration checks: anti-double-count, spending limits, cashflows, backups."""
 from datetime import date, timedelta
 from decimal import Decimal
+import io
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -149,6 +151,85 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertEqual(self.event('loan_drawdown','0.001',loan_id=lid).status_code,400)
         self.assertEqual(self.event('loan_drawdown','10',loan_id=lid).status_code,201)
         self.assertEqual(self.client.patch(f'/api/financing/loans/{lid}',json={'principal':'5'}).status_code,400)
+
+    def test_loan_document_upload_download_removal_and_delete_guard(self):
+        lid=self.loan()
+        first=self.client.post(f'/api/financing/loans/{lid}/documents',
+            data={'file':(io.BytesIO(b'%PDF-1.4\\nTest-Brief'),'Bankbrief.pdf'),
+                  'notes':'Zinsmitteilung'},content_type='multipart/form-data')
+        self.assertEqual(first.status_code,201,first.json)
+        did=first.json['id']
+        self.assertEqual(first.json['filename'],'Bankbrief.pdf')
+        loan=next(x for x in self.state()['loans'] if x['id']==lid)
+        self.assertEqual(len(loan['documents']),1)
+        self.assertEqual(loan['documents'][0]['notes'],'Zinsmitteilung')
+        self.assertEqual(self.client.delete(f'/api/financing/loans/{lid}').status_code,409)
+        stream=self.client.get(f'/api/financing/loans/{lid}/documents/{did}/download')
+        self.assertEqual(stream.status_code,200)
+        self.assertEqual(stream.data,b'%PDF-1.4\\nTest-Brief')
+        self.assertEqual(stream.headers['Cache-Control'],'no-store')
+        self.assertEqual(self.client.get(
+            f'/api/financing/loans/{lid+999}/documents/{did}/download').status_code,404)
+        self.assertEqual(self.client.post(f'/api/financing/loans/{lid}/documents',
+            data={'file':(io.BytesIO(b'not a pdf'),'bad.pdf')},
+            content_type='multipart/form-data').status_code,400)
+        self.assertEqual(self.client.delete(
+            f'/api/financing/loans/{lid}/documents/{did}').status_code,200)
+        self.assertEqual(self.state()['loans'][0]['documents'],[])
+        self.assertEqual(self.client.delete(f'/api/financing/loans/{lid}').status_code,200)
+
+    def test_chatgpt_loan_proposal_requires_explicit_consent_and_never_autosaves(self):
+        from chatgpt_local import chatgpt
+        proposed=json.dumps({
+            'name':'Kredit aus Vertrag','bank':'Beispielbank',
+            'principal':'200.000,00','interest_rate':'3,760',
+            'monthly_payment':'980,00','extra_repayment_pct':'5',
+            'contract_date':'2026-10-22','fixed_until':'2036-10-22',
+            'warnings':['Zinsbeginn gesondert prüfen']
+        })
+        def submit(extra=None,headers=None):
+            return self.client.post('/api/financing/loans/ai/extract',
+              data={'file':(io.BytesIO(b'%PDF-1.4\\nSensible Vertragsdaten'),'vertrag.pdf'),
+                    'model':'m1',**(extra or {})},
+              headers=headers or {},content_type='multipart/form-data',
+              base_url='http://127.0.0.1:5055')
+        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+             patch.object(chatgpt,'run',return_value=proposed) as run:
+            self.assertEqual(submit({'plan_only':'true'}).status_code,403)
+            self.assertEqual(submit(headers={'X-PHB-AI':'1'}).status_code,403)
+            res=submit({'plan_only':'true'},{'X-PHB-AI':'1'})
+        self.assertEqual(res.status_code,200,res.json)
+        self.assertEqual(run.call_count,1)
+        self.assertEqual(res.json['fields']['principal'],'200000.00')
+        self.assertEqual(res.json['fields']['interest_rate'],'3.760')
+        self.assertEqual(res.json['fields']['monthly_payment'],'980.00')
+        self.assertEqual(res.json['fields']['fixed_until'],'2036-10-22')
+        self.assertTrue(res.json['warnings'])
+        self.assertEqual(self.state()['loans'],[],
+                         'KI-Auslesen darf keinen Kredit eigenständig speichern')
+        manual=self.post('/api/financing/loans',{
+             'name':res.json['fields']['name'],
+             'principal':res.json['fields']['principal'],
+             'interest_rate':res.json['fields']['interest_rate']})
+        self.assertEqual(manual.status_code,201,manual.json)
+        self.assertEqual(manual.json['principal'],200000)
+
+    def test_loan_ai_rejects_bad_file_and_conflicting_values(self):
+        from chatgpt_local import chatgpt
+        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+             patch.object(chatgpt,'run',return_value=json.dumps({
+                 'principal':'not-an-amount','interest_rate':'999',
+                 'fixed_until':'2030-99-77','bank':'Bank X',
+                 'warnings':[] })):
+            result=self.client.post('/api/financing/loans/ai/extract',
+               data={'file':(io.BytesIO(b'%PDF-1.4\\nA'),'loan.pdf'),
+                     'model':'m1','plan_only':'true'},
+               headers={'X-PHB-AI':'1'},base_url='http://127.0.0.1:5055',
+               content_type='multipart/form-data')
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(result.json['fields'],{'bank':'Bank X'})
+        self.assertGreaterEqual(len(result.json['warnings']),3)
+        self.assertEqual(self.state()['loans'],[])
 
     def test_backup_manual_endpoint(self):
         from unittest.mock import patch as mock
