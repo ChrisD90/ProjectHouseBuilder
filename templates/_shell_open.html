@@ -41,6 +41,15 @@
         <div class="phb-breadcrumb"><span>Sanierung Gartenstraße</span><span aria-hidden="true">/</span><strong>{{ phb_title }}</strong></div>
       </div>
       <div class="phb-topbar-right">
+        <label class="phb-theme-control" for="phbThemeMode">
+          <svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#sun"></use></svg>
+          <span>Darstellung</span>
+          <select id="phbThemeMode" aria-label="Farbdarstellung auswählen">
+            <option value="system">System</option>
+            <option value="light">Hell</option>
+            <option value="dark">Dunkel</option>
+          </select>
+        </label>
         <span class="phb-topbar__status">{{ icon('shield') }} <span>Privater Betrieb</span></span>
         <button id="phbChatGPTButton" class="phb-ai-topbar" type="button" title="Mit ChatGPT verbinden" aria-label="ChatGPT-Verbindung verwalten">
           <img id="phbChatGPTLogo" class="phb-ai-logo" src="/static/icons/chatgpt-mark.svg" alt="ChatGPT" hidden>
@@ -48,3 +57,13 @@
         </button>
       </div>
     </header>
+
+<div id="phbLoadTrack" hidden aria-hidden="true"></div>
+<div id="phbBusyOverlay" hidden role="status" aria-live="polite" aria-atomic="true">
+  <div class="phb-busy-panel">
+    <span class="phb-busy-spinner" aria-hidden="true"></span>
+    <div><strong id="phbBusyTitle">Daten werden verarbeitet</strong>
+      <p id="phbBusyMessage">Der Vorgang läuft. Bitte Änderungen erst nach der Rückmeldung erneut starten.</p></div>
+  </div>
+</div>
+<span id="phbBusyStatus" class="visually-hidden" role="status" aria-live="polite"></span>
