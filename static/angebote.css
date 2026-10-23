@@ -45,3 +45,18 @@
 .offer-positions-footnote{margin:11px 0 0;font-size:11px;color:#5d7581;line-height:1.55}
 @media(max-width:850px){.offer-position-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:590px){.offer-positions-editor{padding:12px}.offer-positions-head{flex-direction:column;gap:9px}.offer-position-fields{grid-template-columns:1fr}.offer-review-form .offer-position-description{grid-column:1}.offer-position-title{flex-wrap:wrap}.offer-position-amount{margin-left:14px}.offer-position-tools{grid-column:1}}
+
+/* Non-destructive quote revisions */
+.offer-version-upload{display:flex;flex-wrap:wrap;align-items:end;gap:10px;padding:13px;margin:14px 0;background:var(--surface,#f5f8fb);border:1px solid rgba(12,74,86,.15);border-radius:12px}
+.offer-version-upload label{font-size:.88rem;display:flex;flex-direction:column;gap:5px;flex:1 1 260px}
+.offer-version-upload input[type=file]{max-width:100%;font:inherit}
+.offer-version-upload [data-version-upload-status]{font-size:.86rem;color:#8a3c22}
+.offer-version-history,.offer-version-record{border:1px solid rgba(17,82,99,.15);border-radius:10px;padding:10px 12px;margin-top:10px}
+.offer-version-history>summary,.offer-version-record>summary{cursor:pointer;font-weight:600}
+.offer-version-content{margin:12px 0 0}
+.offer-version-record summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
+.offer-version-record summary span{font-weight:400}
+.offer-version-record-details{padding-top:12px}
+.offer-version-record-details p{margin:6px 0;font-size:.9rem;overflow-wrap:anywhere}
+.offer-version-note{background:#eaf3f5;border-left:3px solid #0e5263;padding:10px;margin:12px 0;border-radius:5px}
+@media(max-width:650px){.offer-version-upload{display:block}.offer-version-upload button{margin-top:9px}.offer-version-record summary{display:block}}

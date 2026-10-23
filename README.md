@@ -107,3 +107,18 @@ Der Inhalt ist ein **unverbindlicher Planvorschlag** für das Haus mit Dach-/Kni
 - [Altbausanierung und gewerkeübergreifende Reihenfolge](https://www.schulten-bau.de/blog/die-richtige-reihenfolge-bei-einer-sanierung-welche-gewerke-wann-kommen) – als nichtamtliche Ergänzung für Ausführungsabhängigkeiten
 
 **Bereits alter Musterplan vorhanden?** Unter **Bauzeitenplan** kannst du **„Nur Bauzeitplan leeren (mit Backup)“** wählen. Voraussetzung: ein erreichbarer Backupordner und die Eingabe `BAUZEITPLAN LEEREN`. Bei Verknüpfungen zwischen Kostenpositionen und Aufgaben wird das Leeren verweigert. Die Funktion wirkt nur auf Aufgaben und Abhängigkeiten, nicht auf Finanzen, Angebote, Rechnungen oder hochgeladene PDFs. Sie ist aus Sicherheitsgründen nur lokal mit SQLite verfügbar. Anschließend kann der neue Musterplan eingefügt werden.
+
+
+### Angebotsversionen (Historie statt Dubletten)
+Auf der Seite `/angebote` kannst du bei einem bestehenden Angebot **Neue PDF-Version analysieren** auswählen.
+Das PDF wird als **Versionsentwurf** eingelesen und kann inklusive Einzelpositionen
+geprüft, ergänzt und korrigiert werden. Bis zum Klick auf **Als aktuelle Version übernehmen**
+bleibt das vorherige Angebot gültig und als einziges in der Liste sichtbar.
+Der Versionswechsel archiviert Original-PDF, Netto-/Bruttobeträge, Anbieter,
+Notizen und alle bearbeiteten Positionen der bisherigen Version unveränderbar.
+Unter **Versionshistorie** sind sämtliche Fassungen und PDFs einsehbar.
+Bei bereits angenommenen Angeboten bleiben Angebots-ID, Aufträge und Rechnungen
+verknüpft; die bestätigte neue Bruttosumme wird zum aktuellen Auftragswert.
+Eine Änderung der Kostenplanposition ist bei bestehenden Rechnungen oder
+Zahlungen aus Sicherheitsgründen gesperrt.
+Vor der Schema-Migration `0007` wird automatisch ein vollständiges Backup verlangt.

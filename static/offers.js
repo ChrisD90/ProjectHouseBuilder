@@ -3,7 +3,7 @@
 (() => {
   const $ = id => document.getElementById(id);
   if (!$('offerImportForm') || !$('offerList')) return;
-  let offers = [], categories = [], budgets = [];
+  let offers = [], categories = [], budgets = [], versionDrafts = [];
   const fmt = n => n == null ? 'Bitte Betrag prüfen' : new Intl.NumberFormat('de-DE', {style:'currency',currency:'EUR'}).format(Number(n));
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const option = (value,label,selected) => `<option value="${esc(value)}" ${String(value)===String(selected??'')?'selected':''}>${esc(label)}</option>`;
@@ -120,6 +120,51 @@
     return {warning:Boolean(different||missing||invalid),different,missing};
   }
 
+  function renderVersionDraft(o) {
+    const id=Number(o.offer_id),v=Number(o.version);
+    return `<article class="offer-card offer-draft-card offer-version-draft" data-version-card="${id}:${v}">
+      <div class="offer-card-head"><div><span class="offer-stage stage-draft">Neue Version ${v} – prüfen</span>
+      <h3>${esc(o.current_vendor)} · ${esc(o.filename)}</h3>
+      <p>Bestehendes Angebot #${id} · <a class="offer-document" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Neue PDF ansehen ↗</a></p></div></div>
+      <p class="offer-version-note">Die bisherige Version bleibt sichtbar und unverändert, bis du diese Version freigibst.</p>
+      ${notice(o)}<form class="offer-review-form" data-version-review="${id}:${v}">${fields(o)}${positionEditor(o)}
+      <div class="offer-form-actions"><button type="button" class="primary" data-version-activate="${id}:${v}">Version ${v} als aktuell übernehmen</button>
+      <button type="submit" class="mini">Versionsentwurf speichern</button>
+      <button type="button" class="offer-text-danger" data-version-discard="${id}:${v}">Entwurf verwerfen</button></div></form></article>`;
+  }
+
+  function versionHistory(o) {
+    const versions=(o.versions||[]).filter(v=>v.state!=='draft');
+    if(!versions.length) return '';
+    return `<details class="offer-version-history" data-version-history="${o.id}"><summary>Versionshistorie (${versions.length}) · aktuell: Version ${o.current_version||1}</summary>
+      <div class="offer-version-content" data-version-content="${o.id}"><p>Historie öffnen, um ältere PDFs und Positionen einzusehen.</p></div></details>`;
+  }
+
+  function historicRows(data) {
+    return (data.positions||[]).length ? `<div class="tablewrap"><table><thead><tr><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>
+      ${data.positions.map(p=>`<tr><td>${esc(p.number)}</td><td>${esc(p.description)}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}
+      </tbody></table></div>`:'<p>Keine Einzelpositionen hinterlegt.</p>';
+  }
+
+  function renderHistory(versions) {
+    return versions.map(v=>{const d=v.snapshot||{};
+      const label=v.state==='current'?'Aktuelle Version':v.state==='historical'?'Frühere Version':'Verworfener Entwurf';
+      const link=v.document_id?`<a href="/api/documents/${v.document_id}/download" target="_blank" rel="noopener">Original-PDF öffnen ↗</a>`:'Manuell erfasst';
+      return `<details class="offer-version-record"><summary><strong>Version ${v.version}: ${esc(label)}</strong><span>${fmt(d.gross)} · ${esc(d.number||'Ohne Nummer')}</span></summary>
+        <div class="offer-version-record-details"><p><b>Anbieter:</b> ${esc(d.vendor)} · <b>Datum:</b> ${esc(d.issued||'–')} · <b>Kategorie:</b> ${esc(d.category||'–')}</p>
+        <p><b>Netto:</b> ${fmt(d.net)} · <b>Brutto:</b> ${fmt(d.gross)} · <b>Damals:</b> ${esc(d.status||'–')}</p>
+        <p><b>PDF:</b> ${link}</p>${d.notes?`<p><b>Notizen:</b> ${esc(d.notes)}</p>`:''}
+        ${historicRows(d)}</div></details>`;
+    }).join('');
+  }
+
+  function versionUpload(o) {
+    return `<form class="offer-version-upload" data-version-upload="${o.id}">
+      <label>Neue PDF-Version hochladen<input type="file" name="file" accept=".pdf,application/pdf" required></label>
+      <button type="submit" class="mini">Neue Version analysieren</button>
+      <span data-version-upload-status="${o.id}" role="status"></span></form>`;
+  }
+
   function renderDraft(o) {
     const [label,color] = stage(o);
     return `<article class="offer-card offer-draft-card" data-offer-card="${o.id}"><div class="offer-card-head"><div><span class="offer-stage ${color}">${label}</span><h3>${esc(o.filename)}</h3><p>${sourceLabel(o)} · Werte bitte vor der Übernahme prüfen.</p></div></div>
@@ -154,19 +199,19 @@
       <div class="offer-actions">${accepted
           ? `<span class="offer-accepted-note">✓ In der Kostenprognose berücksichtigt</span><a class="mini" href="/belege?offer_id=${o.id}">Rechnung zuordnen</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
           : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder berücksichtigen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`}
-      </div>${accepted?billingBlock(o):''}<div class="offer-inline-edit" id="offerEditor${o.id}" hidden></div>${notice(o)}${parsedPositions(o)}</article>`;
+      </div>${accepted?billingBlock(o):''}${versionUpload(o)}${versionHistory(o)}<div class="offer-inline-edit" id="offerEditor${o.id}" hidden></div>${notice(o)}${parsedPositions(o)}</article>`;
   }
 
   function refreshUI() {
     const drafts=offers.filter(o=>o.status==='Entwurf');
     const listed=offers.filter(o=>o.status==='Angebot');
     const accepted=offers.filter(o=>['Angenommen','Beauftragt'].includes(o.status));
-    $('offersCountDraft').textContent=String(drafts.length);
+    $('offersCountDraft').textContent=String(drafts.length+versionDrafts.length);
     $('offersCountListed').textContent=String(listed.length);
     $('offersCountAccepted').textContent=String(accepted.length);
-    $('offersDraftBadge').textContent=drafts.length?`(${drafts.length})`:'';
-    $('offerDrafts').innerHTML=drafts.length ? drafts.map(renderDraft).join('') : '<p class="offer-empty">Keine offenen PDF-Entwürfe. Neue PDF-Dateien kannst du oben hochladen.</p>';
-    $('offerDrafts').querySelectorAll('[data-review]').forEach(checkPositions);
+    $('offersDraftBadge').textContent=(drafts.length+versionDrafts.length)?`(${drafts.length+versionDrafts.length})`:'';
+    $('offerDrafts').innerHTML=(drafts.length||versionDrafts.length) ? [...drafts.map(renderDraft),...versionDrafts.map(renderVersionDraft)].join('') : '<p class="offer-empty">Keine offenen PDF-Entwürfe. Neue PDF-Dateien kannst du oben hochladen.</p>';
+    $('offerDrafts').querySelectorAll('form[data-review],form[data-version-review]').forEach(checkPositions);
     const filter=$('offerCategoryFilter'), prev=filter.value;
     filter.innerHTML=option('','Alle Kategorien',prev)+categories.map(c=>option(c,c,prev)).join('');
     filter.value=categories.includes(prev)?prev:'';
@@ -192,7 +237,7 @@
   }
   async function reload() {
     const [o,c] = await Promise.all([request('/api/offers'),request('/api/costs')]);
-    offers=o.offers||[]; categories=o.categories||[];
+    offers=o.offers||[]; categories=o.categories||[]; versionDrafts=o.draft_versions||[];
     budgets=(c.budget_lines||[]).filter(b=>b.active&&!b.is_group);
     refreshUI();
   }
@@ -265,18 +310,69 @@
     }
   });
   document.addEventListener('input',e=>{
-    const form=e.target.closest('form[data-review]');
+    const form=e.target.closest('form[data-review],form[data-version-review]');
     if(form && (e.target.closest('[data-position-row]') || ['gross','net','vat'].includes(e.target.name)))checkPositions(form);
   });
   document.addEventListener('change',e=>{
-    const form=e.target.closest('form[data-review]');
+    const form=e.target.closest('form[data-review],form[data-version-review]');
     if(form && e.target.closest('[data-position-row]'))checkPositions(form);
   });
   document.addEventListener('submit',async e=>{
-    const form=e.target.closest('[data-review]');if(!form)return;
+    const form=e.target.closest('[data-review], [data-version-review]');if(!form)return;
     e.preventDefault();
-    try {await update(form.dataset.review,collectDraft(form)); await reload()}
+    try {
+      if(form.dataset.versionReview){const [id,v]=form.dataset.versionReview.split(':');await request(offerUrl(id)+'/versions/'+v+'/draft',{method:'PATCH',data:collectDraft(form)});}
+      else await update(form.dataset.review,collectDraft(form));
+      await reload();
+    }
     catch(err){alert(err.message)}
+  });
+  document.addEventListener('submit',async e=>{
+    const form=e.target.closest('form[data-version-upload]');if(!form)return;
+    e.preventDefault();
+    const id=form.dataset.versionUpload;
+    const status=form.querySelector('[data-version-upload-status]');
+    const button=form.querySelector('button[type="submit"]');
+    button.disabled=true; status.textContent='Neue Version wird lokal analysiert …';
+    try{
+      await request(offerUrl(id)+'/versions',{method:'POST',formData:new FormData(form)});
+      await reload();
+      $('angebote-pruefen').scrollIntoView({behavior:'smooth',block:'start'});
+    }catch(err){status.textContent='Fehler: '+err.message;button.disabled=false;}
+  });
+  document.addEventListener('toggle',async e=>{
+    const details=e.target;
+    if(!details.matches?.('[data-version-history]')||!details.open)return;
+    const id=details.dataset.versionHistory;
+    const content=details.querySelector('[data-version-content]');
+    try{
+      const history=await request(offerUrl(id)+'/versions');
+      content.innerHTML=renderHistory(history.versions);
+    }catch(err){content.textContent='Versionshistorie konnte nicht geladen werden: '+err.message;}
+  },true);
+  document.addEventListener('click',async e=>{
+    const button=e.target.closest('[data-version-activate], [data-version-discard]');if(!button)return;
+    const activation=Boolean(button.dataset.versionActivate);
+    const [id,v]=(button.dataset.versionActivate||button.dataset.versionDiscard).split(':');
+    try{
+      if(activation){
+        const form=button.closest('form');if(!form.reportValidity())return;
+        const review=checkPositions(form);
+        if(review.warning&&!confirm('Die Positionen sind möglicherweise unvollständig. Version dennoch als aktuell übernehmen?'))return;
+        const active=offers.find(o=>String(o.id)===id);
+        const isAccepted=['Angenommen','Beauftragt'].includes(active?.status);
+        const prompt=isAccepted
+          ? 'Neue PDF-Version verbindlich übernehmen? Die Angebotssumme des angenommenen Auftrags wird angepasst. Alle bisherigen Rechnungen bleiben mit diesem Angebot verknüpft.'
+          : 'Diese geprüfte Version als aktuelles Angebot übernehmen? Die alte Version bleibt in der Historie erhalten.';
+        if(!confirm(prompt))return;
+        await request(offerUrl(id)+'/versions/'+v+'/draft',{method:'PATCH',data:collectDraft(form)});
+        await request(offerUrl(id)+'/versions/'+v+'/activate',{method:'POST'});
+      }else{
+        if(!confirm('Versionsentwurf verwerfen? Das PDF bleibt als historischer Nachweis gespeichert.'))return;
+        await request(offerUrl(id)+'/versions/'+v+'/discard',{method:'POST'});
+      }
+      await reload();
+    }catch(err){alert(err.message)}
   });
   document.addEventListener('click',async e=>{
     const button=e.target.closest('button[data-offer-promote],button[data-offer-accept],button[data-offer-reject],button[data-offer-relist],button[data-offer-unaccept],button[data-offer-edit],button[data-offer-delete]');

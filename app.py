@@ -243,8 +243,23 @@ class Offer(db.Model):
     warnings=db.Column(db.Text,nullable=False,default='[]')
     filename=db.Column(db.String(260),nullable=False)
     created_at=db.Column(db.DateTime,default=datetime.utcnow)
+    current_version=db.Column(db.Integer,nullable=False,default=1,server_default='1')
+    versions=db.relationship('OfferVersion',cascade='all,delete-orphan',lazy='select',order_by='OfferVersion.version_number')
     sections=db.relationship('OfferSection',cascade='all,delete-orphan',lazy='select')
     positions=db.relationship('OfferPosition',cascade='all,delete-orphan',lazy='select')
+
+class OfferVersion(db.Model):
+    """Immutable snapshot of historic quotes, plus editable pending revisions."""
+    __tablename__='offer_version'
+    id=db.Column(db.Integer,primary_key=True)
+    offer_id=db.Column(db.Integer,db.ForeignKey('offer.id',ondelete='CASCADE'),nullable=False)
+    version_number=db.Column(db.Integer,nullable=False)
+    state=db.Column(db.String(16),nullable=False,default='draft')
+    snapshot=db.Column(db.Text,nullable=False)
+    document_id=db.Column(db.Integer,db.ForeignKey('document.id'))
+    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
+    __table_args__=(db.UniqueConstraint('offer_id','version_number',name='uq_offer_version_number'),)
+
 
 class OfferSection(db.Model):
     id=db.Column(db.Integer,primary_key=True)
@@ -766,6 +781,243 @@ def _sync_offer_costs(offer):
     db.session.add(item)
 
 
+_OFFER_VERSION_FIELDS=('vendor','number','issued','expires','gross','net','vat','tax_rate',
+    'category','budget_line_id','notes','status','reconciled','warnings','filename','digest','document_id','contractor_id')
+_POSITION_VERSION_FIELDS=('number','section','description','quantity','unit','unit_price',
+    'net_amount','optional_amount','optional','page')
+_SECTION_VERSION_FIELDS=('name','net','gross','budget_line_id','selected','sort_order')
+
+
+def _offer_snapshot(o):
+    """A complete, independent copy of the quote's original data and OCR corrections."""
+    result={field:getattr(o,field) for field in _OFFER_VERSION_FIELDS}
+    result['positions']=[{field:getattr(pos,field) for field in _POSITION_VERSION_FIELDS}
+                         for pos in sorted(o.positions,key=lambda x:x.id or 0)]
+    result['sections']=[{field:getattr(g,field) for field in _SECTION_VERSION_FIELDS}
+                        for g in sorted(o.sections,key=lambda x:x.sort_order)]
+    return result
+
+
+def _ensure_offer_current_version(o):
+    """Lazily snapshot old records on first revision, no destructive data conversion."""
+    record=next((v for v in o.versions if v.state=='current'),None)
+    if record is None:
+        record=OfferVersion(offer_id=o.id,version_number=o.current_version or 1,
+             state='current',document_id=o.document_id,snapshot=json.dumps(_offer_snapshot(o),ensure_ascii=False))
+        db.session.add(record)
+        db.session.flush()
+    return record
+
+
+def _sync_current_version(o):
+    # Editing the active record before supersession must not create stale history.
+    for v in o.versions:
+        if v.state=='current':
+            v.snapshot=json.dumps(_offer_snapshot(o),ensure_ascii=False)
+            v.document_id=o.document_id
+            return
+
+
+def _version_json(v, full=False):
+    snapshot=json.loads(v.snapshot)
+    summary={'id':v.id,'version':v.version_number,'state':v.state,
+             'created_at':v.created_at.isoformat() if v.created_at else '',
+             'document_id':v.document_id,'filename':snapshot.get('filename'),
+             'vendor':snapshot.get('vendor'),'number':snapshot.get('number'),
+             'gross':snapshot.get('gross'),'status':snapshot.get('status')}
+    if full:summary['snapshot']=snapshot
+    return summary
+
+
+def _reviewed_version_from_pdf(o,parsed,digest,document,name,category):
+    """Prepare review data WITHOUT modifying the current quote or contract."""
+    candidate=Offer(digest=digest,document_id=document.id,contractor_id=o.contractor_id,
+        vendor=o.vendor,number=o.number,issued=o.issued,expires=o.expires,
+        net=o.net,vat=o.vat,gross=o.gross,tax_rate=o.tax_rate,status='Entwurf',
+        category=category,budget_line_id=o.budget_line_id,notes=o.notes,
+        reconciled=False,warnings='[]',filename=name)
+    guessed={field:parsed.get(field) for field in ('vendor','number','issued','expires','gross','net','vat')}
+    # Keep known information if OCR cannot read a field in the replacement file.
+    guesses={k:v for k,v in guessed.items() if v not in (None,'','Firma nicht erkannt')}
+    _apply_offer_fields(candidate,guesses)
+    candidate.warnings=json.dumps(parsed.get('warnings') or [],ensure_ascii=False)
+    raw=parsed.get('positions') or []
+    rows=[]
+    for i,pos in enumerate(raw[:500],1):
+        if not isinstance(pos,dict) or not str(pos.get('description') or '').strip():continue
+        clean={f:pos.get(f) for f in _POSITION_VERSION_FIELDS}
+        clean.update(number=str(pos.get('number') or i),section=str(pos.get('section') or ''),
+                     description=str(pos.get('description') or ''),unit=str(pos.get('unit') or ''),
+                     optional=bool(pos.get('optional')))
+        try:rows.extend(_validated_offer_positions([clean]))
+        except ValueError:continue
+    _update_draft_positions(candidate,rows)
+    return _offer_snapshot(candidate)
+
+
+def _checked_version_snapshot(base,values):
+    """Validate all edits before writing any draft revision data."""
+    if not isinstance(values,dict):raise ValueError('Bitte gültige Angebotsdaten senden.')
+    candidate=Offer(**{k:base.get(k) for k in _OFFER_VERSION_FIELDS if k not in ('document_id','digest','status','filename','reconciled','warnings','contractor_id')})
+    candidate.status='Entwurf'
+    candidate.digest=base.get('digest')
+    candidate.document_id=base.get('document_id')
+    candidate.contractor_id=base.get('contractor_id')
+    candidate.filename=base.get('filename')
+    candidate.warnings=base.get('warnings') or '[]'
+    candidate.reconciled=bool(base.get('reconciled'))
+    _apply_offer_fields(candidate,values)
+    positions=_validated_offer_positions(values.get('positions',base.get('positions',[])))
+    _update_draft_positions(candidate,positions)
+    return _offer_snapshot(candidate)
+
+
+def _apply_version_to_offer(o,snapshot):
+    """Activate a reviewed revision on the same Offer.id so invoices stay linked."""
+    for field in _OFFER_VERSION_FIELDS:
+        setattr(o,field,snapshot.get(field))
+    o.positions.clear()
+    o.sections.clear()
+    for pos in snapshot.get('positions',[]):o.positions.append(OfferPosition(**pos))
+    for group in snapshot.get('sections',[]):o.sections.append(OfferSection(**group))
+
+
+def _sync_revised_contract(o,old_budget_line):
+    """Update the accepted contract amount without detaching any payment or invoice."""
+    items=db.session.scalars(select(CostItem).where(CostItem.offer_id==o.id).order_by(CostItem.id)).all()
+    if o.budget_line_id!=old_budget_line and any(_offer_has_dependencies(item) for item in items):
+        raise ValueError('Der Auftrag besitzt Rechnungen oder Zahlungen. Die Kostenplanposition darf bei einem Versionswechsel nicht verändert werden.')
+    if o.budget_line_id!=old_budget_line:
+        _sync_offer_costs(o)
+        return
+    if not items:
+        _sync_offer_costs(o)
+        return
+    for item in items:
+        item.offer=float(o.gross)
+        item.committed=float(o.gross)
+        item.title=(f'{o.vendor}: Angebot {o.number or "ohne Nummer"}')[:300]
+        item.category=o.category if not o.budget_line_id else db.session.get(BudgetLine,o.budget_line_id).category
+        item.contractor_id=o.contractor_id
+        item.source_ref=o.number
+        # Existing paid values, receipt links and work-order IDs remain untouched.
+
+
+def _version_drafts():
+    rows=db.session.scalars(select(OfferVersion).where(OfferVersion.state=='draft').order_by(OfferVersion.id.desc())).all()
+    result=[]
+    for v in rows:
+        o=db.session.get(Offer,v.offer_id)
+        if o:result.append({'offer_id':o.id,'version':v.version_number,'current_vendor':o.vendor,
+                           **json.loads(v.snapshot)})
+    return result
+
+
+@app.post('/api/offers/<int:offer_id>/versions')
+def upload_offer_version(offer_id):
+    o=db.session.get(Offer,offer_id)
+    if not o:return jsonify(error='Angebot nicht gefunden.'),404
+    if any(v.state=='draft' for v in o.versions):
+        return jsonify(error='Bitte zuerst den offenen Versionsentwurf prüfen oder verwerfen.'),409
+    f=request.files.get('file')
+    if not f or not f.filename or Path(f.filename).suffix.lower()!='.pdf':
+        return jsonify(error='Bitte eine PDF-Datei auswählen.'),400
+    data=f.read(15*1024*1024+1)
+    if not data or len(data)>15*1024*1024:return jsonify(error='Maximal 15 MB je Angebot.'),413
+    if not data.startswith(b'%PDF'):return jsonify(error='Die Datei ist kein gültiges PDF.'),400
+    digest=sha256(data).hexdigest()
+    if o.digest==digest or any(json.loads(v.snapshot).get('digest')==digest for v in o.versions):
+        return jsonify(error='Dieses PDF gehört bereits zur Versionshistorie dieses Angebots.'),409
+    name=Path(f.filename).name[:240]
+    try:parsed,content=_analyse_pdf_offer(data,name)
+    except ValueError as exc:return jsonify(error=str(exc)),422
+    root=DOCUMENT_ROOT
+    root.mkdir(parents=True,exist_ok=True)
+    stored=uuid4().hex+'.pdf'
+    (root/stored).write_bytes(data)
+    try:
+        # Ensure the pre-existing current version is preserved before uploading a draft.
+        _ensure_offer_current_version(o)
+        doc=Document(original_name=name,stored_name=stored,kind='Angebot',
+                     contractor_id=o.contractor_id,notes='Neue PDF-Version von Angebot #'+str(o.id))
+        db.session.add(doc);db.session.flush()
+        snapshot=_reviewed_version_from_pdf(o,parsed,digest,doc,name,o.category)
+        version=max([o.current_version or 1]+[v.version_number for v in o.versions])+1
+        v=OfferVersion(offer_id=o.id,version_number=version,state='draft',
+                       document_id=doc.id,snapshot=json.dumps(snapshot,ensure_ascii=False))
+        db.session.add(v);db.session.commit()
+        return jsonify(ok=True,offer_id=o.id,version=_version_json(v,True)),201
+    except (ValueError,TypeError,Exception) as exc:
+        db.session.rollback();(root/stored).unlink(missing_ok=True)
+        return jsonify(error='Neue Angebotsversion konnte nicht gespeichert werden: '+str(exc)),400
+
+
+@app.patch('/api/offers/<int:offer_id>/versions/<int:number>/draft')
+def edit_offer_version(offer_id,number):
+    v=db.session.scalar(select(OfferVersion).where(OfferVersion.offer_id==offer_id,
+                                    OfferVersion.version_number==number))
+    if not v:return jsonify(error='Version nicht gefunden.'),404
+    if v.state!='draft':return jsonify(error='Nur noch nicht freigegebene Versionen sind bearbeitbar.'),409
+    try:
+        payload=_checked_version_snapshot(json.loads(v.snapshot),request.get_json(silent=True))
+        v.snapshot=json.dumps(payload,ensure_ascii=False)
+        db.session.commit()
+        return jsonify(ok=True,version=_version_json(v,True))
+    except (ValueError,TypeError) as exc:
+        db.session.rollback();return jsonify(error=str(exc)),400
+
+
+@app.post('/api/offers/<int:offer_id>/versions/<int:number>/activate')
+def activate_offer_version(offer_id,number):
+    o=db.session.get(Offer,offer_id)
+    if not o:return jsonify(error='Angebot nicht gefunden.'),404
+    v=next((row for row in o.versions if row.version_number==number),None)
+    if not v:return jsonify(error='Version nicht gefunden.'),404
+    if v.state!='draft':return jsonify(error='Diese Version wurde bereits entschieden.'),409
+    snapshot=json.loads(v.snapshot)
+    if not snapshot.get('vendor') or snapshot['vendor']=='Firma nicht erkannt' or not snapshot.get('gross') or snapshot['gross']<=0:
+        return jsonify(error='Bitte Anbieter und Bruttogesamtsumme vor der Freigabe prüfen.'),409
+    old_status=o.status
+    old_budget=o.budget_line_id
+    accepted=old_status in ('Angenommen','Beauftragt')
+    try:
+        current=_ensure_offer_current_version(o)
+        current.snapshot=json.dumps(_offer_snapshot(o),ensure_ascii=False)
+        current.state='historical'
+        _apply_version_to_offer(o,snapshot)
+        # A new quote revives an old rejection, but an existing contract remains active.
+        o.status=old_status if accepted else 'Angebot'
+        o.current_version=v.version_number
+        if accepted:_sync_revised_contract(o,old_budget)
+        else:_sync_offer_costs(o)
+        v.state='current'
+        v.snapshot=json.dumps(_offer_snapshot(o),ensure_ascii=False)
+        db.session.commit()
+        return jsonify(ok=True,offer=offer_dict(o))
+    except (ValueError,TypeError) as exc:
+        db.session.rollback();return jsonify(error=str(exc)),409
+
+
+@app.post('/api/offers/<int:offer_id>/versions/<int:number>/discard')
+def discard_offer_version(offer_id,number):
+    v=db.session.scalar(select(OfferVersion).where(OfferVersion.offer_id==offer_id,
+                                    OfferVersion.version_number==number))
+    if not v:return jsonify(error='Version nicht gefunden.'),404
+    if v.state!='draft':return jsonify(error='Nur offene Versionsentwürfe können verworfen werden.'),409
+    v.state='discarded'
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@app.get('/api/offers/<int:offer_id>/versions')
+def list_offer_versions(offer_id):
+    o=db.session.get(Offer,offer_id)
+    if not o:return jsonify(error='Angebot nicht gefunden.'),404
+    return jsonify(offer_id=o.id,current_version=o.current_version or 1,
+                   versions=[_version_json(v,True) for v in reversed(o.versions)]
+                   or [{'version':1,'state':'current','snapshot':_offer_snapshot(o)}])
+
+
 def offer_dict(o):
     return {'id':o.id,'number':o.number,'vendor':o.vendor,'filename':o.filename,
             'issued':o.issued,'expires':o.expires,'net':o.net,'vat':o.vat,'gross':o.gross,
@@ -773,6 +1025,7 @@ def offer_dict(o):
             'tax_rate':o.tax_rate,'status':o.status,'reconciled':o.reconciled,
             'warnings':json.loads(o.warnings or '[]'),'document_id':o.document_id,
             'contractor_id':o.contractor_id,'billing':offer_billing_dict(o),
+            'current_version':o.current_version or 1,'versions':[_version_json(v) for v in reversed(o.versions)],
             'sections':[{'id':g.id,'name':g.name,'net':g.net,'gross':g.gross,'budget_line_id':g.budget_line_id,
                          'selected':g.selected} for g in sorted(o.sections,key=lambda x:x.sort_order)],
             'positions':[{'id':p.id,'number':p.number,'section':p.section,'description':p.description,
@@ -850,7 +1103,7 @@ def offers_manual():
 @app.get('/api/offers')
 def offers_list():
     return jsonify(offers=[offer_dict(x) for x in db.session.scalars(select(Offer).order_by(Offer.id.desc()))],
-                   categories=category_names())
+                   draft_versions=_version_drafts(),categories=category_names())
 
 
 @app.post('/api/offers/import')
@@ -1045,6 +1298,7 @@ def offer_draft_update(offer_id):
         _apply_offer_fields(offer, values)
         if positions is not None:
             _update_draft_positions(offer, positions)
+        _sync_current_version(offer)
         db.session.commit()
         return jsonify(ok=True, offer=offer_dict(offer))
     except (ValueError, TypeError) as exc:
@@ -1072,6 +1326,7 @@ def offer_update(offer_id):
     try:
         offer.status=target
         _sync_offer_costs(offer)
+        _sync_current_version(offer)
         db.session.commit()
         return jsonify(ok=True,offer=offer_dict(offer))
     except ValueError as exc:
@@ -1626,8 +1881,8 @@ def download_document(doc_id):
 def delete_document(doc_id):
     row=db.session.get(Document,doc_id)
     if not row:return jsonify(error='Dokument nicht gefunden.'),404
-    if db.session.scalar(select(Offer.id).where(Offer.document_id==doc_id).limit(1)):
-        return jsonify(error='PDF gehört zu einem importierten Angebot. Zuerst Angebot löschen.'),409
+    if db.session.scalar(select(Offer.id).where(Offer.document_id==doc_id).limit(1)) or db.session.scalar(select(OfferVersion.id).where(OfferVersion.document_id==doc_id).limit(1)):
+        return jsonify(error='PDF gehört zu einer Angebotsversion und ist als historischer Nachweis geschützt.'),409
     p=DOCUMENT_ROOT/row.stored_name
     db.session.delete(row);db.session.commit();p.unlink(missing_ok=True)
     return jsonify(ok=True)
