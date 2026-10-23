@@ -51,6 +51,14 @@ class GlobalUIDesignTest(unittest.TestCase):
                       'prefers-reduced-motion','focus-visible'):
             self.assertIn(token,css)
 
+    def test_saved_appearance_is_used_on_login_as_well(self):
+        html=self.env.get_template('login.html').render()
+        self.assertIn('href="/static/ui.css"',html)
+        self.assertIn('src="/static/ui.js"',html)
+        self.assertNotIn('phbSidebar',html)
+        css=(STATIC/'ui.css').read_text()
+        self.assertIn('body.login-screen .login-panel',css)
+
     def test_dark_mode_and_busy_assets_are_offline_cacheable(self):
         worker=(STATIC/'sw.js').read_text()
         self.assertIn("'/static/ui.css'",worker)
