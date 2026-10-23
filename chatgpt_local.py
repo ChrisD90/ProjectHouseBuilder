@@ -332,7 +332,15 @@ class ChatGPTLocal:
         catalog=self.models()
         if model not in {x['slug'] for x in catalog}:
             raise AIError('Das gewählte Modell steht für dieses Konto nicht zur Verfügung.')
-        payload={'model':model,'input':input_data,'instructions':instructions,
+        # ChatGPT plan-sharing requires Responses.input to be an array, even
+        # when the context is a single text prompt. Keep multimodal items intact.
+        if isinstance(input_data, str):
+            input_items=[{'role':'user','content':input_data}]
+        elif isinstance(input_data, list) and input_data:
+            input_items=input_data
+        else:
+            raise AIError('KI-Eingabe muss aus Text oder einer nichtleeren Nachrichtenliste bestehen.')
+        payload={'model':model,'input':input_items,'instructions':instructions,
                  'store':False,'stream':True}
         output=[];total=0;complete=False
         try:
