@@ -32,7 +32,7 @@ Die alten Excel-Kostenplanvorlagen und ihr automatischer Import sind **entfernt*
 
 ## Datenbankschema und Updates
 
-`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung und `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
+`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung, `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung und `0008` die explizite Rechnungszuordnung. Bereits bestehende Rechnungen bleiben erhalten; bisherige Zuordnungen zu Kostenpositionen werden übernommen und nicht automatisch als Eigenleistung deklariert. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
 
 Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.db-shm`, `private/`, `backups/`, `.env`, `instance/` aus. Diese Dateien niemals in GitHub einchecken. Die Datenbank nie in einem Cloud-Sync-Ordner betreiben; nur vollständige Backups synchronisieren.
 
@@ -42,7 +42,7 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 - **Kosten & Budget:** eigene Budgetpositionen und Schätzwerte, Beauftragungen, Förderungen und Kostenprognose.
 - **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, korrigieren, annehmen oder ablehnen. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.
 - **Kosten & Budget (`/kosten`):** Ausschließlich Kostenschätzungen und zusätzliche Ausgaben planen; keine zweite Angebotsverwaltung. Angenommene Angebote werden automatisch eingerechnet, aber nicht nochmals bearbeitbar als manuelle Kostenposition angezeigt.
-- **Belege:** Rechnungen/Kassenzettel als PDF oder Foto importieren, optional lokal mit Tesseract OCR lesen, prüfen, kategorisieren und erst nach Freigabe buchen.
+- **Belege:** Rechnungen/Kassenzettel als PDF oder Foto importieren und wahlweise **lokal** (PDF-Text/Tesseract OCR) oder nach ausdrücklicher Freigabe mit **ChatGPT** analysieren. Belege anschließend prüfen und **genau einer Zuordnungsart** zuweisen: angenommenes Angebot, Betrieb oder Eigenleistung. Die Budgetposition bleibt separat auswählbar; keine automatische Buchung.
 - **Finanzierung:** Kredite, Eigenkapital, Kreditabrufe, Tilgungen, aufgeteilte Rechnungszahlungen und Liquiditätsvorschau.
 - **Datenverwaltung:** Backup auf Knopfdruck, vollständiger Projekt-Reset mit Pflichtbackup.
 
@@ -168,3 +168,16 @@ und https://developers.openai.com/siwc/token-sharing-open-source/models-and-infe
 
 Die Anmeldung selbst benötigt eine echte Zustimmung im Browser und kann nicht in
 CI simuliert werden. Automatisierte Tests verwenden keine echten Zugangsdaten.
+
+## Rechnungen: lokale Erkennung, ChatGPT und eindeutige Zuordnung
+
+Unter **Rechnungen & Belege** beim Hochladen zwischen „Lokal analysieren“ (Standard, keine Übertragung an ChatGPT) und „Mit ChatGPT analysieren“ wählen. Für ChatGPT muss die lokale Verbindung aktiv sein und die Bestätigung zur Nutzung des ChatGPT-Plans im Verbindungsdialog gesetzt sein. Bei ChatGPT gehen nur die explizit ausgewählte PDF-Datei oder das Foto an OpenAI. Beide Analysearten legen **nur einen Entwurf** an: erkannte Werte immer gegen das Original kontrollieren, danach ausdrücklich speichern und buchen. Ein fehlgeschlagener KI-Aufruf wird nicht unbemerkt durch einen anderen Anbieter ersetzt.
+
+Im Prüfbereich ist die Zuordnungsart exklusiv:
+- **Angenommenes Angebot**: eine der angenommenen und ausgewählten Angebotspositionen wählen; die bestehende Abrechnung einschließlich Abschlägen/Schlussrechnung bleibt erhalten.
+- **Betrieb**: einen bereits unter Kosten & Budget → Firmen & Kontakte angelegten Betrieb wählen, ohne Angebotsverknüpfung.
+- **Eigenleistung / Material**: Ausgaben ohne Betrieb und ohne Angebot zuordnen.
+
+Die **Budgetposition** ist davon grundsätzlich unabhängig, soweit die Angebotsabrechnung nicht bereits eine feste Budgetverknüpfung vorgibt. Gebuchte Belege können erst nach Zurücknehmen der Buchung umgehängt werden. Für historische Rechnungen mit alten Kostenpositionsverknüpfungen bleibt diese Zuordnung bestehen, damit frühere Buchungen und Finanzierungszuordnungen unverändert bleiben.
+
+Der Start auf dem Mac führt vor der neuen Schema-Migration `0008` wie gewohnt ein verifiziertes Backup aus. Ohne erreichbares Backup-Ziel wird die Migration aus Sicherheitsgründen abgebrochen. Die ChatGPT-Analyse nutzt ausschließlich die bereits verbundene Plannutzung; es gibt keinen kostenpflichtigen API-Key-Fallback.
