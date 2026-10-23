@@ -25,7 +25,7 @@ function render(){
  const cards=[['Darlehensrahmen',s.loan_frame],['Davon abgerufen',s.loan_drawn],['Kredit noch abrufbar',s.loan_undrawn],['Abgerufen & unverbraucht',s.loan_unallocated],['Eigenkapital verfügbar',s.equity_available],['Bisher über Kredit bezahlt',s.paid_loan],['Bisher über Eigenkapital bezahlt',s.paid_equity],['Offener Finanzbedarf',s.project_remaining],['Verfügbar insgesamt',s.total_available],['Rechnerische Finanzierungslücke',s.financing_gap]];
  $('totals').innerHTML=cards.map(([k,v])=>`<article class="tile ${k==='Rechnerische Finanzierungslücke'&&v>0?'alert':''}"><span>${esc(k)}</span><strong>${euro(v)}</strong></article>`).join('');
  $('warnings').innerHTML=s.warnings.map(x=>`<div class="warning">⚠ ${esc(x)}</div>`).join('');
- $('loanList').innerHTML=state.loans.map(l=>`<article class="smallcard"><h3>${esc(l.name)}</h3><p class="meta">${esc(l.bank)} · ${esc(l.reference)}</p><div class="values"><div>Rahmen<b>${euro(l.principal)}</b></div><div>Sollzins<b>${esc(l.interest_rate)} %</b></div><div>Monatsrate<b>${euro(l.monthly_payment)}</b></div><div>Abgerufen<b>${euro(l.balance.drawn)}</b></div><div>Unverbraucht<b>${euro(l.balance.unallocated_drawn)}</b></div><div>Restschuld nach eingetragenen Tilgungen<b>${euro(l.balance.outstanding_principal)}</b></div></div><div class="inline-actions"><span class="loan-doc-count">${l.documents?.length||0} Dokumente</span><button type="button" data-loan="${l.id}">Kredit &amp; Dokumente</button></div></article>`).join('')||'<p>Noch kein Darlehen erfasst.</p>';
+ $('loanList').innerHTML=state.loans.map(l=>`<article class="smallcard"><h3>${esc(l.name)}</h3><p class="meta">${esc(l.bank)} · ${esc(l.reference)}</p><div class="values"><div>Rahmen<b>${euro(l.principal)}</b></div><div>Sollzins<b>${esc(l.interest_rate)} %</b></div><div>Monatsrate<b>${euro(l.monthly_payment)}</b></div><div>Abgerufen<b>${euro(l.balance.drawn)}</b></div><div>Unverbraucht<b>${euro(l.balance.unallocated_drawn)}</b></div><div>Restschuld nach eingetragenen Tilgungen<b>${euro(l.balance.outstanding_principal)}</b></div></div><div class="inline-actions"><span class="loan-doc-count">${l.documents?.length||0} Dokumente</span><button type="button" data-loan="${l.id}">Bearbeiten &amp; ergänzen</button></div></article>`).join('')||'<p>Noch kein Darlehen erfasst.</p>';
  $('equityList').innerHTML=state.equity.map(l=>`<article class="smallcard"><h3>${esc(l.name)}</h3><div class="values"><div>Startbestand<b>${euro(l.opening_balance)}</b></div><div>Noch verfügbar<b>${euro(l.balance.available)}</b></div><div>Sicherheitsreserve<b>${euro(l.reserve)}</b></div><div>Über Reserve<b>${euro(l.balance.after_reserve)}</b></div></div><div class="inline-actions"><button type="button" data-equity="${l.id}">Bearbeiten</button></div></article>`).join('')||'<p>Noch kein Eigenkapitalkonto erfasst.</p>';
  const kinds={loan_drawdown:'Kreditabruf',loan_repayment:'Tilgung',loan_interest:'Zinsen',loan_fee:'Gebühren',equity_deposit:'Eigenkapital-Zugang',equity_withdrawal:'Eigenkapital-Entnahme'};
  $('events').innerHTML=state.events.map(e=>`<div class="record"><div><strong>${esc(kinds[e.kind])}</strong> · ${euro(e.amount)}<br><span>${esc(e.event_date)} · ${esc(sourceTitle(e.loan_id?'loan':'equity',e.loan_id||e.equity_id))} ${e.notes?'· '+esc(e.notes):''}</span></div><button type="button" data-delete-event="${e.id}" class="danger" title="Buchung stornieren">✕</button></div>`).join('');
@@ -56,19 +56,33 @@ function documentRows(loan){
    }catch(e){$('loanDocumentStatus').textContent=e.message;}
  });
 }
+function updateLoanEditorMode(id){
+ const existing=Boolean(id);
+ $('loanDialogTitle').textContent=existing?'Kredit bearbeiten und ergänzen':'Neuen Kredit anlegen';
+ $('loanFormHelp').textContent=existing
+   ? 'Ändere oder ergänze Vertragskonditionen und Notizen. Bereits hinterlegte Kreditabrufe, Zahlungen und Dokumente bleiben erhalten.'
+   : 'Lege den Kredit manuell an oder lasse Vertragsfelder mit ChatGPT vorausfüllen. Alle Angaben können später ergänzt werden.';
+ $('loanSaveButton').textContent=existing?'Änderungen am Kredit speichern':'Kredit anlegen';
+ $('deleteLoan').hidden=!existing;
+ $('loanDocuments').hidden=!existing;
+}
 function openLoan(id=null){
+ const loan=id?state.loans.find(x=>x.id===id):null;
+ if(id&&!loan){message('Kredit nicht gefunden.',true);return;}
  $('loanForm').reset();
  $('loanForm').elements.namedItem('id').value='';
- if(id)fill($('loanForm'),state.loans.find(x=>x.id===id));
- $('deleteLoan').hidden=!id;
+ if(loan)fill($('loanForm'),loan);
  $('loanAiFile').value='';
+ $('loanAiOverwrite').checked=false;
  $('loanAiStatus').textContent='';
  $('loanAiWarnings').hidden=true;
  $('loanAiWarnings').replaceChildren();
+ $('loanSaveStatus').textContent='';
+ $('loanSaveStatus').classList.remove('error');
  $('loanDocumentStatus').textContent='';
  $('loanDocumentUpload').reset();
- $('loanDocuments').hidden=!id;
- if(id)documentRows(state.loans.find(x=>x.id===id));
+ updateLoanEditorMode(id);
+ if(loan)documentRows(loan);
  $('loanDialog').showModal();
 }
 function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;$('equityDialog').showModal()}
@@ -97,15 +111,25 @@ $('loanAiAnalyze').onclick=async()=>{
    if(!response.ok)throw Error(data.error||'ChatGPT-Auslesen fehlgeschlagen.');
    const found=Object.entries(data.fields||{}).filter(([k,v])=>
      $('loanForm').elements.namedItem(k)&&v!==null&&v!=='');
-   for(const [key,value] of found)$('loanForm').elements.namedItem(key).value=value;
+   let applied=0,skipped=0;
+   const existing=Boolean($('loanForm').elements.namedItem('id').value);
+   const allowOverwrite=$('loanAiOverwrite').checked;
+   for(const [key,value] of found){
+     const field=$('loanForm').elements.namedItem(key);
+     const current=String(field.value||'').trim();
+     const empty=current===''||(!existing&&field.type==='number'&&Number(current)===0);
+     if(!allowOverwrite&&!empty){skipped++;continue;}
+     field.value=value;applied++;
+   }
    if((data.warnings||[]).length){
      $('loanAiWarnings').replaceChildren(...data.warnings.map(w=>{
        const li=document.createElement('li');li.textContent=w;return li;
      }));
      $('loanAiWarnings').hidden=false;
    }
-   $('loanAiStatus').textContent=found.length+
-     ' Vertragsfelder vorausgefüllt. Bitte jeden Wert mit dem Original vergleichen und danach selbst „Kredit speichern“ wählen.';
+   $('loanAiStatus').textContent=applied+
+     ' Vertragsfelder ergänzt'+(skipped?', '+skipped+' bestehende Angaben beibehalten':'')+
+     '. Bitte alle Werte mit dem Original prüfen und danach die Änderungen speichern.';
  }catch(e){$('loanAiStatus').textContent=e.message;}
  finally{button.disabled=false;}
 };
@@ -133,7 +157,34 @@ $('loanDocumentUpload').onsubmit=async event=>{
 
 $('closeLoan').onclick=()=>$('loanDialog').close();$('closeEquity').onclick=()=>$('equityDialog').close();
 async function submitForm(event,form,base,dialog){event.preventDefault();let fields=payload(form),id=fields.id;delete fields.id;try{await api(base+(id?'/'+id:''),id?'PATCH':'POST',fields);dialog.close();await reload();message('Gespeichert.')}catch(err){message(err.message,true)}}
-$('loanForm').onsubmit=e=>submitForm(e,$('loanForm'),'/api/financing/loans',$('loanDialog'));
+$('loanForm').onsubmit=async event=>{
+ event.preventDefault();
+ const form=$('loanForm'),button=$('loanSaveButton'),status=$('loanSaveStatus');
+ const fields=payload(form),id=fields.id;
+ delete fields.id;
+ button.disabled=true;
+ status.textContent='Vertragsangaben werden gespeichert …';
+ status.classList.remove('error');
+ try{
+   const saved=await api('/api/financing/loans'+(id?'/'+id:''),id?'PATCH':'POST',fields);
+   await reload();
+   form.elements.namedItem('id').value=String(saved.id);
+   // Show the persisted (server-validated) values, without altering finance bookings.
+   const loan=state.loans.find(x=>x.id===saved.id);
+   if(loan){
+     fill(form,loan);
+     documentRows(loan);
+   }
+   updateLoanEditorMode(saved.id);
+   status.textContent='Änderungen gespeichert. Der Kredit kann hier weiter ergänzt werden.';
+   status.classList.remove('error');
+ }catch(err){
+   status.textContent='Speichern fehlgeschlagen: '+err.message;
+   status.classList.add('error');
+ }finally{
+   button.disabled=false;
+ }
+};
 $('equityForm').onsubmit=e=>submitForm(e,$('equityForm'),'/api/financing/equity',$('equityDialog'));
 async function erase(path,id){if(!confirm('Diese Buchung wirklich entfernen? Die Summen werden entsprechend neu berechnet.'))return;try{await api('/api/financing/'+path+'/'+id,'DELETE');await reload();message('Buchung entfernt.')}catch(e){message(e.message,true)}}
 $('deleteLoan').onclick=async()=>{const id=$('loanForm').elements.namedItem('id').value;if(!confirm('Kredit ohne verknüpfte Buchungen löschen?'))return;try{await api('/api/financing/loans/'+id,'DELETE');$('loanDialog').close();await reload()}catch(e){message(e.message,true)}};
