@@ -1,0 +1,24 @@
+.phb-data-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:22px 0}
+.phb-data-card{padding:28px;display:flex;flex-direction:column;align-items:flex-start;gap:13px;border:1px solid #d9e5e8;border-radius:15px;background:#fff}
+.phb-data-card h2{font-size:21px;font-weight:700;color:#193743;margin:0}
+.phb-data-card p{line-height:1.65;color:#54717d;margin:0;font-size:14px}
+.phb-data-symbol{display:grid;place-items:center;background:#e7f2f3;color:#056b72;width:44px;height:44px;border-radius:12px;font-size:24px}
+.phb-data-status{width:100%;padding:14px;border-radius:9px;background:#edf5f6;color:#294b53;white-space:pre-wrap;font-size:13px;min-height:62px}
+.phb-data-card button{padding:12px 17px;border-radius:9px;cursor:pointer}
+.phb-data-card button:disabled{opacity:.45;cursor:not-allowed}
+.phb-danger{border-color:#ebc9c9}
+.phb-danger .phb-data-symbol{background:#fbeaea;color:#a3363c}
+.phb-danger .phb-data-verify{display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.5;color:#604c51}
+.phb-data-verify input{width:18px;height:18px;flex:none;margin-top:2px;accent-color:#a7383e}
+.phb-data-card form{width:100%;display:flex;flex-direction:column;gap:12px}
+.phb-data-card .phb-reset-label{font-size:14px;color:#425b64}
+.phb-data-card input[type=text]{width:100%;min-width:0;padding:12px 13px;border:1px solid #ccdfe2;border-radius:8px;font-size:14px}
+.phb-data-card button.danger{border:0;background:#a32d38;color:#fff;font-weight:650}
+.phb-data-card button.danger:not(:disabled):hover{background:#85222e}
+.phb-data-footnote{font-size:12px!important;color:#718891!important}
+.phb-data-notice{border-left:4px solid #0c8d8b;background:#eef9f9;border-radius:9px;color:#25545b;padding:15px 20px;margin-bottom:20px;white-space:pre-wrap;overflow-wrap:anywhere}
+.phb-data-notice.is-error{background:#fff1f1;border-left-color:#a32d38;color:#8b2b37}
+.phb-data-help{padding:22px 28px;border:1px solid #dce6e9;border-radius:14px;background:#fff}
+.phb-data-help h2{font-size:18px}.phb-data-help p{color:#54717d;line-height:1.6;font-size:14px}
+.phb-data-help code{display:block;overflow-wrap:anywhere;word-break:break-word;background:#f1f6f6;border-radius:8px;padding:14px;color:#134953}
+@media(max-width:850px){.phb-data-grid{grid-template-columns:1fr}.phb-data-card{padding:20px}}

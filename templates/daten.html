@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Datenverwaltung · ProjectHouseBuilder</title>
+  <link rel="stylesheet" href="/static/vendor-bootstrap-5.3.6.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/shell.css">
+  <link rel="stylesheet" href="/static/daten.css">
+</head>
+<body class="phb-app phb-page-daten">
+{% set phb_active = 'daten' %}{% set phb_title = 'Datenverwaltung' %}{% include '_shell_open.html' %}
+<main id="phbMain" class="phb-main">
+  <div class="phb-page-intro"><div><span class="phb-page-kicker">Verwaltung / Datensicherheit</span>
+    <h1>Datenverwaltung</h1>
+    <p>Projekt sichern, prüfen und bei Bedarf vollständig zurücksetzen.</p></div></div>
+  <div class="phb-data-grid">
+    <section class="panel phb-data-card" aria-labelledby="backupHeading">
+      <div class="phb-data-symbol" aria-hidden="true">↥</div>
+      <h2 id="backupHeading">Vollständiges Backup</h2>
+      <p>Alle Einträge aus Bauzeitenplan, Kosten, Angeboten, Rechnungen, Finanzierung und sämtliche hochgeladenen Dateien gemeinsam sichern.</p>
+      <div class="phb-data-status" id="backupInfo" role="status">Backup-Konfiguration wird geladen …</div>
+      <button id="backupNow" type="button" class="primary">Jetzt vollständiges Backup erstellen</button>
+      <p class="phb-data-footnote">Den Zielordner richtest du einmalig im VS-Code-Terminal mit <code>sh mac/backup-setup.sh</code> ein. Er kann in deinem Proton Drive liegen.</p>
+    </section>
+    <section class="panel phb-data-card phb-danger" aria-labelledby="resetHeading">
+      <div class="phb-data-symbol" aria-hidden="true">↻</div>
+      <h2 id="resetHeading">Projekt vollständig zurücksetzen</h2>
+      <p>Löscht unwiderruflich <strong>alle Projektdaten</strong>: Aufgaben, Angebote, Kosten, Rechnungen, Finanzierungen, Firmen, eigene Kategorien und hochgeladene Dokumente.</p>
+      <p>Die App legt vorher <strong>verpflichtend ein geprüftes Komplettbackup</strong> im ausgewählten Ordner an. Ist das nicht möglich, findet kein Reset statt. Systemkategorien und das Datenbankschema bleiben erhalten; die Projektliste ist anschließend leer.</p>
+      <form id="resetForm" autocomplete="off">
+        <label class="phb-data-verify"><input id="resetUnderstand" type="checkbox" required> Ich habe verstanden, dass sämtliche Einträge und Dateien aus der aktiven Anwendung entfernt werden.</label>
+        <label class="phb-reset-label" for="resetText">Zur Bestätigung exakt <strong>ALLE DATEN LÖSCHEN</strong> eingeben:</label>
+        <input id="resetText" type="text" placeholder="ALLE DATEN LÖSCHEN" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+        <button id="resetButton" class="danger" type="submit" disabled>Projekt endgültig zurücksetzen</button>
+      </form>
+      <p class="phb-data-footnote">Nur bei lokalem SQLite-Betrieb verfügbar. NAS/PostgreSQL und gespeicherte Backups werden nicht gelöscht.</p>
+    </section>
+  </div>
+  <div id="dataNotice" role="status" aria-live="polite" class="phb-data-notice" hidden></div>
+  <section class="panel phb-data-help">
+    <h2>Wiederherstellen</h2>
+    <p>Auf einem neuen Mac oder nach einem Reset kannst du das gesicherte ZIP zurückspielen. ProjectHouseBuilder muss dafür beendet sein:</p>
+    <code>python3 backup_manager.py restore "/Pfad/zum/Backup.zip" --yes</code>
+    <p>Danach startest du das Programm erneut. Die automatische Sicherung und die Migrationsverwaltung bleiben erhalten.</p>
+  </section>
+</main>
+</div></div>
+<script src="/static/daten.js"></script><script src="/static/shell.js"></script>
+</body></html>

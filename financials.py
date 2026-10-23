@@ -21,7 +21,7 @@ def forecast_lines(lines, items):
 
     Verbindliche Teilaufträge können sich addieren. Nicht beauftragte
     Alternativangebote werden niemals addiert; stattdessen zählt genau das
-    ausdrücklich ausgewählte Angebot oder der Schätzwert der Excel-Position.
+    ausdrücklich ausgewählte Angebot oder der Schätzwert der Kostenplanposition.
     """
     active = [line for line in lines if line.active and not line.is_group]
     relevant = [item for item in items if item.state not in EXCLUDED_STATES]

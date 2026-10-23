@@ -1,167 +1,52 @@
-# ProjectHouseBuilder – lokal auf dem Mac mit SQLite
+# ProjectHouseBuilder – Sanierungsprojekt
 
-**Empfohlener Betrieb für eine Person:** Die Anwendung und die aktive `sanierung.db` laufen lokal auf dem Mac. Angebote, Rechnungen und OCR-Belege liegen im lokalen Unterordner `private/`. Ein Cloud-Synchronisationsordner (z. B. Proton Drive) dient ausschließlich als **Backupziel**, nicht als Speicherort der laufenden SQLite-Datenbank.
+**Aktuelle Version:** `feature/synology-nas` (eine Codebasis, lokal auf dem Mac oder optional auf der NAS). Die empfohlene Betriebsart ist **SQLite lokal auf dem Mac**, ohne dauerhaften Server.
 
-## Lokaler Start ohne Docker
+## Schnellstart in VS Code (macOS)
 
-1. macOS: Python 3.10+ installieren, bei Bedarf über python.org. Die Texterkennung von Scan-PDFs benötigt zusätzlich lokal installierte Systemprogramme `tesseract` mit Deutsch-Sprachdaten sowie `pdftoppm` (Poppler).
-2. Im Projektordner `sh start_mac_linux.sh` ausführen (startet den Flask-Server unter `http://localhost:5000`).
-3. Lokal im Browser öffnen. Alle Arbeitsschritte und Belege werden auf diesem Mac gespeichert.
+1. Das Projekt in VS Code öffnen; ggf. `git switch feature/synology-nas` ausführen.
+2. Updates einspielen: `git pull origin feature/synology-nas` (vorher laufende App beenden).
+3. **Einmalig** den Backupordner auswählen: `sh mac/backup-setup.sh` (z. B. in Proton Drive). Die aktive Datenbank bleibt **außerhalb** synchronisierter Ordner.
+4. Starten: `sh start_mac_linux.sh`.
+5. In Chrome/Safari öffnen: **http://127.0.0.1:5055**.
 
-## Automatische Sicherungen – mit freier Ordnerwahl
+Port **5055** ist absichtlich gewählt. macOS belegt **5000** häufig mit dem AirPlay-Empfänger; der Browser meldet dann eventuell 403 von AirPlay statt die Flask-App anzuzeigen. Wenn der Port geändert werden soll: `PORT=5056 sh start_mac_linux.sh`. Bei Bedarf belegte Ports mit `lsof -nP -iTCP:5000 -sTCP:LISTEN` oder `lsof -nP -iTCP:5055 -sTCP:LISTEN` prüfen. Die lokale App lauscht nur auf `127.0.0.1`.
 
-1. Einen lokalen Proton-Drive-Synchronisationsordner (oder einen anderen Ordner) im Finder vorbereiten. Er muss für den Mac lokal verfügbar und schreibbar sein, nicht nur als Cloud-Platzhalter.
-2. Im Terminal **einmalig** ausführen: `sh mac/backup-setup.sh`. Dadurch öffnet sich der macOS-Ordnerauswahldialog. Alternativ: `sh mac/backup-setup.sh "/vollständiger/Pfad/Backups"`.
-3. macOS richtet einen benutzerspezifischen **LaunchAgent** ein: Sicherung bei Anmeldung und täglich um **20:00 Uhr**, wenn der Mac läuft. Das Backupziel wird unter `~/Library/Application Support/ProjectHouseBuilder/backup-config.json` gespeichert, nicht im Git-Repository.
-4. Testlauf: `python3 backup_manager.py backup`. Prüfen: `python3 backup_manager.py show` und `python3 backup_manager.py verify "/PFAD/ZU/ProjectHouseBuilder_Backup_....zip"`.
+## Datensicherheit & vollständiger Projekt-Reset
 
-Ein Backup enthält einen **konsistenten SQLite-Snapshot**, sämtliche Dateien unter `private/` (PDF-Angebote, Belege, Verträge, OCR-Originale usw.) sowie eine gegebenenfalls vorhandene private Datei `data/initial_budget.json`. Ein Manifest führt SHA-256-Prüfsummen für alle Einträge. Die letzten **30 erfolgreichen Backups** bleiben im gewählten Zielordner erhalten. Alte Versionen werden nur gelöscht, wenn ein neues Backup vollständig und erfolgreich erstellt wurde.
+In der **linken Sidebar → Datenverwaltung & Reset**:
 
-**Wichtige Grenzen:** Bei ausgeschaltetem Mac läuft keine Sicherung. Wenn Proton Drive nicht erreichbar ist, schlägt das Backup sichtbar in den Logs fehl, statt heimlich woanders zu speichern. Die Live-Datenbank bleibt immer außerhalb des synchronisierten Ordners. Für ein wirklich belastbares Backup gelegentlich zusätzlich auf eine externe Festplatte sichern und die Wiederherstellung testen. Auch Löschungen im synchronisierten Ordner können in Proton Drive repliziert werden.
+- **„Jetzt vollständiges Backup erstellen“**: Geprüfter SQLite-Snapshot **inklusive sämtlicher** Dateien aus `private/` (PDF-Angebote, Belege, Kassenzettel, Dokumente) in deinem gewählten Ordner. Kredit-, Zahlungs- und Angebotsdaten befinden sich vollständig in der Datenbank.
+- **„Projekt vollständig zurücksetzen“**: Nach Ankreuzen einer Bestätigung und Eingabe von `ALLE DATEN LÖSCHEN` wird **zuerst zwingend ein geprüftes vollständiges Backup** erstellt. Nur bei Erfolg werden Aufgaben, Angebote, Kosten, Rechnungen, Finanzierung, eigene Kategorien, Kontakte, hochgeladene Dateien usw. aus der aktuellen Installation gelöscht. Übrig bleiben das Datenbankschema samt Alembic-Migrationshistorie, die eingebauten Standardkategorien und ein leeres Projektbudget. Nach Neustart erscheinen **keine alten Beispielaufgaben** erneut.
+- Alle **Backup-ZIP-Dateien bleiben unangetastet**. Die Backup-Zielkonfiguration bleibt bestehen. Der vollständige Reset ist aus Sicherheitsgründen nur für **lokales SQLite** und Aufrufe auf diesem Rechner erlaubt; bei PostgreSQL/NAS wird er abgewiesen.
+- Fehlt der Sicherungsordner, ist er nicht erreichbar, ist die DB beschädigt oder schlägt die ZIP-Prüfung fehl, wird **nichts gelöscht**.
 
-**Backup-Logs:** `~/Library/Logs/ProjectHouseBuilder-backup.log` sowie `ProjectHouseBuilder-backup-error.log`.
+**Wiederherstellung:** Anwendung beenden und `python3 backup_manager.py restore "/Pfad/zum/Backup.zip" --yes` ausführen, anschließend `sh start_mac_linux.sh`. Ein Backup sollte gelegentlich auf einem separaten Medium getestet werden. Für regelmäßige Backups auf dem Mac steht der per `sh mac/backup-setup.sh` eingerichtete tägliche LaunchAgent bereit (solange der Mac eingeschaltet ist). Die letzten 30 erfolgreichen Versionen bleiben normalerweise erhalten.
 
-## Wiederherstellung auf einem neuen Mac
+Die alten Excel-Kostenplanvorlagen und ihr automatischer Import sind **entfernt**. Der Kostenplan wird manuell gepflegt; bereits existierende Budgetpositionen werden durch den Code-Update **nicht automatisch gelöscht**. Ein vollständiger Reset leert auch diese Daten. Der CSV-Export des eigenen Kostenplans bleibt erhalten. Alte Backup-ZIPs lassen sich weiter prüfen; beim Restore wird die inzwischen überflüssige Excel-Initialdatei nicht wieder importiert.
 
-1. ProjectHouseBuilder auf den neuen Mac kopieren oder aus GitHub auschecken, Python installieren und die Anwendung **noch nicht starten**.
-2. Ein vollständiges Backup-ZIP aus Proton Drive lokal verfügbar machen. Prüfen: `python3 backup_manager.py verify "/PFAD/ZUM/Backup.zip"`.
-3. Während ProjectHouseBuilder nicht läuft: `python3 backup_manager.py restore "/PFAD/ZUM/Backup.zip" --yes`.
-4. Anschließend mit `sh start_mac_linux.sh` starten. Alle Datenbankinhalte und Dokumente sollten wieder vorhanden sein. Mit `sh mac/backup-setup.sh` das Backupziel für den neuen Mac erneut auswählen.
+## Datenbankschema und Updates
 
-Bei jeder Wiederherstellung erstellt die Software **vorher** eine lokale Sicherung des bisherigen Stands in `restore-safety-...` im Projektordner. Dieser Ordner ist privat und darf niemals in GitHub hochgeladen werden. Der Wiederherstellungsbefehl ersetzt die lokale Datenbank und den Ordner `private/`; daher unbedingt die Anwendung zuvor beenden.
+`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Neue Version `0004` entfernt nicht mehr benötigte Excel-Metadatentabellen/-spalten. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
 
-## Synology und PostgreSQL als optionale Alternativen
+Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.db-shm`, `private/`, `backups/`, `.env`, `instance/` aus. Diese Dateien niemals in GitHub einchecken. Die Datenbank nie in einem Cloud-Sync-Ordner betreiben; nur vollständige Backups synchronisieren.
 
-Die Docker-Dateien `compose.synology.yaml` und `compose.dev.yaml` bleiben für alternative Umgebungen verfügbar, werden für den empfohlenen lokalen SQLite-Betrieb aber nicht benötigt. Diese Backup-Funktion sichert **nur SQLite**. Für eine separate PostgreSQL-Installation ist weiterhin `pg_dump`/`pg_restore` nötig.
+## Funktionen
 
----
+- **Bauzeitenplan:** Gantt mit Abhängigkeiten, Terminen, Status, Eigenleistungen und Firmen.
+- **Kosten & Budget:** eigene Budgetpositionen und Schätzwerte, Beauftragungen, Förderungen und Kostenprognose.
+- **Angebote:** PDF hochladen und auslesen, Entwurf bearbeiten, Kategorie und Gesamtbruttopreis prüfen, in Angebotsliste übernehmen und später annehmen/ablehnen. Nur angenommene Angebote wirken sich als Auftrag auf die Kosten aus.
+- **Belege:** Rechnungen/Kassenzettel als PDF oder Foto importieren, optional lokal mit Tesseract OCR lesen, prüfen, kategorisieren und erst nach Freigabe buchen.
+- **Finanzierung:** Kredite, Eigenkapital, Kreditabrufe, Tilgungen, aufgeteilte Rechnungszahlungen und Liquiditätsvorschau.
+- **Datenverwaltung:** Backup auf Knopfdruck, vollständiger Projekt-Reset mit Pflichtbackup.
 
-## Ältere Docker-/PWA-Installationshinweise (optional)
+OCR von Bildern benötigt zusätzlich Tesseract und Poppler auf dem Mac; bei lesbaren PDF-Texten ist kein OCR erforderlich. Die Anwendung ist als lokale Einzelplatzsoftware konzipiert und wird **nicht** per Router-Portweiterleitung veröffentlicht.
 
-# ProjectHouseBuilder – Heimnetz-PWA
+## Alternative Betriebsarten
 
-Die bestehende Sanierungsplanung mit Gantt, Angeboten, Annahme-/Kostenlogik, Eigenleistungen und Kontakten ist als responsive PWA verfügbar. Für lokale Entwicklung weiterhin `sh start_mac_linux.sh` mit SQLite, für den Heimnetzbetrieb Docker Compose mit PostgreSQL, Caddy und HTTPS.
-
-## Heimnetz-Installation (Mac, Linux, Windows mit Docker Desktop)
-
-1. Docker Desktop installieren und starten. Stelle sicher, dass kein anderer Dienst die Ports 80 und 443 belegt.
-2. Den Rechner, auf dem Docker läuft, per Router-DHCP-Reservierung auf eine feste interne IP setzen (Beispiel: `192.168.178.50`). **Kein Portforwarding am Router einrichten!**
-3. `cp .env.example .env` ausführen und `LAN_HOST`, `POSTGRES_PASSWORD`, `APP_PASSWORD`, `APP_SECRET_KEY` anpassen. Für `APP_SECRET_KEY` mindestens 32 zufällige Bytes verwenden, z. B. `python3 -c 'import secrets; print(secrets.token_urlsafe(48))'`. Ändere die beispielhaften Werte vollständig. Die `.env` ist privat und nicht für GitHub bestimmt.
-4. `sh start_lan.sh` ausführen (oder unter Windows nach Erstellung der `.env`: `docker compose up --build -d`). Bei Unix für `PUID` und `PGID` ggf. die Werte deiner Benutzerkennung in `.env` ergänzen. Die Datenbank wird beim Erststart automatisch angelegt.
-5. Am eigenen Rechner die Anwendung über `https://<LAN_HOST>` öffnen, z. B. `https://192.168.178.50`. Passwort aus `.env` eingeben.
-6. **Zertifikat vertrauen:** Caddy stellt eine lokale HTTPS-Zertifizierungsstelle bereit. Das Root-Zertifikat exportieren:
-
-   `docker compose cp https:/data/caddy/pki/authorities/local/root.crt ./private/caddy-root.crt`
-
-   Dieses Zertifikat auf dem Mac, PC, iPhone oder Android-Gerät, auf dem die App genutzt werden soll, **nach bewusster Prüfung** als vertrauenswürdige Stammzertifizierungsstelle installieren. Auf iOS muss unter „Einstellungen → Allgemein → Info → Zertifikatsvertrauenseinstellungen“ die vollständige Vertrauensstellung zusätzlich aktiviert werden. Ohne Vertrauensstellung ist zwar eventuell Browserzugriff mit Zertifikatswarnung möglich, aber die PWA-/Service-Worker-Funktion nicht zuverlässig nutzbar. **Den privaten CA-Schlüssel niemals exportieren oder weitergeben.**
-7. Anschließend im Browser „Zum Home-Bildschirm“/„App installieren“ wählen. iOS: Safari → Teilen → Zum Home-Bildschirm.
-
-Die App ist ausschließlich im Heimnetz über die IP-Adresse erreichbar, sofern der Router keine Portweiterleitung nutzt und der Host nicht anders öffentlich erreichbar ist. Änderungen an der `LAN_HOST`-IP können eine neue Zertifikatskonfiguration erfordern.
-
-## Backup (wichtig)
-
-`sh backup.sh` erstellt im lokalen, nicht versionierten Ordner `backups/` einen PostgreSQL-Dump **und** ein Archiv von `private/`, also auch hochgeladenen PDF-Dokumenten. Beide Dateien zusammen sicher auf einem zweiten Speichermedium sichern. Eine Wiederherstellung benötigt PostgreSQL `pg_restore` sowie den Inhalt von `private/`. Vor einem Update zuerst ein Backup machen.
-
-## Aktualisieren
-
-`git pull && docker compose up --build -d` (nur wenn das bisherige Arbeitsverzeichnis bereits die richtige `.env` und `private/` enthält). Keine Daten in das öffentliche GitHub-Repository hochladen; `.env`, `private/`, `backups/` und `data/initial_budget.json` werden ignoriert.
-
-## Bestehende SQLite-Daten übernehmen
-
-Ein automatischer SQLite-zu-PostgreSQL-Umzug ist **noch nicht implementiert**. Ein neuer PostgreSQL-Container erhält die unverfänglichen Startaufgaben sowie optional die lokal bereitgestellte Budget-Datei. Für bestehende produktive Daten ist ein gesonderter Migrationsschritt nötig; die alte `sanierung.db` unbedingt sichern und nicht löschen.
-
-## PWA-Einschränkungen
-
-Die App funktioniert auf macOS, Windows, Linux, Android und iOS im Browser. Die PWA speichert lediglich statische CSS-, Icon- und JS-Dateien im Cache; sensible API-Antworten, Verträge, Finanzdaten und HTML-Seiten bleiben **online-only** und sind bei Verbindungsverlust nicht verfügbar. Es gibt keinen Push-Sync und keine Offline-Bearbeitung.
-
-## Sicherheit
-
-Die Heimnetz-Variante verlangt ein Passwort (`APP_PASSWORD`) und ein eigenes Secret (`APP_SECRET_KEY`), setzt sichere Cookies und verwendet HTTPS mit privater CA. Nutze ein ausreichend langes Passwort. Für Zugriff außerhalb des Heimnetzes wäre zusätzliche Absicherung erforderlich. Die öffentliche GitHub-Version enthält keinerlei reale Angebotsunterlagen, private Kontakte oder `.env`.
+- **Lokale Docker-Tests:** `cp .env.dev.example .env.dev`, sichere Werte vergeben, `sh dev/start.sh`, aufrufen unter `http://127.0.0.1:5080`. Eigene PostgreSQL-Testdatenbank; siehe [dev/README.md](dev/README.md).
+- **Synology NAS:** Container Manager mit `compose.synology.yaml`, getrennte PostgreSQL-Datenbank und TLS auf Port 8443; siehe [synology/README.md](synology/README.md). Der Mac-SQLite-Reset und dessen Migrationen gelten **nicht** für PostgreSQL.
 
 ## Tests
 
-`python -m unittest discover -s tests -v`. Auch GitHub Actions führt die Tests und JavaScript-Syntaxprüfungen aus.
-
-## Synology NAS (separater Feature-Branch)
-
-Fuer Synology Container Manager liegt die passende Compose-Konfiguration unter
-[`compose.synology.yaml`](compose.synology.yaml); die genaue Installation steht in
-[`synology/README.md`](synology/README.md). Die App nutzt Port **8443 statt 443**,
-PostgreSQL und getrennte persistente Docker-Volumes. Keine Router-Portweiterleitung
-konfigurieren. Das Projekt ist ein **Feature-Branch** und aendert `main` nicht.
-
-### Neu: Belegjournal mit lokaler OCR
-
-Über `/belege` können Rechnungen und Kassenzettel im PDF-, JPG-, PNG- oder WEBP-Format importiert werden. Lesbare PDF-Texte werden direkt extrahiert, Fotos und Scan-PDFs verarbeitet Tesseract lokal (Dockerfile installiert `tesseract-ocr`, `tesseract-ocr-deu`, `tesseract-ocr-eng` und `poppler-utils`). Bei einer lokalen Python-Installation sind diese Systempakete separat erforderlich. Jeder Beleg beginnt als **Entwurf**, OCR-Vorschläge dürfen manuell bearbeitet werden und zählen erst nach **Verbindlich buchen** zu den Projektkosten. Bezahlungen werden getrennt erfasst. Plan- und Auftragszuordnung hilft gegen Doppelzählung. Originale bleiben im privaten Docker-Volume. Keine Beispiel-Belege und keine Rechnungsdaten in GitHub.
-
-## Eigene Belegkategorien
-
-Unter **Belege & Rechnungen → Eigene Kategorien verwalten** kannst du Kategorien
-hinzufügen, umbenennen und unbenutzte Kategorien löschen. Alle Kategorien werden
-in PostgreSQL/SQLite gespeichert und im Zuordnungsmenü angezeigt. Bei Umbenennung
-werden bereits vorhandene Zuordnungen in Belegen, Budgetzeilen und Kostenpositionen
-übernommen. Verwendete Kategorien können nicht gelöscht werden. Die Kategorie
-`Sonstiges` ist als sicherer OCR-Fallback geschützt.
-
-Die automatische OCR-Kategorisierung erkennt vorerst die eingebauten Schlüsselwörter;
-selbst angelegte Kategorien wählst du manuell aus. Der Import erfasst weiterhin nur
-Entwürfe; Kosten werden erst nach deiner Buchungsfreigabe verändert.
-
-## Lokaler Entwicklungs- und Testbetrieb
-
-Ohne Synology kannst du die **gleiche** Anwendung auf dem Mac mit Docker und einer isolierten PostgreSQL-Testdatenbank betreiben. Anleitung: [`dev/README.md`](dev/README.md). Start mit `sh dev/start.sh`, anschließend `http://localhost:5080`. Der Synology-Betrieb bleibt davon unberührt.
-
-## VS Code: lokal starten und DB-Schema sicher aktualisieren
-
-In VS Code das Projekt öffnen, Anwendung vor dem Update beenden, dann:
-
-```sh
-git pull
-sh start_mac_linux.sh
-```
-
-Der Mac-Starter installiert die Python-Abhängigkeiten, prüft anschließend das SQLite-Schema und wendet ausstehende **Alembic-Migrationen** an. **Bei einer vorhandenen Datenbank wird vor jeder notwendigen Migration zwingend ein gültiges ZIP-Backup erstellt (inklusive `private/`), bevor das Schema geändert wird.** Das Backupziel muss zuvor mit `sh mac/backup-setup.sh` konfiguriert werden. Ohne erreichbares Backupziel wird das Upgrade verweigert. Ein frisches, leeres System benötigt noch kein Backup.
-
-Versionsskripte stehen in `migrations/versions/`; `alembic_version` speichert die bereits angewendete Revision. `python schema_manager.py --check` zeigt den Stand. Updates ohne ausstehende Migration erzeugen keine zusätzlichen Zwangsbackups (die täglichen Backups bleiben davon unabhängig).
-
-Ein fehlgeschlagenes Upgrade stoppt den App-Start und meldet das Backup. **Keine automatische Wiederherstellung bei laufenden Prozessen**: Anwendung beenden, Backup prüfen und gezielt mittels `python backup_manager.py restore "/Pfad/Backup.zip" --yes` einspielen.
-
-Das Schema-Update ist **nur im direkten Mac-/SQLite-Startweg** integriert. Docker-/NAS-Container mit PostgreSQL nutzen weiterhin den bisherigen Initialisierer und sind von diesem SQLite-Migrationsbefehl ausgenommen. Datenbankdateien, `instance/` und `private/` sind gitignoriert.
-
-
-## Finanzierung & Liquidität (`/finanzierung`)
-
-**Empfohlener Betrieb:** SQLite auf dem Mac (ein Benutzer), ohne laufende NAS; Start aus VS Code: `git pull && sh start_mac_linux.sh`. Die aktive `sanierung.db` liegt **nicht** in Proton Drive. Nur abgeschlossene Backup-ZIPs werden in den ausgewählten Synchronisationsordner geschrieben. Tesseract auf dem Mac separat installieren, wenn Bild-OCR gewünscht wird.
-
-Unter **Finanzierung** kannst du mehrere Darlehen mit Bank, Vertragsreferenz, Darlehensrahmen, Sollzins, Zinsbindungsende, Rate, Anfangstilgung, Sondertilgungsquote und Bereitstellungszins-Konditionen erfassen. Anfangs werden keine Kredite und kein Eigenkapital automatisch als realer Finanzierungsstand vorausgesetzt: die Konten müssen ausdrücklich angelegt werden. Kreditabrufe, Tilgungen, Zinsen, Bankgebühren und Eigenkapital-Zu-/Abflüsse werden als eigenständige Geldbewegungen gespeichert.
-
-**Belege bezahlen:** Nur bereits gebuchte Rechnungen können unter Finanzierung einzeln oder in mehreren Teilzahlungen einem abgerufenen Kredit bzw. Eigenkapitalkonto zugeordnet werden. Eine neue Zahlung erhöht den `paid_amount` des Belegs; die existierende Kostenübersicht zählt diesen Betrag **nur einmal**. Der Bruttowert bleibt unverändert. Alte, manuell erfasste Zahlungen werden als „ohne Finanzierungszuordnung“ gezeigt und dürfen erst nach Korrektur im Beleg einer Quelle zugeordnet werden. Aus Kredit darf maximal der tatsächlich abgerufene, noch nicht anderen Belegen zugeordnete Betrag verwendet werden. Darlehenstilgung und Zinszahlung sind getrennte Finanzierungsvorgänge und erhöhen die Sanierungskosten nicht nochmals.
-
-Der **Liquiditätsbereich** zeigt Darlehensrahmen, Abrufe, noch abrufbare Beträge, abgerufenes aber für Belege nicht verwendetes Geld, verfügbares Eigenkapital, Restfinanzierungsbedarf und eine sechsmonatige Übersicht fälliger bereits gebuchter Rechnungen. Die Berechnung ist **keine Bankkontosaldo-Abstimmung**: Andere Kontobewegungen und noch nicht terminierte Baukosten bleiben außen vor; deshalb Planwerte und echte Bankauszüge regelmäßig abgleichen. Die vertraglichen Zinsen und Raten werden zunächst dokumentiert, noch nicht als verbindlicher Tilgungsplan hochgerechnet. Fördermittel bleiben in der bestehenden Kostenplanung getrennt.
-
-**Sicherungen jederzeit:** Unter `/finanzierung` befindet sich **„Jetzt vollständiges Backup erstellen“**. Damit wird das bereits vorhandene, geprüfte SQLite-Backup inklusive **aller** Dateien unter `private/` und optionaler lokaler Budgetimportdatei in den gewählten Ordner geschrieben. Vor Nutzung einmalig `sh mac/backup-setup.sh` ausführen. Auch die täglichen Sicherungen und die *zwingenden* Sicherungen vor SQLite-Migrationen bleiben aktiv. Manuelles Backup alternativ: `python3 backup_manager.py backup`; Integrität prüfen mit `python3 backup_manager.py verify "/Pfad/Backup.zip"`. Wiederherstellung nach Programmende: `python3 backup_manager.py restore "/Pfad/Backup.zip" --yes` – diese beinhaltet auch alle Finanzierungstabellen und Belege. **Backups regelmäßig auf einem zweiten unabhängigen Medium prüfen.**
-
-Mit Migration `0002` werden Finanzierungstabellen und die optionale Fälligkeit `due_date` ergänzt, ohne bestehende Rechnungen und Kostenpositionen zu löschen. Für existierende lokale SQLite-Datenbanken wird VOR der Migration ein geprüftes Komplettbackup verlangt. Die bestehende Synology/PostgreSQL-Variante ist optional und wird nicht über den SQLite-Alembic-Starter migriert.
-
-
-## PDF-Angebote: Entwurf, Angebotsliste, Annahme (Migration `0003`)
-
-Unter **Kosten → PDF-Angebote**: PDF hochladen → lokal analysieren (PDF-Textebene, bei Bedarf OCR mit Tesseract/Poppler) → **Entwurf** mit Anbieter, Angebotsnummer, Datum, Netto, Umsatzsteuer, **Bruttogesamtsumme**, Gewerk/Kategorie, Kostenplanposition und Notiz prüfen und bearbeiten. Fehlerhafte Erkennungen dürfen korrigiert werden; fehlt eine lesbare Textebene und OCR ist nicht verfügbar, wird ein **manuell bearbeitbarer Entwurf** gespeichert. Das PDF-Original verbleibt privat unter `private/documents/` und ist Teil jeder vollständigen Sicherung.
-
-Erst mit **„In Angebotsliste übernehmen“** erhält der Entwurf den Status `Angebot`. Dort kann nach Kategorie gefiltert und nach Bruttosumme verglichen werden; andere Angebote zur selben Planposition bleiben unverbindlich. **Weder Upload noch Listung ändern den Kostenplan.** Mit **„Annehmen → Kosten übernehmen“** wird der **geprüfte Bruttogesamtbetrag genau einmal** als beauftragter Kostenposten übernommen und ersetzt bei einer verknüpften Kostenplanposition deren Schätzung. Ohne Planposition gilt die Annahme als zusätzliche Kostenposition. `Abgelehnt` bleibt im Vergleich archiviert und zählt nicht zur Prognose. Einzelpositionen aus dem PDF werden ausschließlich als Lesehilfe angezeigt; sie werden nicht einzeln verbucht.
-
-Eine angenommene Position lässt sich nur zurücknehmen, wenn weder Bezahlungen noch Rechnungen/Dokumente daran gebunden sind. Bei mehreren Angeboten auf derselben Kostenplanposition kann nicht versehentlich eine zweite Alternative als ausgewählt gebucht werden. Bereits in der früheren App akzeptierte/bezahle Angebote werden durch Migration `0003` **nicht gelöscht oder automatisch zusammengelegt**; ältere noch nicht angenommene Angebotsteile werden für die Prognose deaktiviert. Eigene Kategorien werden wie in der Belegverwaltung auch in Angeboten verwendet; Umbenennungen und Löschschutz berücksichtigen diese Zuordnung.
-
-**Wichtig beim Mac-Update:** `git pull`, Anwendung beenden, dann `sh start_mac_linux.sh`. Ein vorhandener SQLite-Datenbestand erhält vor Migration `0003` zwingend ein überprüftes Komplettbackup. Ohne erreichbaren Backupordner findet keine Migration statt. Jederzeit manuelles vollständiges Backup unter `/finanzierung` oder `python3 backup_manager.py backup`.
-
-## Benutzeroberfläche – Sidebar-Navigation
-
-Die responsive Oberfläche verwendet **Bootstrap 5.3.6 (MIT, lokal eingebunden)** als CSS-Grundlage sowie das gemeinsame Jinja-Partial `templates/_shell_open.html` und das Designsystem `static/shell.css`. Gluestack v5 wurde nicht verwendet, weil es einen React-/Expo-/NativeWind-Stack voraussetzt und unsere bestehende Flask-/Vanilla-JS-Anwendung dafür neu aufgebaut werden müsste. Bootstrap wird lokal ausgeliefert; ein CDN oder JavaScript-Bundler ist nicht nötig.
-
-- Desktop: linke Sidebar für Zeitplan, Kosten, Angebote, Belege, Finanzierung, Eigenleistungen, Firmen & Kontakte sowie Backups. Der Pfeil im Sidebar-Kopf klappt sie platzsparend zusammen (gespeicherte Browserpräferenz).
-- Smartphone/Tablet: Menüknopf öffnet einen zugänglichen Navigations-Drawer; `Esc` bzw. der Hintergrund schließen ihn, die Tastatur bleibt im offenen Menü.
-- Angebote, Eigenleistungen, Kontakte und Backups führen direkt zum passenden Abschnitt ihrer vorhandenen Ansichten. Alle bestehenden API-Endpunkte, Datenbankmodelle, SQLite-Backups und Migrationen bleiben unverändert.
-- Export-Links sind gesammelt unter **Export & Dateien** in der Sidebar.
-- PWA: Styles, JS und lokale SVG-Icons sind im neuen statischen Cache enthalten.
-
-Die Bootstrap-Lizenz liegt in `static/vendor-bootstrap-LICENSE.txt`. Für neue Unterseiten das gemeinsame Partial nutzen, damit Navigation und Bedienung konsistent bleiben.
+`python -m unittest discover -s tests -v` prüft die Geschäftslogik, Backups, Migrationen, Sidebar sowie API- und Reset-Sicherheitsbedingungen. GitHub Actions prüft zusätzlich JavaScript-Syntax und Docker Compose.

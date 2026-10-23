@@ -30,6 +30,7 @@
       <div class="phb-nav-label">DATEN</div>
       <nav class="phb-nav" aria-label="Datenverwaltung">
         <a class="phb-nav-link" data-section="backups" href="/finanzierung#sicherung" title="Backups">{{ icon('database') }}<span class="phb-nav-text">Backups</span></a>
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'daten' else '' }}" data-section="daten" href="/daten" title="Datenverwaltung & Reset" {% if phb_active == 'daten' %}aria-current="page"{% endif %}>{{ icon('database') }}<span class="phb-nav-text">Datenverwaltung &amp; Reset</span></a>
       </nav>
       <details class="phb-sidebar__exports" id="phbExports">
         <summary>{{ icon('download') }}<span class="phb-nav-text">Export &amp; Dateien</span>{{ icon('chevron-down') }}</summary>

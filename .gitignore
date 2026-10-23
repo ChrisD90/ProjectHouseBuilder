@@ -34,3 +34,6 @@ restore-safety-*/
 *.db
 *.sqlite
 instance/
+
+# Temporäre Dateien während eines vollständigen Projekt-Resets
+.reset-quarantine-*/

@@ -71,9 +71,6 @@ def source_files():
                 raise ValueError(f'Symlinks werden nicht gesichert: {file}')
             if file.is_file():
                 yield file, file.relative_to(ROOT).as_posix()
-    initial = ROOT / 'data' / 'initial_budget.json'
-    if initial.is_file():
-        yield initial, 'data/initial_budget.json'
 
 
 def make_backup(folder: Path | None = None, *, keep: int | None = None) -> Path:
@@ -169,9 +166,6 @@ def restore(archive: Path, *, yes: bool = False):
             old.backup(target)
     if (ROOT / 'private').exists():
         shutil.copytree(ROOT / 'private', rollback / 'private')
-    if (ROOT / 'data' / 'initial_budget.json').exists():
-        (rollback / 'data').mkdir(exist_ok=True)
-        shutil.copy2(ROOT / 'data' / 'initial_budget.json', rollback / 'data' / 'initial_budget.json')
     with tempfile.TemporaryDirectory(prefix='phb-restore-') as td:
         staging = Path(td)
         with zipfile.ZipFile(archive) as z:
@@ -196,13 +190,6 @@ def restore(archive: Path, *, yes: bool = False):
             private.mkdir(parents=True, exist_ok=True)
         if old_private.exists():
             shutil.rmtree(old_private)
-        initial = staging / 'data' / 'initial_budget.json'
-        dest_initial = ROOT / 'data' / 'initial_budget.json'
-        if initial.is_file():
-            dest_initial.parent.mkdir(exist_ok=True)
-            shutil.copy2(initial, dest_initial)
-        else:
-            dest_initial.unlink(missing_ok=True)
     return rollback
 
 

@@ -9,6 +9,8 @@ from shutil import copyfile
 import math
 import sqlite3
 import tempfile
+import shutil
+import ipaddress
 import zipfile
 from datetime import date, datetime
 from financials import effective_offer, forecast_lines, monetary_totals
@@ -163,12 +165,10 @@ class BudgetLine(db.Model):
     category=db.Column(db.String(160),nullable=False)
     title=db.Column(db.String(300),nullable=False)
     parent_code=db.Column(db.String(40),default='')
-    marker=db.Column(db.String(10),default='')
     estimate=db.Column(db.Float,nullable=False,default=0)
     company_hint=db.Column(db.String(200),default='')
     kind=db.Column(db.String(40),nullable=False,default='Fremdleistung')
     notes=db.Column(db.Text,default='')
-    source_row=db.Column(db.Integer)
     sort_order=db.Column(db.Integer,nullable=False,default=0)
     is_group=db.Column(db.Boolean,nullable=False,default=False)
     active=db.Column(db.Boolean,nullable=False,default=True)
@@ -264,14 +264,6 @@ class OfferPosition(db.Model):
     optional=db.Column(db.Boolean,nullable=False,default=False)
     page=db.Column(db.Integer)
 
-class HistoricalEstimate(db.Model):
-    id=db.Column(db.Integer,primary_key=True)
-    sheet_row=db.Column(db.Integer)
-    name=db.Column(db.String(200),nullable=False)
-    architect_estimate=db.Column(db.Float,nullable=False,default=0)
-    own_estimate=db.Column(db.Float,nullable=False,default=0)
-    supplier_note=db.Column(db.String(200),default='')
-
 def setting(name, default=''):
     obj = db.session.get(Setting, name)
     return obj.value if obj else default
@@ -323,7 +315,8 @@ def initialize():
         db.session.commit()
     if not db.session.get(Setting,'start'):
         db.session.add(Setting(key='start', value='2027-03-01'))
-    if not db.session.scalar(select(Task.id).limit(1)):
+    first_setup = db.session.get(Setting, 'project_initialized') is None
+    if first_setup and not db.session.scalar(select(Task.id).limit(1)):
         initial = json.loads((ROOT/'seed.json').read_text(encoding='utf-8'))
         for i,data in enumerate(initial):
             db.session.add(Task(code=data['code'], phase=data['phase'],trade=data['trade'],name=data['name'],
@@ -336,8 +329,9 @@ def initialize():
         for data in initial:
             for code in data['predecessors']:
                 db.session.add(Dependency(task_id=by_code[data['code']], predecessor_id=by_code[code]))
+    if first_setup:
+        db.session.add(Setting(key='project_initialized', value='1'))
     db.session.commit()
-    initialize_budget()
 
 @app.get('/')
 def home():
@@ -477,36 +471,10 @@ def all_budget_lines():
     return db.session.scalars(select(BudgetLine).order_by(BudgetLine.sort_order, BudgetLine.id)).all()
 
 def budget_dict(x):
-    return {key:getattr(x,key) for key in ('id','code','category','title','parent_code','marker','estimate','company_hint','kind','notes','source_row','sort_order','is_group','active')}
+    return {key:getattr(x,key) for key in ('id','code','category','title','parent_code','estimate','company_hint','kind','notes','sort_order','is_group','active')}
 
 def funding_dict(x):
     return {key:getattr(x,key) for key in ('id','name','expected','confirmed','received','notes')}
-
-def initialize_budget():
-    # Import private spreadsheet data once only; does not overwrite subsequent user changes.
-    if db.session.get(Setting,'excel_budget_initialized'):return
-    seed=ROOT/'data'/'initial_budget.json'
-    if not seed.exists():return
-    data=json.loads(seed.read_text(encoding='utf-8'))
-    if not db.session.scalar(select(BudgetLine.id).limit(1)):
-        for seq,line in enumerate(data['lines']):
-            db.session.add(BudgetLine(code=line['code'],category=line['category'],title=line['title'],parent_code=line['parent_code'],marker=line['marker'],estimate=line['amount'],company_hint=line['company_hint'],kind='Eigenleistung' if line['own_work'] else 'Fremdleistung',notes=line['notes'],source_row=line['source_row'],sort_order=seq,is_group=line['is_group']))
-    if not db.session.scalar(select(Funding.id).limit(1)):
-        for row in data['funding']:db.session.add(Funding(name=row['name'],expected=row['value']))
-    if not db.session.scalar(select(HistoricalEstimate.id).limit(1)):
-        for row in data['historical']:
-            db.session.add(HistoricalEstimate(sheet_row=row['row'],name=row['name'],architect_estimate=row['architect_estimate'],own_estimate=row['own_estimate'],supplier_note=row['supplier_note']))
-    # Hints from the user's spreadsheet are NOT verified awarded contracts.
-    known={c.name.lower() for c in db.session.scalars(select(Contractor))}
-    for line in data['lines']:
-        name=line['company_hint'].strip()
-        if name and name!='Eigenleistung' and name.lower() not in known:
-            db.session.add(Contractor(name=name,trade=line['category'],notes='Aus Kostenplanung übernommen; Kontaktdaten und Beauftragungsstatus prüfen.'))
-            known.add(name.lower())
-    db.session.add(Setting(key='excel_budget_initialized',value='1'))
-    if not db.session.get(Setting,'initial_budget'):db.session.add(Setting(key='initial_budget',value=str(data['budget_total'])))
-    if not db.session.get(Setting,'historical_funding'):db.session.add(Setting(key='historical_funding',value=json.dumps(data.get('historical_funding',{}),ensure_ascii=False)))
-    db.session.commit()
 
 def budget_summary(items):
     lines=all_budget_lines()
@@ -1125,8 +1093,7 @@ def get_costs():
                     'summary':budget_summary(items),
                     'budget_lines':[budget_dict(x) for x in all_budget_lines()],
                     'funding':[funding_dict(x) for x in db.session.scalars(select(Funding).order_by(Funding.id))],
-                    'historical':[{'row':x.sheet_row,'name':x.name,'architect_estimate':x.architect_estimate,'own_estimate':x.own_estimate,'supplier_note':x.supplier_note} for x in db.session.scalars(select(HistoricalEstimate).order_by(HistoricalEstimate.sheet_row))],
-                    'historical_funding':json.loads(setting('historical_funding','{}')), 'documents':[document_dict(x) for x in db.session.scalars(select(Document).order_by(Document.id.desc()))],
+                    'documents':[document_dict(x) for x in db.session.scalars(select(Document).order_by(Document.id.desc()))],
                     'offers':[offer_dict(x) for x in db.session.scalars(select(Offer).order_by(Offer.id.desc()))],
                     'offer_categories':category_names()})
 
@@ -1208,7 +1175,7 @@ def budget_line_edit(line_id=None):
             db.session.delete(obj)
         else:
             b=request.get_json(force=True)
-            for key in ('title','category','parent_code','marker','company_hint','kind','notes'):
+            for key in ('title','category','parent_code','company_hint','kind','notes'):
                 if key in b:setattr(obj,key,str(b[key] or '').strip())
             if 'estimate' in b:obj.estimate=float(b['estimate'] or 0)
             if 'active' in b:obj.active=b['active'] is True or str(b['active']).lower() in ('1','true','on')
@@ -1216,7 +1183,7 @@ def budget_line_edit(line_id=None):
             if 'sort_order' in b:obj.sort_order=int(b['sort_order'])
             if not line_id:
                 obj.code='KNEW'+str((db.session.scalar(select(db.func.max(BudgetLine.id))) or 0)+1)
-                obj.sort_order=1000+int(obj.code[4:]);obj.source_row=None
+                obj.sort_order=1000+int(obj.code[4:])
             if not obj.title or not obj.category:raise ValueError('Titel und Kategorie fehlen.')
             if not math.isfinite(obj.estimate) or obj.estimate<0:raise ValueError('Kosten dürfen nicht negativ sein.')
             if obj.kind not in ('Eigenleistung','Fremdleistung'):raise ValueError('Ungültige Leistungsart.')
@@ -1254,9 +1221,9 @@ def funding_create():
 def budget_csv():
     data=budget_summary(db.session.scalars(select(CostItem)).all())
     buf=io.StringIO();w=csv.writer(buf,delimiter=';')
-    w.writerow(['Excel-Zeile','Gruppe','Bezeichnung','Excel-Marker (unbestätigt)','Schätzung (€)','Aktuelle Prognose (€)','Prognosebasis','Eigenleistung','Firma (Hinweis)','Notiz'])
+    w.writerow(['Gewerk','Bezeichnung','Schätzung (€)','Aktuelle Prognose (€)','Prognosebasis','Eigenleistung','Firmenhinweis','Notiz'])
     for row in all_budget_lines():
-        w.writerow([row.source_row or '',row.category,row.title,row.marker,row.estimate,data['line_forecasts'].get(row.id,0),data['line_basis'].get(row.id,'Gruppenzeile'),row.kind=='Eigenleistung',row.company_hint,row.notes])
+        w.writerow([row.category,row.title,row.estimate,data['line_forecasts'].get(row.id,0),data['line_basis'].get(row.id,'Gruppenzeile'),row.kind=='Eigenleistung',row.company_hint,row.notes])
     return Response('\ufeff'+buf.getvalue(),mimetype='text/csv; charset=utf-8',headers={'Content-Disposition':'attachment; filename=Sanierungsprojekt_Budget.csv'})
 
 def document_dict(x):
@@ -1333,13 +1300,13 @@ def project_archive():
                 archive.write(dest,arcname='sanierung.db')
         else:
             archive.writestr('POSTGRESQL_BACKUP_NOETIG.txt','Bei PostgreSQL bitte zusätzlich pg_dump zur vollständigen Sicherung ausführen.\n')
-        if DOCUMENT_ROOT.exists():
-            for document in DOCUMENT_ROOT.iterdir():
-                if document.is_file():archive.write(document,arcname='private/documents/'+document.name)
-        original=ROOT/'private'/'Geplante Kosten.xlsx'
-        if original.is_file():archive.write(original,arcname='private/Geplante Kosten.xlsx')
-        initial=ROOT/'data'/'initial_budget.json'
-        if initial.is_file():archive.write(initial,arcname='data/initial_budget.json')
+        private_dir = ROOT / 'private'
+        if private_dir.exists():
+            for document in private_dir.rglob('*'):
+                if document.is_symlink():
+                    return jsonify(error='Unsicherer Dateilink im Dokumentenordner; Archiv abgebrochen.'),409
+                if document.is_file():
+                    archive.write(document, arcname=document.relative_to(ROOT).as_posix())
         archive.writestr('export.json',json.dumps({
             'tasks':serialize(all_tasks()),
             'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))],
@@ -1353,11 +1320,71 @@ def project_archive():
     return send_file(stream,mimetype='application/zip',as_attachment=True,
                      download_name='Sanierungsprojekt_Projektarchiv.zip')
 
-@app.get('/api/excel-original')
-def excel_original():
-    p=ROOT/'private'/'Geplante Kosten.xlsx'
-    if not p.exists():return jsonify(error='Originaldatei liegt auf dieser Installation nicht vor.'),404
-    return send_file(p,as_attachment=True,download_name='Geplante Kosten.xlsx')
+
+@app.get('/daten')
+def data_management_page():
+    return render_template('daten.html')
+
+
+@app.post('/api/data/reset')
+def reset_all_project_data():
+    """Clear local project records and uploads, after a mandatory verified complete backup.
+
+    Keep schema and Alembic history so upgrades continue to work. Never touch
+    backup archives or the backup configuration. Only permit calls from localhost.
+    """
+    if db.engine.url.get_backend_name() != 'sqlite' or db.engine.url.database in (None, ':memory:'):
+        return jsonify(error='Der vollständige Reset ist nur für die lokale SQLite-Version freigeschaltet.'),409
+    try:
+        localhost = ipaddress.ip_address(request.remote_addr or '').is_loopback
+    except ValueError:
+        localhost = False
+    origin = request.headers.get('Origin')
+    if (not localhost or request.headers.get('X-PHB-Reset') != '1'
+            or (origin and origin.rstrip('/') != request.host_url.rstrip('/'))):
+        return jsonify(error='Reset nur über die lokale Datenverwaltung erlaubt.'),403
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or body.get('confirmation') != 'ALLE DATEN LÖSCHEN':
+        return jsonify(error='Bitte den Bestätigungstext vollständig eingeben.'),400
+
+    import backup_manager
+    if Path(db.engine.url.database).resolve() != backup_manager.db_path().resolve():
+        return jsonify(error='Backup-Datenbank und aktive Datenbank stimmen nicht überein.'),409
+    try:
+        archive = backup_manager.make_backup()
+        backup_manager.verify_backup(archive)
+    except (ValueError, OSError, sqlite3.DatabaseError, zipfile.BadZipFile) as exc:
+        return jsonify(error='Keine Daten gelöscht: Vollständiges Backup fehlgeschlagen: '+str(exc)),409
+
+    # Move original files aside *after* the backup. Restore them if the DB reset fails.
+    private = ROOT / 'private'
+    quarantine = ROOT / ('.reset-quarantine-' + uuid4().hex)
+    try:
+        if private.exists():
+            private.rename(quarantine)
+        # Reverse FK dependency order, all user tables, do not touch alembic_version.
+        for table in reversed(db.metadata.sorted_tables):
+            db.session.execute(table.delete())
+        db.session.add(Setting(key='start',value='2027-03-01'))
+        db.session.add(Setting(key='initial_budget',value='0'))
+        db.session.add(Setting(key='project_initialized',value='1'))
+        for idx,name in enumerate(CATEGORIES):
+            db.session.add(Category(name=name,sort_order=idx))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        if quarantine.exists() and not private.exists():
+            quarantine.rename(private)
+        app.logger.exception('Projekt-Reset abgebrochen. Backup: %s', archive)
+        return jsonify(error='Reset fehlgeschlagen. Der Datenbankvorgang wurde zurückgenommen. Backup: '+str(archive)),500
+
+    warning = None
+    if quarantine.exists():
+        try:
+            shutil.rmtree(quarantine)
+        except OSError:
+            warning = 'Die Daten sind zurückgesetzt. Alte Dateien konnten nicht bereinigt werden: '+str(quarantine)
+    return jsonify(ok=True, backup=str(archive), warning=warning)
 
 @app.errorhandler(500)
 def server_error(err):
@@ -1400,4 +1427,4 @@ if __name__=='__main__':
         from schema_manager import upgrade_database
         upgrade_database()
     with app.app_context():initialize()
-    app.run(host=os.environ.get('HOST','127.0.0.1'),port=int(os.environ.get('PORT','5000')),debug=False)
+    app.run(host=os.environ.get('HOST','127.0.0.1'),port=int(os.environ.get('PORT','5055')),debug=False)
