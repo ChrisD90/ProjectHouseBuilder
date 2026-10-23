@@ -33,6 +33,41 @@ function renderCostItems(){
     contractors.map(x=>`<option value="${x.id}">${safe(x.name)} · ${safe(x.trade||'Betrieb')}</option>`).join('');
   linkedCostItem=offered.find(x=>x.offer_id===linkOffer)?.id||null;
 }
+function grossToTaxParts(gross,rate){
+  const cents=Math.round(Number(gross)*100);
+  if(!Number.isSafeInteger(cents)||cents<0)return null;
+  const tax=Number(rate);
+  if(![0,7,19].includes(tax))return null;
+  const netCents=Math.round(cents*100/(100+tax));
+  return {net:(netCents/100).toFixed(2),vat:((cents-netCents)/100).toFixed(2)};
+}
+function calculateReceiptTax(){
+  const gross=$('receiptGross').value;
+  const rate=$('receiptTaxRate').value;
+  if(!gross||rate==='manual')return;
+  const calculated=grossToTaxParts(gross,rate);
+  if(!calculated)return;
+  $('receiptNet').value=calculated.net;
+  $('receiptVat').value=calculated.vat;
+  $('receiptTaxHint').textContent='Berechnet mit '+rate+' % USt: Netto '+calculated.net+
+    ' € + USt '+calculated.vat+' € = Brutto '+Number(gross).toFixed(2)+
+    ' €. Bitte mit dem Originalbeleg abgleichen.';
+}
+function detectReceiptTaxRate(x){
+  if(x.net_amount==null||x.vat_amount==null)return '19';
+  const gross=Math.round(Number(x.gross_amount)*100);
+  const net=Math.round(Number(x.net_amount)*100);
+  const vat=Math.round(Number(x.vat_amount)*100);
+  if(!Number.isSafeInteger(gross)||!Number.isSafeInteger(net)||!Number.isSafeInteger(vat))return 'manual';
+  if(Math.abs(gross-(net+vat))>1)return 'manual';
+  for(const rate of [19,7,0]){
+    if(Math.abs(vat-(gross-Math.round(gross*100/(100+rate))))<=1)return String(rate);
+  }
+  return 'manual';
+}
+$('receiptGross').addEventListener('input',calculateReceiptTax);
+$('receiptTaxRate').addEventListener('change',calculateReceiptTax);
+
 function updateInvoiceControls(){
  const mode=$('receiptAssignmentType').value;
  const frozen=$('book').hidden;
@@ -115,8 +150,11 @@ async function open(id){
  }
  for(let [k,v] of Object.entries(x)){const input=$('review').elements.namedItem(k);if(input&&v!==undefined)input.value=v??'';}
  $('receiptAssignmentType').value=x.assignment_type||'';
+ $('receiptTaxRate').value=detectReceiptTaxRate(x);
  $('book').hidden=x.status==='Gebucht';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status==='Gebucht';
  for(let node of $('review').querySelectorAll('input,select,textarea'))node.disabled=x.status==='Gebucht'&&node.name!=='notes'&&node.name!=='paid_amount'&&node.name!=='due_date';
+ $('receiptTaxRate').disabled=x.status==='Gebucht';
+ $('receiptTaxHint').textContent='Wenn du den Bruttobetrag bearbeitest, werden Netto und USt mit dem gewählten Satz automatisch berechnet. Bei gemischten Steuersätzen „manuell“ auswählen. Originalbeleg prüfen.';
  if(linkedCostItem&&x.status==='Entwurf'&&!x.cost_item_id&&!x.assignment_type){
    $('receiptAssignmentType').value='Angebot';
    $('costItems').value=String(linkedCostItem);
