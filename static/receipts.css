@@ -30,3 +30,41 @@
  .phb-page-belege #upload button{width:100%}
  .phb-page-belege .receipt-assignment{padding:14px}
 }
+
+/* Separately reviewable gross labor share: not a tax eligibility decision. */
+.phb-page-belege .receipt-labor{
+  display:grid;gap:12px;background:var(--ui-soft,#f5faf9);
+  border:1px solid var(--ui-line,#d5e7e4);border-radius:12px;
+  padding:18px 20px;margin:2px 0 4px;
+}
+.phb-page-belege .receipt-labor-heading{
+  display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:9px 16px;
+}
+.phb-page-belege .receipt-labor-heading strong{
+  display:block;font-size:15px;line-height:1.35;color:var(--ui-ink,#294b55);
+}
+.phb-page-belege .receipt-labor-heading p{
+  font-size:12px;line-height:1.55;color:var(--ui-muted,#657981);margin:5px 0 0;
+}
+.phb-page-belege .receipt-labor-source{
+  display:inline-flex;align-items:center;background:var(--ui-surface,white);
+  border:1px solid var(--ui-line,#d9e6e9);border-radius:999px;
+  padding:5px 10px;color:var(--ui-muted,#667b86);font-size:11px;font-weight:650;
+}
+.phb-page-belege .receipt-labor-source.recognized{
+  background:var(--ui-soft-accent,#e3f4ef);color:var(--ui-success,#1d745d);
+}
+.phb-page-belege .receipt-labor>label{max-width:420px;font-size:13px;font-weight:700;color:var(--ui-ink-soft,#42616a)}
+.phb-page-belege .receipt-labor>label input{margin-top:5px}
+.phb-page-belege .receipt-labor .note{font-size:12px;line-height:1.65;margin:0;color:var(--ui-muted,#657981)}
+.phb-page-belege .receipt-labor .receipt-labor-tax-info{
+  border-top:1px solid var(--ui-line,#dce8e9);padding-top:11px;
+}
+.phb-page-belege .entry .receipt-labor-preview{
+  color:var(--ui-success,#1c765e);margin-top:5px;font-size:12px
+}
+.phb-page-belege .entry .receipt-labor-preview strong{color:inherit}
+@media(max-width:650px){
+ .phb-page-belege .receipt-labor{padding:14px}
+ .phb-page-belege .receipt-labor>label{max-width:none}
+}
