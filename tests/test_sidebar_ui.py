@@ -139,6 +139,18 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("var(--ui-surface)",css)
         self.assertIn(":not(.schedule-chat-fab)",css)
 
+    def test_invoice_labor_is_separately_editable_and_visible(self):
+        page=self.render('belege')
+        self.assertIn('id="receiptLabor"',page)
+        self.assertIn('name="labor_amount"',page)
+        self.assertIn('id="receiptLaborSource"',page)
+        self.assertIn('id="receiptLaborHint"',page)
+        self.assertIn('Arbeits- / Lohnkostenanteil brutto',page)
+        js=(STATIC/'receipts.js').read_text()
+        self.assertIn("updateLaborHint(x.labor_source,x.labor_amount)",js)
+        self.assertIn("x.labor_amount!==null",js)
+        self.assertIn("Manuell eingetragen",js)
+
     def test_login_does_not_show_application_sidebar(self):
         self.assertNotIn('phbSidebar', self.render('login'))
 
