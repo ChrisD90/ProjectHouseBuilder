@@ -30,12 +30,21 @@
   <button type="button" id="aiScheduleApply" class="primary" hidden>Geprüften KI-Vorschlag in leeren Plan übernehmen</button>
   <p class="template-note">Ein vorhandener Bauzeitenplan wird nie automatisch verändert. Vorschläge ersetzen keine Bauleitung oder Freigaben durch Fachbetriebe.</p>
 </section>
-<section class="panel schedule-conversation" id="aiScheduleChatPanel" hidden aria-labelledby="scheduleChatTitle">
+<button type="button" id="scheduleChatFab" class="schedule-chat-fab" hidden
+  aria-label="ChatGPT-Bauzeitenplan-Chat öffnen"
+  aria-controls="aiScheduleChatPanel" aria-expanded="false" aria-haspopup="dialog"
+  title="Mit ChatGPT über den Bauzeitenplan sprechen">
+  <svg class="schedule-chat-fab-icon schedule-chat-fab-open" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#message-circle"></use></svg>
+  <svg class="schedule-chat-fab-icon schedule-chat-fab-close" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#x"></use></svg>
+  <span class="schedule-chat-fab-status" aria-hidden="true"></span>
+</button>
+<section class="panel schedule-conversation schedule-chat-popover" id="aiScheduleChatPanel" hidden
+  role="dialog" aria-modal="false" aria-labelledby="scheduleChatTitle" tabindex="-1">
   <div class="schedule-section-header">
     <div><span class="phb-page-kicker">ChatGPT / Planungsdialog</span>
       <h2 id="scheduleChatTitle">Mit dem Bauzeitenplan sprechen</h2>
-      <p>Schreibe, was ihr vorhabt oder anders entschieden habt. ChatGPT prüft die Auswirkungen auf Arbeitsschritte und Reihenfolge. <strong>Änderungen erfolgen ausschließlich nach deiner Freigabe.</strong></p></div>
-    <span class="schedule-ai-connected">ChatGPT verbunden</span>
+      <p>Besprich neue Vorhaben und Entscheidungen. Änderungen erfolgen ausschließlich nach deiner Freigabe.</p></div>
+    <span class="schedule-ai-connected">Verbunden</span>
   </div>
   <div class="schedule-conversation-body">
     <div id="scheduleChatMessages" class="schedule-chat-messages" role="log" aria-label="Gespräch zum Bauzeitenplan" aria-live="polite">
