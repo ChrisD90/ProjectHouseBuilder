@@ -7,7 +7,7 @@ from jinja2 import Environment, FileSystemLoader
 ROOT=Path(__file__).resolve().parents[1]
 TEMPLATES=ROOT/'templates'
 STATIC=ROOT/'static'
-PAGES=('index','kosten','angebote','belege','finanzierung','stammdaten','daten')
+PAGES=('index','kosten','angebote','belege','finanzierung','stammdaten','dokumente','daten')
 
 
 class GlobalUIDesignTest(unittest.TestCase):
