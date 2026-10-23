@@ -284,3 +284,18 @@ body.phb-app main.phb-main :is(.schedule-chat-bubble,.offer-notes,.offer-mapping
 :root[data-phb-theme="dark"] body.phb-app .phb-ai-topbar{background:var(--ui-soft)}
 :root[data-phb-theme="dark"] body.phb-app .offers-how b{background:#178f92}
 :root[data-phb-theme="dark"] body.phb-app .phb-ai-warning>strong{color:var(--ui-ink)}
+
+/* Login inherits the same saved appearance without requiring the app sidebar. */
+body.login-screen{background:var(--ui-bg);color:var(--ui-ink)}
+body.login-screen .login-panel{
+ background:var(--ui-surface);color:var(--ui-ink);
+ border-color:var(--ui-line);border-radius:18px;box-shadow:var(--ui-shadow-raised)
+}
+body.login-screen .login-panel h1{color:var(--ui-ink)}
+body.login-screen .login-panel p,body.login-screen .login-panel label{color:var(--ui-muted)}
+body.login-screen .login-panel input{
+ color:var(--ui-ink);background:var(--ui-surface);border:1px solid var(--ui-line-strong);
+ border-radius:10px;min-height:44px
+}
+body.login-screen .login-panel input:focus{outline:0;border-color:var(--ui-accent);box-shadow:0 0 0 3px var(--ui-ring)}
+body.login-screen .login-panel button.primary{background:var(--ui-accent);color:white;border:1px solid var(--ui-accent);border-radius:10px;min-height:44px}
