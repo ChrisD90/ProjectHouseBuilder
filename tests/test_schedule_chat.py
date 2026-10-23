@@ -125,6 +125,23 @@ class ScheduleChatTests(unittest.TestCase):
         self.assertIn('mit Kosten verknüpft',blocked.json['error'])
         self.assertIn('A3',self.tasks())
 
+    def test_remove_task_after_updating_dependent_predecessors(self):
+        response,_=self.ask({'answer':'Elektroarbeit entfällt, Innenausbau bleibt.',
+            'decision':'Elektroinstallation entfällt',
+            'changes':[
+              {'action':'remove','code':'A1'},
+              {'action':'update','code':'A2','fields':{
+                  'predecessors':[],'notes':'Elektrik außerhalb des Bauzeitenplans'}}
+            ]})
+        self.assertEqual(response.status_code,200,response.json)
+        approved=self.resolve(response.json['id'],True)
+        self.assertEqual(approved.status_code,200,approved.json)
+        tasks=self.tasks()
+        self.assertNotIn('A1',tasks)
+        self.assertEqual(tasks['A2']['predecessors'],[])
+        self.assertEqual(tasks['A2']['notes'],'Elektrik außerhalb des Bauzeitenplans')
+        self.assertEqual(self.client.get('/api/schedule/history').json['history'][0]['status'],'Umgesetzt')
+
     def test_no_plan_or_missing_credit_consent_blocks_model_request(self):
         response=self.client.post('/api/ai/schedule/chat',
                 json={'message':'Bitte anpassen','plan_only':True},
