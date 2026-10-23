@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Stammdaten · ProjectHouseBuilder</title>
+  <link rel="stylesheet" href="/static/vendor-bootstrap-5.3.6.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/shell.css">
+  <link rel="stylesheet" href="/static/stammdaten.css">
+  <link rel="stylesheet" href="/static/chatgpt.css">
+</head>
+<body class="phb-app phb-page-stammdaten">
+{% set phb_active = 'stammdaten' %}{% set phb_title = 'Stammdaten' %}{% include '_shell_open.html' %}
+<main id="phbMain" class="phb-main">
+  <div class="phb-page-intro">
+    <div><span class="phb-page-kicker">Verwaltung / Zentrale Stammdaten</span>
+      <h1>Stammdaten</h1>
+      <p>Firmen, Ansprechpartner, Telefonnummern, Gewerke und Kategorien an einem Ort pflegen. Diese Daten werden auf den Arbeitsseiten wiederverwendet.</p>
+    </div>
+  </div>
+  <nav class="master-jump" aria-label="Stammdatenbereiche">
+    <a href="#firmen">Firmen &amp; Kontakte</a>
+    <a href="#gewerke">Gewerke</a>
+    <a href="#kategorien">Rechnungs- und Kostenkategorien</a>
+  </nav>
+  <div id="masterNotice" class="master-notice" role="status" aria-live="polite" hidden></div>
+  <section class="panel master-panel" id="firmen">
+    <div class="master-panel-head">
+      <div><h2>Firmen &amp; Ansprechpartner</h2>
+        <p>Auch automatisch aus Angebots-PDFs übernommene Firmen erscheinen hier. Kontaktdaten lassen sich jederzeit ergänzen, ohne Angebote oder Rechnungen zu verändern.</p></div>
+      <button id="addCompany" class="primary" type="button">+ Firma anlegen</button>
+    </div>
+    <div class="master-toolbar">
+      <label for="companySearch">Firmen durchsuchen</label>
+      <input type="search" id="companySearch" placeholder="Firma, Gewerk, Ansprechpartner, Telefon …">
+      <span id="companyCount" class="master-count"></span>
+    </div>
+    <div class="master-table-scroll">
+      <table class="master-table">
+        <thead><tr><th>Firma / Betrieb</th><th>Gewerk</th><th>Ansprechpartner</th><th>Kontakt</th><th></th></tr></thead>
+        <tbody id="companyRows"><tr><td colspan="5">Firmen werden geladen …</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+  <div class="master-two-columns">
+    <section class="panel master-panel" id="gewerke">
+      <div class="master-panel-head"><div><h2>Gewerke</h2>
+        <p>Für Firmen und Bauzeitenplan. Umbenennen aktualisiert bestehende Firmen und Arbeitspakete.</p></div></div>
+      <form id="tradeCreate" class="master-create"><label for="tradeNew">Neues Gewerk</label>
+        <div><input id="tradeNew" maxlength="140" required placeholder="z. B. Trockenbau">
+          <button class="primary" type="submit">Hinzufügen</button></div></form>
+      <div id="tradeRows" class="master-tag-list"></div>
+    </section>
+    <section class="panel master-panel" id="kategorien">
+      <div class="master-panel-head"><div><h2>Rechnungs- und Kostenkategorien</h2>
+        <p>Für Rechnungen, Angebote und Kostenplanung. Umbenennungen werden in allen zugeordneten Datensätzen nachgeführt.</p></div></div>
+      <form id="categoryCreate" class="master-create"><label for="categoryNew">Neue Kategorie</label>
+        <div><input id="categoryNew" maxlength="120" required placeholder="z. B. Garten / Außenanlagen">
+          <button class="primary" type="submit">Hinzufügen</button></div></form>
+      <div id="categoryRows" class="master-tag-list"></div>
+    </section>
+  </div>
+  <dialog id="companyDialog" class="master-dialog">
+    <form id="companyForm" class="master-dialog-inner">
+      <div class="master-dialog-head"><h2 id="companyTitle">Firma erfassen</h2>
+        <button id="closeCompany" type="button">Schließen</button></div>
+      <p class="master-description">Firmenstammdaten ändern weder Rechnungsbeträge noch bestehende Beauftragungen.</p>
+      <input name="id" type="hidden">
+      <div class="master-fields">
+        <label>Firmenname *<input name="name" maxlength="200" required></label>
+        <label>Gewerk<select name="trade" id="companyTrade"><option value="">Nicht zugeordnet</option></select></label>
+        <label>Ansprechpartner<input name="contact" maxlength="200"></label>
+        <label>Weiterer Ansprechpartner<input name="contact_secondary" maxlength="200"></label>
+        <label>Telefon<input name="phone" type="tel" maxlength="100"></label>
+        <label>Mobiltelefon<input name="mobile" type="tel" maxlength="100"></label>
+        <label>Weitere Telefonnummer<input name="phone_other" type="tel" maxlength="100"></label>
+        <label>E-Mail<input name="email" type="email" maxlength="200"></label>
+        <label>Website<input name="website" maxlength="240" placeholder="https://"></label>
+        <label class="wide">Adresse<input name="address" maxlength="400"></label>
+        <label class="wide">Notizen<textarea name="notes" rows="3" maxlength="3000"></textarea></label>
+      </div>
+      <div class="master-dialog-actions">
+        <button id="deleteCompany" type="button" class="danger">Firma löschen</button>
+        <button class="primary" type="submit" id="saveCompany">Änderungen speichern</button>
+      </div>
+      <p class="master-form-status" id="companyStatus" role="status"></p>
+    </form>
+  </dialog>
+</main>
+</div></div>
+<script src="/static/stammdaten.js"></script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+  <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
+  <h2 id="phbAITitle">ChatGPT verbinden</h2>
+  <p id="phbAIConnection">Verbindung wird geprüft …</p>
+  <div class="phb-ai-controls">
+    <button type="button" id="phbAIConnect" class="phb-ai-primary">Mit ChatGPT anmelden</button>
+    <button type="button" id="phbAIDisconnect" hidden>Verbindung trennen</button>
+    <label id="phbAIModelWrap" hidden>ChatGPT-Modell <select id="phbAIModel"></select></label>
+  </div>
+  <div class="phb-ai-warning">
+    <strong>Keine API-Schlüssel und kein kostenpflichtiger Fallback.</strong>
+    <p>Wichtig: ChatGPT kann nach Erreichen des Plankontingents zusätzliche Credits verwenden,
+       falls du dies in deinem ChatGPT-Konto für Apps erlaubt hast. ProjectHouseBuilder kann
+       diese Kontoeinstellung nicht auslesen und daher keine absolute Kostensperre garantieren.</p>
+    <p><a href="https://chatgpt.com/#settings/usage" target="_blank" rel="noopener noreferrer">ChatGPT Einstellungen → Nutzung / App-Limits öffnen ↗</a></p>
+    <label class="phb-ai-confirm"><input type="checkbox" id="phbAINoCredits"> Ich habe die Nutzung kostenpflichtiger Credits für Apps in ChatGPT deaktiviert und erlaube ausdrücklich KI-Anfragen aus dieser Anwendung.</label>
+  </div>
+  <p class="phb-ai-disclosure">Nur mit KI gestartete Anfragen übertragen ausgewählte PDF- oder Projektinformationen an OpenAI. Ergebnisse bleiben Vorschläge, bis du sie prüfst und übernimmst. Zugangstokens bleiben lokal außerhalb der Projektbackups.</p>
+  <p id="phbAIMessage" role="status"></p>
+</dialog>
+<script src="/static/chatgpt.js"></script>
+<script src="/static/shell.js"></script>
+</body></html>
