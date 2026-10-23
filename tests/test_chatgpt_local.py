@@ -123,6 +123,67 @@ class ChatGPTLocalTests(unittest.TestCase):
                                          headers=self.headers(),
                                          base_url='http://127.0.0.1:5055').json['available'])
 
+    def test_id_token_error_categories_keep_signature_checks_enabled(self):
+        import time
+        from types import SimpleNamespace
+        import jwt
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from chatgpt_local import ChatGPTLocal, IdentityValidationError
+
+        local=ChatGPTLocal()
+        private=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+        local._jwk=SimpleNamespace(get_signing_key_from_jwt=lambda raw:
+                                   SimpleNamespace(key=private.public_key()))
+        now=int(time.time())
+        base={'sub':'test-user','iss':'https://auth.openai.com',
+              'aud':'oaiapp_test','iat':now,'exp':now+3600,'nonce':'expected-nonce'}
+        def signed(overrides=None, key=None):
+            return jwt.encode({**base,**(overrides or {})}, key or private,
+                              algorithm='RS256',headers={'kid':'test-key'})
+        self.assertEqual(local._verify_identity(signed(),'oaiapp_test','expected-nonce')['sub'],
+                         'test-user')
+        cases=[
+            (signed({'aud':'oaiapp_wrong'}),'id_token_audience_mismatch'),
+            (signed({'iss':'https://other.example'}),'id_token_issuer_mismatch'),
+            (signed({'exp':now-3600}),'id_token_expired'),
+            (signed({'iat':now+3600}),'id_token_time_invalid'),
+            (signed({'sub':None}),'id_token_subject_invalid'),
+            (signed(key=rsa.generate_private_key(public_exponent=65537,key_size=2048)),
+             'id_token_signature_invalid'),
+        ]
+        for token,code in cases:
+            with self.subTest(code=code),self.assertRaises(IdentityValidationError) as raised:
+                local._verify_identity(token,'oaiapp_test','expected-nonce')
+            self.assertEqual(raised.exception.reason_code,code)
+        with self.assertRaises(AIError) as nonce_error:
+            local._verify_identity(signed(),'oaiapp_test','wrong-nonce')
+        self.assertIn('Nonce',str(nonce_error.exception))
+
+        def unavailable(_):
+            raise jwt.PyJWKClientConnectionError('private-network-detail')
+        local._jwk=SimpleNamespace(get_signing_key_from_jwt=unavailable)
+        with self.assertRaises(IdentityValidationError) as raised:
+            local._verify_identity(signed(),'oaiapp_test','expected-nonce')
+        self.assertEqual(raised.exception.reason_code,'jwks_unavailable')
+        self.assertNotIn('private-network-detail',str(raised.exception))
+
+    def test_identity_error_diagnostic_only_exposes_allowlisted_code(self):
+        from app import _ai_safe_callback_diagnostic
+        from chatgpt_local import IdentityValidationError
+        result=_ai_safe_callback_diagnostic(IdentityValidationError('id_token_audience_mismatch'),
+                                            'local-nonce',
+                                            {'code':'private-code','state':'private-state',
+                                             'client_id':'private-client','scope':'openid'})
+        self.assertEqual(result['phase'],'Identitätsprüfung')
+        self.assertEqual(result['code'],'id_token_audience_mismatch')
+        self.assertIn('aud',result['explanation'])
+        self.assertNotIn('private-code',json.dumps(result))
+        self.assertNotIn('private-state',json.dumps(result))
+        unknown=_ai_safe_callback_diagnostic(IdentityValidationError('any-secret-goes-here'),
+                                             '',{})
+        self.assertEqual(unknown['code'],'id_token_validation_failed')
+        self.assertNotIn('any-secret-goes-here',json.dumps(unknown))
+
     def test_oauth_diagnostics_never_expose_unknown_upstream_text(self):
         from app import _ai_safe_callback_diagnostic
         secret='private-upstream-secret'
