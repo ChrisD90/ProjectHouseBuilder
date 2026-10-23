@@ -145,13 +145,23 @@ class Dependency(db.Model):
     predecessor_id = db.Column(db.Integer, db.ForeignKey('task.id', ondelete='CASCADE'), nullable=False)
     __table_args__ = (db.UniqueConstraint('task_id','predecessor_id'),)
 
+class Trade(db.Model):
+    """Editable trade names; distinct from financial/receipt categories."""
+    id=db.Column(db.Integer,primary_key=True)
+    name=db.Column(db.String(140),unique=True,nullable=False)
+
+
 class Contractor(db.Model):
     id=db.Column(db.Integer,primary_key=True)
     trade=db.Column(db.String(140),default='')
     name=db.Column(db.String(200),nullable=False)
     contact=db.Column(db.String(200),default='')
     phone=db.Column(db.String(100),default='')
+    mobile=db.Column(db.String(100),nullable=False,default='',server_default='')
+    phone_other=db.Column(db.String(100),nullable=False,default='',server_default='')
+    contact_secondary=db.Column(db.String(200),nullable=False,default='',server_default='')
     email=db.Column(db.String(200),default='')
+    website=db.Column(db.String(240),nullable=False,default='',server_default='')
     address=db.Column(db.String(400),default='')
     notes=db.Column(db.Text,default='')
 
@@ -910,7 +920,7 @@ def backup():
     return Response(json.dumps({'start':setting('start'),'tasks':serialize(all_tasks()),'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))], 'budget_lines':[budget_dict(x) for x in all_budget_lines()], 'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))], 'contractors':[as_dict(x,CONTACT_FIELDS) for x in db.session.scalars(select(Contractor))], 'documents':[document_dict(x) for x in db.session.scalars(select(Document))], 'offers':[offer_dict(x) for x in db.session.scalars(select(Offer))]},ensure_ascii=False,indent=2),mimetype='application/json',headers={'Content-Disposition':'attachment; filename=Sanierungsprojekt_Backup.json'})
 
 COST_FIELDS={'category','title','contractor_id','task_id','budget_line_id','selected','kind','state','estimate','offer','committed','paid','own_hours','own_hourly','source_ref','notes'}
-CONTACT_FIELDS={'trade','name','contact','phone','email','address','notes'}
+CONTACT_FIELDS={'trade','name','contact','contact_secondary','phone','mobile','phone_other','email','website','address','notes'}
 
 def as_dict(obj,fields):
     return {f:getattr(obj,f) for f in fields}|{'id':obj.id}
@@ -2202,6 +2212,68 @@ def receipt_delete(rid):
 @app.get('/belege')
 def receipts_page():
     return render_template('belege.html')
+
+@app.get('/stammdaten')
+def masterdata_page():
+    return render_template('stammdaten.html')
+
+
+@app.get('/api/trades')
+def trades_list():
+    return jsonify(trades=[{'id':x.id,'name':x.name}
+                           for x in db.session.scalars(select(Trade).order_by(Trade.name))])
+
+
+def _trade_name(value):
+    value=str(value or '').strip()
+    if not value or len(value)>140 or any(ord(c)<32 for c in value):
+        raise ValueError('Gewerk muss zwischen 1 und 140 Zeichen haben.')
+    return value
+
+
+@app.post('/api/trades')
+def trades_add():
+    try:
+        value=_trade_name((request.get_json(silent=True) or {}).get('name'))
+        if any(x.name.casefold()==value.casefold() for x in db.session.scalars(select(Trade))):
+            raise ValueError('Dieses Gewerk existiert bereits.')
+        item=Trade(name=value);db.session.add(item);db.session.commit()
+        return jsonify(id=item.id,name=item.name),201
+    except ValueError as exc:
+        db.session.rollback();return jsonify(error=str(exc)),400
+
+
+@app.patch('/api/trades/<int:tid>')
+def trades_rename(tid):
+    item=db.session.get(Trade,tid)
+    if not item:return jsonify(error='Gewerk nicht gefunden.'),404
+    try:
+        value=_trade_name((request.get_json(silent=True) or {}).get('name'))
+        if any(x.id!=tid and x.name.casefold()==value.casefold()
+               for x in db.session.scalars(select(Trade))):
+            raise ValueError('Dieses Gewerk existiert bereits.')
+        old=item.name
+        if value!=old:
+            for contractor in db.session.scalars(select(Contractor).where(Contractor.trade==old)):
+                contractor.trade=value
+            for task in db.session.scalars(select(Task).where(Task.trade==old)):
+                task.trade=value
+            item.name=value
+        db.session.commit()
+        return jsonify(id=item.id,name=item.name)
+    except ValueError as exc:
+        db.session.rollback();return jsonify(error=str(exc)),400
+
+
+@app.delete('/api/trades/<int:tid>')
+def trades_delete(tid):
+    item=db.session.get(Trade,tid)
+    if not item:return jsonify(error='Gewerk nicht gefunden.'),404
+    if db.session.scalar(select(Contractor.id).where(Contractor.trade==item.name).limit(1)) or db.session.scalar(select(Task.id).where(Task.trade==item.name).limit(1)):
+        return jsonify(error='Gewerk wird von Firmen oder Arbeitspaketen verwendet; bitte zunächst umbenennen oder neu zuordnen.'),409
+    db.session.delete(item);db.session.commit()
+    return jsonify(ok=True)
+
 
 @app.get('/kosten')
 def costs_page():return render_template('kosten.html')
