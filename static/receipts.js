@@ -68,6 +68,20 @@ function detectReceiptTaxRate(x){
 $('receiptGross').addEventListener('input',calculateReceiptTax);
 $('receiptTaxRate').addEventListener('change',calculateReceiptTax);
 
+function updateLaborHint(source,amount){
+ const badge=$('receiptLaborSource');
+ if(amount!==null&&amount!==undefined&&amount!==''){
+   badge.textContent=source==='Manuell'?'Manuell eingetragen'
+     :source==='Erkannt'?'Automatisch erkannt – prüfen':'Lohnkosten erfasst';
+   badge.classList.toggle('recognized',source==='Erkannt');
+ }else{
+   badge.textContent='Noch nicht erfasst';
+   badge.classList.remove('recognized');
+ }
+}
+$('receiptLabor').addEventListener('input',()=>{
+ updateLaborHint('Manuell',$('receiptLabor').value);
+});
 function updateInvoiceControls(){
  const mode=$('receiptAssignmentType').value;
  const frozen=$('book').hidden;
@@ -124,11 +138,11 @@ function inputs(){
 function fillSelect(node,values,getTitle){node.innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${safe(getTitle(x))}</option>`).join('')}
 async function reload(keepId=selected){
  const [r,c]=await Promise.all([api('/api/receipts'),api('/api/costs')]);overview=c;list=r.receipts;
- $('stats').innerHTML=`<span>Entwürfe: <b>${r.drafts}</b></span><span>Gebucht brutto: <b>${money(r.booked_gross)}</b></span><span>Bezahlt: <b>${money(r.paid)}</b></span>`;
+ $('stats').innerHTML=`<span>Entwürfe: <b>${r.drafts}</b></span><span>Gebucht brutto: <b>${money(r.booked_gross)}</b></span><span>Bezahlt: <b>${money(r.paid)}</b></span><span>Lohnanteil erfasst: <b>${list.filter(x=>x.labor_amount!==null).length} Belege</b></span>`;
  $('categories').innerHTML=r.categories.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');
  fillSelect($('budgetLines'),c.budget_lines.filter(x=>x.active&&!x.is_group),x=>x.category+' · '+x.title);
  renderCostItems();
- $('list').innerHTML=list.map(x=>`<button type="button" data-id="${x.id}" class="entry ${keepId===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span><strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} neu abgerechnet · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small></button>`).join('')||'<p>Du hast noch keine Belege erfasst.</p>';
+ $('list').innerHTML=list.map(x=>`<button type="button" data-id="${x.id}" class="entry ${keepId===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span><strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} neu abgerechnet · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>`).join('')||'<p>Du hast noch keine Belege erfasst.</p>';
  document.querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
  if(keepId&&list.some(x=>x.id===keepId))await open(keepId);
  else if(linkReceipt&&list.some(x=>x.id===linkReceipt))await open(linkReceipt);
@@ -151,6 +165,7 @@ async function open(id){
  for(let [k,v] of Object.entries(x)){const input=$('review').elements.namedItem(k);if(input&&v!==undefined)input.value=v??'';}
  $('receiptAssignmentType').value=x.assignment_type||'';
  $('receiptTaxRate').value=detectReceiptTaxRate(x);
+ updateLaborHint(x.labor_source,x.labor_amount);
  $('book').hidden=x.status==='Gebucht';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status==='Gebucht';
  for(let node of $('review').querySelectorAll('input,select,textarea'))node.disabled=x.status==='Gebucht'&&node.name!=='notes'&&node.name!=='paid_amount'&&node.name!=='due_date';
  $('receiptTaxRate').disabled=x.status==='Gebucht';
