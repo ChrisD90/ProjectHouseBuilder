@@ -2427,9 +2427,9 @@ def receipt_edit(rid):
                 if f=='paid_amount':
                     allocations=db.session.scalar(select(db.func.count(ReceiptFinancingPayment.id)).where(ReceiptFinancingPayment.receipt_id==r.id)) or 0
                     if allocations and amount != r.paid_amount:raise ValueError('Diese Zahlung ist über die Finanzierungsverwaltung aufgeteilt. Dort bearbeiten.')
-                setattr(r,f,amount)
-                if f=='labor_amount':
+                if f=='labor_amount' and amount!=r.labor_amount:
                     r.labor_source='Manuell' if amount is not None else ''
+                setattr(r,f,amount)
         if r.labor_amount is not None and r.gross_amount is not None and r.labor_amount>r.gross_amount:
             raise ValueError('Der Arbeits-/Lohnkostenanteil darf den Bruttobetrag nicht überschreiten.')
         for field,model in (('budget_line_id',BudgetLine),('cost_item_id',CostItem),('contractor_id',Contractor)):
