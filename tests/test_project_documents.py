@@ -42,6 +42,9 @@ class ProjectDocumentTests(unittest.TestCase):
         fetched=self.client.get('/api/project-documents/'+str(did)+'/download')
         self.assertEqual(fetched.data,pdf.getvalue())
         self.assertEqual(fetched.headers['Cache-Control'],'no-store')
+        preview=self.client.get('/api/project-documents/'+str(did)+'/preview')
+        self.assertEqual(preview.status_code,200)
+        self.assertEqual(preview.data,pdf.getvalue())
         changed=self.client.patch('/api/project-documents/'+str(did),json={
             'title':'Elektroplanung – freigegeben','status':'Überholt','tags':'Altstand'})
         self.assertEqual(changed.status_code,200,changed.json)
