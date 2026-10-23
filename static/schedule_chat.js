@@ -9,6 +9,8 @@
   let history = [];
   let taskCount = 0;
   let connected = false;
+  let library = [];
+  const selectedDocuments = new Set();
   let pendingId = null;
   let busy = false;
   const fieldLabel = {
@@ -85,6 +87,54 @@
     $('scheduleChatInput').disabled=false;
     $('scheduleChatSend').disabled=false;
   }
+  async function loadDocuments(){
+    try {
+      const data=await request('/api/documents');
+      library=(data.documents||[]).filter(d=>d.status==='Aktuell');
+      for(const id of [...selectedDocuments]){
+        if(!library.some(d=>d.id===id))selectedDocuments.delete(id);
+      }
+      renderDocuments();
+    }catch(error){
+      $('scheduleDocSuggestions').textContent='Unterlagen nicht verfügbar: '+error.message;
+    }
+  }
+  function renderDocuments(){
+    const host=$('scheduleDocSuggestions');host.replaceChildren();
+    const terms=($('scheduleChatInput').value.toLowerCase().match(/[a-zäöüß0-9]{4,}/g)||[])
+      .filter(word=>!['werden','unsere','haben','möchte','bitte','einen','einem'].includes(word));
+    const ranked=library.map(d=>{
+      const haystack=[d.title,d.area,d.category,d.tags,d.description].join(' ').toLowerCase();
+      const score=terms.reduce((n,t)=>n+(haystack.includes(t)?1:0),0);
+      return {d,score};
+    }).sort((a,b)=>Number(selectedDocuments.has(b.d.id))-Number(selectedDocuments.has(a.d.id))||
+       b.score-a.score||a.d.title.localeCompare(b.d.title,'de'));
+    if(!ranked.length){
+      const p=document.createElement('p');p.textContent='Noch keine aktuellen Unterlagen vorhanden.';
+      host.append(p);
+    }
+    for(const {d,score} of ranked.slice(0,12)){
+      const label=document.createElement('label');label.className='schedule-doc-choice';
+      const checkbox=document.createElement('input');checkbox.type='checkbox';
+      checkbox.checked=selectedDocuments.has(d.id);
+      checkbox.disabled=!checkbox.checked && selectedDocuments.size>=3;
+      checkbox.setAttribute('aria-label','Dokument '+d.title+' für diese ChatGPT-Anfrage freigeben');
+      checkbox.onchange=()=>{
+        if(checkbox.checked)selectedDocuments.add(d.id);
+        else selectedDocuments.delete(d.id);
+        renderDocuments();
+      };
+      const body=document.createElement('span');
+      const title=document.createElement('strong');title.textContent=d.title;
+      const desc=document.createElement('small');
+      desc.textContent='DOK-'+d.id+' · '+d.category+' · '+d.area+
+        (score>0?' · thematisch passend':'');
+      body.append(title,desc);label.append(checkbox,body);host.append(label);
+    }
+    $('scheduleDocSelectionCount').textContent=selectedDocuments.size
+       ?selectedDocuments.size+' ausgewählt':'Keine ausgewählt';
+  }
+  $('scheduleChatInput').addEventListener('input',()=>{if(library.length)renderDocuments();});
   function renderHistory() {
     const container=$('scheduleHistoryEntries');
     container.replaceChildren();
@@ -105,6 +155,19 @@
       if(item.decision)article.append(make('p','schedule-history-decision',
         'Entscheidung: '+item.decision));
       if(item.answer)article.append(make('p','',item.answer));
+      if(Array.isArray(item.source_documents)&&item.source_documents.length){
+        const sources=make('p','schedule-history-sources');
+        sources.append(make('strong','','Verwendete Unterlagen: '));
+        item.source_documents.forEach((doc,index)=>{
+          if(index)sources.append(document.createTextNode(' · '));
+          const link=document.createElement('a');
+          link.href='/api/documents/'+doc.id+'/download';
+          link.textContent=(doc.label||'DOK-'+doc.id)+' '+doc.title;
+          link.title='Original herunterladen (falls noch vorhanden)';
+          sources.append(link);
+        });
+        article.append(sources);
+      }
       const changes=Array.isArray(item.changes)?item.changes:
         Array.isArray(item.changes?.preview)?item.changes.preview:[];
       if(changes.length){
@@ -169,6 +232,7 @@
       :'ChatGPT-Bauzeitenplan-Chat öffnen');
     fab.title=isOpen?'Chat schließen':'Mit ChatGPT über den Bauzeitenplan sprechen';
     if(isOpen){
+      loadDocuments();
       $('scheduleChatInput').focus({preventScroll:true});
     }else if(restoreFocus && !fab.hidden){
       fab.focus({preventScroll:true});
@@ -224,9 +288,12 @@
     status('ChatGPT gleicht die Entscheidung mit dem aktuellen Bauzeitenplan ab …');
     try {
       const data=await request('/api/ai/schedule/chat','POST',{
-        ...selection,message
+        ...selection,message,document_ids:[...selectedDocuments]
       });
       $('scheduleChatInput').value='';
+      selectedDocuments.clear();
+      renderDocuments();
+      $('scheduleChatDocuments').open=false;
       await loadHistory();
       if(data.requires_approval){
         renderPreview(data.id,data.preview||[]);
