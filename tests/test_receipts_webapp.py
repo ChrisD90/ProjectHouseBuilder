@@ -1,10 +1,11 @@
 """End-to-end receipt tests with Flask's SQLite test client."""
 import io
+import json
 import os
 import unittest
 from unittest.mock import patch
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import app,db,initialize,Receipt,CostItem,BudgetLine
+from app import app,db,initialize,Receipt,CostItem,BudgetLine,Contractor
 
 class ReceiptWebappTest(unittest.TestCase):
     def setUp(self):
@@ -32,6 +33,103 @@ class ReceiptWebappTest(unittest.TestCase):
         self.assertEqual(self.client.post(f'/api/receipts/{rid}/unbook').status_code,200)
         self.assertEqual(self.client.get('/api/costs').json['summary']['paid'],start['paid'])
         self.assertEqual(self.client.delete(f'/api/receipts/{rid}').status_code,200)
+    def test_exclusive_assignment_to_contractor_or_own_work(self):
+        contractor=Contractor(name='Sanitärbetrieb Beispiel',trade='Sanitär')
+        db.session.add(contractor);db.session.commit()
+        rid=self.upload().json['id']
+        contractor_link=self.client.patch(f'/api/receipts/{rid}',json={
+            'assignment_type':'Betrieb','contractor_id':contractor.id,
+            'cost_item_id':None,'category':'Sanitär'})
+        self.assertEqual(contractor_link.status_code,200,contractor_link.json)
+        self.assertEqual(contractor_link.json['contractor_id'],contractor.id)
+        self.assertEqual(contractor_link.json['assignment_type'],'Betrieb')
+        rejected=self.client.patch(f'/api/receipts/{rid}',json={
+            'assignment_type':'Eigenleistung','cost_item_id':None,'contractor_id':contractor.id})
+        self.assertEqual(rejected.status_code,400)
+        self.assertEqual(db.session.get(Receipt,rid).assignment_type,'Betrieb')
+        self.assertEqual(self.client.post(f'/api/receipts/{rid}/book').status_code,200)
+        self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={
+            'assignment_type':'Eigenleistung','contractor_id':None}).status_code,409)
+        self.assertEqual(self.client.delete(f'/api/contractors/{contractor.id}').status_code,409)
+        self.assertEqual(self.client.post(f'/api/receipts/{rid}/unbook').status_code,200)
+        change=self.client.patch(f'/api/receipts/{rid}',json={
+            'assignment_type':'Eigenleistung','contractor_id':None,'cost_item_id':None})
+        self.assertEqual(change.status_code,200,change.json)
+        self.assertEqual(change.json['assignment_type'],'Eigenleistung')
+        self.assertIsNone(change.json['contractor_id'])
+        self.assertEqual(self.client.post(f'/api/receipts/{rid}/book').status_code,200)
+
+    def test_conflicting_assignment_is_rejected_atomically(self):
+        contractor=Contractor(name='Firma Einbau');db.session.add(contractor);db.session.flush()
+        item=CostItem(title='Bestand',category='Elektro',state='Beauftragt')
+        db.session.add(item);db.session.commit()
+        rid=self.upload().json['id']
+        bad=self.client.patch(f'/api/receipts/{rid}',json={
+            'assignment_type':'Betrieb','contractor_id':contractor.id,'cost_item_id':item.id})
+        self.assertEqual(bad.status_code,400,bad.json)
+        saved=db.session.get(Receipt,rid)
+        self.assertIsNone(saved.contractor_id)
+        self.assertIsNone(saved.cost_item_id)
+        self.assertEqual(saved.assignment_type,'')
+
+    def test_chatgpt_receipt_upload_explicit_consent_and_editable_draft(self):
+        from chatgpt_local import chatgpt
+        document=b'%PDF-1.4\\nprivate-test-document'
+        def make_upload(extra=None,headers=None):
+            return self.client.post('/api/receipts',data={
+                'file':(io.BytesIO(document),'rechnungsanalyse.pdf'),
+                'analysis_mode':'ai','model':'m1',**(extra or {})
+            },headers=headers or {},content_type='multipart/form-data',
+                base_url='http://127.0.0.1:5055')
+        start=self.client.get('/api/costs').json['summary']['paid']
+        result=json.dumps({
+            'supplier':'Baumarkt AI','invoice_number':'AI-11',
+            'document_date':'2026-10-22','gross_amount':119,
+            'net_amount':100,'vat_amount':19,'category':'Werkzeug',
+            'kind':'Rechnung','billing_type':'Normal','warnings':['Preis prüfen']
+        })
+        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+             patch.object(chatgpt,'run',return_value=result) as run:
+            no_header=make_upload({'plan_only':'true'})
+            self.assertEqual(no_header.status_code,403,no_header.json)
+            no_consent=make_upload(headers={'X-PHB-AI':'1'})
+            self.assertEqual(no_consent.status_code,403,no_consent.json)
+            yes=make_upload({'plan_only':'true'},headers={'X-PHB-AI':'1'})
+        self.assertEqual(yes.status_code,201,yes.json)
+        self.assertEqual(run.call_count,1)
+        self.assertEqual(yes.json['source'],'ChatGPT')
+        self.assertEqual(yes.json['supplier'],'Baumarkt AI')
+        self.assertEqual(yes.json['gross_amount'],119.0)
+        self.assertEqual(yes.json['status'],'Entwurf')
+        self.assertEqual(self.client.get('/api/costs').json['summary']['paid'],start)
+        self.assertEqual(self.client.get('/api/receipts').json['drafts'],1)
+        # A draft can still be reviewed, linked and corrected manually.
+        edit=self.client.patch(f"/api/receipts/{yes.json['id']}",json={
+            'assignment_type':'Eigenleistung','supplier':'Korrigierte Firma','gross_amount':'125.00'})
+        self.assertEqual(edit.status_code,200,edit.json)
+
+    def test_chatgpt_image_upload_uses_multimodal_input_without_local_ocr(self):
+        import json
+        from chatgpt_local import chatgpt
+        from PIL import Image
+        buffer=io.BytesIO();Image.new('RGB',(16,16),'white').save(buffer,format='PNG')
+        blob=buffer.getvalue()
+        data=json.dumps({'supplier':'Foto-Rechnung','invoice_number':'B-4',
+                         'document_date':'2026-10-22','gross_amount':42,
+                         'warnings':[]})
+        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+             patch.object(chatgpt,'run',return_value=data) as run, \
+             patch('app.extract_text',side_effect=AssertionError('local OCR must not run')):
+            response=self.client.post('/api/receipts',data={
+                'file':(io.BytesIO(blob),'foto.png'),'analysis_mode':'ai',
+                'plan_only':'true','model':'m1'
+            },headers={'X-PHB-AI':'1'},content_type='multipart/form-data',
+               base_url='http://127.0.0.1:5055')
+        self.assertEqual(response.status_code,201,response.json)
+        content=run.call_args.args[0][0]['content']
+        self.assertEqual(content[1]['type'],'input_image')
+        self.assertTrue(content[1]['image_url'].startswith('data:image/png;base64,'))
+
     def test_open_invoice_does_not_count_as_paid(self):
         rid=self.upload().json['id']
         self.assertEqual(self.client.post(f'/api/receipts/{rid}/book').status_code,200)
