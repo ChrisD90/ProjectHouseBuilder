@@ -4,7 +4,6 @@ const el=id=>document.getElementById(id), euro=x=>new Intl.NumberFormat('de-DE',
 const nf=x=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:1}).format(x||0);
 const fields={
  cost:[['category','Gewerk / Kategorie'],['title','Bezeichnung'],['kind','Leistungsart','choice',['Fremdleistung','Eigenleistung']],['state','Stand (zusätzliche Kostenposition)','choice',['Schätzung','Beauftragt','Abgeschlossen','Alternative','Abgelehnt']],['budget_line_id','Kostenplanposition','budget'],['selected','Für Prognose auswählen (nur ein Angebot pro Planposition)','bool'],['contractor_id','Firma','contractor'],['task_id','Gantt-Arbeitspaket','task'],['estimate','Kostenschätzung (€)','number'],['offer','Bekannter Preis (€) – kein Angebot','number'],['committed','Beauftragter Wert (€)','number'],['paid','Bereits bezahlt (€)','number'],['own_hours','Eigenleistungsstunden','number'],['own_hourly','Kalkulatorischer Stundenwert (nur Informationswert)','number'],['source_ref','Angebots- / Vertragsreferenz'],['notes','Notizen','textarea']],
- contact:[['trade','Gewerk'],['name','Firmenname'],['contact','Ansprechpartner'],['phone','Telefon'],['email','E-Mail'],['address','Adresse'],['notes','Notizen','textarea']],
  budget:[['category','Gewerk'],['title','Position'],['parent_code','Unterposition von','parent'],['kind','Leistungsart','choice',['Fremdleistung','Eigenleistung']],['estimate','Schätzung (€)','number'],['company_hint','Firmenhinweis (unverbindlich)'],['notes','Notizen','textarea'],['active','In Prognose einbeziehen','bool'],['is_group','Nur Gruppenüberschrift, nicht summieren','bool']],
  funding:[['name','Fördermaßnahme'],['expected','Erwarteter Förderbetrag (€)','number'],['confirmed','Bewilligter Betrag (€)','number'],['received','Ausgezahlter Betrag (€)','number'],['notes','Notizen','textarea']]
 };
@@ -34,13 +33,13 @@ function render(){const s=state.summary;
  document.querySelectorAll('[data-delete-doc]').forEach(btn=>btn.onclick=async()=>{if(!confirm('Dieses Dokument dauerhaft von diesem Rechner löschen?'))return;try{await api('/api/documents/'+btn.dataset.deleteDoc,{method:'DELETE'});await reload()}catch(e){alert(e.message)}});
  el('fundingrows').innerHTML=state.funding.map(f=>`<tr><td>${esc(f.name)}</td>${fmtcell(f.expected)}${fmtcell(f.confirmed)}${fmtcell(f.received)}<td>${esc(f.notes)}</td><td><button class="mini" data-funding="${f.id}">Bearbeiten</button></td></tr>`).join('');
  el('fundingExpected').textContent=euro(s.funding_expected);el('fundingConfirmed').textContent=euro(s.funding_confirmed);el('net').textContent=euro(s.net_after_confirmed);
- el('contacts').innerHTML=state.contractors.map(c=>`<tr><td>${esc(c.trade)}</td><td>${esc(c.name)}</td><td>${esc(c.contact)}</td><td>${esc(c.phone)}</td><td>${c.email?`<a href="mailto:${encodeURIComponent(c.email).replace('%40','@')}">${esc(c.email)}</a>`:'–'}</td><td>${esc(c.address)}</td><td><button class="mini" data-contact="${c.id}">Bearbeiten</button></td></tr>`).join('')||'<tr><td colspan="7">Keine Firmen vorhanden</td></tr>';
- for(const typ of ['budget','cost','funding','contact'])document.querySelectorAll('[data-'+typ+']').forEach(btn=>btn.addEventListener('click',()=>openEditor(typ,Number(btn.dataset[typ]))));
+
+ for(const typ of ['budget','cost','funding'])document.querySelectorAll('[data-'+typ+']').forEach(btn=>btn.addEventListener('click',()=>openEditor(typ,Number(btn.dataset[typ]))));
  
 }
-const sources={budget:'budget_lines',cost:'items',funding:'funding',contact:'contractors'};
+const sources={budget:'budget_lines',cost:'items',funding:'funding'};
 function selector(key,val){let arr=key==='budget_line_id'?state.budget_lines.filter(x=>!x.is_group):key==='contractor_id'?state.contractors:key==='task_id'?state.tasks:state.budget_lines.filter(x=>x.is_group);let o=`<option value="">Keine Zuordnung</option>`;return o+arr.map(x=>`<option value="${esc(key==='parent_code'?x.code:x.id)}" ${String(val??'')===String(key==='parent_code'?x.code:x.id)?'selected':''}>${esc(key==='task_id'?x.code+' · '+x.name:key==='contractor_id'?x.name:x.category+' · '+x.title)}</option>`).join('')}
-function openEditor(type,id=null,defaults={}){mode=type;current=id;const record=(state[sources[type]]||[]).find(x=>x.id===id)||defaults;el('editTitle').textContent=(id?'Bearbeiten: ':'Neu: ')+({budget:'Kostenplanposition',cost:'Weitere Kosten / Eigenleistung',contact:'Firma & Kontakt',funding:'Förderung'}[type]);el('formError').textContent='';el('remove').hidden=!id||type==='funding';
+function openEditor(type,id=null,defaults={}){mode=type;current=id;const record=(state[sources[type]]||[]).find(x=>x.id===id)||defaults;el('editTitle').textContent=(id?'Bearbeiten: ':'Neu: ')+({budget:'Kostenplanposition',cost:'Weitere Kosten / Eigenleistung',funding:'Förderung'}[type]);el('formError').textContent='';el('remove').hidden=!id||type==='funding';
  el('editFields').innerHTML=fields[type].map(([key,label,kind,options])=>{const value=record[key]??(kind==='bool'?(key==='active'?true:false):'');let control;
  if(kind==='choice')control=`<select name="${key}">${(value&&!options.includes(value)?[...options,value]:options).map(o=>`<option value="${esc(o)}" ${o===value?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
  else if(['budget','contractor','task','parent'].includes(kind))control=`<select name="${key}">${selector(key,value)}</select>`;
@@ -49,13 +48,13 @@ function openEditor(type,id=null,defaults={}){mode=type;current=id;const record=
  else control=`<input name="${key}" type="${kind==='number'?'number':'text'}" ${kind==='number'?'min="0" step="0.01"':''} ${['title','name'].includes(key)?'required':''} value="${esc(value)}">`;
  return `<label class="${kind==='textarea'?'wide':''}">${esc(label)}${control}</label>`}).join('');el('editor').showModal()}
 async function saveEditor(e){e.preventDefault();const data=Object.fromEntries(new FormData(e.target));for(const key of ['selected','active','is_group'])if(fields[mode].some(x=>x[0]===key))data[key]=e.target.elements.namedItem(key).checked;
- const urls={cost:'/api/costs',contact:'/api/contractors',budget:'/api/budget/lines',funding:'/api/funding'};
+ const urls={cost:'/api/costs',budget:'/api/budget/lines',funding:'/api/funding'};
  const method=current?'PUT':'POST',url=urls[mode]+(current?'/'+current:'');
  try{await api(url,{method,body:JSON.stringify(data)});el('editor').close();await reload()}catch(err){el('formError').textContent=err.message}}
-async function removeEditor(){if(!current||!confirm('Diesen Eintrag wirklich löschen?'))return;const urls={cost:'/api/costs/',contact:'/api/contractors/',budget:'/api/budget/lines/'};if(!urls[mode])return;try{await api(urls[mode]+current,{method:'DELETE'});el('editor').close();await reload()}catch(e){el('formError').textContent=e.message}}
+async function removeEditor(){if(!current||!confirm('Diesen Eintrag wirklich löschen?'))return;const urls={cost:'/api/costs/',budget:'/api/budget/lines/'};if(!urls[mode])return;try{await api(urls[mode]+current,{method:'DELETE'});el('editor').close();await reload()}catch(e){el('formError').textContent=e.message}}
 el('addOwnWork').onclick=()=>openEditor('cost',null,{kind:'Eigenleistung',category:'Eigenleistung',state:'Schätzung'});
 el('budgetSearch').addEventListener('input',render);el('editForm').addEventListener('submit',saveEditor);el('remove').addEventListener('click',removeEditor);el('closeDialog').addEventListener('click',()=>el('editor').close());el('cancelDialog').addEventListener('click',()=>el('editor').close());
-for(const type of ['Budget','Cost','Contact','Funding'])el('add'+(type==='Budget'?'Line':type)).addEventListener('click',()=>openEditor(type.toLowerCase()));
+for(const type of ['Budget','Cost','Funding'])el('add'+(type==='Budget'?'Line':type)).addEventListener('click',()=>openEditor(type.toLowerCase()));
 el('editBudget').addEventListener('click',async()=>{let v=prompt('Wie hoch ist das Projektbudget in Euro?',state.summary?.budget??0);if(v===null)return;let num=Number(String(v).replace(/\./g,'').replace(',','.'));if(!Number.isFinite(num)||num<0){alert('Bitte einen gültigen Euro-Betrag eingeben.');return}try{await api('/api/budget/config',{method:'PATCH',body:JSON.stringify({budget:num})});await reload()}catch(e){alert(e.message)}});
 reload().catch(e=>alert('Kostenverwaltung kann nicht geladen werden: '+e.message));
 
