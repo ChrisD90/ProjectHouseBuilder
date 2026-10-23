@@ -106,6 +106,85 @@ def _line_money(lines, idx):
     return None
 
 
+
+LABOR_LABEL = re.compile(
+    r'\b(?:lohn(?:kosten|anteil)?|arbeits(?:lohn|kosten|leistung(?:en)?|zeit)|'
+    r'handwerker(?:leistung(?:en)?|lohn|kosten)|montage(?:leistung(?:en)?|arbeit(?:en)?|kosten|lohn)?|'
+    r'personalkosten)\b', re.I
+)
+LABOR_EXCLUDE = re.compile(
+    r'(?:material|waren|lieferung|montagematerial|lohnsteuer|lohnnebenkosten|'
+    r'(?:ohne|keine)\s+(?:arbeits|lohn)kosten)', re.I
+)
+LABOR_TOTAL = re.compile(
+    r'(?:summe|gesamt|davon|anteil|nach\s+§?\s*35\s*a|absetzbar|steuerlich)', re.I
+)
+VAT_RATE = re.compile(
+    r'(?:\b(?:mwst|ust|umsatzsteuer|mehrwertsteuer)\b.{0,22}?\b(7|19)\s*%'
+    r'|\b(7|19)\s*%.{0,22}?\b(?:mwst|ust|umsatzsteuer|mehrwertsteuer)\b)',re.I
+)
+
+
+def extract_labor_amount(text, gross=None):
+    """Find explicitly billed labor amounts, never derive them from full invoice totals.
+
+    A labor figure without a stated tax basis is only a draft, with a warning.
+    Net labor is converted to gross only if one unambiguous VAT rate is printed.
+    """
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    matched = []
+    warnings = []
+    rates = {int(a or b) for a,b in VAT_RATE.findall(text)}
+    rate = next(iter(rates)) if len(rates) == 1 else None
+    for ix, line in enumerate(lines):
+        found = LABOR_LABEL.search(line)
+        if not found or LABOR_EXCLUDE.search(line):
+            continue
+        # Prefer the value after "Lohnkosten". Do not confuse the number of
+        # hours or the percentage with the line item's euro amount.
+        trailing = line[found.end():]
+        values = AMOUNT.findall(trailing)
+        if not values and ix+1 < len(lines):
+            follow = lines[ix+1]
+            if len(follow) <= 35 and (AMOUNT.fullmatch(follow) or MONEY_LINE.search(follow)):
+                values = AMOUNT.findall(follow)
+        if not values:
+            continue
+        value = decimal_amount(values[-1])
+        if value is None:
+            continue
+        context=line.lower()
+        label_net=bool(re.search(r'\bnetto\b|\bohne\s+(?:mwst|ust|steuer)\b',context))
+        label_gross=bool(re.search(r'\bbrutto\b|\binkl?\.?\s*(?:mwst|ust|steuer)\b|einschl',context))
+        if label_net and label_gross:
+            warnings.append('Lohnkosten weisen widersprüchliche Netto-/Bruttoangaben auf.')
+            continue
+        if label_net:
+            if rate is None:
+                warnings.append('Lohnkosten nur netto angegeben: USt-Satz nicht eindeutig, Brutto-Lohnanteil bitte selbst eintragen.')
+                continue
+            value = (value * (Decimal('1')+Decimal(rate)/100)).quantize(Decimal('0.01'))
+        elif not label_gross:
+            warnings.append('Lohnkosten erkannt, aber Netto-/Bruttoausweis unklar. Bitte den Bruttoanteil prüfen.')
+        matched.append((bool(LABOR_TOTAL.search(line)), value))
+    if not matched:
+        return None, list(dict.fromkeys(warnings))
+    totals={value for subtotal,value in matched if subtotal}
+    if len(totals)==1:
+        labor=next(iter(totals))
+    elif len(totals)>1:
+        warnings.append('Mehrere unterschiedliche Lohnkosten-Summen erkannt. Bitte manuell prüfen.')
+        return None, list(dict.fromkeys(warnings))
+    else:
+        labor=sum((value for _is_total,value in matched),Decimal('0.00'))
+        if len(matched)>1:
+            warnings.append('Mehrere Arbeitspositionen addiert. Bitte prüfen, ob Teilbeträge bereits enthalten sind.')
+    amount=decimal_amount(str(gross)) if gross not in ('',None) else None
+    if amount is not None and labor > amount:
+        warnings.append('Erkannter Arbeitslohn liegt über dem Rechnungsbrutto – Lohnanteil bitte manuell prüfen.')
+        return None, list(dict.fromkeys(warnings))
+    return labor, list(dict.fromkeys(warnings))
+
 def parse_receipt(text):
     lines=[x.strip() for x in text.splitlines() if x.strip()]
     warnings=[]
@@ -196,6 +275,8 @@ def parse_receipt(text):
     if not issued:warnings.append('Belegdatum nicht sicher erkannt.')
     if not supplier:warnings.append('Lieferant nicht erkannt.')
     if not invoice_number:warnings.append('Rechnungs-/Bonnummer nicht sicher erkannt.')
+    labor, labor_warnings=extract_labor_amount(text,gross_text)
+    warnings.extend(labor_warnings)
     lowered=text.lower()
     billing=('Schlussrechnung' if re.search(r'\bschlussrechnung\b',lowered) else
              'Abschlagsrechnung' if re.search(r'\b(?:abschlagsrechnung|teilrechnung)\b',lowered)
@@ -207,4 +288,5 @@ def parse_receipt(text):
             'invoice_number':invoice_number,'gross_amount':gross_text,
             'net_amount':str(net) if net is not None else '',
             'vat_amount':str(tax) if tax is not None else '',
+            'labor_amount':str(labor) if labor is not None else None,
             'category':category_for(text),'kind':kind,'billing_type':billing,'warnings':warnings}
