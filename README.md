@@ -215,3 +215,14 @@ Die **Entscheidungs- und Änderungshistorie** ist standardmäßig eingeklappt. S
 Ist **noch kein Bauzeitenplan vorhanden**, erscheinen der Muster-Bauzeitenplan und – bei verbundener ChatGPT-Plannutzung – die alternative KI-Erstplanung. Bei einem **bestehenden** Plan verschwinden die beiden Erstplanungsbereiche; der ChatGPT-Dialog ist ausschließlich bei bestehender Verbindung sichtbar. Die optionale Historie bleibt unabhängig von der ChatGPT-Verbindung einsehbar. Das vollständige Leeren des Plans ist nur unter „Erweiterte Aktionen“ mit Pflichtbackup und gesonderter Bestätigung möglich.
 
 Die Migration **`0011`** ergänzt nur die Historientabelle. Bereits bestehende Termine, Aufgaben, Firmen- und Kostenverknüpfungen bleiben beim Update erhalten. Für alle Termin- und Abhängigkeitsänderungen ist weiterhin fachliche Prüfung erforderlich.
+
+
+## Einheitliches UI, Dark Mode und Ladefeedback (Oktober 2026)
+
+Die sieben Hauptseiten verwenden jetzt dasselbe **Designsystem** (`static/ui.css`) mit gemeinsamen Farben, Abständen, Eingabefeldern, Karten, Buttons und Fokuszuständen. Die bisherige lokale Bootstrap-5-Basis sowie die vorhandenen Formulare und JavaScript-Workflows bleiben erhalten; eine zusätzliche Online-Abhängigkeit oder ein riskanter Wechsel der UI-Bibliothek ist nicht notwendig. Insbesondere auf kleinen Bildschirmen wurden die Abstände, Filterleisten, Formularfelder und Dialoge harmonisiert.
+
+Über **Darstellung → System / Hell / Dunkel** in der oberen Leiste lässt sich das Erscheinungsbild umschalten. „System“ folgt der Betriebssystemeinstellung, die beiden expliziten Einstellungen bleiben lokal im Browser gespeichert (`localStorage`). Weder Kreditdaten noch Dokumente werden für die Designfunktion übertragen.
+
+Der globale Request-Monitor (`static/ui.js`) erkennt asynchrone `/api/`-Aufrufe im Browser. Normale längere Ladeaktionen erhalten nach kurzer Verzögerung eine schlanke Aktivitätsleiste; Uploads, lokale Rechnungserkennung, ChatGPT-PDF-/Kredit-/Zeitplananalysen, Backups und andere längere Aktionen zeigen einen zusätzlichen Spinner mit Tätigkeitsbeschreibung. Die Ladeanzeige bleibt sichtbar, bis die jeweilige Anfrage tatsächlich beantwortet oder abgebrochen wurde; sie erfindet keinen Prozentfortschritt. Auslöser-Buttons erhalten während laufender Aktionen eine dezente Spinner-Markierung. Anmeldedaten und Dateiinhalte werden nicht in der Ladeanzeige dargestellt.
+
+Die Dateien `static/ui.css` und `static/ui.js` sowie die Symbolgrafik werden über den bestehenden Service Worker lokal zwischengespeichert. Bei alten gecachten Ansichten gegebenenfalls den Browser hart neu laden (`Cmd+Shift+R`). Bestehende Projektdaten, Buchungen, Einstellungen der Sicherungen und Migrationshistorie bleiben unverändert; es ist **keine Datenbankmigration** erforderlich.
