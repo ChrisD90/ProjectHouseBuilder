@@ -872,6 +872,23 @@ def project_document_download(did):
     return response
 
 
+@app.get('/api/project-documents/<int:did>/preview')
+def project_document_preview(did):
+    record=db.session.get(ProjectDocument,did)
+    if not record:return jsonify(error='Dokument nicht gefunden.'),404
+    types={'.pdf':'application/pdf','.jpg':'image/jpeg','.jpeg':'image/jpeg',
+           '.png':'image/png','.webp':'image/webp','.txt':'text/plain'}
+    if record.extension not in types:
+        return jsonify(error='Für diesen Dateityp steht nur der Download zur Verfügung.'),415
+    path=PROJECT_DOCUMENT_ROOT/record.stored_name
+    if not path.is_file():return jsonify(error='Originaldatei fehlt.'),404
+    response=send_file(path,as_attachment=False,mimetype=types[record.extension])
+    response.headers['Cache-Control']='no-store'
+    response.headers['X-Content-Type-Options']='nosniff'
+    response.headers['Content-Security-Policy']='sandbox'
+    return response
+
+
 @app.delete('/api/project-documents/<int:did>')
 def project_document_delete(did):
     record=db.session.get(ProjectDocument,did)
