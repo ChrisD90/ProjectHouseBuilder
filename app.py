@@ -930,9 +930,22 @@ def schedule_chat_resolve(history_id):
                 task=db.session.scalar(select(Task).where(Task.code==op['code']))
                 set_predecessors(task,op['fields']['predecessors'])
         schedule(all_tasks(),parse_date(setting('start')))
+        new_snapshot=_schedule_snapshot()
+        original={row['code']:row for row in snapshot}
+        changed_codes={op['code'] for op in operations}
+        downstream=[]
+        for latest in new_snapshot:
+            if latest['code'] not in original or latest['code'] in changed_codes:
+                continue
+            earlier=original[latest['code']]
+            movements=[{'field':key,'before':earlier[key],'after':latest[key]}
+                       for key in ('start','end') if earlier[key]!=latest[key]]
+            if movements:
+                downstream.append({'action':'shift','code':latest['code'],
+                                   'name':latest['name'],'changes':movements})
         record.status='Umgesetzt'
-        # Retain only human-readable diff in persisted audit after approval.
-        record.changes_json=json.dumps(preview,ensure_ascii=False)
+        # Retain exact user-approved changes and any recalculated downstream dates.
+        record.changes_json=json.dumps(preview+downstream,ensure_ascii=False)
         db.session.commit()
         session.pop('phb_schedule_pending',None)
         return jsonify(ok=True,status='Umgesetzt',changed=len(operations),
