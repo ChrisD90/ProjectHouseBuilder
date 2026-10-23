@@ -44,7 +44,8 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 - **Kosten & Budget (`/kosten`):** Ausschließlich Kostenschätzungen und zusätzliche Ausgaben planen; keine zweite Angebotsverwaltung. Angenommene Angebote werden automatisch eingerechnet, aber nicht nochmals bearbeitbar als manuelle Kostenposition angezeigt.
 - **Belege:** Rechnungen/Kassenzettel als PDF oder Foto importieren und wahlweise **lokal** (PDF-Text/Tesseract OCR) oder nach ausdrücklicher Freigabe mit **ChatGPT** analysieren. Belege anschließend prüfen und **genau einer Zuordnungsart** zuweisen: angenommenes Angebot, Betrieb oder Eigenleistung. Die Budgetposition bleibt separat auswählbar; keine automatische Buchung.
 - **Finanzierung:** Kredite manuell erfassen oder Kreditunterlagen ausdrücklich mit ChatGPT auslesen und Vertragsfelder vor dem Speichern prüfen. Briefe, Vertrags-PDFs und gescannte Dokumente lassen sich am einzelnen Kredit anhängen; außerdem Eigenkapital, Kreditabrufe, Tilgungen, aufgeteilte Rechnungszahlungen und Liquiditätsvorschau.
-- **Datenverwaltung:** Backup auf Knopfdruck, vollständiger Projekt-Reset mit Pflichtbackup.
+- **Stammdaten (`/stammdaten`):** Firmen und automatisch aus PDF-Angeboten übernommene Betriebe zentral pflegen: Ansprechpartner, weitere Kontakte, Telefonnummern, E-Mail, Website, Adresse und Notizen. Separate Gewerke und gemeinsam genutzte Rechnungs-/Kostenkategorien anlegen, umbenennen und – falls unverknüpft – löschen.
+- **Backup, Export & Datenverwaltung (`/daten`):** geprüfte vollständige Sicherungen einschließlich PDFs und Bildern, CSV-/JSON-Exporte, ZIP-Projektarchiv, Wiederherstellungshinweise. Der vollständige Reset ist hinter „Erweiterte Aktionen“ verborgen und bleibt nur nach Pflichtbackup möglich.
 
 OCR von Bildern benötigt zusätzlich Tesseract und Poppler auf dem Mac; bei lesbaren PDF-Texten ist kein OCR erforderlich. Die Anwendung ist als lokale Einzelplatzsoftware konzipiert und wird **nicht** per Router-Portweiterleitung veröffentlicht.
 
@@ -175,7 +176,7 @@ Unter **Rechnungen & Belege** beim Hochladen zwischen „Lokal analysieren“ (S
 
 Im Prüfbereich ist die Zuordnungsart exklusiv:
 - **Angenommenes Angebot**: eine der angenommenen und ausgewählten Angebotspositionen wählen; die bestehende Abrechnung einschließlich Abschlägen/Schlussrechnung bleibt erhalten.
-- **Betrieb**: einen bereits unter Kosten & Budget → Firmen & Kontakte angelegten Betrieb wählen, ohne Angebotsverknüpfung.
+- **Betrieb**: einen unter Stammdaten → Firmen & Ansprechpartner angelegten Betrieb wählen, ohne Angebotsverknüpfung.
 - **Eigenleistung / Material**: Ausgaben ohne Betrieb und ohne Angebot zuordnen.
 
 Die **Budgetposition** ist davon grundsätzlich unabhängig, soweit die Angebotsabrechnung nicht bereits eine feste Budgetverknüpfung vorgibt. Gebuchte Belege können erst nach Zurücknehmen der Buchung umgehängt werden. Für historische Rechnungen mit alten Kostenpositionsverknüpfungen bleibt diese Zuordnung bestehen, damit frühere Buchungen und Finanzierungszuordnungen unverändert bleiben.
@@ -191,3 +192,13 @@ Für bestehende Kredite erscheint darunter **„Kreditunterlagen & Schriftverkeh
 Unter **Rechnungen & Belege** gibt es bei der manuellen Änderung des Bruttobetrags die Auswahl **19 %**, **7 %**, **0 %** oder **„Gemischte Steuersätze / manuell“**. Bei festen Sätzen werden Nettobetrag und Umsatzsteuer auf Cent genau automatisch aus dem Brutto zurückgerechnet. Vorhandene erkannte Werte werden beim Öffnen eines Belegs nicht verändert. Bei gemischten Steuersätzen, Steuerbefreiungen oder Sonderfällen die Beträge selbst nach dem Originalbeleg erfassen und kontrollieren.
 
 Die Datenbankmigration **`0009`** ergänzt lediglich die Dokumententabelle zu Krediten. Bestehende Kredite, Zahlungen und Rechnungen bleiben unverändert. Der Mac-Starter führt vor der Migration das obligatorische geprüfte Komplettbackup aus.
+
+## Zentrale Stammdaten und Datenverwaltung (Migration 0010)
+
+Unter **Stammdaten** (`/stammdaten`) lassen sich Firmen und Kontakte, Gewerke sowie die in Rechnungen, Angeboten und Kostenplanung verwendeten Kategorien pflegen. Beim PDF-Angebotsimport automatisch übernommene Firmen erscheinen in **derselben Firmenliste** und können dort ergänzt werden. Zusätzliche Stammdatenfelder sind weiterer Ansprechpartner, Mobiltelefon, zweite Telefonnummer und Website. Das Umbenennen eines Gewerks aktualisiert gleichlautende Gewerke bei Firmen und Gantt-Arbeitspaketen. Die Kategorien sind davon getrennt; ihre Umbenennung wird in Rechnungen, Angeboten und Kostenpositionen nachgeführt. Verwendete Einträge werden nicht ungeprüft gelöscht.
+
+Auf den Arbeitsseiten **Kosten & Budget** und **Rechnungen & Belege** sind keine separaten Firmen- oder Kategorien-Einstellungsbereiche mehr vorhanden. Für das Zuweisen einer Firma bleibt auf der jeweiligen Arbeitsseite ein Auswahlfeld mit einem Verweis zu den Stammdaten.
+
+Unter **Backup, Export & Daten** (`/daten`) liegen sämtliche Download-Optionen (Bauzeitenplan-CSV, Kostenplan-CSV, Kosten-/Auftrags-CSV, strukturierte JSON-Daten und das Projekt-ZIP) sowie die geprüften vollständigen Sicherungen und Wiederherstellungsanleitung. CSV/JSON sind **keine** vollständige Datensicherung; für wiederherstellbare Uploads und Datenbank das geprüfte Komplettbackup verwenden. Die selten benötigte Löschfunktion ist eingeklappt. Bereits bestehende Daten, Firmen, Angebote und Buchungen bleiben bei der Umstellung erhalten.
+
+Vor Datenbankmigration `0010` legt der lokale Starter wie bisher zwingend ein geprüftes Backup an. Die Anwendung darf dafür nicht parallel laufen.
