@@ -17,6 +17,7 @@ from pathlib import Path
 from decimal import Decimal
 root = Path(sys.argv[1]); root.mkdir(parents=True, exist_ok=True)
 import app as package
+shutil.copy2(Path(package.__file__).parent/'seed.json',root/'seed.json')
 import backup_manager as backup
 import schema_manager
 package.ROOT = root

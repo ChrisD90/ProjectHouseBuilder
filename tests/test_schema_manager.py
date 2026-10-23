@@ -164,12 +164,13 @@ class OfferSchemaMigrationTests(unittest.TestCase):
 class RetiredSpreadsheetMigrationTests(unittest.TestCase):
     def test_old_spreadsheet_tables_are_removed_but_budget_lines_survive(self):
         with tempfile.TemporaryDirectory() as td:
-            db_file=Path(td)/'sanierung.db'
+            project=Path(td)/'project';project.mkdir()
+            db_file=project/'sanierung.db'
             sync=Path(td)/'cloud';sync.mkdir()
             import backup_manager, schema_manager
             with (patch.dict(os.environ, {'DATABASE_URL':'sqlite:///'+str(db_file)}),
-                  patch.object(backup_manager,'ROOT',Path(td)),
-                  patch.object(backup_manager,'CONFIG_PATH',Path(td)/'config.json')):
+                  patch.object(backup_manager,'ROOT',project),
+                  patch.object(backup_manager,'CONFIG_PATH',project/'config.json')):
                 schema_manager.upgrade_database()  # fresh at revision 0004
                 with sqlite3.connect(db_file) as con:
                     con.execute("INSERT INTO budget_line (code, category, title, estimate, kind, active, is_group, sort_order) VALUES ('ABC','Elektro','Manueller Posten',153.2,'Fremdleistung',1,0,9)")

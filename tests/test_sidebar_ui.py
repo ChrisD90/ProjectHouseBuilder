@@ -32,7 +32,10 @@ class SidebarUITest(unittest.TestCase):
                 self.assertIn('id="phbSidebarScrim"', content)
                 self.assertIn('/static/shell.js', content)
                 self.assertIn('/static/shell.css', content)
-                self.assertIn('/static/vendor-bootstrap-5.3.6.min.css', '/static/daten.js', '/static/daten.css', content)
+                self.assertIn('/static/vendor-bootstrap-5.3.6.min.css', content)
+                if name == 'daten':
+                    self.assertIn('/static/daten.js', content)
+                    self.assertIn('/static/daten.css', content)
                 self.assertIn('<form method="post" action="/logout"', content)
                 self.assertEqual(content.count('aria-current="page"'), 1)
                 self.assertNotIn('← Zum Gantt-Plan', content)
