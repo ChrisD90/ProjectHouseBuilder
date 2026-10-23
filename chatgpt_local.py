@@ -35,6 +35,14 @@ class AIError(Exception):
     """Safe, user-facing error from ChatGPT plan usage."""
 
 
+class IdentityValidationError(AIError):
+    """ID token was rejected; expose only a fixed diagnostic code, never JWT data."""
+
+    def __init__(self, reason_code):
+        self.reason_code = reason_code
+        super().__init__('ChatGPT-Identität konnte nicht sicher bestätigt werden.')
+
+
 def _profile_home():
     # Not in a git checkout, uploaded documents or complete project backups.
     return Path(os.environ.get('PHB_CHATGPT_HOME') or
@@ -169,15 +177,39 @@ class ChatGPTLocal:
         if self._jwk is None:
             self._jwk = PyJWKClient(JWKS)
         try:
+            # Never trust JWT headers or claims before cryptographic verification.
             key = self._jwk.get_signing_key_from_jwt(raw)
+        except jwt.PyJWKClientConnectionError:
+            raise IdentityValidationError('jwks_unavailable') from None
+        except jwt.PyJWKClientError:
+            raise IdentityValidationError('jwks_signing_key_missing') from None
+        except (jwt.PyJWTError, ValueError, TypeError):
+            raise IdentityValidationError('id_token_malformed') from None
+        try:
             claims = jwt.decode(raw, key.key, algorithms=['RS256'],
-                                audience=client_id, issuer=ISSUER,
+                                audience=client_id, issuer=ISSUER, leeway=5,
                                 options={'require': ['sub', 'exp', 'iat', 'iss', 'aud']})
-            if not secrets.compare_digest(str(claims.get('nonce', '')), nonce):
-                raise AIError('ChatGPT-Sicherheitsprüfung fehlgeschlagen (Nonce).')
-            return claims
-        except (jwt.PyJWTError, ValueError) as exc:
-            raise AIError('ChatGPT-Identität konnte nicht sicher bestätigt werden.') from exc
+        except jwt.ExpiredSignatureError:
+            raise IdentityValidationError('id_token_expired') from None
+        except (jwt.ImmatureSignatureError, jwt.InvalidIssuedAtError):
+            raise IdentityValidationError('id_token_time_invalid') from None
+        except jwt.InvalidAudienceError:
+            raise IdentityValidationError('id_token_audience_mismatch') from None
+        except jwt.InvalidIssuerError:
+            raise IdentityValidationError('id_token_issuer_mismatch') from None
+        except jwt.MissingRequiredClaimError:
+            raise IdentityValidationError('id_token_claim_missing') from None
+        except jwt.InvalidSignatureError:
+            raise IdentityValidationError('id_token_signature_invalid') from None
+        except jwt.InvalidAlgorithmError:
+            raise IdentityValidationError('id_token_algorithm_invalid') from None
+        except (jwt.PyJWTError, ValueError, TypeError):
+            raise IdentityValidationError('id_token_invalid') from None
+        if not isinstance(claims.get('sub'), str) or not claims['sub']:
+            raise IdentityValidationError('id_token_subject_invalid')
+        if not secrets.compare_digest(str(claims.get('nonce', '')), nonce):
+            raise AIError('ChatGPT-Sicherheitsprüfung fehlgeschlagen (Nonce).')
+        return claims
 
     def _token_request(self, form):
         try:
