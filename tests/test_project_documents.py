@@ -74,8 +74,10 @@ class ProjectDocumentTests(unittest.TestCase):
         selected=self.upload(src.getvalue(),name='treppe.png',title='Treppenplan',area='Innenausbau')
         self.assertEqual(selected.status_code,201,selected.json)
         did=selected.json['document']['id']
-        self.client.post('/api/tasks',json={'code':'A1','name':'Treppenbau',
-            'duration':5,'predecessors':[],'status':'Offen'})
+        created=self.client.post('/api/tasks',json={'code':'A1','name':'Treppenbau',
+            'duration':5,'lag_days':0,'execution_type':'Fremdleistung',
+            'predecessors':[],'status':'Offen','progress':0})
+        self.assertEqual(created.status_code,201,created.json)
         response=json.dumps({'answer':'Treppe nach Bauplan prüfen (DOK-'+str(did)+').',
                              'decision':'Planungsstand beachten','changes':[]})
         def ask(ids):
@@ -101,8 +103,10 @@ class ProjectDocumentTests(unittest.TestCase):
     def test_noncurrent_or_invalid_selection_fails_before_model(self):
         result=self.upload('Geprüfte Zeichnung'.encode(),name='plan.txt')
         did=result.json['document']['id']
-        self.client.post('/api/tasks',json={'code':'X','name':'Baustelle',
-            'duration':3,'predecessors':[]})
+        created=self.client.post('/api/tasks',json={'code':'X','name':'Baustelle',
+            'duration':3,'lag_days':0,'execution_type':'Fremdleistung',
+            'predecessors':[],'status':'Offen','progress':0})
+        self.assertEqual(created.status_code,201,created.json)
         def call(ids):
             return self.client.post('/api/ai/schedule/chat',json={
               'model':'m1','plan_only':True,'message':'Was nun?','document_ids':ids},
