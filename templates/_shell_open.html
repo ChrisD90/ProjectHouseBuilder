@@ -24,6 +24,7 @@
       </nav>
       <div class="phb-nav-label">VERWALTUNG</div>
       <nav class="phb-nav" aria-label="Verwaltung">
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'dokumente' else '' }}" data-section="dokumente" href="/dokumente" title="Projektdokumente" {% if phb_active == 'dokumente' %}aria-current="page"{% endif %}>{{ icon('file-check') }}<span class="phb-nav-text">Projektdokumente</span></a>
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'stammdaten' else '' }}" data-section="stammdaten" href="/stammdaten" title="Stammdaten" {% if phb_active == 'stammdaten' %}aria-current="page"{% endif %}>{{ icon('users') }}<span class="phb-nav-text">Stammdaten</span></a>
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'daten' else '' }}" data-section="daten" href="/daten" title="Backup, Export & Datenverwaltung" {% if phb_active == 'daten' %}aria-current="page"{% endif %}>{{ icon('database') }}<span class="phb-nav-text">Backup, Export &amp; Daten</span></a>
       </nav>
