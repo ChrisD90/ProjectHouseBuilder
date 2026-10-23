@@ -41,11 +41,18 @@
    <div id="offerList" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div>
    <p class="section-note">Bei angenommener Leistung wird der Bruttogesamtbetrag genau einmal übernommen. Wenn du eine Kostenplanposition zuordnest, ersetzt der angenommene Preis deren Schätzung. Zu jedem <strong>angenommenen Angebot</strong> siehst du hier die Teilrechnungen, den bereits bezahlten Betrag und mögliche Überziehungen. Rechnungen werden unter <a href="/belege">Rechnungen & Belege</a> erfasst.</p>
   </section>
-  <section class="panel budget-panel" id="ki-angebotsvergleich"><h2>Angebote mit ChatGPT vergleichen</h2>
-   <p class="section-note">Wähle zwei bis acht geprüfte Angebote aus beliebigen Kategorien. Übertragen werden nur die ausgewählten Angebotsdaten und hinterlegten Positionen, keine PDFs. Diese Funktion braucht eine verbundene ChatGPT-Sitzung.</p>
-   <div id="aiOfferChoices" class="phb-ai-offer-choices"></div>
-   <button id="aiCompareOffers" type="button" class="mini">Ausgewählte Angebote mit KI vergleichen</button>
-   <p id="aiCompareStatus" role="status"></p><pre id="aiCompareResult" class="phb-ai-report" hidden></pre>
+  <section class="panel budget-panel offer-ai-section" id="ki-angebotsvergleich" aria-labelledby="aiOfferTitle">
+   <div class="panelbar"><div><h2 id="aiOfferTitle">Angebote mit ChatGPT vergleichen</h2><p>Unterschiede, fehlende Leistungen und Rückfragen auf einen Blick.</p></div></div>
+   <div class="offer-ai-content">
+     <p class="section-note">Wähle zwei bis acht geprüfte Angebote aus beliebigen Kategorien. Übertragen werden nur die ausgewählten Angebotsdaten und hinterlegten Positionen, keine PDFs. Diese Funktion braucht eine verbundene ChatGPT-Sitzung.</p>
+     <div id="aiOfferChoices" class="phb-ai-offer-choices" role="group" aria-label="Angebote zum KI-Vergleich auswählen"></div>
+     <div class="offer-ai-actions">
+       <button id="aiCompareOffers" type="button" class="primary" disabled>Ausgewählte Angebote mit KI vergleichen</button>
+       <span id="aiCompareSelectionCount" class="offer-ai-selection" aria-live="polite">0 von 2 bis 8 Angeboten ausgewählt</span>
+     </div>
+     <p id="aiCompareStatus" class="offer-ai-status" role="status"></p>
+     <pre id="aiCompareResult" class="phb-ai-report" hidden></pre>
+   </div>
   </section>
 </main></div></div>
 <script src="/static/offers.js"></script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
