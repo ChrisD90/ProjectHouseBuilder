@@ -21,7 +21,7 @@ class SidebarUITest(unittest.TestCase):
         return self.env.get_template(page + '.html').render()
 
     def test_every_app_page_has_one_shared_navigation_and_topbar(self):
-        for name in ('index', 'kosten', 'angebote', 'belege', 'finanzierung', 'stammdaten', 'daten'):
+        for name in ('index', 'kosten', 'angebote', 'belege', 'finanzierung', 'stammdaten', 'dokumente', 'daten'):
             with self.subTest(page=name):
                 content = self.render(name)
                 self.assertEqual(content.count('id="phbSidebar"'), 1)
@@ -49,7 +49,7 @@ class SidebarUITest(unittest.TestCase):
     def test_navigation_has_one_central_master_data_and_backup_destination(self):
         rendered = self.render('index')
         for target in ('/', '/kosten', '/angebote', '/belege',
-                       '/finanzierung', '/stammdaten', '/daten'):
+                       '/finanzierung', '/stammdaten', '/dokumente', '/daten'):
             self.assertIn('href="' + target + '"', rendered)
         self.assertNotIn('/kosten#kontakte', rendered)
         self.assertNotIn('/finanzierung#sicherung', rendered)
@@ -77,6 +77,7 @@ class SidebarUITest(unittest.TestCase):
             'angebote': ('offerImportForm', 'offerManualForm', 'offerDrafts', 'offerList', 'offerCategoryFilter'),
             'belege': ('upload', 'review'),
             'stammdaten': ('companyForm', 'tradeCreate', 'categoryCreate', 'companyRows'),
+            'dokumente': ('projectDocumentUpload', 'docList', 'docEditForm', 'docFilterArea'),
             'finanzierung': ('loanForm', 'paymentForm', 'eventForm'),
             'daten': ('backupNow', 'resetForm', 'resetButton', 'resetUnderstand', 'resetText')
         }.items():
@@ -138,6 +139,16 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("calc(100vw - 24px)",css)
         self.assertIn("var(--ui-surface)",css)
         self.assertIn(":not(.schedule-chat-fab)",css)
+
+    def test_project_document_ui_and_gantt_context_are_separate(self):
+        html=self.render('dokumente')
+        for marker in ('id="projectDocumentUpload"','id="docFilterStatus"',
+                       'id="docEditDialog"','/static/dokumente.js'):
+            self.assertIn(marker,html)
+        schedule=self.render('index')
+        self.assertIn('id="scheduleChatDocuments"',schedule)
+        script=(STATIC/'schedule_chat.js').read_text()
+        self.assertIn('document_ids:[...selectedDocuments]',script)
 
     def test_invoice_labor_is_separately_editable_and_visible(self):
         page=self.render('belege')
