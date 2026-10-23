@@ -1074,10 +1074,20 @@ def budget_summary(items):
             'line_forecasts':previews,'line_basis':basis,'additional_items':len(extras)}
 
 
+def _ensure_trade(name):
+    value=str(name or '').strip()
+    if not value or len(value)>140:
+        return
+    if not any(x.name.casefold()==value.casefold() for x in db.session.scalars(select(Trade))):
+        db.session.add(Trade(name=value))
+        db.session.flush()
+
+
 def _get_or_add_contractor(name, family):
     existing=db.session.scalar(select(Contractor).where(db.func.lower(Contractor.name)==name.lower()).limit(1))
     if existing:return existing
     obj=Contractor(name=name,trade={'WP':'Wärmepumpe / Heizung','PV':'Photovoltaik','P3':'Elektro'}.get(family,'Sonstiges'),notes='Aus PDF-Angebot eingelesen; keine Beauftragung bestätigt.')
+    _ensure_trade(obj.trade)
     db.session.add(obj);db.session.flush();return obj
 
 
@@ -2332,6 +2342,7 @@ def contractor_edit(item_id=None):
             db.session.delete(obj)
         else:
             update_record(obj,request.get_json(force=True),CONTACT_FIELDS)
+            _ensure_trade(obj.trade)
             db.session.add(obj)
         db.session.commit();return jsonify(ok=True)
     except (ValueError,TypeError) as exc:
