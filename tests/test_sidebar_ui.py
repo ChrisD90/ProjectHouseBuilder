@@ -105,6 +105,40 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("confirm:approve",assistant)
         self.assertIn("scheduleHistoryDetails",assistant)
 
+    def test_floating_schedule_chat_toggle_closes_on_outside_click_and_escape(self):
+        page=self.render('index')
+        self.assertIn('id="scheduleChatFab"',page)
+        self.assertIn('aria-controls="aiScheduleChatPanel"',page)
+        self.assertIn('aria-expanded="false"',page)
+        self.assertIn('aria-haspopup="dialog"',page)
+        self.assertIn('id="aiScheduleChatPanel" hidden',page)
+        self.assertIn('role="dialog" aria-modal="false"',page)
+        self.assertIn('id="scheduleChatPreview" hidden',page)
+        self.assertIn('id="scheduleHistoryDetails"',page)
+        self.assertIn('href="/static/icons/ui-icons.svg#message-circle"',page)
+        self.assertIn('id="message-circle"', (STATIC/'icons'/'ui-icons.svg').read_text())
+
+        script=(STATIC/'schedule_chat.js').read_text()
+        self.assertIn("fab.addEventListener('click'",script)
+        self.assertIn("document.addEventListener('pointerdown'",script)
+        self.assertIn("!panel.contains(event.target) && !fab.contains(event.target)",script)
+        self.assertIn("event.key==='Escape'",script)
+        self.assertIn("document.addEventListener('focusin'",script)
+        self.assertIn("fab.setAttribute('aria-expanded',String(isOpen))",script)
+        self.assertIn("fab.hidden=!canChat",script)
+        self.assertIn("panel.hidden=!isOpen",script)
+        self.assertIn("setPopoverOpen(false,true)",script)
+        self.assertIn("pendingId",script)
+        self.assertIn("scheduleChatApprove",script)
+
+        css=(STATIC/'ui.css').read_text()
+        self.assertIn(".schedule-chat-fab[aria-expanded=\"true\"]",css)
+        self.assertIn(".schedule-chat-popover",css)
+        self.assertIn("position:fixed",css)
+        self.assertIn("calc(100vw - 24px)",css)
+        self.assertIn("var(--ui-surface)",css)
+        self.assertIn(":not(.schedule-chat-fab)",css)
+
     def test_login_does_not_show_application_sidebar(self):
         self.assertNotIn('phbSidebar', self.render('login'))
 
