@@ -152,7 +152,10 @@ class OfferPositionEditingTests(unittest.TestCase):
         oid=self.upload()
         self.assertEqual(self.client.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)
         for stage in ('Angebot','Abgelehnt','Angenommen'):
-            if stage!='Angebot':
+            if stage == 'Angenommen':
+                # A rejected quote must first re-enter the list before acceptance.
+                self.assertEqual(self.client.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)
+            if stage != 'Angebot':
                 self.assertEqual(self.client.patch(f'/api/offers/{oid}',json={'status':stage}).status_code,200)
             res=self.patch_positions(oid,[],gross='123')
             self.assertEqual(res.status_code,409,res.json)
