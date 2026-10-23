@@ -59,10 +59,16 @@
         <button id="scheduleChatReject" type="button" class="subtle">Vorschlag verwerfen</button>
       </div>
     </div>
+    <details id="scheduleChatDocuments" class="schedule-chat-documents">
+      <summary>Projektunterlagen berücksichtigen <span id="scheduleDocSelectionCount">Keine ausgewählt</span></summary>
+      <p>Auswahl nur für die nächste Nachricht. Maximal drei aktuelle Unterlagen; es wird nichts automatisch an ChatGPT gesendet.</p>
+      <div id="scheduleDocSuggestions" class="schedule-doc-list"><p>Unterlagen werden geladen …</p></div>
+      <a href="/dokumente">Dokumentenbibliothek öffnen</a>
+    </details>
     <form id="scheduleChatForm" class="schedule-chat-form">
       <label for="scheduleChatInput">Deine Nachricht an ChatGPT</label>
       <textarea id="scheduleChatInput" rows="3" maxlength="2500" required placeholder="Wir haben uns für eine andere Lösung entschieden …"></textarea>
-      <div class="schedule-chat-compose-actions"><small>Bei jeder Nachricht werden die aktuellen Arbeitspakete und die jüngsten Entscheidungen über die ChatGPT-Planfreigabe übertragen.</small>
+      <div class="schedule-chat-compose-actions"><small>Übertragen werden der aktuelle Bauzeitenplan und jüngste Entscheidungen; Originaldokumente nur, wenn du sie oben ausgewählt hast.</small>
         <button id="scheduleChatSend" type="submit" class="primary">Nachricht senden</button></div>
     </form>
     <p id="scheduleChatStatus" class="schedule-chat-status" role="status"></p>
