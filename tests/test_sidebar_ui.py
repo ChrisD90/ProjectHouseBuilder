@@ -85,6 +85,26 @@ class SidebarUITest(unittest.TestCase):
                 with self.subTest(page=page, id=identifier):
                     self.assertIn('id="' + identifier + '"', html)
 
+    def test_schedule_chat_is_gated_and_history_collapsed_by_default(self):
+        page=self.render('index')
+        for marker in (
+            'id="templatePanel" aria-labelledby="templateTitle" hidden',
+            'id="aiSchedulePanel" hidden',
+            'id="aiScheduleChatPanel" hidden',
+            'id="scheduleHistoryDetails"',
+            'id="scheduleChatApprove"',
+            'id="scheduleChatReject"',
+            '/static/schedule_chat.js'
+        ):
+            self.assertIn(marker,page)
+        js=(STATIC/'app.js').read_text()
+        self.assertIn("project.tasks.length===0",js)
+        self.assertIn("window.PHBAI?.connected()",js)
+        assistant=(STATIC/'schedule_chat.js').read_text()
+        self.assertIn("selection()",assistant)
+        self.assertIn("confirm:approve",assistant)
+        self.assertIn("scheduleHistoryDetails",assistant)
+
     def test_login_does_not_show_application_sidebar(self):
         self.assertNotIn('phbSidebar', self.render('login'))
 
@@ -92,7 +112,7 @@ class SidebarUITest(unittest.TestCase):
         worker = (STATIC / 'sw.js').read_text()
         for static_path in ('/static/shell.css', '/static/shell.js',
                             '/static/vendor-bootstrap-5.3.6.min.css', '/static/daten.js', '/static/daten.css', '/static/angebote.css', '/static/offers.js',
-                            '/static/icons/ui-icons.svg', '/static/stammdaten.js', '/static/stammdaten.css'):
+                            '/static/icons/ui-icons.svg', '/static/stammdaten.js', '/static/stammdaten.css', '/static/schedule_chat.js'):
             self.assertIn(static_path, worker)
         self.assertNotIn("'/api/", worker)
         self.assertIn("url.pathname.startsWith('/static/')", worker)
