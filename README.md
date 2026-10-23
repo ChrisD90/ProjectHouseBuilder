@@ -237,3 +237,12 @@ Im Rechnungsentwurf findest du ein abgesetztes Eingabefeld **„Arbeits-/Lohnkos
 **Steuerlicher Hinweis:** Lohnkosten müssen auf der Rechnung separat ausgewiesen sein; gegebenenfalls kommen Maschinen- und Fahrtkosten einschließlich der entsprechenden Umsatzsteuer hinzu. Materialkosten sind nicht begünstigt. Ob eine Steuerermäßigung nach § 35a EStG möglich ist, hängt u. a. vom eigenen Haushalt, unbarer Zahlung, Art der Maßnahme und gegebenenfalls bereits erhaltener öffentlicher Förderung ab. **Die Anwendung bewertet diese Anspruchsvoraussetzungen nicht automatisch.** Insbesondere vor dem eigenen Einzug oder bei geförderten Sanierungsmaßnahmen steuerlichen Rat einholen und keine automatisch erkannten Summen ungeprüft in die Steuererklärung übernehmen.
 
 Die Migration `0012` ergänzt nur die optionalen Spalten `receipt.labor_amount` und `receipt.labor_source`. Bestehende Rechnungen behalten ihren Originalzustand; fehlende Lohnanteile werden nicht geschätzt oder pauschal auf null gesetzt. Der bewährte Starter prüft vor der Migration das obligatorische Komplettbackup.
+
+
+## Projektdokumente (Migration 0013)
+
+Unter /dokumente lassen sich Baupläne, technische Zeichnungen, Versicherungsunterlagen, Verträge und Genehmigungen zentral speichern, suchen und bearbeiten. PDF, DOCX, TXT, JPG, PNG und WEBP bis 12 MB sind möglich. Dateien liegen privat unter private/project-documents; die Datenbank speichert Titel, Kategorie, Bereich, Status, Schlagworte und Beschreibung. Originale und Metadaten gehören zum geprüften Komplettbackup.
+
+Beim Hochladen wird vorhandener PDF-/DOCX-/TXT-Text ausschließlich lokal ausgelesen. Scans und Zeichnungen werden nicht automatisch oder ungefragt von ChatGPT interpretiert. Im Bauzeitenplan-Chat lassen sich je Nachricht bis zu drei aktuelle Dokumente explizit auswählen. Nur diese Dateien werden dann im Rahmen der bereits freigegebenen ChatGPT-Anfrage übertragen. Antworten sollen Dokumentquellen als DOK-ID bezeichnen; verwendete Dateiversionen mit Prüfsumme werden in der Entscheidungshistorie festgehalten. Änderungen am Bauzeitenplan bleiben bestätigungspflichtig.
+
+Die separate Projektdokumentation verändert keine vorhandenen Angebots-PDFs, Rechnungen oder Kreditanhänge. Alte Dokumentfassungen können den Status Überholt erhalten. Die Auswahlfunktion ist serverseitig wiederverwendbar und kann später auch beim Angebotsvergleich oder anderen KI-Funktionen eingesetzt werden. Technische Fachprüfungen werden dadurch nicht ersetzt.
