@@ -17,6 +17,7 @@
     if (path === '/angebote') return 'angebote';
     if (path === '/daten') return 'daten';
     if (path === '/stammdaten') return 'stammdaten';
+    if (path === '/dokumente') return 'dokumente';
     if (path === '/finanzierung') return 'finanzierung';
     return path === '/belege' ? 'belege' : 'zeitplan';
   };
