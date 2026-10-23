@@ -424,6 +424,8 @@ def ai_callback():
         result=chatgpt.finish(request.args,browser_nonce)
         return redirect('/angebote?ai='+('connected' if result['sharing'] else 'permission'))
     except AIError as exc:
+        # Log the failure on the server, never OAuth callback parameters or tokens.
+        app.logger.warning('ChatGPT OAuth-Callback fehlgeschlagen: %s', exc, exc_info=True)
         return redirect('/angebote?ai=error')
 
 
