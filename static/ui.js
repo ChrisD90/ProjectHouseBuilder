@@ -25,7 +25,7 @@
   }
   const nativeFetch=window.fetch.bind(window);
   let lastAction=null,lastActionAt=0;
-  let active=0,overlayActive=0;
+  let active=0;
   let seq=0,shown=false;
   const inflight=new Map();
   let topIndicator,overlay,titleNode,overlayText,screenStatus;
@@ -62,8 +62,13 @@
       if(entries.length){
         const mostRecent=entries[entries.length-1];
         overlayText.textContent=mostRecent.message;
-        titleNode.textContent=entries.some(x=>/ChatGPT/.test(x.message))
-          ?'ChatGPT arbeitet an deiner Anfrage':'Die Datei wird verarbeitet';
+        titleNode.textContent=/Sicherung/.test(mostRecent.message)
+          ?'Backup wird erstellt'
+          :/ChatGPT/.test(mostRecent.message)
+            ?'ChatGPT bearbeitet deine Anfrage'
+            :/Rechnung|Angebot|Dokument|Datei/.test(mostRecent.message)
+              ?'Dokument wird verarbeitet'
+              :'Vorgang wird bearbeitet';
       }
     }
     if(screenStatus)screenStatus.textContent=active>0?
