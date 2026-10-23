@@ -1,0 +1,43 @@
+
+.phb-page-dokumente .phb-main{max-width:1520px}
+.phb-page-dokumente .docs-columns{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(270px,.8fr);gap:20px;align-items:start}
+.phb-page-dokumente .docs-columns>.panel{margin:0 0 20px;padding:24px}
+.phb-page-dokumente .docs-columns h2,.phb-page-dokumente .docs-library h2{font-size:19px;margin:0 0 17px}
+.phb-page-dokumente .docs-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.phb-page-dokumente .docs-form label,.phb-page-dokumente .docs-toolbar label,.phb-page-dokumente .docs-dialog-inner label{display:grid;gap:7px;font-size:13px;color:var(--ui-ink-soft)}
+.phb-page-dokumente .docs-form .docs-wide{grid-column:1/-1}
+.phb-page-dokumente :is(.docs-form,.docs-dialog-inner) :is(input,select,textarea){min-width:0;width:100%}
+.phb-page-dokumente .docs-form button{justify-self:start;min-height:43px;padding:10px 20px}
+.phb-page-dokumente #docMessage{font-size:12px;line-height:1.6;margin:14px 0 0;color:var(--ui-success)}
+.phb-page-dokumente #docMessage.error,.phb-page-dokumente #docEditMessage.error{color:var(--ui-danger)}
+.phb-page-dokumente .docs-guide p{font-size:13px;line-height:1.7;color:var(--ui-muted);margin:0 0 17px}
+.phb-page-dokumente .docs-guide strong{color:var(--ui-ink)}
+.phb-page-dokumente .docs-guide code{color:var(--ui-accent)}
+.phb-page-dokumente .docs-guide .docs-caution{border-top:1px solid var(--ui-line);padding-top:13px}
+.phb-page-dokumente .docs-library{padding:24px}
+.phb-page-dokumente .docs-library>p{color:var(--ui-muted);font-size:12px}
+.phb-page-dokumente .docs-toolbar{display:grid;grid-template-columns:minmax(190px,1.7fr) repeat(2,minmax(150px,1fr));gap:13px;margin:17px 0}
+.phb-page-dokumente .docs-list{display:grid;gap:11px}
+.phb-page-dokumente .docs-item{border:1px solid var(--ui-line);background:var(--ui-surface);padding:17px 19px;border-radius:12px;display:flex;gap:20px;justify-content:space-between;align-items:center;min-width:0}
+.phb-page-dokumente .docs-item-text{min-width:0;overflow-wrap:anywhere}
+.phb-page-dokumente .docs-item h3{font-size:15px;margin:7px 0 6px;color:var(--ui-ink)}
+.phb-page-dokumente .docs-item p{font-size:12px;line-height:1.5;margin:0 0 6px;color:var(--ui-muted)}
+.phb-page-dokumente .docs-item small{display:block;color:var(--ui-muted);font-size:11px;line-height:1.6}
+.phb-page-dokumente .docs-item-meta{display:flex;gap:6px;flex-wrap:wrap}
+.phb-page-dokumente .docs-chip{font-size:10px;padding:4px 8px;background:var(--ui-soft);border:1px solid var(--ui-line);border-radius:25px;color:var(--ui-ink-soft)}
+.phb-page-dokumente .docs-item-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:flex-end}
+.phb-page-dokumente .docs-item-actions a{font-size:12px;white-space:nowrap}
+.phb-page-dokumente .docs-item-actions button{white-space:nowrap}
+.phb-page-dokumente .docs-dialog{width:min(650px,calc(100vw - 20px));max-height:90dvh;overflow:auto;padding:0;border:1px solid var(--ui-line);border-radius:16px;background:var(--ui-surface);color:var(--ui-ink)}
+.phb-page-dokumente .docs-dialog::backdrop{background:rgba(4,18,25,.66)}
+.phb-page-dokumente .docs-dialog-inner{display:grid;gap:14px;padding:24px}
+.phb-page-dokumente .docs-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.phb-page-dokumente .docs-dialog-head h2{margin:0;font-size:18px}
+.phb-page-dokumente .docs-dialog-inner>p{color:var(--ui-muted);font-size:12px;line-height:1.6;margin:0}
+.phb-page-dokumente .docs-actions{display:flex;justify-content:space-between;gap:14px;margin-top:6px}
+@media(max-width:1020px){.phb-page-dokumente .docs-columns{grid-template-columns:1fr}}
+@media(max-width:680px){.phb-page-dokumente .docs-form,.phb-page-dokumente .docs-toolbar{grid-template-columns:1fr}
+ .phb-page-dokumente .docs-form .docs-wide{grid-column:auto}
+ .phb-page-dokumente .docs-columns>.panel,.phb-page-dokumente .docs-library{padding:17px}
+ .phb-page-dokumente .docs-item{flex-direction:column;align-items:stretch}
+ .phb-page-dokumente .docs-item-actions{justify-content:flex-start}}
