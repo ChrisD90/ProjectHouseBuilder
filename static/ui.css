@@ -299,3 +299,14 @@ body.login-screen .login-panel input{
 }
 body.login-screen .login-panel input:focus{outline:0;border-color:var(--ui-accent);box-shadow:0 0 0 3px var(--ui-ring)}
 body.login-screen .login-panel button.primary{background:var(--ui-accent);color:white;border:1px solid var(--ui-accent);border-radius:10px;min-height:44px}
+
+/* Very narrow devices: keep navigation, theme and connection on one row. */
+@media(max-width:450px){
+ body.phb-app .phb-topbar__status{display:none}
+ body.phb-app .phb-topbar__left{gap:7px}
+ body.phb-app .phb-topbar-right{gap:4px}
+ body.phb-app .phb-theme-control select{max-width:84px}
+ body.phb-app main.phb-main :is(.heading,.phb-page-intro,.intro,.hero){gap:12px}
+ body.phb-app main.phb-main :is(.panelbar,.panel-title){gap:10px}
+ body.phb-app main.phb-main .offer-actions{align-items:stretch}
+}
