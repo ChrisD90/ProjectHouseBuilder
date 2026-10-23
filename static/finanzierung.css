@@ -51,3 +51,32 @@
   .phb-page-finanzierung .loan-ai-actions button,
   .phb-page-finanzierung .loan-doc-form button{width:100%}
 }
+
+/* Editing an existing loan remains visible and usable after each save. */
+.phb-page-finanzierung .loan-editor-intro{
+  margin:0 0 18px;line-height:1.6;color:#4d6670;
+}
+.phb-page-finanzierung .loan-save-status{
+  margin:16px 0 0;padding:10px 12px;
+  background:#eef8f5;border:1px solid #c9e5db;
+  color:#205c4e;border-radius:9px;line-height:1.5;
+}
+.phb-page-finanzierung .loan-save-status:empty{display:none}
+.phb-page-finanzierung .loan-save-status.error{
+  background:#fff2ee;border-color:#edc6bf;color:#91392d;
+}
+.phb-page-finanzierung .loan-ai-overwrite{
+  grid-column:1/-1;display:flex!important;align-items:flex-start;
+  gap:9px!important;font-size:12px!important;line-height:1.5;
+}
+.phb-page-finanzierung .loan-ai-overwrite input{width:16px!important;height:16px;flex:0 0 16px;margin:1px 0 0}
+.phb-page-finanzierung .inline-actions .loan-doc-count{
+  font-size:12px;color:#677e85;white-space:nowrap;margin-right:auto;
+}
+.phb-page-finanzierung .loan-dialog .modal-actions{
+  flex-wrap:wrap;gap:12px;margin-top:18px;
+}
+@media(max-width:520px){
+ .phb-page-finanzierung .loan-dialog .modal-actions{align-items:stretch}
+ .phb-page-finanzierung .loan-dialog .modal-actions button{flex:1 1 100%}
+}
