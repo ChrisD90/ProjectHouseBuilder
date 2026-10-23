@@ -360,6 +360,61 @@ def initialize():
     db.session.commit()
 
 
+# OAuth diagnostics stored in Flask's signed (not encrypted) session cookie.
+# Only static, allowlisted descriptions are stored; never codes, tokens, URLs or tracebacks.
+def _ai_safe_callback_diagnostic(error, browser_nonce, args):
+    reason = str(error)
+    checks = {
+        'code_received': bool(args.get('code')),
+        'state_received': bool(args.get('state')),
+        'client_id_received': bool(args.get('client_id')),
+        'browser_session_available': bool(browser_nonce),
+        'plan_scope_in_callback': 'chatgpt.tokens.use.direct' in args.get('scope', '').split()
+    }
+    categories = (
+        ('Anmeldung abgelaufen oder nicht verifiziert.', 'callback_session_invalid',
+         'Rückruf / Sitzungsabgleich', 'Der OAuth-State oder die lokale Browsersitzung konnte nicht bestätigt werden.'),
+        ('ChatGPT-Anmeldung wurde abgebrochen oder nicht erlaubt.', 'authorization_denied',
+         'Freigabe', 'OpenAI hat keine erfolgreiche Autorisierung zurückgegeben.'),
+        ('ChatGPT hat keinen Anmeldecode zurückgegeben.', 'authorization_code_missing',
+         'Rückruf', 'Im Rückruf fehlte der Autorisierungscode.'),
+        ('Kein gültiger ChatGPT-Client', 'client_id_invalid',
+         'Client-Registrierung', 'Die vom Anmeldedienst zurückgegebene Client-ID war nicht gültig.'),
+        ('Die ChatGPT-Registrierung stimmt nicht überein.', 'client_id_mismatch',
+         'Client-Registrierung', 'Die Client-ID stimmt nicht mit der gestarteten Anmeldung überein.'),
+        ('ChatGPT-Anmeldedienst ist nicht erreichbar.', 'token_service_unavailable',
+         'Tokenaustausch', 'Der lokale Server konnte den Token-Endpunkt nicht erfolgreich erreichen.'),
+        ('ChatGPT hat kein Identitätstoken ausgestellt.', 'id_token_missing',
+         'Identitätsprüfung', 'Die Tokenantwort enthielt kein ID-Token.'),
+        ('ChatGPT-Sicherheitsprüfung fehlgeschlagen (Nonce).', 'id_token_nonce_invalid',
+         'Identitätsprüfung', 'Die Nonce im Identitätstoken stimmt nicht überein.'),
+        ('ChatGPT-Identität konnte nicht sicher bestätigt werden.', 'id_token_validation_failed',
+         'Identitätsprüfung', 'Die Signatur oder die Ansprüche des Identitätstokens konnten nicht geprüft werden.'),
+        ('Die Anmeldung gehört nicht zum zuvor verbundenen ChatGPT-Konto.', 'account_mismatch',
+         'Identitätsprüfung', 'Der angemeldete Benutzer stimmt nicht mit dem zuvor verknüpften Konto überein.'),
+        ('ChatGPT hat keine erneuerbaren Zugangsdaten geliefert.', 'refresh_token_missing',
+         'Tokenprüfung', 'In der Tokenantwort fehlen die erforderlichen erneuerbaren Zugangsdaten.'),
+    )
+    code, phase, explanation = ('callback_failed', 'OAuth-Rückruf',
+                                 'Die Anmeldung konnte nicht abgeschlossen werden.')
+    for prefix, code_value, phase_value, text_value in categories:
+        if reason.startswith(prefix):
+            code, phase, explanation = code_value, phase_value, text_value
+            break
+    if reason.startswith('ChatGPT-Zugriff fehlgeschlagen:'):
+        phase = 'Tokenaustausch'
+        explanation = 'OpenAI hat den Austausch des Autorisierungscodes abgelehnt.'
+        oauth_code = reason.partition(':')[2].strip()
+        allowed = {'invalid_grant', 'invalid_client', 'invalid_request',
+                   'unauthorized_client', 'access_denied', 'invalid_scope',
+                   'unsupported_grant_type'}
+        code = oauth_code if oauth_code in allowed else 'token_exchange_rejected'
+    return {
+        'reference': secrets.token_hex(4), 'code': code,
+        'phase': phase, 'explanation': explanation, 'checks': checks
+    }
+
+
 # ChatGPT plan-usage integration is intentionally LOCAL-ONLY and cannot accept
 # a paid API key. The OAuth identity is separate from the application's login.
 def _ai_local_required():
@@ -409,6 +464,7 @@ def ai_connect():
     # Browser redirects to OpenAI and returns to this exact loopback URI.
     browser_nonce=secrets.token_urlsafe(30)
     session['phb_ai_browser_nonce']=browser_nonce
+    session.pop('phb_ai_last_error', None)
     session.permanent=True
     uri='http://127.0.0.1:'+str(request.environ.get('SERVER_PORT') or request.host.rsplit(':',1)[-1])+'/auth/callback'
     # The actual port is the browser-visible port, not an X-Forwarded host.
@@ -422,11 +478,25 @@ def ai_callback():
     browser_nonce=session.pop('phb_ai_browser_nonce', '')
     try:
         result=chatgpt.finish(request.args,browser_nonce)
+        session.pop('phb_ai_last_error', None)
         return redirect('/angebote?ai='+('connected' if result['sharing'] else 'permission'))
     except AIError as exc:
-        # Log the failure on the server, never OAuth callback parameters or tokens.
-        app.logger.warning('ChatGPT OAuth-Callback fehlgeschlagen: %s', exc, exc_info=True)
+        # Persist only safe, categorical diagnostics for the local UI.
+        diag = _ai_safe_callback_diagnostic(exc, browser_nonce, request.args)
+        session['phb_ai_last_error'] = diag
+        app.logger.warning('ChatGPT OAuth-Callback fehlgeschlagen: [%s] %s',
+                           diag['reference'], exc, exc_info=True)
         return redirect('/angebote?ai=error')
+
+
+@app.get('/api/ai/diagnostics')
+def ai_diagnostics():
+    _ai_request_required(False)
+    detail = session.get('phb_ai_last_error')
+    response = jsonify(available=isinstance(detail, dict),
+                       diagnostic=detail if isinstance(detail, dict) else None)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @app.post('/api/ai/disconnect')
