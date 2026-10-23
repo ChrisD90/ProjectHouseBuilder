@@ -152,7 +152,7 @@ with package.app.app_context():
     assert db.session.query(BudgetLine).count()==0, 'spreadsheet seed must not return'
 assert client.get('/api/costs').json['summary']['budget']==0
 with sqlite3.connect(root/'sanierung.db') as con:
-    assert con.execute('SELECT version_num FROM alembic_version').fetchone()==('0010',)
+    assert con.execute('SELECT version_num FROM alembic_version').fetchone()==('0011',)
 print('OK reset and verified backup '+str(archive))
 '''
 
