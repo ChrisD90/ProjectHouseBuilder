@@ -52,6 +52,12 @@ function refresh(){
    if(doc.extraction_note){const note=document.createElement('small');note.textContent=doc.extraction_note;info.append(note);}
    const actions=document.createElement('div');actions.className='docs-item-actions';
    const link=document.createElement('a');link.href='/api/project-documents/'+doc.id+'/download';link.textContent='Original herunterladen';
+   if(['.pdf','.jpg','.jpeg','.png','.webp','.txt'].includes(doc.extension)){
+     const preview=document.createElement('a');
+     preview.href='/api/project-documents/'+doc.id+'/preview';
+     preview.target='_blank';preview.rel='noopener noreferrer';preview.textContent='Vorschau';
+     actions.append(preview);
+   }
    const button=document.createElement('button');button.type='button';button.textContent='Bearbeiten';button.onclick=()=>edit(doc.id);
    actions.append(link,button);row.append(info,actions);container.append(row);
  }
