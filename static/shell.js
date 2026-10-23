@@ -13,15 +13,11 @@
 
   const currentSection = () => {
     const path = window.location.pathname;
-    const hash = window.location.hash;
-    if (path === '/kosten') {
-      if (hash === '#eigenleistungen') return 'eigenleistungen';
-      if (hash === '#kontakte') return 'kontakte';
-      return 'kosten';
-    }
+    if (path === '/kosten') return 'kosten';
     if (path === '/angebote') return 'angebote';
     if (path === '/daten') return 'daten';
-    if (path === '/finanzierung') return hash === '#sicherung' ? 'backups' : 'finanzierung';
+    if (path === '/stammdaten') return 'stammdaten';
+    if (path === '/finanzierung') return 'finanzierung';
     return path === '/belege' ? 'belege' : 'zeitplan';
   };
   const updateCurrent = () => {
