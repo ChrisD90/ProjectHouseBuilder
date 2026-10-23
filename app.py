@@ -918,7 +918,8 @@ def schedule_chat_resolve(history_id):
             elif op['action']=='add':
                 task=Task(code=op['code'],name=op['fields']['name'],
                           position=len(by_code),phase='Allgemein',trade='Sonstiges',
-                          duration=7,lag_days=0,execution_type='Noch offen')
+                          duration=7,lag_days=0,execution_type='Noch offen',
+                          status='Offen',progress=0,notes='')
                 db.session.add(task)
                 update_task_fields(task,{k:v for k,v in op['fields'].items()
                                          if k!='predecessors'})
