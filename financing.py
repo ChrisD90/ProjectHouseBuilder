@@ -329,9 +329,17 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                 if key in money_fields|pct_fields:
                     if isinstance(value,str):
                         value=value.replace('€','').replace('%','').replace('EUR','').strip()
-                        if not re.fullmatch(r'(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{1,3})?|\d+(?:\.\d{1,3})?',value):
-                            raise ValueError('Unbekanntes Zahlenformat')
-                        if ',' in value: value=value.replace('.','').replace(',','.')
+                        if key in money_fields:
+                            if re.fullmatch(r'\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?',value):
+                                value=value.replace('.','').replace(',','.')
+                            elif re.fullmatch(r'\d+(?:,\d{1,2})',value):
+                                value=value.replace(',','.')
+                            elif not re.fullmatch(r'\d+(?:\.\d{1,2})?',value):
+                                raise ValueError('Unbekanntes Geldformat')
+                        else:
+                            if not re.fullmatch(r'\d+(?:[.,]\d{1,3})?',value):
+                                raise ValueError('Unbekanntes Prozentformat')
+                            value=value.replace(',','.')
                     value=money(value,positive=(key=='principal')) if key in money_fields else percent(value)
                     fields[key]=str(value)
                 elif key in dates:
