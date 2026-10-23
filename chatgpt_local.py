@@ -43,6 +43,57 @@ class IdentityValidationError(AIError):
         super().__init__('ChatGPT-Identität konnte nicht sicher bestätigt werden.')
 
 
+class JWKSFetchError(jwt.PyJWKClientConnectionError):
+    """Safe JWKS transport failure category (no URL, response or token details)."""
+
+    def __init__(self, reason_code):
+        self.reason_code = reason_code
+        super().__init__('OpenAI-Signaturschlüssel konnten nicht geladen werden.')
+
+
+class RequestsJWKClient(PyJWKClient):
+    """Use the same TLS trust store and proxy handling as our OAuth token exchange.
+
+    PyJWT normally fetches JWKS using urllib, while token exchange uses requests.
+    The fixed, HTTPS JWKS endpoint remains mandatory. PyJWT still selects
+    the signing key and verifies the JWT signature and all identity claims.
+    """
+
+    def fetch_data(self):
+        if self.uri != JWKS:
+            raise JWKSFetchError('jwks_endpoint_invalid')
+        try:
+            response = requests.get(
+                self.uri, headers={'Accept': 'application/json'},
+                timeout=15, allow_redirects=False)
+        except requests.exceptions.SSLError:
+            raise JWKSFetchError('jwks_tls_error') from None
+        except requests.exceptions.Timeout:
+            raise JWKSFetchError('jwks_timeout') from None
+        except requests.exceptions.RequestException:
+            raise JWKSFetchError('jwks_network_error') from None
+
+        if response.status_code in (301, 302, 303, 307, 308):
+            raise JWKSFetchError('jwks_unexpected_redirect')
+        if response.status_code != 200:
+            reason = ('jwks_http_403' if response.status_code == 403
+                      else 'jwks_http_429' if response.status_code == 429
+                      else 'jwks_http_error')
+            raise JWKSFetchError(reason)
+        if len(response.content) > 128 * 1024:
+            raise JWKSFetchError('jwks_invalid_payload')
+        try:
+            data = response.json()
+        except ValueError:
+            raise JWKSFetchError('jwks_invalid_payload') from None
+        if not isinstance(data, dict) or not isinstance(data.get('keys'), list):
+            raise JWKSFetchError('jwks_invalid_payload')
+        # Preserve PyJWT's expiring JWKS cache and refresh-on-unknown-kid behavior.
+        if self.jwk_set_cache is not None:
+            self.jwk_set_cache.put(data)
+        return data
+
+
 def _profile_home():
     # Not in a git checkout, uploaded documents or complete project backups.
     return Path(os.environ.get('PHB_CHATGPT_HOME') or
@@ -175,10 +226,12 @@ class ChatGPTLocal:
     def _verify_identity(self, raw, client_id, nonce):
         if not raw: raise AIError('ChatGPT hat kein Identitätstoken ausgestellt.')
         if self._jwk is None:
-            self._jwk = PyJWKClient(JWKS)
+            self._jwk = RequestsJWKClient(JWKS, lifespan=300)
         try:
             # Never trust JWT headers or claims before cryptographic verification.
             key = self._jwk.get_signing_key_from_jwt(raw)
+        except JWKSFetchError as exc:
+            raise IdentityValidationError(exc.reason_code) from None
         except jwt.PyJWKClientConnectionError:
             raise IdentityValidationError('jwks_unavailable') from None
         except jwt.PyJWKClientError:
