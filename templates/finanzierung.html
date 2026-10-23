@@ -26,7 +26,8 @@
 <div id="backupStatus" class="backup-status"></div><p class="hint">Backupziel einmalig auf dem Mac mit <code>sh mac/backup-setup.sh</code> auswählen. Die tägliche automatische Sicherung bleibt zusätzlich aktiv. Wiederherstellung auf einem neuen Mac bei beendeter App: <code>python3 backup_manager.py restore "/Pfad/Backup.zip" --yes</code>. Vor Schemaänderungen erstellt der Starter weiterhin automatisch ein Pflichtbackup.</p></section>
 <dialog id="loanDialog" class="loan-dialog">
 <form id="loanForm" class="modal">
-  <div class="modal-head"><h2>Kredit verwalten</h2><button type="button" class="secondary" id="closeLoan">Schließen</button></div>
+  <div class="modal-head"><h2 id="loanDialogTitle">Kredit anlegen</h2><button type="button" class="secondary" id="closeLoan">Schließen</button></div>
+  <p class="hint loan-editor-intro" id="loanFormHelp">Alle Angaben können nach dem Speichern ergänzt oder korrigiert werden. Bereits gebuchte Zahlungen bleiben erhalten.</p>
   <div class="loan-ai-assistant">
     <div><strong>Kreditdaten mit ChatGPT übernehmen</strong>
       <p class="hint">Optional: Kreditvertrag oder Bankanschreiben auslesen und die Felder zur Prüfung vorausfüllen. Die manuelle Erfassung bleibt unverändert.</p></div>
@@ -35,16 +36,18 @@
         <input id="loanAiFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
       </label>
       <button id="loanAiAnalyze" type="button">Mit ChatGPT vorausfüllen</button>
+      <label class="loan-ai-overwrite"><input id="loanAiOverwrite" type="checkbox"> Bereits ausgefüllte Vertragsdaten durch ChatGPT-Vorschläge ersetzen</label>
     </div>
-    <p class="hint">Die ausgewählte Unterlage wird nur beim Klick auf „Mit ChatGPT vorausfüllen“ übertragen. Ohne deine Prüfung wird nichts gespeichert.</p>
+    <p class="hint">Die ausgewählte Unterlage wird nur beim Klick auf „Mit ChatGPT vorausfüllen“ übertragen. Standardmäßig werden bestehende Vertragsdaten nicht überschrieben. Ohne deine Prüfung wird nichts gespeichert.</p>
     <p id="loanAiStatus" class="hint" role="status"></p>
     <ul id="loanAiWarnings" class="loan-ai-warnings" hidden></ul>
   </div>
   <input type="hidden" name="id"><div class="fields">
 <label>Bezeichnung<input name="name" required maxlength="160" placeholder="Kredit A"></label><label>Bank<input name="bank" maxlength="160"></label><label>Vertragsreferenz<input name="reference" maxlength="120"></label><label>Darlehensrahmen (€)<input name="principal" type="number" required min="0.01" step="0.01"></label><label>Sollzins p. a. (%)<input name="interest_rate" type="number" required min="0" max="100" step="0.001" value="0"></label><label>Monatliche Rate (€)<input name="monthly_payment" type="number" required min="0" step="0.01" value="0"></label><label>Anfängliche Tilgung (%)<input name="initial_repayment_rate" type="number" min="0" max="100" step="0.001" value="0"></label><label>Sondertilgung p. a. (%)<input name="extra_repayment_pct" type="number" min="0" max="100" step="0.001" value="0"></label><label>Vertragsdatum<input name="contract_date" type="date"></label><label>Zinsbindung bis<input name="fixed_until" type="date"></label><label>Bereitstellungszins ab<input name="interest_free_until" type="date"></label><label>Bereitstellungszins p. a. (%)<input name="commitment_interest_rate" type="number" min="0" max="100" step="0.001" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div>
+  <p id="loanSaveStatus" class="hint loan-save-status" role="status" aria-live="polite"></p>
   <div class="modal-actions">
     <button type="button" id="deleteLoan" class="danger">Kredit löschen</button>
-    <button type="submit" class="primary">Kredit speichern</button>
+    <button type="submit" id="loanSaveButton" class="primary">Kredit speichern</button>
   </div>
 </form>
 <section id="loanDocuments" class="loan-documents" hidden>
