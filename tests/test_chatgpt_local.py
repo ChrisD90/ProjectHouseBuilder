@@ -167,6 +167,85 @@ class ChatGPTLocalTests(unittest.TestCase):
         self.assertEqual(raised.exception.reason_code,'jwks_unavailable')
         self.assertNotIn('private-network-detail',str(raised.exception))
 
+    def test_jwks_uses_requests_tls_transport_and_keeps_signature_validation(self):
+        import time
+        import jwt
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from jwt.algorithms import RSAAlgorithm
+        from chatgpt_local import ChatGPTLocal, JWKS, IdentityValidationError
+
+        local=ChatGPTLocal()
+        private=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+        now=int(time.time())
+        token=jwt.encode({
+            'sub':'verified-user','iss':'https://auth.openai.com','aud':'oaiapp_test',
+            'iat':now,'exp':now+3600,'nonce':'nonce-verified'
+        },private,algorithm='RS256',headers={'kid':'trusted-test-key'})
+        key=json.loads(RSAAlgorithm.to_jwk(private.public_key()))
+        key.update({'kid':'trusted-test-key','use':'sig','alg':'RS256'})
+        jwks={'keys':[key]}
+
+        class Response:
+            status_code=200
+            content=b'valid-small-jwks'
+            def json(self):
+                return jwks
+
+        with patch('chatgpt_local.requests.get',return_value=Response()) as get:
+            claims=local._verify_identity(token,'oaiapp_test','nonce-verified')
+            self.assertEqual(claims['sub'],'verified-user')
+            # JWKS is cached for subsequent sign-ins.
+            local._verify_identity(token,'oaiapp_test','nonce-verified')
+            get.assert_called_once_with(JWKS,headers={'Accept':'application/json'},
+                                        timeout=15,allow_redirects=False)
+            other=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+            forged=jwt.encode({
+                'sub':'not-verified','iss':'https://auth.openai.com','aud':'oaiapp_test',
+                'iat':now,'exp':now+3600,'nonce':'nonce-verified'
+            },other,algorithm='RS256',headers={'kid':'trusted-test-key'})
+            with self.assertRaises(IdentityValidationError) as denied:
+                local._verify_identity(forged,'oaiapp_test','nonce-verified')
+            self.assertEqual(denied.exception.reason_code,'id_token_signature_invalid')
+
+    def test_jwks_requests_transport_has_safe_failures_and_rejects_redirects(self):
+        import time
+        import jwt
+        import requests
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from chatgpt_local import ChatGPTLocal, IdentityValidationError
+        private=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+        now=int(time.time())
+        token=jwt.encode({
+            'sub':'user','iss':'https://auth.openai.com','aud':'oaiapp_test',
+            'iat':now,'exp':now+3600,'nonce':'expected'
+        },private,algorithm='RS256',headers={'kid':'expected-key'})
+        class FakeResponse:
+            def __init__(self,status_code=200,data=None):
+                self.status_code=status_code
+                self.data=data if data is not None else {'keys':[]}
+                self.content=b'{}'
+            def json(self):
+                return self.data
+
+        cases=[
+            (requests.exceptions.SSLError('hidden-private-ssl-error'),'jwks_tls_error'),
+            (requests.exceptions.Timeout('hidden-private-timeout'),'jwks_timeout'),
+            (requests.exceptions.ConnectionError('hidden-private-network'),'jwks_network_error'),
+            (FakeResponse(403),'jwks_http_403'),
+            (FakeResponse(429),'jwks_http_429'),
+            (FakeResponse(302),'jwks_unexpected_redirect'),
+            (FakeResponse(data={'not-keys': []}),'jwks_invalid_payload')
+        ]
+        for outcome,expected in cases:
+            local=ChatGPTLocal()
+            with patch('chatgpt_local.requests.get',side_effect=outcome if isinstance(
+                outcome,Exception) else None,return_value=None if isinstance(
+                outcome,Exception) else outcome):
+                with self.subTest(expected=expected),self.assertRaises(IdentityValidationError) as caught:
+                    local._verify_identity(token,'oaiapp_test','expected')
+            self.assertEqual(caught.exception.reason_code,expected)
+            self.assertNotIn('hidden-private',str(caught.exception))
+
     def test_identity_error_diagnostic_only_exposes_allowlisted_code(self):
         from app import _ai_safe_callback_diagnostic
         from chatgpt_local import IdentityValidationError
