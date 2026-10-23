@@ -329,7 +329,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                 if key in money_fields|pct_fields:
                     if isinstance(value,str):
                         value=value.replace('€','').replace('%','').replace('EUR','').strip()
-                        if not re.fullmatch(r'(?:\\d{1,3}(?:\\.\\d{3})+|\\d+)(?:,\\d{1,3})?|\\d+(?:\\.\\d{1,3})?',value):
+                        if not re.fullmatch(r'(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{1,3})?|\d+(?:\.\d{1,3})?',value):
                             raise ValueError('Unbekanntes Zahlenformat')
                         if ',' in value: value=value.replace('.','').replace(',','.')
                     value=money(value,positive=(key=='principal')) if key in money_fields else percent(value)
