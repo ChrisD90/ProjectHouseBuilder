@@ -839,6 +839,17 @@ def _reviewed_version_from_pdf(o,parsed,digest,document,name,category):
     guessed={field:parsed.get(field) for field in ('vendor','number','issued','expires','gross','net','vat')}
     # Keep known information if OCR cannot read a field in the replacement file.
     guesses={k:v for k,v in guessed.items() if v not in (None,'','Firma nicht erkannt')}
+    for amount in ('gross','net','vat'):
+        # OCR frequently returns floats with more than two fractional digits.
+        # Round suggestions to currency precision; manual edits stay strict.
+        if amount in guesses:
+            try:
+                raw=float(guesses[amount])
+                if not math.isfinite(raw) or raw<0:
+                    raise ValueError()
+                guesses[amount]=round(raw,2)
+            except (ValueError,TypeError,OverflowError):
+                del guesses[amount]
     _apply_offer_fields(candidate,guesses)
     candidate.warnings=json.dumps(parsed.get('warnings') or [],ensure_ascii=False)
     raw=parsed.get('positions') or []
@@ -849,6 +860,12 @@ def _reviewed_version_from_pdf(o,parsed,digest,document,name,category):
         clean.update(number=str(pos.get('number') or i),section=str(pos.get('section') or ''),
                      description=str(pos.get('description') or ''),unit=str(pos.get('unit') or ''),
                      optional=bool(pos.get('optional')))
+        for money_key in ('unit_price','net_amount','optional_amount'):
+            if clean[money_key] is not None:
+                try:
+                    number=float(clean[money_key])
+                    clean[money_key]=round(number,2) if math.isfinite(number) and number>=0 else None
+                except (ValueError,TypeError,OverflowError):clean[money_key]=None
         try:rows.extend(_validated_offer_positions([clean]))
         except ValueError:continue
     _update_draft_positions(candidate,rows)
@@ -908,8 +925,13 @@ def _version_drafts():
     result=[]
     for v in rows:
         o=db.session.get(Offer,v.offer_id)
-        if o:result.append({'offer_id':o.id,'version':v.version_number,'current_vendor':o.vendor,
-                           **json.loads(v.snapshot)})
+        if o:
+            snapshot=json.loads(v.snapshot)
+            # offer_dict returns a list; expose the same shape in draft reviews.
+            warnings=snapshot.get('warnings') or '[]'
+            snapshot['warnings']=json.loads(warnings) if isinstance(warnings,str) else warnings
+            result.append({'offer_id':o.id,'version':v.version_number,'current_vendor':o.vendor,
+                           **snapshot})
     return result
 
 
@@ -926,6 +948,8 @@ def upload_offer_version(offer_id):
     if not data or len(data)>15*1024*1024:return jsonify(error='Maximal 15 MB je Angebot.'),413
     if not data.startswith(b'%PDF'):return jsonify(error='Die Datei ist kein gültiges PDF.'),400
     digest=sha256(data).hexdigest()
+    if db.session.scalar(select(Offer.id).where(Offer.digest==digest,Offer.id!=o.id).limit(1)):
+        return jsonify(error='Dieses PDF ist bereits einem anderen Angebot zugeordnet.'),409
     if o.digest==digest or any(json.loads(v.snapshot).get('digest')==digest for v in o.versions):
         return jsonify(error='Dieses PDF gehört bereits zur Versionshistorie dieses Angebots.'),409
     name=Path(f.filename).name[:240]
