@@ -24,8 +24,43 @@
 <section class="panel"><div class="panel-title"><div><h2>Liquiditätsvorschau</h2><p>Fällige, gebuchte und noch unbezahlte Rechnungen – erwartete Termine sind keine verbindliche Prognose für alle künftigen Baukosten.</p></div></div><div id="monthly" class="months"></div><p id="undated" class="hint"></p></section>
 <section class="panel" id="sicherung"><div class="panel-title"><div><h2>Komplettbackup – jederzeit</h2><p>SQLite-Datenbank <strong>und sämtliche hochgeladenen PDFs, Fotos und Dokumente</strong> als geprüftes ZIP in deinem gewählten Backupordner sichern.</p></div><button type="button" class="primary" id="backupButton">Jetzt vollständiges Backup erstellen</button></div>
 <div id="backupStatus" class="backup-status"></div><p class="hint">Backupziel einmalig auf dem Mac mit <code>sh mac/backup-setup.sh</code> auswählen. Die tägliche automatische Sicherung bleibt zusätzlich aktiv. Wiederherstellung auf einem neuen Mac bei beendeter App: <code>python3 backup_manager.py restore "/Pfad/Backup.zip" --yes</code>. Vor Schemaänderungen erstellt der Starter weiterhin automatisch ein Pflichtbackup.</p></section>
-<dialog id="loanDialog"><form id="loanForm" class="modal"><div class="modal-head"><h2>Kredit verwalten</h2><button type="button" class="secondary" id="closeLoan">Schließen</button></div><input type="hidden" name="id"><div class="fields">
-<label>Bezeichnung<input name="name" required maxlength="160" placeholder="Kredit A"></label><label>Bank<input name="bank" maxlength="160"></label><label>Vertragsreferenz<input name="reference" maxlength="120"></label><label>Darlehensrahmen (€)<input name="principal" type="number" required min="0.01" step="0.01"></label><label>Sollzins p. a. (%)<input name="interest_rate" type="number" required min="0" max="100" step="0.001" value="0"></label><label>Monatliche Rate (€)<input name="monthly_payment" type="number" required min="0" step="0.01" value="0"></label><label>Anfängliche Tilgung (%)<input name="initial_repayment_rate" type="number" min="0" max="100" step="0.001" value="0"></label><label>Sondertilgung p. a. (%)<input name="extra_repayment_pct" type="number" min="0" max="100" step="0.001" value="0"></label><label>Vertragsdatum<input name="contract_date" type="date"></label><label>Zinsbindung bis<input name="fixed_until" type="date"></label><label>Bereitstellungszins ab<input name="interest_free_until" type="date"></label><label>Bereitstellungszins p. a. (%)<input name="commitment_interest_rate" type="number" min="0" max="100" step="0.001" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div><div class="modal-actions"><button type="button" id="deleteLoan" class="danger">Kredit löschen</button><button type="submit" class="primary">Kredit speichern</button></div></form></dialog>
+<dialog id="loanDialog" class="loan-dialog">
+<form id="loanForm" class="modal">
+  <div class="modal-head"><h2>Kredit verwalten</h2><button type="button" class="secondary" id="closeLoan">Schließen</button></div>
+  <div class="loan-ai-assistant">
+    <div><strong><icon aria-hidden="true"></icon> Kreditdaten mit ChatGPT übernehmen</strong>
+      <p class="hint">Optional: Kreditvertrag oder Bankanschreiben auslesen und die Felder zur Prüfung vorausfüllen. Die manuelle Erfassung bleibt unverändert.</p></div>
+    <div class="loan-ai-actions">
+      <label>Kreditunterlage (PDF oder Foto, maximal 15 MB)
+        <input id="loanAiFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
+      </label>
+      <button id="loanAiAnalyze" type="button">Mit ChatGPT vorausfüllen</button>
+    </div>
+    <p class="hint">Die ausgewählte Unterlage wird nur beim Klick auf „Mit ChatGPT vorausfüllen“ übertragen. Ohne deine Prüfung wird nichts gespeichert.</p>
+    <p id="loanAiStatus" class="hint" role="status"></p>
+    <ul id="loanAiWarnings" class="loan-ai-warnings" hidden></ul>
+  </div>
+  <input type="hidden" name="id"><div class="fields">
+<label>Bezeichnung<input name="name" required maxlength="160" placeholder="Kredit A"></label><label>Bank<input name="bank" maxlength="160"></label><label>Vertragsreferenz<input name="reference" maxlength="120"></label><label>Darlehensrahmen (€)<input name="principal" type="number" required min="0.01" step="0.01"></label><label>Sollzins p. a. (%)<input name="interest_rate" type="number" required min="0" max="100" step="0.001" value="0"></label><label>Monatliche Rate (€)<input name="monthly_payment" type="number" required min="0" step="0.01" value="0"></label><label>Anfängliche Tilgung (%)<input name="initial_repayment_rate" type="number" min="0" max="100" step="0.001" value="0"></label><label>Sondertilgung p. a. (%)<input name="extra_repayment_pct" type="number" min="0" max="100" step="0.001" value="0"></label><label>Vertragsdatum<input name="contract_date" type="date"></label><label>Zinsbindung bis<input name="fixed_until" type="date"></label><label>Bereitstellungszins ab<input name="interest_free_until" type="date"></label><label>Bereitstellungszins p. a. (%)<input name="commitment_interest_rate" type="number" min="0" max="100" step="0.001" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div>
+  <div class="modal-actions">
+    <button type="button" id="deleteLoan" class="danger">Kredit löschen</button>
+    <button type="submit" class="primary">Kredit speichern</button>
+  </div>
+</form>
+<section id="loanDocuments" class="loan-documents" hidden>
+  <h3>Kreditunterlagen &amp; Schriftverkehr</h3>
+  <p class="hint">Dokumente werden diesem Kredit zugeordnet und lokal zusammen mit dem Projekt gesichert. Ein Anhang ändert keine Kreditkonditionen.</p>
+  <form id="loanDocumentUpload" class="loan-doc-form">
+    <label>Dokument (PDF oder Foto, maximal 15 MB)
+      <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
+    </label>
+    <label>Beschreibung (optional)<input type="text" name="notes" maxlength="500" placeholder="z. B. Bankbrief vom 15.10.2026"></label>
+    <button type="submit" id="loanDocumentAdd">An Kredit anhängen</button>
+  </form>
+  <p id="loanDocumentStatus" class="hint" role="status"></p>
+  <div id="loanDocumentList" class="loan-document-list"></div>
+</section>
+</dialog>
 <dialog id="equityDialog"><form id="equityForm" class="modal"><div class="modal-head"><h2>Eigenkapitalkonto</h2><button type="button" class="secondary" id="closeEquity">Schließen</button></div><input type="hidden" name="id"><div class="fields"><label>Bezeichnung<input name="name" maxlength="160" required placeholder="Eigenkapital Sanierung"></label><label>Startbestand (€)<input name="opening_balance" type="number" min="0" step="0.01" required></label><label>Sicherheitsreserve (€)<input name="reserve" type="number" min="0" step="0.01" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div><div class="modal-actions"><button type="button" id="deleteEquity" class="danger">Konto löschen</button><button type="submit" class="primary">Konto speichern</button></div></form></dialog>
 </main>
   </div>
