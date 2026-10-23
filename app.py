@@ -728,7 +728,9 @@ def home():
 def project():
     tasks=serialize(all_tasks())
     contractors=db.session.scalars(select(Contractor).order_by(Contractor.name)).all()
-    return jsonify({'start':setting('start'), 'tasks':tasks,'contractors':[{'id':x.id,'name':x.name,'trade':x.trade,'phone':x.phone,'email':x.email} for x in contractors]})
+    return jsonify({'start':setting('start'), 'tasks':tasks,
+                    'trades':[x.name for x in db.session.scalars(select(Trade).order_by(Trade.name))],
+                    'contractors':[{'id':x.id,'name':x.name,'trade':x.trade,'phone':x.phone,'email':x.email} for x in contractors]})
 
 @app.get('/api/tasks/template')
 def tasks_template_preview():
