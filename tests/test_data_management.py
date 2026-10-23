@@ -30,7 +30,10 @@ schema_manager.upgrade_database()
 with package.app.app_context():
     package.initialize()
     from app import db, Setting, Task, Category, BudgetLine, Contractor, Receipt, Loan, EquityAccount, ReceiptFinancingPayment, Offer, CostItem
-    assert db.session.query(Task).count() > 0
+    assert db.session.query(Task).count() == 0  # Fresh setup is opt-in now.
+    initial = package.app.test_client().post('/api/tasks/initialize', json={'confirm':True})
+    assert initial.status_code == 201, initial.json
+    assert db.session.query(Task).count() == 69
     db.session.add(Contractor(name='Elektro Betrieb', trade='Elektro'))
     db.session.add(BudgetLine(code='USER',category='Elektro',title='Neue Verteilung',estimate=4321,sort_order=22))
     db.session.add(Category(name='Meine Spezialkategorie',sort_order=100))
@@ -108,7 +111,7 @@ with package.app.app_context():
     assert db.session.query(BudgetLine).count()==0, 'spreadsheet seed must not return'
 assert client.get('/api/costs').json['summary']['budget']==0
 with sqlite3.connect(root/'sanierung.db') as con:
-    assert con.execute('SELECT version_num FROM alembic_version').fetchone()==('0005',)
+    assert con.execute('SELECT version_num FROM alembic_version').fetchone()==('0006',)
 print('OK reset and verified backup '+str(archive))
 '''
 

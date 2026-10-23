@@ -22,6 +22,8 @@ def upgrade():
         op.add_column('task',sa.Column('execution_type',sa.String(24),nullable=False,server_default='Noch offen'))
     # Only mark unambiguous existing labels; preserve everything else as unknown
     # to avoid silently calling a joint or unplanned task a contractor task.
+    if 'trade' not in columns:
+        return  # Some pre-baseline SQLite backups only contain task id and code.
     op.execute(sa.text("""UPDATE task SET execution_type='Eigenleistung'
         WHERE execution_type='Noch offen' AND (
           LOWER(trade) LIKE '%eigenleistung%' OR LOWER(trade) LIKE '%bauherrschaft%'
