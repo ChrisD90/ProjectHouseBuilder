@@ -43,7 +43,7 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 - **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, korrigieren, annehmen oder ablehnen. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.
 - **Kosten & Budget (`/kosten`):** Ausschließlich Kostenschätzungen und zusätzliche Ausgaben planen; keine zweite Angebotsverwaltung. Angenommene Angebote werden automatisch eingerechnet, aber nicht nochmals bearbeitbar als manuelle Kostenposition angezeigt.
 - **Belege:** Rechnungen/Kassenzettel als PDF oder Foto importieren und wahlweise **lokal** (PDF-Text/Tesseract OCR) oder nach ausdrücklicher Freigabe mit **ChatGPT** analysieren. Belege anschließend prüfen und **genau einer Zuordnungsart** zuweisen: angenommenes Angebot, Betrieb oder Eigenleistung. Die Budgetposition bleibt separat auswählbar; keine automatische Buchung.
-- **Finanzierung:** Kredite, Eigenkapital, Kreditabrufe, Tilgungen, aufgeteilte Rechnungszahlungen und Liquiditätsvorschau.
+- **Finanzierung:** Kredite manuell erfassen oder Kreditunterlagen ausdrücklich mit ChatGPT auslesen und Vertragsfelder vor dem Speichern prüfen. Briefe, Vertrags-PDFs und gescannte Dokumente lassen sich am einzelnen Kredit anhängen; außerdem Eigenkapital, Kreditabrufe, Tilgungen, aufgeteilte Rechnungszahlungen und Liquiditätsvorschau.
 - **Datenverwaltung:** Backup auf Knopfdruck, vollständiger Projekt-Reset mit Pflichtbackup.
 
 OCR von Bildern benötigt zusätzlich Tesseract und Poppler auf dem Mac; bei lesbaren PDF-Texten ist kein OCR erforderlich. Die Anwendung ist als lokale Einzelplatzsoftware konzipiert und wird **nicht** per Router-Portweiterleitung veröffentlicht.
@@ -181,3 +181,13 @@ Im Prüfbereich ist die Zuordnungsart exklusiv:
 Die **Budgetposition** ist davon grundsätzlich unabhängig, soweit die Angebotsabrechnung nicht bereits eine feste Budgetverknüpfung vorgibt. Gebuchte Belege können erst nach Zurücknehmen der Buchung umgehängt werden. Für historische Rechnungen mit alten Kostenpositionsverknüpfungen bleibt diese Zuordnung bestehen, damit frühere Buchungen und Finanzierungszuordnungen unverändert bleiben.
 
 Der Start auf dem Mac führt vor der neuen Schema-Migration `0008` wie gewohnt ein verifiziertes Backup aus. Ohne erreichbares Backup-Ziel wird die Migration aus Sicherheitsgründen abgebrochen. Die ChatGPT-Analyse nutzt ausschließlich die bereits verbundene Plannutzung; es gibt keinen kostenpflichtigen API-Key-Fallback.
+
+## Kreditassistent, Dokumente und Rechnungs-Umsatzsteuer
+
+In **Finanzierung → Darlehen → + Kredit** bleibt der manuelle Weg erhalten. Alternativ im Kreditdialog eine Vertrags-PDF oder ein Vertragsfoto auswählen und **„Mit ChatGPT vorausfüllen“** starten. Nur nach ChatGPT-Verbindung und bestätigter Plannutzung wird die Datei übertragen. ChatGPT liefert **einen Vorschlag**, niemals eine fertige Buchung. Fehlende oder unplausible Konditionen werden gekennzeichnet; Kreditsumme, Sollzins, Monatsrate, Tilgung, Sondertilgung und Datumsangaben unbedingt mit den Vertragsunterlagen abgleichen. Erst der ausdrückliche Klick auf **„Kredit speichern“** legt die Daten an.
+
+Für bestehende Kredite erscheint darunter **„Kreditunterlagen & Schriftverkehr“**. PDF, JPG, PNG und WEBP bis 15 MB können mit optionaler Beschreibung angehängt, wieder heruntergeladen oder einzeln entfernt werden. Sie werden lokal unter `private/loans/` gespeichert, gehören zum vollständigen Projektbackup und werden nicht automatisch an ChatGPT weitergegeben. Ein Kredit mit Dokumenten lässt sich erst nach deren ausdrücklicher Entfernung löschen.
+
+Unter **Rechnungen & Belege** gibt es bei der manuellen Änderung des Bruttobetrags die Auswahl **19 %**, **7 %**, **0 %** oder **„Gemischte Steuersätze / manuell“**. Bei festen Sätzen werden Nettobetrag und Umsatzsteuer auf Cent genau automatisch aus dem Brutto zurückgerechnet. Vorhandene erkannte Werte werden beim Öffnen eines Belegs nicht verändert. Bei gemischten Steuersätzen, Steuerbefreiungen oder Sonderfällen die Beträge selbst nach dem Originalbeleg erfassen und kontrollieren.
+
+Die Datenbankmigration **`0009`** ergänzt lediglich die Dokumententabelle zu Krediten. Bestehende Kredite, Zahlungen und Rechnungen bleiben unverändert. Der Mac-Starter führt vor der Migration das obligatorische geprüfte Komplettbackup aus.
