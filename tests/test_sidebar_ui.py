@@ -21,7 +21,7 @@ class SidebarUITest(unittest.TestCase):
         return self.env.get_template(page + '.html').render()
 
     def test_every_app_page_has_one_shared_navigation_and_topbar(self):
-        for name in ('index', 'kosten', 'angebote', 'belege', 'finanzierung', 'daten'):
+        for name in ('index', 'kosten', 'angebote', 'belege', 'finanzierung', 'stammdaten', 'daten'):
             with self.subTest(page=name):
                 content = self.render(name)
                 self.assertEqual(content.count('id="phbSidebar"'), 1)
@@ -39,26 +39,44 @@ class SidebarUITest(unittest.TestCase):
                 if name == 'daten':
                     self.assertIn('/static/daten.js', content)
                     self.assertIn('/static/daten.css', content)
+                if name == 'stammdaten':
+                    self.assertIn('/static/stammdaten.js', content)
+                    self.assertIn('/static/stammdaten.css', content)
                 self.assertIn('<form method="post" action="/logout"', content)
                 self.assertEqual(content.count('aria-current="page"'), 1)
                 self.assertNotIn('← Zum Gantt-Plan', content)
 
-    def test_navigation_lists_costs_offers_receipts_loans_and_backup(self):
+    def test_navigation_has_one_central_master_data_and_backup_destination(self):
         rendered = self.render('index')
         for target in ('/', '/kosten', '/angebote', '/belege',
-                       '/finanzierung', '/kosten#eigenleistungen',
-                       '/kosten#kontakte', '/finanzierung#sicherung', '/daten'):
+                       '/finanzierung', '/stammdaten', '/daten'):
             self.assertIn('href="' + target + '"', rendered)
-        for anchor in ('extra-expenses', 'eigenleistungen', 'kontakte'):
-            self.assertIn('id="' + anchor + '"', self.render('kosten'))
-        self.assertIn('id="sicherung"', self.render('finanzierung'))
+        self.assertNotIn('/kosten#kontakte', rendered)
+        self.assertNotIn('/finanzierung#sicherung', rendered)
+        self.assertNotIn('id="phbExports"', rendered)
+        master=self.render('stammdaten')
+        for section in ('firmen', 'gewerke', 'kategorien'):
+            self.assertIn('id="' + section + '"', master)
+        costs=self.render('kosten')
+        self.assertNotIn('id="kontakte"', costs)
+        receipts=self.render('belege')
+        self.assertNotIn('id="categoryCreate"', receipts)
+        financing=self.render('finanzierung')
+        self.assertNotIn('id="backupButton"', financing)
+        data=self.render('daten')
+        for anchor in ('sicherung','exporte'):
+            self.assertIn('id="' + anchor + '"', data)
+        for endpoint in ('/api/export.csv','/api/budget.csv','/api/costs.csv',
+                         '/api/backup.json','/api/project-archive.zip'):
+            self.assertIn('href="'+endpoint+'"', data)
 
     def test_existing_interactive_form_ids_are_unchanged(self):
         for page, identifiers in {
             'index': ('projectStart', 'saveStart', 'newTask', 'taskForm', 'gantt'),
             'kosten': ('budgetrows', 'costrows', 'editForm'),
             'angebote': ('offerImportForm', 'offerManualForm', 'offerDrafts', 'offerList', 'offerCategoryFilter'),
-            'belege': ('upload', 'categoryCreate', 'review'),
+            'belege': ('upload', 'review'),
+            'stammdaten': ('companyForm', 'tradeCreate', 'categoryCreate', 'companyRows'),
             'finanzierung': ('loanForm', 'paymentForm', 'eventForm'),
             'daten': ('backupNow', 'resetForm', 'resetButton', 'resetUnderstand', 'resetText')
         }.items():
@@ -74,7 +92,7 @@ class SidebarUITest(unittest.TestCase):
         worker = (STATIC / 'sw.js').read_text()
         for static_path in ('/static/shell.css', '/static/shell.js',
                             '/static/vendor-bootstrap-5.3.6.min.css', '/static/daten.js', '/static/daten.css', '/static/angebote.css', '/static/offers.js',
-                            '/static/icons/ui-icons.svg'):
+                            '/static/icons/ui-icons.svg', '/static/stammdaten.js', '/static/stammdaten.css'):
             self.assertIn(static_path, worker)
         self.assertNotIn("'/api/", worker)
         self.assertIn("url.pathname.startsWith('/static/')", worker)
@@ -88,7 +106,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("'Escape'", shell)
         self.assertIn('phb-nav-open', shell)
         self.assertIn('aria-current', shell)
-        for name in ('index', 'kosten', 'angebote', 'belege', 'finanzierung', 'daten'):
+        for name in ('index', 'kosten', 'angebote', 'belege', 'finanzierung', 'stammdaten', 'daten'):
             html = self.render(name)
             # Navigational links to an official account settings page are fine.
             # Only remote static dependencies (CDNs, scripts, CSS, images) are banned.
