@@ -37,3 +37,19 @@
  .phb-page-daten .phb-export-panel{padding:18px}
  .phb-page-daten .phb-export-grid{grid-template-columns:minmax(0,1fr)}
 }
+
+/* The destructive action is deliberately tucked away below backup and export. */
+.phb-page-daten .phb-data-grid{display:block}
+.phb-page-daten .phb-data-grid #sicherung{margin-bottom:20px}
+.phb-page-daten .phb-data-more{margin:0 0 22px;border:1px solid #efd5ce;border-radius:12px;background:#fff}
+.phb-page-daten .phb-data-more summary{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:8px;cursor:pointer;list-style:none;padding:17px 20px;color:#86544a}
+.phb-page-daten .phb-data-more summary::-webkit-details-marker{display:none}
+.phb-page-daten .phb-data-more summary strong{font-size:14px;font-weight:700}
+.phb-page-daten .phb-data-more summary span{font-size:12px}
+.phb-page-daten .phb-data-more .phb-danger-content{padding:0 20px 20px}
+.phb-page-daten .phb-data-more .phb-danger-content h2{font-size:18px;margin:0 0 10px;color:#93463b}
+.phb-page-daten .phb-data-more .phb-data-symbol{display:none}
+@media(max-width:600px){
+ .phb-page-daten .phb-data-more summary{padding:16px}
+ .phb-page-daten .phb-data-more .phb-danger-content{padding:0 16px 16px}
+}
