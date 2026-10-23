@@ -41,9 +41,96 @@ function render(){
 }
 async function reload(){state=await api('/api/financing');render()}
 function fill(form,obj){for(const [k,v] of Object.entries(obj||{})){const f=form.elements.namedItem(k);if(f&&f.tagName!=='BUTTON')f.value=v??''}}
-function openLoan(id=null){$('loanForm').reset();$('loanForm').elements.namedItem('id').value='';if(id)fill($('loanForm'),state.loans.find(x=>x.id===id));$('deleteLoan').hidden=!id;$('loanDialog').showModal()}
+function documentRows(loan){
+ $('loanDocumentList').innerHTML=(loan.documents||[]).map(d=>`<div class="loan-doc-row">
+   <div><a href="/api/financing/loans/${loan.id}/documents/${d.id}/download">${esc(d.filename)}</a>
+   <small>${esc(d.notes||'Ohne Beschreibung')} · ${esc(d.uploaded_at?.slice(0,10)||'')}</small></div>
+   <button type="button" class="danger" data-delete-loan-document="${d.id}" aria-label="Dokument ${esc(d.filename)} entfernen">Löschen</button>
+ </div>`).join('')||'<p class="hint">Noch keine Dokumente hinterlegt.</p>';
+ $('loanDocumentList').querySelectorAll('[data-delete-loan-document]').forEach(b=>b.onclick=async()=>{
+   if(!confirm('Dieses Kreditdokument endgültig löschen?'))return;
+   try{await api('/api/financing/loans/'+loan.id+'/documents/'+b.dataset.deleteLoanDocument,'DELETE');
+     await reload();const updated=state.loans.find(x=>x.id===loan.id);
+     if(updated)documentRows(updated);
+     $('loanDocumentStatus').textContent='Dokument gelöscht.';
+   }catch(e){$('loanDocumentStatus').textContent=e.message;}
+ });
+}
+function openLoan(id=null){
+ $('loanForm').reset();
+ $('loanForm').elements.namedItem('id').value='';
+ if(id)fill($('loanForm'),state.loans.find(x=>x.id===id));
+ $('deleteLoan').hidden=!id;
+ $('loanAiFile').value='';
+ $('loanAiStatus').textContent='';
+ $('loanAiWarnings').hidden=true;
+ $('loanAiWarnings').replaceChildren();
+ $('loanDocumentStatus').textContent='';
+ $('loanDocumentUpload').reset();
+ $('loanDocuments').hidden=!id;
+ if(id)documentRows(state.loans.find(x=>x.id===id));
+ $('loanDialog').showModal();
+}
 function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;$('equityDialog').showModal()}
 $('newLoan').onclick=()=>openLoan();$('newEquity').onclick=()=>openEquity();
+
+$('loanAiAnalyze').onclick=async()=>{
+ const file=$('loanAiFile').files[0];
+ if(!file){$('loanAiStatus').textContent='Bitte zuerst eine Kreditunterlage auswählen.';return;}
+ const button=$('loanAiAnalyze');
+ let permission;
+ try{permission=window.PHBAI?.selection();if(!permission)throw Error('Bitte zuerst ChatGPT verbinden.');}
+ catch(e){$('loanAiStatus').textContent=e.message;return;}
+ button.disabled=true;
+ $('loanAiStatus').textContent='ChatGPT liest die Kreditunterlage. Die Daten werden noch nicht gespeichert …';
+ $('loanAiWarnings').hidden=true;
+ $('loanAiWarnings').replaceChildren();
+ try{
+   const form=new FormData();
+   form.set('file',file);
+   form.set('model',permission.model);
+   form.set('plan_only','true');
+   const response=await fetch('/api/financing/loans/ai/extract',{
+     method:'POST',headers:{'X-PHB-AI':'1'},body:form
+   });
+   const data=await response.json();
+   if(!response.ok)throw Error(data.error||'ChatGPT-Auslesen fehlgeschlagen.');
+   const found=Object.entries(data.fields||{}).filter(([k,v])=>
+     $('loanForm').elements.namedItem(k)&&v!==null&&v!=='');
+   for(const [key,value] of found)$('loanForm').elements.namedItem(key).value=value;
+   if((data.warnings||[]).length){
+     $('loanAiWarnings').replaceChildren(...data.warnings.map(w=>{
+       const li=document.createElement('li');li.textContent=w;return li;
+     }));
+     $('loanAiWarnings').hidden=false;
+   }
+   $('loanAiStatus').textContent=found.length+
+     ' Vertragsfelder vorausgefüllt. Bitte jeden Wert mit dem Original vergleichen und danach selbst „Kredit speichern“ wählen.';
+ }catch(e){$('loanAiStatus').textContent=e.message;}
+ finally{button.disabled=false;}
+};
+
+$('loanDocumentUpload').onsubmit=async event=>{
+ event.preventDefault();
+ const lid=$('loanForm').elements.namedItem('id').value;
+ if(!lid){$('loanDocumentStatus').textContent='Bitte den Kredit zuerst speichern.';return;}
+ const btn=$('loanDocumentAdd');btn.disabled=true;
+ $('loanDocumentStatus').textContent='Dokument wird lokal gespeichert …';
+ try{
+   const response=await fetch('/api/financing/loans/'+lid+'/documents',{
+     method:'POST',body:new FormData($('loanDocumentUpload'))
+   });
+   const data=await response.json();
+   if(!response.ok)throw Error(data.error||'Hochladen fehlgeschlagen.');
+   $('loanDocumentUpload').reset();
+   await reload();
+   const updated=state.loans.find(x=>x.id===Number(lid));
+   if(updated)documentRows(updated);
+   $('loanDocumentStatus').textContent='Kreditdokument angehängt und in den Projektbackups enthalten.';
+ }catch(e){$('loanDocumentStatus').textContent=e.message;}
+ finally{btn.disabled=false;}
+};
+
 $('closeLoan').onclick=()=>$('loanDialog').close();$('closeEquity').onclick=()=>$('equityDialog').close();
 async function submitForm(event,form,base,dialog){event.preventDefault();let fields=payload(form),id=fields.id;delete fields.id;try{await api(base+(id?'/'+id:''),id?'PATCH':'POST',fields);dialog.close();await reload();message('Gespeichert.')}catch(err){message(err.message,true)}}
 $('loanForm').onsubmit=e=>submitForm(e,$('loanForm'),'/api/financing/loans',$('loanDialog'));
