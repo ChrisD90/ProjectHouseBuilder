@@ -13,10 +13,10 @@
 {% set phb_active = 'daten' %}{% set phb_title = 'Datenverwaltung' %}{% include '_shell_open.html' %}
 <main id="phbMain" class="phb-main">
   <div class="phb-page-intro"><div><span class="phb-page-kicker">Verwaltung / Datensicherheit</span>
-    <h1>Datenverwaltung</h1>
-    <p>Projekt sichern, prüfen und bei Bedarf vollständig zurücksetzen.</p></div></div>
+    <h1>Backup, Export &amp; Datenverwaltung</h1>
+    <p>Vollständige Sicherungen, einzelne Datenexporte, Wiederherstellung und Zurücksetzen – zentral an einem Ort.</p></div></div>
   <div class="phb-data-grid">
-    <section class="panel phb-data-card" aria-labelledby="backupHeading">
+    <section class="panel phb-data-card" id="sicherung" aria-labelledby="backupHeading">
       <div class="phb-data-symbol" aria-hidden="true">↥</div>
       <h2 id="backupHeading">Vollständiges Backup</h2>
       <p>Alle Einträge aus Bauzeitenplan, Kosten, Angeboten, Rechnungen, Finanzierung und sämtliche hochgeladenen Dateien gemeinsam sichern.</p>
@@ -38,6 +38,17 @@
       <p class="phb-data-footnote">Nur bei lokalem SQLite-Betrieb verfügbar. NAS/PostgreSQL und gespeicherte Backups werden nicht gelöscht.</p>
     </section>
   </div>
+  <section class="panel phb-data-help phb-export-panel" id="exporte">
+    <div class="phb-export-intro"><h2>Daten exportieren</h2>
+      <p>Für Tabellenkalkulation oder den Austausch mit anderen Anwendungen. <strong>CSV und JSON enthalten keine Originaldateien.</strong> Für eine vollständige Sicherung einschließlich Dokumenten das geprüfte Backup oben verwenden.</p></div>
+    <div class="phb-export-grid">
+      <a href="/api/export.csv" download><strong>Bauzeitenplan</strong><span>Arbeitspakete und Termine · CSV</span></a>
+      <a href="/api/budget.csv" download><strong>Kostenplan</strong><span>Planpositionen und Prognosen · CSV</span></a>
+      <a href="/api/costs.csv" download><strong>Kosten &amp; Aufträge</strong><span>Weitere Kostenpositionen · CSV</span></a>
+      <a href="/api/backup.json" download><strong>Projektstruktur</strong><span>Strukturierte Daten ohne Dateien · JSON</span></a>
+      <a href="/api/project-archive.zip" download><strong>Projektarchiv herunterladen</strong><span>ZIP mit Projektdateien; bei PostgreSQL keine vollständige Datenbanksicherung</span></a>
+    </div>
+  </section>
   <div id="dataNotice" role="status" aria-live="polite" class="phb-data-notice" hidden></div>
   <section class="panel phb-data-help">
     <h2>Wiederherstellen</h2>
