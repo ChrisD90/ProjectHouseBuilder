@@ -68,6 +68,20 @@ class ChatGPTLocalTests(unittest.TestCase):
         self.assertEqual(self.home.stat().st_mode & 0o777,0o700)
         self.assertEqual(self.client.get('/auth/callback?code=replay&state='+params['state'][0],base_url='http://127.0.0.1:5055').headers['Location'],'/angebote?ai=error')
 
+    def test_failed_oauth_callback_is_logged_without_credentials(self):
+        # The browser stays on the generic error page; diagnosis belongs in server logs.
+        with self.assertLogs(app.logger.name, level='WARNING') as captured:
+            callback=self.client.get(
+                '/auth/callback?code=private-code-value&state=private-state-value',
+                base_url='http://127.0.0.1:5055')
+        self.assertEqual(callback.status_code,302)
+        self.assertEqual(callback.headers['Location'],'/angebote?ai=error')
+        log='\n'.join(captured.output)
+        self.assertIn('ChatGPT OAuth-Callback fehlgeschlagen:',log)
+        self.assertIn('Anmeldung abgelaufen oder nicht verifiziert',log)
+        self.assertNotIn('private-code-value',log)
+        self.assertNotIn('private-state-value',log)
+
     def test_untrusted_remote_and_origin_blocked_even_with_header(self):
         self.profile()
         res=self.client.post('/api/ai/connect',headers=self.headers(),json={},
