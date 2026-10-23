@@ -84,7 +84,8 @@ class ChatGPTLocalTests(unittest.TestCase):
 
     def test_callback_error_details_are_session_bound_and_hidden_until_requested(self):
         self.assertEqual(self.client.get('/api/ai/diagnostics').status_code,403)
-        none=self.client.get('/api/ai/diagnostics',headers=self.headers(),\n                             base_url='http://127.0.0.1:5055')
+        none=self.client.get('/api/ai/diagnostics',headers=self.headers(),
+                             base_url='http://127.0.0.1:5055')
         self.assertEqual(none.status_code,200)
         self.assertFalse(none.json['available'])
 
@@ -99,7 +100,8 @@ class ChatGPTLocalTests(unittest.TestCase):
                                      base_url='http://127.0.0.1:5055')
         self.assertEqual(callback.status_code,302)
         self.assertEqual(callback.headers['Location'],'/angebote?ai=error')
-        diagnostics=self.client.get('/api/ai/diagnostics',headers=self.headers(),\n                                    base_url='http://127.0.0.1:5055')
+        diagnostics=self.client.get('/api/ai/diagnostics',headers=self.headers(),
+                                    base_url='http://127.0.0.1:5055')
         self.assertEqual(diagnostics.headers.get('Cache-Control'),'no-store')
         data=diagnostics.json
         self.assertTrue(data['available'])
@@ -118,7 +120,8 @@ class ChatGPTLocalTests(unittest.TestCase):
         self.client.post('/api/ai/connect',json={},headers=self.headers(),
                          base_url='http://127.0.0.1:5055')
         self.assertFalse(self.client.get('/api/ai/diagnostics',
-                                         headers=self.headers(),\n                                         base_url='http://127.0.0.1:5055').json['available'])
+                                         headers=self.headers(),
+                                         base_url='http://127.0.0.1:5055').json['available'])
 
     def test_oauth_diagnostics_never_expose_unknown_upstream_text(self):
         from app import _ai_safe_callback_diagnostic
