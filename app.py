@@ -728,6 +728,8 @@ def ai_schedule_apply():
             for pred in t['predecessors']:
                 db.session.add(Dependency(task_id=codes[t['code']],predecessor_id=codes[pred]))
         db.session.flush();schedule(all_tasks(),parse_date(setting('start')))
+        _schedule_audit('KI-Startplan','KI-Erstplanung nach Prüfung übernommen.',
+                        [{'action':'add','code':t['code'],'name':t['name']} for t in checked])
         db.session.commit()
         session.pop('ai_schedule_digest',None);session.pop('ai_schedule_expiry',None)
         return jsonify(ok=True,created=len(checked)),201
@@ -1009,6 +1011,8 @@ def tasks_initialize_from_template():
                 db.session.add(Dependency(task_id=codes[row['code']],predecessor_id=codes[pred]))
         db.session.flush()
         schedule(all_tasks(),start)
+        _schedule_audit('Musterplan','Muster-Bauzeitenplan ausdrücklich übernommen.',
+                        [{'action':'add','code':row['code'],'name':row['name']} for row in steps])
         db.session.commit()
         return jsonify(ok=True,created=len(steps),summary=schedule_template_summary(steps)),201
     except (ValueError,TypeError,OSError) as exc:
@@ -1051,8 +1055,12 @@ def clear_schedule_after_backup():
     except (ValueError,OSError,sqlite3.DatabaseError,zipfile.BadZipFile) as exc:
         return jsonify(error='Zeitplan unverändert: Vollständige Sicherung fehlgeschlagen: '+str(exc)),409
     try:
+        previous=_schedule_snapshot()
         db.session.execute(db.delete(Dependency))
         db.session.execute(db.delete(Task))
+        _schedule_audit('Manuell','Bauzeitenplan nach geprüftem Komplettbackup geleert.',
+                        [{'action':'remove','code':row['code'],'name':row['name']}
+                         for row in previous[:180]])
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -1067,8 +1075,15 @@ def update_project():
     try:
         start=parse_date(body.get('start'))
         if not start: raise ValueError('Projektstart fehlt.')
-        obj=db.session.get(Setting,'start');obj.value=start.isoformat()
+        obj=db.session.get(Setting,'start')
+        old=obj.value
+        obj.value=start.isoformat()
         schedule(all_tasks(), start)
+        if old!=start.isoformat():
+            _schedule_audit('Manuell','Projektstart geändert.',
+                            [{'action':'update','code':'PROJEKTSTART',
+                              'changes':[{'field':'start','before':old,
+                                          'after':start.isoformat()}]}])
         db.session.commit()
         return jsonify({'start':start.isoformat()})
     except (ValueError,TypeError) as err:
@@ -1113,6 +1128,8 @@ def create_task():
         db.session.flush()
         set_predecessors(task,body.get('predecessors',[]))
         schedule(all_tasks(),parse_date(setting('start')))
+        _schedule_audit('Manuell','Arbeitspaket '+task.code+' erstellt.',
+                        [{'action':'add','code':task.code,'name':task.name}])
         db.session.commit()
         return jsonify({'ok':True,'id':task.id}),201
     except (ValueError,TypeError) as err:
@@ -1126,10 +1143,21 @@ def update_task(task_id):
     if not t:return jsonify(error='Aufgabe nicht gefunden.'),404
     body=request.get_json(force=True)
     try:
+        previous=next(x for x in _schedule_snapshot() if x['id']==task_id)
         update_task_fields(t,body)
         db.session.flush()
         if 'predecessors' in body:set_predecessors(t,body['predecessors'])
         schedule(all_tasks(),parse_date(setting('start')))
+        current=next(x for x in _schedule_snapshot() if x['id']==task_id)
+        differences=[{'field':k,'before':previous[k],'after':current[k]}
+                     for k in ('code','name','phase','trade','execution_type','duration',
+                               'lag_days','predecessors','status','progress','notes',
+                               'earliest_start','actual_start','actual_end')
+                     if previous[k]!=current[k]]
+        if differences:
+            _schedule_audit('Manuell','Arbeitspaket '+previous['code']+' angepasst.',
+                            [{'action':'update','code':previous['code'],
+                              'name':current['name'],'changes':differences}])
         db.session.commit()
         return jsonify({'ok':True})
     except (ValueError,TypeError) as err:
@@ -1143,6 +1171,8 @@ def delete_task(task_id):
     if not t:return jsonify(error='Aufgabe nicht gefunden.'),404
     dependents=db.session.scalars(select(Dependency).where(Dependency.predecessor_id==task_id)).all()
     if dependents:return jsonify(error='Andere Aufgaben hängen davon ab. Zuerst die Abhängigkeiten entfernen.'),409
+    _schedule_audit('Manuell','Arbeitspaket '+t.code+' entfernt.',
+                    [{'action':'remove','code':t.code,'name':t.name}])
     db.session.delete(t);db.session.commit()
     return jsonify({'ok':True})
 
