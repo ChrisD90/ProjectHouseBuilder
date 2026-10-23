@@ -55,12 +55,12 @@ OCR von Bildern benötigt zusätzlich Tesseract und Poppler auf dem Mac; bei les
 ## Angebotsverwaltung: Einfacher Ablauf
 
 1. In der **linken Sidebar → Angebote** öffnen (`http://127.0.0.1:5055/angebote`).
-2. **PDF hochladen** → die App liest lokal aus und legt einen prüfbaren Entwurf an. Firma, Bruttosumme, Kategorie und optional Kostenplanposition kontrollieren und auf „Geprüft – in Liste übernehmen“ klicken. **Oder:** **Manuell erfassen** → Anbieter, Bruttosumme und Kategorie eintragen; direkt „Angebot speichern“ drücken.
+2. **PDF hochladen** → die App liest lokal aus und legt einen prüfbaren Entwurf an. Vor der Übernahme kannst du **jede erkannte Einzelposition aufklappen, ändern oder löschen** und **weitere Positionen etwa aus gesonderten Beiblättern hinzufügen**. Mengen, Einzelpreise, Netto-Positionsbeträge, Leistungsgruppen, optionale Positionen und PDF-Seiten lassen sich korrigieren. „Aus Menge × Einzelpreis berechnen“ schlägt auf Wunsch einen Betrag vor. Eine leere Positionsliste ist bei nicht lesbaren Scans erlaubt. Die Summe der nicht-optionalen Positionen wird mit dem geprüften Angebotsnetto verglichen; Differenzen und fehlende Beträge werden angezeigt, der **Bruttogesamtbetrag nie automatisch überschrieben**. Den Entwurf bei Bedarf zwischenspeichern und erst dann „Geprüft – in Liste übernehmen“ wählen. **Oder:** **Manuell erfassen** → Anbieter, Bruttosumme und Kategorie eintragen; direkt „Angebot speichern“ drücken.
 3. Alle Angebote in einer Liste nach Gewerk und Gesamtbetrag vergleichen. **Annehmen** überträgt den Preis als beauftragten Wert in die Kostenprognose; Ablehnen behält das Angebot zum Vergleich ohne Kostenwirkung.
 4. **Kosten & Budget** dient nur für Schätzungen, zusätzliche Ausgaben und die Gesamtübersicht. Wenn ein Angebot einer Planposition zugeordnet ist, ersetzt der angenommene Preis deren Schätzwert; ohne Zuordnung gilt es als zusätzlicher Auftrag.
 5. **Rechnungen & Belege** erfasst tatsächliche Rechnungen, Zahlungen und Finanzierung.
 
-Es ist **keine zusätzliche Datenbankmigration** für diese UI-Vereinfachung nötig. Die manuelle Angebotserfassung nutzt die bestehende Angebotstabelle. Vollständige Sicherungen umfassen weiterhin alle Angebote und privaten PDFs.
+Es ist **keine zusätzliche Datenbankmigration** für die einfache Bedienung oder den Positionseditor nötig. Bereits gespeicherte PDF-Einzelpositionen liegen in der bestehenden Angebotstabelle und bleiben erhalten. Nach der Übernahme in die Angebotsliste sind die Positionen gegen nachträgliche Änderungen gesperrt; zunächst ggf. vor der Annahme den PDF-Entwurf korrigieren. Vollständige Sicherungen umfassen weiterhin alle Angebote und privaten PDFs.
 
 
 ## Abschlags- und Schlussrechnungen zu angenommenen Angeboten

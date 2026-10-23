@@ -17,7 +17,7 @@
   const stage = o => ({Entwurf:['Noch prüfen','stage-draft'],Angebot:['Zum Vergleich','stage-listed'],Angenommen:['Angenommen','stage-accepted'],Beauftragt:['Angenommen','stage-accepted'],Abgelehnt:['Abgelehnt','stage-rejected']}[o.status] || [o.status,'stage-listed']);
   const notice = o => (o.warnings||[]).length
     ? `<details class="offer-warnings"><summary>Hinweise zur Erkennung (${o.warnings.length})</summary><ul>${o.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>` : '';
-  const parsedPositions = o => (o.positions||[]).length ? `<details class="offer-details"><summary>Erkannte Einzelpositionen (${o.positions.length}) – nur zur Kontrolle</summary><div class="tablewrap"><table><thead><tr><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td>${esc(p.number)}</td><td>${esc(p.description)}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div></details>` : '';
+  const parsedPositions = o => (o.positions||[]).length ? `<details class="offer-details"><summary>Einzelpositionen (${o.positions.length}) – geprüft / ergänzt</summary><div class="tablewrap"><table><thead><tr><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td>${esc(p.number)}</td><td>${esc(p.description)}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div></details>` : '';
 
   function fields(o) {
     return `<label>Anbieter / Firma<input name="vendor" maxlength="200" value="${esc(o.vendor==='Firma nicht erkannt'?'':o.vendor)}" required placeholder="Name des Handwerkers"></label>
@@ -34,11 +34,97 @@
       </div></details>`;
   }
 
+  function positionCard(p={}, idx=0, expanded=false) {
+    const num=p.number==null ? String(idx+1) : String(p.number);
+    const text=p.description||'';
+    const moneyInput = val => val==null ? '' : esc(val);
+    return `<details class="offer-position-row" data-position-row ${expanded?'open':''}>
+      <summary class="offer-position-title"><strong data-position-label>Pos. ${esc(num)} · ${esc(text||'Neue Position')}</strong><span class="offer-position-amount">${p.optional?'Optional · ':''}${p.net_amount==null?'Betrag offen':fmt(p.net_amount)+' netto'}</span></summary>
+      <div class="offer-position-fields">
+        <label>Positionsnummer<input data-position-field="number" value="${esc(num)}" maxlength="30" placeholder="z. B. 3.2"></label>
+        <label class="offer-position-description">Leistungsbeschreibung<input data-position-field="description" value="${esc(text)}" maxlength="300" placeholder="z. B. Leitungen verlegen" required></label>
+        <label>Leistungsgruppe / Beiblatt<input data-position-field="section" value="${esc(p.section||'')}" maxlength="170" placeholder="z. B. Elektro oder Anlage 2"></label>
+        <label>Menge<input data-position-field="quantity" inputmode="decimal" value="${moneyInput(p.quantity)}" placeholder="1"></label>
+        <label>Einheit<input data-position-field="unit" value="${esc(p.unit||'')}" maxlength="40" placeholder="Stk., m², Std."></label>
+        <label>Einzelpreis netto (€)<input data-position-field="unit_price" inputmode="decimal" value="${moneyInput(p.unit_price)}" placeholder="0,00"></label>
+        <label>Positionssumme netto (€)<input data-position-field="net_amount" inputmode="decimal" value="${moneyInput(p.net_amount)}" placeholder="0,00"></label>
+        <label>Optionaler Positionsbetrag (€)<input data-position-field="optional_amount" inputmode="decimal" value="${moneyInput(p.optional_amount)}" placeholder="Nur bei optionaler Position"></label>
+        <label>PDF-Seite (optional)<input data-position-field="page" type="number" min="1" max="9999" step="1" value="${moneyInput(p.page)}" placeholder="Seite"></label>
+        <label class="offer-position-optional"><input type="checkbox" data-position-field="optional" ${p.optional?'checked':''}> Optionale / nicht beauftragte Position</label>
+        <div class="offer-position-tools"><button type="button" class="mini" data-position-calculate>Aus Menge × Einzelpreis berechnen</button><button type="button" class="offer-text-danger" data-position-remove>Position entfernen</button></div>
+      </div>
+    </details>`;
+  }
+
+  function positionEditor(o) {
+    const positions=o.positions||[];
+    return `<section class="offer-positions-editor offer-wide" data-positions-editor>
+      <div class="offer-positions-head"><div><h4>Einzelpositionen prüfen und ergänzen</h4><p>Erkannte Positionen bearbeiten, fehlende Leistungen aus zusätzlichen Formularen eintragen oder falsche Positionen entfernen. Leere Beträge sind erlaubt.</p></div>
+      <button type="button" class="mini" data-position-add>+ Position hinzufügen</button></div>
+      <div class="offer-position-list" data-position-list>${positions.map((p,i)=>positionCard(p,i,i===0)).join('')}</div>
+      <p class="offer-position-empty" data-position-empty ${positions.length?'hidden':''}>Keine Einzelpositionen erkannt. Du kannst sie jetzt manuell hinzufügen oder das Angebot nur mit einer Gesamtsumme übernehmen.</p>
+      <div class="offer-positions-reconcile" data-position-summary role="status" aria-live="polite"></div>
+      <p class="offer-positions-footnote">Die Positionen werden netto geprüft. Optionale Leistungen zählen nicht zur Summe. Der <strong>Bruttogesamtbetrag oben bleibt unverändert</strong>, solange du ihn nicht selbst anpasst.</p>
+    </section>`;
+  }
+  function collectDraft(form) {
+    const data=readForm(form);
+    data.positions=[...form.querySelectorAll('[data-position-row]')].map(row=>{
+      const field=name=>row.querySelector(`[data-position-field="${name}"]`);
+      return {number:field('number').value,description:field('description').value,
+        section:field('section').value,quantity:field('quantity').value,
+        unit:field('unit').value,unit_price:field('unit_price').value,
+        net_amount:field('net_amount').value,optional_amount:field('optional_amount').value,
+        page:field('page').value,optional:field('optional').checked};
+    });
+    return data;
+  }
+  function readMoney(raw) {
+    const text=String(raw??'').trim();
+    if (!text) return null;
+    const normalized=/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(text)
+      ? text.replace(/\./g,'').replace(',','.') : text.replace(',','.');
+    const n=Number(normalized);
+    return Number.isFinite(n)&&n>=0?n:NaN;
+  }
+  function checkPositions(form) {
+    const summary=form.querySelector('[data-position-summary]');
+    if (!summary) return {warning:false};
+    const positions=collectDraft(form).positions;
+    const included=positions.filter(p=>!p.optional);
+    const subtotal=included.reduce((acc,p)=>acc+(readMoney(p.net_amount)||0),0);
+    const missing=included.filter(p=>readMoney(p.net_amount)==null||Number.isNaN(readMoney(p.net_amount))).length;
+    const formNet=readMoney(form.elements.namedItem('net')?.value);
+    const formGross=readMoney(form.elements.namedItem('gross')?.value);
+    const formVat=readMoney(form.elements.namedItem('vat')?.value);
+    const target=formNet==null&&formGross!=null&&formVat!=null?formGross-formVat:formNet;
+    const different=target!=null && Number.isFinite(target) && included.length && missing===0 && Math.abs(subtotal-target)>0.025;
+    const matching=target!=null && Number.isFinite(target) && included.length && missing===0 && !different;
+    const invalid=[...form.querySelectorAll('[data-position-row] input')].some(input=>!input.validity.valid);
+    summary.classList.toggle('offer-position-alert',Boolean(different||missing||invalid));
+    summary.innerHTML=`<strong>${positions.length} Positionen</strong> · ${fmt(subtotal)} netto (ohne ${positions.length-included.length} optionale)`
+      +(missing?`<span>${missing} Position(en) ohne erfassten Nettobetrag.</span>`:'')
+      +(different?`<span>Abweichung zur Angebotsnettosumme: ${fmt(subtotal-target)}. Bitte Preise und Gesamtbetrag prüfen.</span>`:'')
+      +(matching?'<span>✓ Positionssumme und Angebotsnetto stimmen überein.</span>':'')
+      +(!matching&&!different&&target==null?'<span>Für den Nettovergleich bitte auch Angebot netto oder MwSt. prüfen.</span>':'');
+    form.querySelector('[data-position-empty]').hidden=positions.length>0;
+    for (const row of form.querySelectorAll('[data-position-row]')) {
+      const label=row.querySelector('[data-position-label]');
+      const num=row.querySelector('[data-position-field="number"]').value;
+      const desc=row.querySelector('[data-position-field="description"]').value;
+      const opt=row.querySelector('[data-position-field="optional"]').checked;
+      const amount=readMoney(row.querySelector('[data-position-field="net_amount"]').value);
+      label.textContent=`Pos. ${num||'–'} · ${desc||'Neue Position'}`;
+      row.querySelector('.offer-position-amount').textContent=(opt?'Optional · ':'')+(amount==null||Number.isNaN(amount)?'Betrag offen':fmt(amount)+' netto');
+    }
+    return {warning:Boolean(different||missing||invalid),different,missing};
+  }
+
   function renderDraft(o) {
     const [label,color] = stage(o);
     return `<article class="offer-card offer-draft-card" data-offer-card="${o.id}"><div class="offer-card-head"><div><span class="offer-stage ${color}">${label}</span><h3>${esc(o.filename)}</h3><p>${sourceLabel(o)} · Werte bitte vor der Übernahme prüfen.</p></div></div>
-      ${notice(o)}<form class="offer-review-form" data-review="${o.id}">${fields(o)}
-      <div class="offer-form-actions"><button type="button" class="primary" data-offer-promote="${o.id}">Geprüft – in Liste übernehmen</button><button type="submit" class="mini">Entwurf zwischenspeichern</button><button type="button" class="offer-text-danger" data-offer-delete="${o.id}">Entwurf löschen</button></div></form>${parsedPositions(o)}</article>`;
+      ${notice(o)}<form class="offer-review-form" data-review="${o.id}">${fields(o)}${positionEditor(o)}
+      <div class="offer-form-actions"><button type="button" class="primary" data-offer-promote="${o.id}">Geprüft – in Liste übernehmen</button><button type="submit" class="mini">Entwurf zwischenspeichern</button><button type="button" class="offer-text-danger" data-offer-delete="${o.id}">Entwurf löschen</button></div></form></article>`;
   }
 
   function billingBlock(o) {
@@ -80,6 +166,7 @@
     $('offersCountAccepted').textContent=String(accepted.length);
     $('offersDraftBadge').textContent=drafts.length?`(${drafts.length})`:'';
     $('offerDrafts').innerHTML=drafts.length ? drafts.map(renderDraft).join('') : '<p class="offer-empty">Keine offenen PDF-Entwürfe. Neue PDF-Dateien kannst du oben hochladen.</p>';
+    $('offerDrafts').querySelectorAll('[data-review]').forEach(checkPositions);
     const filter=$('offerCategoryFilter'), prev=filter.value;
     filter.innerHTML=option('','Alle Kategorien',prev)+categories.map(c=>option(c,c,prev)).join('');
     filter.value=categories.includes(prev)?prev:'';
@@ -147,10 +234,48 @@
       $('angebotsliste').scrollIntoView({behavior:'smooth',block:'start'});
     } catch(err) {inform('offerManualStatus','Fehler: '+err.message,true)}
   });
+  document.addEventListener('click',e=>{
+    const add=e.target.closest('[data-position-add]');
+    if(add){
+      const editor=add.closest('[data-positions-editor]');
+      const list=editor.querySelector('[data-position-list]');
+      list.insertAdjacentHTML('beforeend',positionCard({},list.children.length,true));
+      list.lastElementChild.querySelector('[data-position-field="description"]').focus();
+      checkPositions(add.closest('form'));
+      return;
+    }
+    const remove=e.target.closest('[data-position-remove]');
+    if(remove){
+      if(!confirm('Diese Einzelposition aus dem Entwurf entfernen? Die Änderung wird erst beim Speichern wirksam.'))return;
+      const form=remove.closest('form');remove.closest('[data-position-row]').remove();checkPositions(form);
+      return;
+    }
+    const calculate=e.target.closest('[data-position-calculate]');
+    if(calculate){
+      const row=calculate.closest('[data-position-row]');
+      const q=readMoney(row.querySelector('[data-position-field="quantity"]').value);
+      const price=readMoney(row.querySelector('[data-position-field="unit_price"]').value);
+      if(q===null||price===null||!Number.isFinite(q)||!Number.isFinite(price)){
+        alert('Bitte zuerst eine gültige Menge und einen gültigen Einzelpreis eingeben.');return;
+      }
+      const value=(Math.round((q*price+Number.EPSILON)*100)/100).toFixed(2);
+      const target=row.querySelector(row.querySelector('[data-position-field="optional"]').checked
+        ? '[data-position-field="optional_amount"]':'[data-position-field="net_amount"]');
+      target.value=value;checkPositions(calculate.closest('form'));
+    }
+  });
+  document.addEventListener('input',e=>{
+    const form=e.target.closest('form[data-review]');
+    if(form && (e.target.closest('[data-position-row]') || ['gross','net','vat'].includes(e.target.name)))checkPositions(form);
+  });
+  document.addEventListener('change',e=>{
+    const form=e.target.closest('form[data-review]');
+    if(form && e.target.closest('[data-position-row]'))checkPositions(form);
+  });
   document.addEventListener('submit',async e=>{
     const form=e.target.closest('[data-review]');if(!form)return;
     e.preventDefault();
-    try {await update(form.dataset.review,readForm(form)); await reload()}
+    try {await update(form.dataset.review,collectDraft(form)); await reload()}
     catch(err){alert(err.message)}
   });
   document.addEventListener('click',async e=>{
@@ -171,7 +296,9 @@
       if(key==='offerPromote'){
         const form=button.closest('form');
         if(!form.reportValidity())return;
-        await update(id,readForm(form));await changeStatus(id,'Angebot');
+        const checked=checkPositions(form);
+        if(checked.warning && !confirm('Einige Positionsbeträge fehlen oder die Positionssumme weicht von der Angebotssumme ab. Trotzdem als geprüft in die Liste übernehmen?'))return;
+        await update(id,collectDraft(form));await changeStatus(id,'Angebot');
         $('angebotsliste').scrollIntoView({behavior:'smooth',block:'start'});
       }
       if(key==='offerAccept'){

@@ -7,7 +7,7 @@
   <div class="heading offers-heading"><div><span class="phb-page-kicker">Finanzen / Handwerkerangebote</span><h1>Angebote</h1><p>Alle Angebote an einem Ort: per PDF einlesen oder direkt eingeben, vergleichen und später entscheiden.</p></div><a class="mini" href="/kosten">Kostenübersicht ansehen →</a></div>
   <div class="offers-how" aria-label="So funktioniert die Angebotsverwaltung">
     <span><b>1</b> Angebot erfassen</span><span class="offers-how-arrow" aria-hidden="true">→</span>
-    <span><b>2</b> PDF-Daten prüfen</span><span class="offers-how-arrow" aria-hidden="true">→</span>
+    <span><b>2</b> PDF-Daten und Positionen prüfen</span><span class="offers-how-arrow" aria-hidden="true">→</span>
     <span><b>3</b> Angebot annehmen oder ablehnen</span>
   </div>
   <p class="offers-clarity">Erst wenn du <strong>„Annehmen“</strong> auswählst, wird die Bruttosumme in <a href="/kosten">Kosten & Budget</a> übernommen. Hochladen, Speichern oder Vergleichen kostet noch nichts.</p>
@@ -18,7 +18,7 @@
      <button type="button" id="offerMethodManual" class="offer-method" aria-pressed="false">Manuell erfassen <small>Firma und Gesamtbetrag eingeben</small></button>
    </div>
    <form id="offerImportForm" class="offer-entry-form"><label class="offer-file-label">Angebots-PDF auswählen <input type="file" name="file" accept=".pdf,application/pdf" required></label>
-     <button type="submit" class="primary">PDF analysieren</button><p class="offer-import-status" id="offerImportStatus" role="status">Die PDF wird lokal analysiert. Erkannte Daten kannst du vor dem Speichern korrigieren.</p></form>
+     <button type="submit" class="primary">PDF analysieren</button><p class="offer-import-status" id="offerImportStatus" role="status">Die PDF wird lokal analysiert. Du kannst erkannte Positionen bearbeiten, weitere Leistungen aus Beiblättern ergänzen oder fehlerhafte Einträge löschen, bevor du das Angebot übernimmst.</p></form>
    <form id="offerManualForm" class="offer-entry-form offer-manual-form" hidden>
     <label>Firma / Anbieter <input name="vendor" maxlength="200" required placeholder="z. B. Elektro Mustermann"></label>
     <label>Bruttogesamtsumme (€) <input name="gross" inputmode="decimal" required placeholder="z. B. 8.500,00"></label>
@@ -35,7 +35,7 @@
     <div class="offer-manual-actions"><button class="primary" type="submit">Angebot speichern</button><span id="offerManualStatus" class="offer-import-status" role="status">Das Angebot erscheint direkt in der Liste. Es wird noch nicht beauftragt.</span></div>
    </form>
   </section>
-  <section class="panel budget-panel offer-review-section" id="angebote-pruefen"><div class="panelbar"><div><h2>PDF-Angebote prüfen <span id="offersDraftBadge" class="offers-counter"></span></h2><p>Nur falls du eine PDF hochgeladen hast: Prüfe die vorgeschlagenen Daten und übernimm sie mit einem Klick.</p></div><a class="mini" href="/belege">Kategorien verwalten ↗</a></div><div id="offerDrafts" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div></section>
+  <section class="panel budget-panel offer-review-section" id="angebote-pruefen"><div class="panelbar"><div><h2>PDF-Angebote prüfen <span id="offersDraftBadge" class="offers-counter"></span></h2><p>Nur falls du eine PDF hochgeladen hast: Prüfe Gesamtsumme und Einzelpositionen: hinzufügen, korrigieren oder entfernen – erst danach in die Liste übernehmen.</p></div><a class="mini" href="/belege">Kategorien verwalten ↗</a></div><div id="offerDrafts" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div></section>
   <section class="panel budget-panel offer-compare-section" id="angebotsliste"><div class="panelbar"><div><h2>Deine Angebote</h2><p>Preise vergleichen, bearbeiten und entscheiden. Abgelehnte Angebote bleiben als Vergleich erhalten.</p></div><label class="offers-filter">Gewerk <select id="offerCategoryFilter"><option value="">Alle Kategorien</option></select></label></div>
    <div id="offerList" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div>
    <p class="section-note">Bei angenommener Leistung wird der Bruttogesamtbetrag genau einmal übernommen. Wenn du eine Kostenplanposition zuordnest, ersetzt der angenommene Preis deren Schätzung. Zu jedem <strong>angenommenen Angebot</strong> siehst du hier die Teilrechnungen, den bereits bezahlten Betrag und mögliche Überziehungen. Rechnungen werden unter <a href="/belege">Rechnungen & Belege</a> erfasst.</p>

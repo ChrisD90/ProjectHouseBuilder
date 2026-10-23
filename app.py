@@ -775,10 +775,10 @@ def offer_dict(o):
             'contractor_id':o.contractor_id,'billing':offer_billing_dict(o),
             'sections':[{'id':g.id,'name':g.name,'net':g.net,'gross':g.gross,'budget_line_id':g.budget_line_id,
                          'selected':g.selected} for g in sorted(o.sections,key=lambda x:x.sort_order)],
-            'positions':[{'number':p.number,'section':p.section,'description':p.description,
+            'positions':[{'id':p.id,'number':p.number,'section':p.section,'description':p.description,
                           'quantity':p.quantity,'unit':p.unit,'unit_price':p.unit_price,
                           'net_amount':p.net_amount,'optional_amount':p.optional_amount,
-                          'optional':p.optional,'page':p.page} for p in o.positions]}
+                          'optional':p.optional,'page':p.page} for p in sorted(o.positions, key=lambda x:x.id)]}
 
 
 def _analyse_pdf_offer(data, name):
@@ -942,6 +942,91 @@ def _apply_offer_fields(offer, values):
         offer.tax_rate = round((offer.gross / offer.net - 1) * 100, 2)
 
 
+def _validated_offer_positions(raw):
+    """Parse a replacement draft position list before touching any persisted rows.
+
+    Unknown/extraneous input fields are deliberately discarded. The gross total
+    of the quotation remains independent from these OCR-derived details.
+    """
+    from decimal import Decimal, InvalidOperation
+    if not isinstance(raw, list) or len(raw) > 500:
+        raise ValueError('Bitte maximal 500 Angebotspositionen als Liste senden.')
+    validated = []
+    for index, item in enumerate(raw, 1):
+        if not isinstance(item, dict):
+            raise ValueError(f'Position {index}: ungültige Eingabe.')
+        output = {}
+        for field, length in (('number', 30), ('section', 170), ('description', 300), ('unit', 40)):
+            value = item.get(field, '')
+            if not isinstance(value, str):
+                raise ValueError(f'Position {index}: {field} muss Text sein.')
+            value = value.strip()
+            if len(value) > length or any(ord(c) < 32 for c in value):
+                raise ValueError(f'Position {index}: {field} ist ungültig oder zu lang.')
+            output[field] = value
+        if not output['description']:
+            raise ValueError(f'Position {index}: Bitte eine Leistungsbeschreibung eingeben.')
+        if not output['number']:
+            output['number'] = str(index)
+        optional = item.get('optional', False)
+        if not isinstance(optional, bool):
+            raise ValueError(f'Position {index}: optionale Leistung muss Ja oder Nein sein.')
+        output['optional'] = optional
+        for field in ('unit_price', 'net_amount', 'optional_amount'):
+            output[field] = _offer_amount(item.get(field), f'Position {index}, {field}')
+        qty = item.get('quantity')
+        if qty in (None, ''):
+            output['quantity'] = None
+        else:
+            try:
+                formatted = str(qty).strip().replace(',', '.')
+                value = Decimal(formatted)
+                if (not value.is_finite() or value < 0 or value > Decimal('99999999')
+                        or value.as_tuple().exponent < -6):
+                    raise ValueError()
+                output['quantity'] = float(value)
+            except (InvalidOperation, TypeError, ValueError):
+                raise ValueError(f'Position {index}: Menge muss eine nichtnegative Zahl sein (maximal sechs Nachkommastellen).')
+        page = item.get('page')
+        if page in (None, ''):
+            output['page'] = None
+        else:
+            try:
+                page = int(page)
+                if page < 1 or page > 9999 or str(page) != str(item.get('page')).strip():
+                    raise ValueError()
+                output['page'] = page
+            except (TypeError, ValueError):
+                raise ValueError(f'Position {index}: Seitennummer muss zwischen 1 und 9999 liegen.')
+        validated.append(output)
+    return validated
+
+
+def _update_draft_positions(offer, rows):
+    """Rebuild dependent OCR sections from reviewed data; no stale subtotals."""
+    from decimal import Decimal
+    offer.positions.clear()
+    offer.sections.clear()
+    totals = {}
+    complete = True
+    for pos in rows:
+        offer.positions.append(OfferPosition(**pos))
+        if not pos['optional']:
+            if pos['net_amount'] is None:
+                complete = False
+            else:
+                group = pos['section'] or 'Weitere Leistungen'
+                totals[group] = totals.get(group, Decimal('0')) + Decimal(str(pos['net_amount']))
+    multiplier = (Decimal(str(offer.gross)) / Decimal(str(offer.net))
+                  if offer.net is not None and offer.net > 0 and offer.gross is not None else Decimal('1'))
+    for index, (name, net) in enumerate(totals.items()):
+        offer.sections.append(OfferSection(name=name, net=float(net),
+                            gross=float(round(net * multiplier, 2)), sort_order=index, selected=False))
+    total = sum(totals.values(), Decimal('0'))
+    offer.reconciled = bool(rows and complete and offer.net is not None
+                            and abs(total - Decimal(str(offer.net))) <= Decimal('0.02'))
+
+
 @app.patch('/api/offers/<int:offer_id>/draft')
 def offer_draft_update(offer_id):
     offer = db.session.get(Offer, offer_id)
@@ -952,8 +1037,14 @@ def offer_draft_update(offer_id):
     values = request.get_json(silent=True) or {}
     if not isinstance(values, dict):
         return jsonify(error='Bitte gültige Angebotsdaten senden.'), 400
+    if 'positions' in values and offer.status != 'Entwurf':
+        return jsonify(error='Einzelpositionen können nur vor der Übernahme aus dem PDF-Entwurf geändert werden.'), 409
     try:
+        # Validate all rows first, then apply details and rows in one database transaction.
+        positions = _validated_offer_positions(values['positions']) if 'positions' in values else None
         _apply_offer_fields(offer, values)
+        if positions is not None:
+            _update_draft_positions(offer, positions)
         db.session.commit()
         return jsonify(ok=True, offer=offer_dict(offer))
     except (ValueError, TypeError) as exc:
