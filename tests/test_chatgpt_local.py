@@ -82,6 +82,56 @@ class ChatGPTLocalTests(unittest.TestCase):
         self.assertNotIn('private-code-value',log)
         self.assertNotIn('private-state-value',log)
 
+    def test_callback_error_details_are_session_bound_and_hidden_until_requested(self):
+        self.assertEqual(self.client.get('/api/ai/diagnostics').status_code,403)
+        none=self.client.get('/api/ai/diagnostics',headers=self.headers())
+        self.assertEqual(none.status_code,200)
+        self.assertFalse(none.json['available'])
+
+        begin=self.client.post('/api/ai/connect',json={},headers=self.headers(),
+                               base_url='http://127.0.0.1:5055')
+        params=parse_qs(urlsplit(begin.json['authorize_url']).query)
+        state=params['state'][0]
+        with patch.object(chatgpt,'_token_request',
+                          side_effect=AIError('ChatGPT-Zugriff fehlgeschlagen: invalid_grant')):
+            callback=self.client.get('/auth/callback?code=private-oauth-code&state='+state+
+                                     '&client_id=oaiapp_test&scope=chatgpt.tokens.use.direct',
+                                     base_url='http://127.0.0.1:5055')
+        self.assertEqual(callback.status_code,302)
+        self.assertEqual(callback.headers['Location'],'/angebote?ai=error')
+        diagnostics=self.client.get('/api/ai/diagnostics',headers=self.headers())
+        self.assertEqual(diagnostics.headers.get('Cache-Control'),'no-store')
+        data=diagnostics.json
+        self.assertTrue(data['available'])
+        detail=data['diagnostic']
+        self.assertEqual(detail['phase'],'Tokenaustausch')
+        self.assertEqual(detail['code'],'invalid_grant')
+        self.assertTrue(detail['checks']['code_received'])
+        self.assertTrue(detail['checks']['state_received'])
+        self.assertTrue(detail['checks']['client_id_received'])
+        self.assertTrue(detail['checks']['browser_session_available'])
+        self.assertTrue(detail['checks']['plan_scope_in_callback'])
+        self.assertNotIn('private-oauth-code',diagnostics.data.decode())
+        self.assertNotIn(state,diagnostics.data.decode())
+
+        # Starting a new attempt must clear the stale error diagnostics.
+        self.client.post('/api/ai/connect',json={},headers=self.headers(),
+                         base_url='http://127.0.0.1:5055')
+        self.assertFalse(self.client.get('/api/ai/diagnostics',
+                                         headers=self.headers()).json['available'])
+
+    def test_oauth_diagnostics_never_expose_unknown_upstream_text(self):
+        from app import _ai_safe_callback_diagnostic
+        secret='private-upstream-secret'
+        result=_ai_safe_callback_diagnostic(
+            AIError('ChatGPT-Zugriff fehlgeschlagen: '+secret), '',
+            {'code':'private-code','state':'private-state','client_id':'oaiapp_x'})
+        self.assertEqual(result['code'],'token_exchange_rejected')
+        self.assertNotIn(secret,json.dumps(result))
+        self.assertNotIn('private-code',json.dumps(result))
+        self.assertNotIn('private-state',json.dumps(result))
+        self.assertFalse(result['checks']['browser_session_available'])
+
     def test_untrusted_remote_and_origin_blocked_even_with_header(self):
         self.profile()
         res=self.client.post('/api/ai/connect',headers=self.headers(),json={},
