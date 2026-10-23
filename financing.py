@@ -162,7 +162,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary):
                 raise ValueError('Eine Zahlung verweist auf einen nicht gebuchten Beleg.')
             amounts[payment.receipt_id] += dec(payment.amount)
         for rid, amount in amounts.items():
-            if amount > dec(receipts[rid].gross_amount):
+            if amount > dec(receipts[rid].gross_amount)-dec(receipts[rid].advance_deduction):
                 raise ValueError('Zahlungen übersteigen den Rechnungsbetrag.')
 
     def summary():
@@ -191,7 +191,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary):
         overdue = ZERO
         no_date = ZERO
         for r in booked:
-            due = dec(r.gross_amount) - dec(r.paid_amount)
+            due = dec(r.gross_amount) - dec(r.advance_deduction) - dec(r.paid_amount)
             if due <= ZERO: continue
             if not r.due_date:
                 no_date += due
@@ -262,7 +262,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary):
                        payments=[payment_json(x) for x in reversed(all_rows(ReceiptFinancingPayment))],
                        receipts=[{'id':r.id,'name':r.supplier or r.original_name,'invoice_number':r.invoice_number,
                                   'gross':float(r.gross_amount or 0),'paid':float(r.paid_amount or 0),
-                                  'open':float(max(ZERO,dec(r.gross_amount)-dec(r.paid_amount))),
+                                  'open':float(max(ZERO,dec(r.gross_amount)-dec(r.advance_deduction)-dec(r.paid_amount))),
                                   'due_date':r.due_date,'category':r.category}
                                  for r in db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht').order_by(Receipt.id.desc()))],
                        summary=summary())
@@ -397,7 +397,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary):
             if dec(receipt.paid_amount)!=previous:
                 raise ValueError('Der Beleg enthält eine ältere, nicht zugeordnete Zahlung. Erst den direkten Zahlbetrag im Beleg auf 0 setzen bzw. berichtigen.')
             amount=money(d.get('amount'),positive=True)
-            if previous+amount>dec(receipt.gross_amount):
+            if previous+amount>dec(receipt.gross_amount)-dec(receipt.advance_deduction):
                 raise ValueError('Zahlung übersteigt den noch offenen Rechnungsbetrag.')
             p=ReceiptFinancingPayment(receipt_id=rid,source=source,
                        loan_id=ref if source=='loan' else None,

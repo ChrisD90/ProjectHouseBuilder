@@ -61,3 +61,28 @@ OCR von Bildern benötigt zusätzlich Tesseract und Poppler auf dem Mac; bei les
 5. **Rechnungen & Belege** erfasst tatsächliche Rechnungen, Zahlungen und Finanzierung.
 
 Es ist **keine zusätzliche Datenbankmigration** für diese UI-Vereinfachung nötig. Die manuelle Angebotserfassung nutzt die bestehende Angebotstabelle. Vollständige Sicherungen umfassen weiterhin alle Angebote und privaten PDFs.
+
+
+## Abschlags- und Schlussrechnungen zu angenommenen Angeboten
+
+Im Bereich **Angebote** zeigt jedes angenommene Angebot eine Abrechnungsübersicht mit
+ursprünglicher Brutto-Auftragssumme, gebuchtem Rechnungsstand, tatsächlich bezahlten
+Beträgen, Rest und Warnungen ab 80 % beziehungsweise bei Überziehung. Nur gebuchte
+Rechnungen gehen in die Abrechnung ein. Der Link **Rechnung zuordnen** öffnet das
+Belegjournal mit der passenden Angebotsauswahl; **nur angenommene Angebote** dürfen
+verknüpft werden. Auch direkte API-Aufrufe werden darauf geprüft.
+
+Eine Rechnung hat eine Abrechnungsart: Normal, Abschlagsrechnung oder Schlussrechnung.
+Enthält eine Schlussrechnung erneut bereits gebuchte Abschläge, werden diese über
+**„bereits gebuchte Abschläge enthalten“** vom neuen Rechnungsanteil abgezogen.
+Beispiel: Abschläge 8.000 € und 7.000 €, Schlussrechnung über die gesamten 20.000 €
+mit 15.000 € Abzug -> 5.000 € zusätzlich abgerechnet. **Enthält eine Schlussrechnung
+nur den noch offenen Restbetrag, den Abzug bei null lassen.** Das Originalbrutto bleibt
+immer unverändert abrufbar. Ein weiterer Beleg wird nach gebuchter Schlussrechnung
+gesperrt, bis diese korrigiert wird. Vorherige Abschläge lassen sich nicht zurücknehmen,
+solange eine Schlussrechnung auf sie Bezug nimmt. Gebuchte Belege lassen sich nur
+nach Zurücknehmen der Buchung umhängen. Zahlungen und Rechnungswerte bleiben getrennt.
+
+Die neuen Spalten werden per Migration `0005` angelegt. Bei einer vorhandenen SQLite-DB
+erstellt der Mac-Start vor der Migration wie gewohnt zwingend ein vollständiges,
+geprüftes Backup einschließlich aller Originaldateien.

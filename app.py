@@ -209,6 +209,10 @@ class Receipt(db.Model):
     vat_amount=db.Column(db.Numeric(12,2),nullable=True)
     category=db.Column(db.String(120),default='Sonstiges')
     kind=db.Column(db.String(30),default='Rechnung')
+    # A final invoice may state the full contract amount including prior invoices.
+    # Only the incremental portion is counted in costs and the payment ledger.
+    billing_type=db.Column(db.String(24),nullable=False,default='Normal')
+    advance_deduction=db.Column(db.Numeric(12,2),nullable=False,default=0)
     notes=db.Column(db.Text,default='')
     status=db.Column(db.String(20),nullable=False,default='Entwurf')
     paid_amount=db.Column(db.Numeric(12,2),nullable=False,default=0)
@@ -476,6 +480,55 @@ def budget_dict(x):
 def funding_dict(x):
     return {key:getattr(x,key) for key in ('id','name','expected','confirmed','received','notes')}
 
+def _receipt_increment(r):
+    """Amount newly invoiced; a final invoice may repeat earlier installments.
+
+    Never change the document's original gross amount; only adjust the amount
+    counted toward contractor commitments, budget and remaining payables.
+    """
+    from decimal import Decimal
+    return Decimal(r.gross_amount or 0) - Decimal(r.advance_deduction or 0)
+
+
+def _accepted_receipt_offer(r):
+    if not r.cost_item_id:
+        return None
+    cost=db.session.get(CostItem,r.cost_item_id)
+    if not cost or not cost.offer_id:
+        return None
+    offer=db.session.get(Offer,cost.offer_id)
+    return offer if offer and offer.status in ('Angenommen','Beauftragt') else None
+
+
+def offer_billing_dict(offer):
+    """Sum *booked* net new billables, never invoice OCR drafts or cash payments.
+
+    Return per-invoice details for a single accepted order; other offer states
+    cannot expose linked booked invoices. Money is rounded only for JSON.
+    """
+    from decimal import Decimal
+    if offer.status not in ('Angenommen','Beauftragt'):
+        return None
+    items=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id)).all()
+    ids=[item.id for item in items]
+    receipts=(db.session.scalars(select(Receipt).where(
+        Receipt.status=='Gebucht',Receipt.cost_item_id.in_(ids)).order_by(Receipt.id)).all()
+        if ids else [])
+    billed=sum((_receipt_increment(r) for r in receipts),Decimal('0'))
+    paid=sum((Decimal(r.paid_amount or 0) for r in receipts),Decimal('0'))
+    agreed=Decimal(str(offer.gross or 0))
+    remaining=agreed-billed
+    ratio=float(billed/agreed*100) if agreed>0 else 0
+    stage='overrun' if billed>agreed else 'fully_billed' if billed==agreed else 'warning' if ratio>=80 else 'normal'
+    return {'agreed':float(agreed),'billed':float(billed),'paid':float(paid),
+            'remaining':float(remaining),'percent':round(ratio,2),'stage':stage,
+            'invoices':[{'id':r.id,'number':r.invoice_number,'date':r.document_date,
+                'supplier':r.supplier,'billing_type':r.billing_type,
+                'gross':float(r.gross_amount or 0),'advance_deduction':float(r.advance_deduction or 0),
+                'counted':float(_receipt_increment(r)), 'paid':float(r.paid_amount or 0)}
+                for r in receipts]}
+
+
 def budget_summary(items):
     lines=all_budget_lines()
     active=[x for x in lines if x.active and not x.is_group]
@@ -493,7 +546,7 @@ def budget_summary(items):
         else:
             unplanned_receipts.append(receipt)
     for line_id, receipts in receipt_by_line.items():
-        actual=sum(float(x.gross_amount) for x in receipts)
+        actual=sum(float(_receipt_increment(x)) for x in receipts)
         if actual>previews[line_id]:
             previews[line_id]=round(actual,2)
             basis[line_id]='Belege über Planansatz'
@@ -501,7 +554,7 @@ def budget_summary(items):
     for x in valid:
         if x.budget_line_id:linked.setdefault(x.budget_line_id,[]).append(x)
     outside=sum(effective_offer(x) for x in extras)
-    extra_receipts=sum(float(x.gross_amount) for x in unplanned_receipts)
+    extra_receipts=sum(float(_receipt_increment(x)) for x in unplanned_receipts)
     forecast=sum(previews.values())+outside+extra_receipts
     spent=sum(x.paid for x in items)+sum(float(x.paid_amount or 0) for x in booked)
     committed=sum(x.committed for x in items if x.state in ('Beauftragt','Abgeschlossen'))
@@ -522,7 +575,7 @@ def budget_summary(items):
         group['paid']+=float(r.paid_amount or 0)
     for r in unplanned_receipts:
         group=grouped.setdefault(r.category,{'category':r.category,'estimate':0,'planned':0,'paid':0})
-        group['planned']+=float(r.gross_amount)
+        group['planned']+=float(_receipt_increment(r))
     return {'budget':round(budget,2),'planned':round(forecast,2),'overrun':round(forecast-budget,2),'paid':round(spent,2),
             'remaining':round(forecast-spent,2),'committed':round(committed,2),
             'funding_confirmed':round(funding_confirmed,2),'funding_expected':round(funding_expected,2),
@@ -530,7 +583,7 @@ def budget_summary(items):
             'own_budget':round(sum(previews[x.id] for x in active if x.kind=='Eigenleistung') + sum(effective_offer(x) for x in extras if x.kind=='Eigenleistung'),2),
             'own_hours':round(sum(x.own_hours for x in valid if x.kind=='Eigenleistung'),1),
             'own_imputed_value':round(sum(x.own_hours*x.own_hourly for x in valid if x.kind=='Eigenleistung'),2),
-            'receipt_booked':round(sum(float(x.gross_amount) for x in booked),2),
+            'receipt_booked':round(sum(float(_receipt_increment(x)) for x in booked),2),
             'receipt_paid':round(sum(float(x.paid_amount or 0) for x in booked),2),
             'receipt_drafts':db.session.scalar(select(db.func.count(Receipt.id)).where(Receipt.status=='Entwurf')) or 0,
             'categories':[{'category':k,'estimate':round(v['estimate'],2),'planned':round(v['planned'],2),'paid':round(v['paid'],2)} for k,v in grouped.items()],
@@ -625,7 +678,7 @@ def offer_dict(o):
             'category':o.category,'budget_line_id':o.budget_line_id,'notes':o.notes,
             'tax_rate':o.tax_rate,'status':o.status,'reconciled':o.reconciled,
             'warnings':json.loads(o.warnings or '[]'),'document_id':o.document_id,
-            'contractor_id':o.contractor_id,
+            'contractor_id':o.contractor_id,'billing':offer_billing_dict(o),
             'sections':[{'id':g.id,'name':g.name,'net':g.net,'gross':g.gross,'budget_line_id':g.budget_line_id,
                          'selected':g.selected} for g in sorted(o.sections,key=lambda x:x.sort_order)],
             'positions':[{'number':p.number,'section':p.section,'description':p.description,
@@ -883,13 +936,64 @@ def offer_delete(offer_id):
 RECEIPT_ROOT=ROOT/'private'/'receipts'
 RECEIPT_EXTENSIONS={'.pdf','.jpg','.jpeg','.png','.webp'}
 
+def _validate_accepted_invoice_link(r):
+    """Reject *any* receipt linkage to an unaccepted offer, even via API calls.
+
+    Standalone cost positions remain available independently of offers.
+    """
+    if not r.cost_item_id:
+        return None
+    item=db.session.get(CostItem,r.cost_item_id)
+    if not item:
+        raise ValueError('Kostenposition nicht vorhanden.')
+    if item.offer_id:
+        offer=db.session.get(Offer,item.offer_id)
+        if not offer or offer.status not in ('Angenommen','Beauftragt') or not item.selected:
+            raise ValueError('Rechnungen dürfen nur tatsächlich angenommenen Angeboten zugeordnet werden.')
+        return offer
+    return None
+
+
+def _validate_invoice_advance(r, offer):
+    """Make advance offsets safe against duplicate final bills and later edits."""
+    from decimal import Decimal
+    deduction=Decimal(r.advance_deduction or 0)
+    if r.billing_type not in ('Normal','Abschlagsrechnung','Schlussrechnung'):
+        raise ValueError('Unbekannte Rechnungsart.')
+    if deduction < 0 or r.gross_amount is None or deduction > r.gross_amount:
+        raise ValueError('Der angerechnete Abschlag muss kleiner als der positive Rechnungsbetrag sein.')
+    if (r.billing_type!='Schlussrechnung' or not offer) and deduction:
+        raise ValueError('Abschläge können nur bei einer Schlussrechnung zu einem angenommenen Angebot abgezogen werden.')
+    if offer and r.billing_type=='Schlussrechnung':
+        items=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id)).all()
+        ids=[item.id for item in items]
+        earlier=db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht',
+            Receipt.cost_item_id.in_(ids), Receipt.id!=r.id)).all()
+        if any(x.billing_type=='Schlussrechnung' for x in earlier):
+            raise ValueError('Zu diesem Auftrag ist bereits eine Schlussrechnung gebucht.')
+        prior=sum((_receipt_increment(x) for x in earlier),Decimal('0'))
+        if deduction > prior:
+            raise ValueError('Angerechnete Abschläge übersteigen die zuvor gebuchten Teilrechnungen.')
+    elif offer and r.billing_type!='Schlussrechnung':
+        items=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id)).all()
+        ids=[item.id for item in items]
+        if db.session.scalar(select(Receipt.id).where(Receipt.status=='Gebucht',
+            Receipt.cost_item_id.in_(ids),Receipt.billing_type=='Schlussrechnung',
+            Receipt.id!=r.id).limit(1)):
+            raise ValueError('Nach einer gebuchten Schlussrechnung sind weitere Teilrechnungen gesperrt. Bitte die Schlussrechnung zuerst korrigieren.')
+    if r.paid_amount is not None and Decimal(r.paid_amount)>_receipt_increment(r):
+        raise ValueError('Der bezahlte Betrag darf den noch neu abgerechneten Rechnungsanteil nicht überschreiten.')
+
+
 def _receipt_json(r, include_text=False):
     obj={'id':r.id,'filename':r.original_name,'source':r.source,'supplier':r.supplier,'invoice_number':r.invoice_number,
          'document_date':r.document_date,'due_date':r.due_date,'gross_amount':float(r.gross_amount) if r.gross_amount is not None else None,
          'net_amount':float(r.net_amount) if r.net_amount is not None else None,
          'vat_amount':float(r.vat_amount) if r.vat_amount is not None else None,'category':r.category,
-         'kind':r.kind,'notes':r.notes,'status':r.status,'paid_amount':float(r.paid_amount or 0),
+         'kind':r.kind,'billing_type':r.billing_type,'advance_deduction':float(r.advance_deduction or 0),
+         'counted_amount':float(_receipt_increment(r)),'notes':r.notes,'status':r.status,'paid_amount':float(r.paid_amount or 0),
          'budget_line_id':r.budget_line_id,'cost_item_id':r.cost_item_id,
+         'offer_id':_accepted_receipt_offer(r).id if _accepted_receipt_offer(r) else None,
          'warnings':json.loads(r.warnings or '[]'),'created_at':r.created_at.isoformat()}
     if include_text:obj['ocr_text']=r.ocr_text
     return obj
@@ -1035,20 +1139,21 @@ def receipt_edit(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
     data=request.get_json(silent=True) or {}
-    if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','category','supplier','invoice_number','document_date','kind')):
+    if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','category','supplier','invoice_number','document_date','kind','billing_type','advance_deduction')):
         return jsonify(error='Zum Ändern der Zuordnung oder Belegsumme zunächst Buchung zurücknehmen.'),409
     try:
-        for f in ('supplier','invoice_number','document_date','due_date','category','kind','notes'):
+        for f in ('supplier','invoice_number','document_date','due_date','category','kind','billing_type','notes'):
             if f in data:
                 value=str(data[f] or '')
-                if len(value)>({'supplier':200,'invoice_number':100,'document_date':10,'due_date':10,'category':120,'kind':30,'notes':3000}[f]):raise ValueError('Text zu lang: '+f)
+                if len(value)>({'supplier':200,'invoice_number':100,'document_date':10,'due_date':10,'category':120,'kind':30,'billing_type':24,'notes':3000}[f]):raise ValueError('Text zu lang: '+f)
                 if f=='category' and value not in category_names():raise ValueError('Unbekannte Kategorie.')
                 if f=='kind' and value not in ('Rechnung','Kassenzettel','Gutschrift'):raise ValueError('Ungültige Belegart.')
+                if f=='billing_type' and value not in ('Normal','Abschlagsrechnung','Schlussrechnung'):raise ValueError('Ungültige Rechnungsart.')
                 if f in ('document_date','due_date') and value:date.fromisoformat(value)
                 setattr(r,f,value)
-        for f in ('gross_amount','net_amount','vat_amount','paid_amount'):
+        for f in ('gross_amount','net_amount','vat_amount','paid_amount','advance_deduction'):
             if f in data:
-                amount=_receipt_amount(data[f],f,optional=f!='paid_amount')
+                amount=_receipt_amount(data[f],f,optional=f not in ('paid_amount','advance_deduction'))
                 if f=='paid_amount':
                     allocations=db.session.scalar(select(db.func.count(ReceiptFinancingPayment.id)).where(ReceiptFinancingPayment.receipt_id==r.id)) or 0
                     if allocations and amount != r.paid_amount:raise ValueError('Diese Zahlung ist über die Finanzierungsverwaltung aufgeteilt. Dort bearbeiten.')
@@ -1058,6 +1163,13 @@ def receipt_edit(rid):
                 value=data[field];key=int(value) if value not in ('',None) else None
                 if key and not db.session.get(model,key):raise ValueError('Zuordnung nicht vorhanden.')
                 setattr(r,field,key)
+        if 'billing_type' in data and r.billing_type!='Schlussrechnung' and 'advance_deduction' not in data:
+            r.advance_deduction=0
+        _validate_accepted_invoice_link(r)
+        if r.billing_type!='Normal' or r.advance_deduction:
+            # Draft inputs are validated even before posting; amounts of previous
+            # installments are checked when the invoice is booked.
+            _validate_invoice_advance(r,_accepted_receipt_offer(r))
         if r.status=='Gebucht':_validate_receipt_booking(r)
         db.session.commit();return jsonify(_receipt_json(r))
     except (ValueError,TypeError) as err:
@@ -1069,10 +1181,14 @@ def _validate_receipt_booking(r):
     if not r.supplier.strip():raise ValueError('Lieferant fehlt.')
     if not r.document_date:raise ValueError('Belegdatum fehlt.')
     if r.kind=='Gutschrift':raise ValueError('Gutschriften müssen separat als Korrektur erfasst werden; derzeit keine automatische Buchung.')
-    if r.paid_amount<0 or r.paid_amount>r.gross_amount:raise ValueError('Gezahlter Betrag darf die Belegsumme nicht überschreiten.')
+    if r.paid_amount<0 or r.paid_amount>_receipt_increment(r):raise ValueError('Gezahlter Betrag darf den noch neu abgerechneten Betrag nicht überschreiten.')
+    offer=_validate_accepted_invoice_link(r)
+    _validate_invoice_advance(r,offer)
     if r.cost_item_id:
         item=db.session.get(CostItem,r.cost_item_id)
         if not item or item.state in ('Alternative','Abgelehnt'):raise ValueError('Ungültiger oder abgelehnter Auftrag.')
+        if offer and not item.budget_line_id and r.budget_line_id:
+            raise ValueError('Dieses Angebot ist keinem Kostenplan zugeordnet. Die Rechnung darf keine separate Kostenplanposition erhalten.')
         if float(item.paid or 0)>0:raise ValueError('Für diese Kostenposition wurden Zahlungen bereits manuell erfasst. Bitte diese vor der Belegbuchung bereinigen, um Doppelzählung zu vermeiden.')
         if item.budget_line_id and r.budget_line_id and r.budget_line_id!=item.budget_line_id:raise ValueError('Budgetposition und verknüpfter Auftrag widersprechen sich.')
         if item.budget_line_id and not r.budget_line_id:r.budget_line_id=item.budget_line_id
@@ -1101,6 +1217,13 @@ def receipt_book(rid):
 def receipt_unbook(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    offer=_accepted_receipt_offer(r)
+    if offer and r.status=='Gebucht' and r.billing_type!='Schlussrechnung':
+        ids=[item.id for item in db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id))]
+        final=db.session.scalar(select(Receipt.id).where(Receipt.status=='Gebucht',
+            Receipt.cost_item_id.in_(ids),Receipt.billing_type=='Schlussrechnung').limit(1))
+        if final is not None:
+            return jsonify(error='Zuerst die Schlussrechnung zurücknehmen, da sie bisherige Abschläge verrechnet.'),409
     if db.session.scalar(select(ReceiptFinancingPayment.id).where(ReceiptFinancingPayment.receipt_id==rid).limit(1)) is not None:
         return jsonify(error='Zuerst die zugeordneten Zahlungen unter Finanzierung entfernen.'),409
     r.status='Entwurf';db.session.commit();return jsonify(_receipt_json(r))

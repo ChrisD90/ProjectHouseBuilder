@@ -41,6 +41,23 @@
       <div class="offer-form-actions"><button type="button" class="primary" data-offer-promote="${o.id}">Geprüft – in Liste übernehmen</button><button type="submit" class="mini">Entwurf zwischenspeichern</button><button type="button" class="offer-text-danger" data-offer-delete="${o.id}">Entwurf löschen</button></div></form>${parsedPositions(o)}</article>`;
   }
 
+  function billingBlock(o) {
+    const b=o.billing;
+    if(!b)return '';
+    const percent=Math.max(0,Math.min(100,Number(b.percent)||0));
+    const flag=b.stage==='overrun'?'Überziehung':b.stage==='fully_billed'?'Vollständig abgerechnet':b.stage==='warning'?'Über 80 % abgerechnet':'Im Rahmen';
+    const invoices=(b.invoices||[]).map(r=>`<tr><td><a href="/belege?receipt_id=${r.id}">${esc(r.number||'Rechnung #'+r.id)}</a><small>${esc(r.date||'')} · ${esc(r.billing_type)}</small></td><td>${fmt(r.gross)}</td><td>${r.advance_deduction?'-'+fmt(r.advance_deduction):'–'}</td><td>${fmt(r.counted)}</td><td>${fmt(r.paid)}</td></tr>`).join('');
+    return `<section class="offer-billing offer-billing-${esc(b.stage)}" aria-label="Rechnungen und Abrechnungsstand">
+      <div class="offer-billing-heading"><strong>Rechnungen & Abrechnungsstand</strong><span class="offer-billing-flag">${flag}</span></div>
+      <div class="offer-billing-numbers"><span>Angebot: <b>${fmt(b.agreed)}</b></span><span>Abgerechnet: <b>${fmt(b.billed)}</b></span><span>Bezahlt: <b>${fmt(b.paid)}</b></span><span>Rest: <b>${fmt(b.remaining)}</b></span></div>
+      <div class="offer-progress" role="progressbar" aria-label="Anteil der Angebotssumme abgerechnet" aria-valuenow="${esc(Math.round(b.percent))}" aria-valuemin="0" aria-valuemax="100"><span style="width:${percent}%"></span></div>
+      <p class="offer-billing-help">${b.stage==='overrun'?`Die gebuchten Rechnungen liegen ${fmt(Math.abs(b.remaining))} über dem angenommenen Angebot. Nachträge prüfen.`:b.stage==='warning'?'Die Angebotssumme ist zu mindestens 80 % ausgeschöpft. Weitere Teilrechnungen prüfen.':'Nur gebuchte Rechnungen zählen. Offene Zahlungen werden gesondert ausgewiesen.'}</p>
+      <details class="offer-billing-details"><summary>Rechnungen anzeigen (${b.invoices.length})</summary>
+      ${invoices?`<div class="tablewrap"><table><thead><tr><th>Rechnung</th><th>Dokumentbrutto</th><th>Verrechnete Abschläge</th><th>Neu abgerechnet</th><th>Bezahlt</th></tr></thead><tbody>${invoices}</tbody></table></div>`:'<p>Zu diesem angenommenen Angebot sind noch keine gebuchten Rechnungen verknüpft.</p>'}</details>
+      <a class="mini" href="/belege?offer_id=${o.id}">Rechnung zuordnen / hochladen →</a>
+    </section>`;
+  }
+
   function renderListed(o) {
     const [label,color] = stage(o);
     const accepted = ['Angenommen','Beauftragt'].includes(o.status);
@@ -49,9 +66,9 @@
     return `<article class="offer-card offer-list-card" data-offer-card="${o.id}"><div class="offer-card-head"><div><span class="offer-stage ${color}">${label}</span><h3>${esc(o.vendor)} <small>${esc(o.number)}</small></h3><p>${esc(o.category)} · ${esc(o.issued || 'Ohne Datum')} · ${sourceLabel(o)}</p></div><div class="offer-sum"><span>Brutto</span><strong>${fmt(o.gross)}</strong></div></div>
       <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>${extras}
       <div class="offer-actions">${accepted
-          ? `<span class="offer-accepted-note">✓ In der Kostenprognose berücksichtigt</span><a class="mini" href="/belege">Rechnung erfassen</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
+          ? `<span class="offer-accepted-note">✓ In der Kostenprognose berücksichtigt</span><a class="mini" href="/belege?offer_id=${o.id}">Rechnung zuordnen</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
           : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder berücksichtigen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`}
-      </div><div class="offer-inline-edit" id="offerEditor${o.id}" hidden></div>${notice(o)}${parsedPositions(o)}</article>`;
+      </div>${accepted?billingBlock(o):''}<div class="offer-inline-edit" id="offerEditor${o.id}" hidden></div>${notice(o)}${parsedPositions(o)}</article>`;
   }
 
   function refreshUI() {
