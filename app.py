@@ -26,7 +26,7 @@ from sample_schedule import load_schedule_template, schedule_template_summary
 from pathlib import Path
 import hmac
 from werkzeug.middleware.proxy_fix import ProxyFix
-from chatgpt_local import chatgpt, AIError, IdentityValidationError, extract_json
+from chatgpt_local import chatgpt, AIError, IdentityValidationError, extract_json, _background_hooks as ai_background_hooks
 import base64
 import time
 import secrets
@@ -3254,6 +3254,13 @@ def _run_import_job(job_id):
         meta=json.loads(job.extra_json or '{}')
         source=IMPORT_QUEUE_ROOT/job.stored_name
         try:
+            def update_stage(message):
+                item=db.session.get(ImportJob,job_id)
+                if item:
+                    item.stage=message[:250]
+                    item.updated_at=datetime.utcnow()
+                    db.session.commit()
+            ai_background_hooks.progress=update_stage
             raw=source.read_bytes()
             fields={'file':(io.BytesIO(raw),filename)}
             if job_type in ('offers','receipts'):
@@ -3303,6 +3310,7 @@ def _run_import_job(job_id):
                 job.updated_at=datetime.utcnow()
                 db.session.commit()
         finally:
+            ai_background_hooks.progress=None
             db.session.remove()
 
 
