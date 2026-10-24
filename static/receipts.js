@@ -3,6 +3,26 @@ const $=id=>document.getElementById(id);
 const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
 let selected=null,list=[],overview=null;
+const receiptDialog=$('receiptWorkflowDialog');
+let uploading=false;
+function openReceiptDialog(review=false){
+  if(!receiptDialog.open)receiptDialog.showModal();
+  if(review){
+    requestAnimationFrame(()=>$('review').querySelector('input:not(:disabled)')?.focus({preventScroll:true}));
+  } else {
+    requestAnimationFrame(()=>$('upload').querySelector('input[type=file]')?.focus({preventScroll:true}));
+  }
+}
+$('openReceiptWorkflow').onclick=()=>{
+  selected=null;
+  $('review').hidden=true;$('placeholder').hidden=false;
+  openReceiptDialog(false);
+};
+$('closeReceiptWorkflow').onclick=()=>{if(!uploading)receiptDialog.close();};
+receiptDialog.addEventListener('cancel',event=>{if(uploading)event.preventDefault();});
+receiptDialog.addEventListener('click',event=>{
+  if(event.target===receiptDialog&&!uploading)receiptDialog.close();
+});
 const navigation=new URLSearchParams(window.location.search);
 const linkOffer=Number(navigation.get('offer_id'))||null;
 const linkReceipt=Number(navigation.get('receipt_id'))||null;
@@ -152,6 +172,7 @@ async function reload(keepId=selected){
 async function open(id){
  try{let x=await api('/api/receipts/'+id);selected=id;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;
+ openReceiptDialog(true);
  const legacy=x.assignment_type==='Kostenposition';
  const legacyOption=$('receiptAssignmentType').querySelector('option[value="Kostenposition"]');
  if(legacyOption)legacyOption.remove();
@@ -181,6 +202,7 @@ async function open(id){
 }
 $('upload').onsubmit=async e=>{
  e.preventDefault();
+ if(uploading)return;
  const ai=$('receiptAnalysisMode').value==='ai';
  let permission=null;
  try{
@@ -190,7 +212,7 @@ $('upload').onsubmit=async e=>{
    }
  }catch(error){$('uploadStatus').textContent=error.message;return;}
  $('uploadStatus').textContent=ai?'ChatGPT analysiert die Datei. Es wird noch nichts gebucht …':'PDF / Bild wird lokal analysiert …';
- const b=$('receiptUploadButton');b.disabled=true;
+ const b=$('receiptUploadButton');b.disabled=true;uploading=true;
  try{
    const form=new FormData($('upload'));
    if(ai){
@@ -206,7 +228,7 @@ $('upload').onsubmit=async e=>{
    $('uploadStatus').textContent=(ai?'ChatGPT-Vorschlag':'Lokale Erkennung')+' gespeichert. Bitte alle erkannten Angaben kontrollieren.';
    await reload(data.id);
  }catch(error){$('uploadStatus').textContent=error.message}
- finally{b.disabled=false}
+ finally{b.disabled=false;uploading=false;}
 };
 $('review').onsubmit=async e=>{e.preventDefault();if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});await reload(selected);notice('Änderungen gespeichert. Noch nicht automatisch gebucht.')}catch(err){notice(err.message,true)}};
 $('book').onclick=async()=>{if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});if(!confirm('Beleg verbindlich in die Kostenübersicht übernehmen? Noch nicht bezahlte Rechnungen bleiben offen.'))return;await api('/api/receipts/'+selected+'/book',{method:'POST'});await reload(selected);notice('Beleg wurde übernommen.')}catch(err){notice(err.message,true)}};
