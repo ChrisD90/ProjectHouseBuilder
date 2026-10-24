@@ -85,22 +85,32 @@ function edit(id){
 $('docSearch').addEventListener('input',refresh);
 $('docFilterArea').addEventListener('change',refresh);
 $('docFilterStatus').addEventListener('change',refresh);
-$('projectDocumentUpload').elements.namedItem('file').addEventListener('change',event=>{
+$('projectDocumentUpload').elements.namedItem('files').addEventListener('change',event=>{
  const name=event.target.files?.[0]?.name;
  const input=$('projectDocumentUpload').elements.namedItem('title');
  if(name&&!input.value)input.value=name.replace(/\.[^.]+$/,'');
 });
 $('projectDocumentUpload').onsubmit=async e=>{
  e.preventDefault();
+ if(uploadRunning)return;
  const form=$('projectDocumentUpload'),btn=$('docUploadButton');
- btn.disabled=true;uploadRunning=true;report('Dokument wird lokal geprüft und gespeichert …');
- try{const result=await api('/api/project-documents','POST',new FormData(form));form.reset();await reload();
+ btn.disabled=true;uploadRunning=true;report('Dateien werden für das lokale Einlesen vorbereitet …');
+ try{
+   const data=new FormData(form),fields={};
+   for(const [key,value] of data.entries())if(key!=='files')fields[key]=value;
+   const jobs=await window.PHBImports.enqueue({
+     kind:'documents',files:form.elements.namedItem('files').files,
+     analysisMode:'local',fields
+   });
+   form.reset();report(jobs.length+' Projektunterlage(n) in der Warteschlange.');
    uploadDialog.close();
-   edit(result.document.id);
-   report('Dokument „'+result.document.title+'“ gespeichert. Prüfe die Angaben und den Dokumentstatus. Es wurde nichts an ChatGPT übertragen.',false,'docEditMessage');}
- catch(err){report(err.message,true);}
+ }catch(err){report(err.message,true);}
  finally{btn.disabled=false;uploadRunning=false;}
 };
+document.addEventListener('phb-import-updated',event=>{
+ if(event.detail.kind==='documents'&&!$('docEditDialog').open)reload().catch(()=>{});
+});
+
 $('docClose').onclick=()=>$('docEditDialog').close();
 $('docEditForm').onsubmit=async e=>{
  e.preventDefault();const data=Object.fromEntries(new FormData($('docEditForm')));
@@ -116,5 +126,8 @@ $('docDelete').onclick=async()=>{
    await reload();report('Dokument gelöscht.',false,'docPageStatus');}
  catch(err){report(err.message,true,'docEditMessage');}
 };
-reload().catch(err=>report(err.message,true,'docPageStatus'));
+reload().then(()=>{
+ const documentId=Number(new URLSearchParams(location.search).get('document_id'));
+ if(documentId)edit(documentId);
+}).catch(err=>report(err.message,true,'docPageStatus'));
 })();
