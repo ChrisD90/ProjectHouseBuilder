@@ -15,14 +15,14 @@
 <div class="phb-workflow-body">
 <section class="panel docs-upload"><h2>Dokument ablegen</h2>
 <form id="projectDocumentUpload" class="docs-form">
-<label class="docs-wide">Datei (PDF, DOCX, TXT oder Bild, bis 12 MB)<input name="file" type="file" required accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"></label>
+<label class="docs-wide">Dateien (PDF, DOCX, TXT oder Bild, bis 8 Dateien à 12 MB)<input name="files" type="file" multiple required accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"></label>
 <label class="docs-wide">Titel<input name="title" maxlength="200" placeholder="z. B. Treppenplanung Variante 2"></label>
 <label>Kategorie<select name="category" id="docUploadCategory"></select></label>
 <label>Bereich<select name="area" id="docUploadArea"></select></label>
 <label>Status<select name="status" id="docUploadStatus"></select></label>
 <label>Schlagworte<input name="tags" maxlength="400" placeholder="Treppe, DG, Statik"></label>
 <label class="docs-wide">Beschreibung<textarea name="description" rows="2" maxlength="1500"></textarea></label>
-<button type="submit" id="docUploadButton" class="primary">Dokument speichern</button></form>
+<button type="submit" id="docUploadButton" class="primary">Im Hintergrund einlesen</button></form>
 <p id="docMessage" role="status"></p></section>
 
 <details class="phb-workflow-guide"><summary>Wie werden Unterlagen für ChatGPT verwendet?</summary><aside class="panel docs-guide"><h2>Wissen für ChatGPT</h2>
