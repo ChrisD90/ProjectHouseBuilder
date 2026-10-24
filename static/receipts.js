@@ -211,32 +211,28 @@ $('upload').onsubmit=async e=>{
  e.preventDefault();
  if(uploading)return;
  const ai=$('receiptAnalysisMode').value==='ai';
- let permission=null;
+ const button=$('receiptUploadButton');
+ uploading=true;button.disabled=true;
+ $('uploadStatus').textContent='Dateien werden für die Hintergrundverarbeitung vorbereitet …';
  try{
-   if(ai){
-     permission=window.PHBAI?.selection();
-     if(!permission)throw Error('Bitte zuerst mit ChatGPT verbinden.');
-   }
- }catch(error){$('uploadStatus').textContent=error.message;return;}
- $('uploadStatus').textContent=ai?'ChatGPT analysiert die Datei. Es wird noch nichts gebucht …':'PDF / Bild wird lokal analysiert …';
- const b=$('receiptUploadButton');b.disabled=true;uploading=true;
- try{
-   const form=new FormData($('upload'));
-   if(ai){
-     form.set('model',permission.model);
-     form.set('plan_only','true');
-   }
-   const r=await fetch('/api/receipts',{method:'POST',headers:ai?{'X-PHB-AI':'1'}:{},body:form});
-   const data=await r.json();
-   if(!r.ok)throw new Error(data.error||'Upload fehlgeschlagen');
+   let model='';
+   if(ai)model=window.PHBAI?.selection()?.model||'';
+   const jobs=await window.PHBImports.enqueue({
+     kind:'receipts',files:$('upload').elements.namedItem('files').files,
+     analysisMode:ai?'ai':'local',model
+   });
    $('upload').reset();
    $('receiptAIHint').hidden=true;
-   b.textContent='Datei lokal analysieren';
-   $('uploadStatus').textContent=(ai?'ChatGPT-Vorschlag':'Lokale Erkennung')+' gespeichert. Bitte alle erkannten Angaben kontrollieren.';
-   await reload(data.id);
- }catch(error){$('uploadStatus').textContent=error.message}
- finally{b.disabled=false;uploading=false;}
+   button.textContent='Dateien im Hintergrund analysieren';
+   $('uploadStatus').textContent=jobs.length+' Beleg(e) in der Warteschlange. Nach Abschluss zur Prüfung öffnen.';
+   receiptDialog.close();
+ }catch(error){$('uploadStatus').textContent='Import nicht gestartet: '+error.message;}
+ finally{uploading=false;button.disabled=false;}
 };
+document.addEventListener('phb-import-updated',event=>{
+ if(event.detail.kind==='receipts'&&!receiptDialog.open)reload().catch(()=>{});
+});
+
 $('review').onsubmit=async e=>{e.preventDefault();if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});await reload(selected);notice('Änderungen gespeichert. Noch nicht automatisch gebucht.')}catch(err){notice(err.message,true)}};
 $('book').onclick=async()=>{if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});if(!confirm('Beleg verbindlich in die Kostenübersicht übernehmen? Noch nicht bezahlte Rechnungen bleiben offen.'))return;await api('/api/receipts/'+selected+'/book',{method:'POST'});await reload(selected);notice('Beleg wurde übernommen.')}catch(err){notice(err.message,true)}};
 $('unbook').onclick=async()=>{if(!selected||!confirm('Buchung zurücknehmen? Die Belegausgaben werden aus der Übersicht entfernt.'))return;try{await api('/api/receipts/'+selected+'/unbook',{method:'POST'});await reload(selected)}catch(err){notice(err.message,true)}};
