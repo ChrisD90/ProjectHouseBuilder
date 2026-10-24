@@ -1,0 +1,104 @@
+
+/* One unobtrusive entry point, one consistent accessible workflow dialog. */
+body.phb-app .phb-workflow-actions,body.phb-app .phb-workflow-head-actions,
+body.phb-app .receipt-header-actions{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+body.phb-app .phb-workflow-inline-trigger{display:flex;justify-content:flex-end;margin:0 0 16px}
+body.phb-app :is(.phb-workflow-actions,.phb-workflow-inline-trigger) button{min-height:41px;padding:9px 16px;font-size:13px}
+body.phb-app .phb-workflow-dialog{
+  position:fixed;inset:0;width:min(1010px,calc(100vw - 36px));
+  max-width:none;max-height:min(90dvh,1000px);height:auto;
+  margin:auto;padding:0;border:1px solid var(--ui-line);border-radius:18px;
+  background:var(--ui-surface);color:var(--ui-ink);
+  box-shadow:var(--ui-shadow-raised);overflow:hidden
+}
+body.phb-app .phb-workflow-dialog:not([open]){display:none!important}
+body.phb-app .phb-workflow-dialog[open]{display:flex;flex-direction:column}
+body.phb-app .phb-workflow-dialog::backdrop{background:rgba(6,20,30,.68)}
+body.phb-app .phb-workflow-head{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:16px;padding:21px 26px 18px;border-bottom:1px solid var(--ui-line);
+  flex:0 0 auto;background:var(--ui-surface)
+}
+body.phb-app .phb-workflow-head .phb-page-kicker{display:block;margin-bottom:6px;font-size:11px}
+body.phb-app .phb-workflow-head h2{font-size:21px;line-height:1.25;margin:0 0 6px;color:var(--ui-ink)}
+body.phb-app .phb-workflow-head p{font-size:12px;color:var(--ui-muted);line-height:1.55;margin:0;max-width:680px}
+body.phb-app .phb-workflow-head-actions button{white-space:nowrap}
+body.phb-app .phb-workflow-body{
+  flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
+  padding:23px 26px 27px;scrollbar-color:var(--ui-line-strong) transparent;overscroll-behavior:contain
+}
+body.phb-app .phb-workflow-body>.panel{
+  border-color:var(--ui-line);background:var(--ui-surface);
+  border-radius:var(--ui-radius-sm);box-shadow:none;margin:0 0 19px;min-width:0
+}
+body.phb-app .phb-workflow-body>.panel:last-child{margin-bottom:0}
+body.phb-app .phb-workflow-body .panelbar{padding:18px 19px;gap:12px}
+body.phb-app .phb-workflow-body :is(input,textarea,select){max-width:100%}
+body.phb-app .phb-workflow-body .phb-workflow-guide{border:1px solid var(--ui-line);border-radius:11px;background:var(--ui-soft);padding:11px 14px;font-size:12px}
+body.phb-app .phb-workflow-guide>summary{font-weight:700;color:var(--ui-ink);cursor:pointer}
+body.phb-app .phb-workflow-guide .docs-guide{padding:12px 2px 0;margin:0;border:0;box-shadow:none;background:transparent}
+body.phb-app .phb-workflow-guide .docs-guide h2{font-size:14px;margin:0 0 10px}
+body.phb-app .phb-workflow-guide .docs-guide p{font-size:12px;margin-bottom:10px}
+body.phb-app .phb-offer-workflow .offers-create .offer-entry-switch{margin:12px 20px 17px}
+body.phb-app .phb-offer-workflow.is-reviewing .offers-create{display:none!important}
+body.phb-app .phb-offer-workflow:not(.is-reviewing) .offer-review-section{display:none!important}
+body.phb-app .phb-offer-workflow .offer-review-section>.panelbar{padding:17px 19px}
+body.phb-app .phb-offer-workflow .offer-review-section .offer-cards{padding:8px 16px 22px;margin:0}
+body.phb-app .phb-offer-workflow .offer-draft-card{margin:0}
+body.phb-app .phb-offer-workflow .offer-review-form{gap:12px}
+body.phb-app .phb-offer-workflow .offers-create .offer-entry-form{padding-bottom:20px}
+body.phb-app .phb-receipt-workflow{width:min(890px,calc(100vw - 36px))}
+body.phb-app .phb-receipt-workflow .receipt-upload-panel{padding:19px 20px}
+body.phb-app .phb-receipt-workflow .receipt-upload-panel h2{font-size:16px;margin:0 0 13px}
+body.phb-app .phb-receipt-workflow.is-reviewing .receipt-upload-panel{display:none!important}
+body.phb-app .phb-receipt-workflow:not(.is-reviewing) .editor{display:none!important}
+body.phb-app .phb-receipt-workflow .editor{padding:20px}
+body.phb-app .receipt-list-panel{padding:22px;margin:18px 0}
+body.phb-app .receipt-list-panel h2{font-size:18px;margin-bottom:15px}
+body.phb-app .receipt-list-panel .list{display:grid;gap:9px}
+body.phb-app .receipt-list-panel .entry{width:100%;text-align:left}
+body.phb-app .receipt-header-actions{justify-content:space-between}
+body.phb-app .receipt-header-actions>button{min-height:42px;padding:10px 16px}
+body.phb-app .phb-document-workflow{width:min(740px,calc(100vw - 36px))}
+body.phb-app .phb-document-workflow .docs-upload{padding:19px 20px}
+body.phb-app .phb-document-workflow .docs-upload h2{font-size:16px;margin:0 0 16px}
+body.phb-app .phb-document-workflow .docs-form button{margin-top:5px}
+body.phb-app .phb-page-intro>button#openDocUpload{min-height:42px;padding:10px 17px}
+body.phb-app .offer-version-upload-details{
+  border:1px solid var(--ui-line);background:var(--ui-soft);
+  border-radius:10px;margin:16px 0 10px;padding:11px 14px
+}
+body.phb-app .offer-version-upload-details>summary{
+  cursor:pointer;font-size:12px;font-weight:700;color:var(--ui-ink-soft)
+}
+body.phb-app .offer-version-upload-details .offer-version-upload{margin:13px 0 2px}
+body.phb-app .loan-ai-collapsible{
+  background:var(--ui-soft);border:1px solid var(--ui-line);
+  border-radius:11px;margin:0 0 18px;padding:13px 16px
+}
+body.phb-app .loan-ai-collapsible>summary{
+  display:list-item;cursor:pointer;font-size:13px;font-weight:700;color:var(--ui-ink)
+}
+body.phb-app .loan-ai-collapsible>summary small{
+  display:block;font-size:11px;font-weight:500;color:var(--ui-muted);margin:4px 0 0 19px
+}
+body.phb-app .loan-ai-collapsible .loan-ai-actions{margin:16px 0 12px}
+body.phb-app .loan-ai-collapsible>p{font-size:12px;line-height:1.55}
+body.phb-app .loan-doc-upload-details{border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-soft);margin:10px 0 15px;padding:11px 14px}
+body.phb-app .loan-doc-upload-details>summary{cursor:pointer;color:var(--ui-ink);font-size:13px;font-weight:700}
+body.phb-app .loan-doc-upload-details .loan-doc-form{padding-top:13px}
+body.phb-app .loan-doc-upload-details>p{margin:9px 0 0}
+@media(max-width:700px){
+ body.phb-app .phb-workflow-dialog{width:calc(100vw - 16px);max-height:calc(100dvh - 26px);border-radius:14px}
+ body.phb-app .phb-workflow-head{padding:16px;align-items:flex-start;flex-wrap:wrap;gap:9px}
+ body.phb-app .phb-workflow-head h2{font-size:18px}
+ body.phb-app .phb-workflow-head-actions{gap:8px}
+ body.phb-app .phb-workflow-head-actions button{font-size:12px;padding:8px 11px}
+ body.phb-app .phb-workflow-body{padding:13px}
+ body.phb-app .phb-offer-workflow .offer-review-section .offer-cards{padding:8px 10px 14px}
+ body.phb-app .phb-receipt-workflow .editor,
+ body.phb-app .phb-receipt-workflow .receipt-upload-panel,
+ body.phb-app .phb-document-workflow .docs-upload{padding:14px}
+ body.phb-app .receipt-header-actions{align-items:flex-start;gap:11px}
+ body.phb-app .receipt-list-panel{padding:15px}
+}
