@@ -3306,13 +3306,19 @@ def _run_import_job(job_id):
             db.session.commit()
             source.unlink(missing_ok=True)
         except Exception as exc:
+            # Log only exception category and source line, never document contents,
+            # OAuth tokens or raw upstream errors.
+            trace=__import__('traceback').extract_tb(exc.__traceback__)
+            where=(trace[-1].name+':'+str(trace[-1].lineno)) if trace else 'unknown'
+            app.logger.warning('Background import %s failed: %s at %s',
+                               job_id,type(exc).__name__,where)
             db.session.rollback()
             job=db.session.get(ImportJob,job_id)
             if job:
                 job.status='Fehler'
                 job.stage='Analyse oder Speicherung fehlgeschlagen'
                 job.error=str(exc)[:450] if isinstance(exc,(ValueError,AIError)) else (
-                    'Der Import konnte nicht abgeschlossen werden. Bitte erneut versuchen.')
+                    'Importfehler ('+type(exc).__name__+' bei '+where+'). Bitte erneut versuchen.')
                 job.finished_at=datetime.utcnow()
                 job.updated_at=datetime.utcnow()
                 db.session.commit()
