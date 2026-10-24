@@ -5,6 +5,24 @@
   if (!$('offerImportForm') || !$('offerList')) return;
   let offers = [], categories = [], budgets = [], versionDrafts = [];
   let comparingOffers = false;
+  let offerUploading = false;
+  const workflow=$('offerWorkflowDialog');
+  const openWorkflow=(review=false)=>{
+    if(!workflow.open)workflow.showModal();
+    if(review){
+      const section=$('angebote-pruefen');
+      requestAnimationFrame(()=>section.scrollIntoView({block:'start'}));
+    }else{
+      requestAnimationFrame(()=>$('offerImportForm').querySelector('input[type=file]')?.focus({preventScroll:true}));
+    }
+  };
+  $('openOfferWorkflow').onclick=()=>openWorkflow();
+  $('openOfferDrafts').onclick=()=>openWorkflow(true);
+  $('closeOfferWorkflow').onclick=()=>{if(!offerUploading)workflow.close();};
+  workflow.addEventListener('cancel',event=>{if(offerUploading)event.preventDefault();});
+  workflow.addEventListener('click',event=>{
+    if(event.target===workflow&&!offerUploading)workflow.close();
+  });
   const defaultCompareLabel = 'Ausgewählte Angebote mit KI vergleichen';
   function updateAICompareSelection() {
     const choices=$('aiOfferChoices'),button=$('aiCompareOffers');
@@ -223,6 +241,8 @@
     $('offersCountListed').textContent=String(listed.length);
     $('offersCountAccepted').textContent=String(accepted.length);
     $('offersDraftBadge').textContent=(drafts.length+versionDrafts.length)?`(${drafts.length+versionDrafts.length})`:'';
+    $('offerDraftTriggerCount').textContent=(drafts.length+versionDrafts.length)
+      ?'('+String(drafts.length+versionDrafts.length)+')':'';
     $('offerDrafts').innerHTML=(drafts.length||versionDrafts.length) ? [...drafts.map(renderDraft),...versionDrafts.map(renderVersionDraft)].join('') : '<p class="offer-empty">Keine offenen PDF-Entwürfe. Neue PDF-Dateien kannst du oben hochladen.</p>';
     $('offerDrafts').querySelectorAll('form[data-review],form[data-version-review]').forEach(checkPositions);
     const filter=$('offerCategoryFilter'), prev=filter.value;
@@ -291,14 +311,18 @@
   };
   $('offerImportForm').addEventListener('submit',async event=>{
     event.preventDefault(); const form=event.currentTarget;
+    if(offerUploading)return;
+    offerUploading=true;
+    const submit=form.querySelector('button[type=submit]');submit.disabled=true;
     inform('offerImportStatus',form.elements.analysis_mode.value==='ai'?'PDF wird mit ChatGPT analysiert …':'PDF wird lokal analysiert …');
     try {
       const formData=aiAppend(form);
       await request('/api/offers/import',{method:'POST',formData,ai:formData.get('analysis_mode')==='ai'});
       form.reset(); await reload();
-      inform('offerImportStatus','PDF gespeichert. Bitte die erkannten Angaben unten prüfen.');
-      $('angebote-pruefen').scrollIntoView({behavior:'smooth',block:'start'});
+      inform('offerImportStatus','PDF analysiert. Jetzt die Beträge und Einzelpositionen hier im Dialog prüfen.');
+      openWorkflow(true);
     } catch(err) {inform('offerImportStatus','Fehler: '+err.message,true)}
+    finally{offerUploading=false;submit.disabled=false;}
   });
   $('offerManualForm').addEventListener('submit',async event=>{
     event.preventDefault();const form=event.currentTarget;
@@ -306,8 +330,7 @@
     try {
       await request('/api/offers/manual',{method:'POST',data:readForm(form)});
       form.reset();await reload();
-      inform('offerManualStatus','Angebot gespeichert. Du kannst es unten vergleichen oder annehmen.');
-      $('angebotsliste').scrollIntoView({behavior:'smooth',block:'start'});
+      inform('offerManualStatus','Angebot gespeichert. Du kannst es im Hintergrund vergleichen oder annehmen.');
     } catch(err) {inform('offerManualStatus','Fehler: '+err.message,true)}
   });
   document.addEventListener('click',e=>{
@@ -369,7 +392,7 @@
       const formData=aiAppend(form);
       await request(offerUrl(id)+'/versions',{method:'POST',formData,ai:formData.get('analysis_mode')==='ai'});
       await reload();
-      $('angebote-pruefen').scrollIntoView({behavior:'smooth',block:'start'});
+      openWorkflow(true);
     }catch(err){status.textContent='Fehler: '+err.message;button.disabled=false;}
   });
   document.addEventListener('toggle',async e=>{
@@ -427,7 +450,7 @@
         const checked=checkPositions(form);
         if(checked.warning && !confirm('Einige Positionsbeträge fehlen oder die Positionssumme weicht von der Angebotssumme ab. Trotzdem als geprüft in die Liste übernehmen?'))return;
         await update(id,collectDraft(form));await changeStatus(id,'Angebot');
-        $('angebotsliste').scrollIntoView({behavior:'smooth',block:'start'});
+        workflow.close();
       }
       if(key==='offerAccept'){
         if(!confirm('Dieses Angebot verbindlich annehmen? Der Bruttogesamtbetrag wird dadurch einmalig in deine Kostenprognose übernommen.'))return;
