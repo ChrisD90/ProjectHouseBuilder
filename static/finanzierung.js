@@ -81,6 +81,8 @@ function openLoan(id=null){
  $('loanSaveStatus').classList.remove('error');
  $('loanDocumentStatus').textContent='';
  $('loanDocumentUpload').reset();
+ $('loanAiDetails').open=false;
+ $('loanDocUploadDetails').open=false;
  updateLoanEditorMode(id);
  if(loan)documentRows(loan);
  $('loanDialog').showModal();
@@ -147,6 +149,7 @@ $('loanDocumentUpload').onsubmit=async event=>{
    const data=await response.json();
    if(!response.ok)throw Error(data.error||'Hochladen fehlgeschlagen.');
    $('loanDocumentUpload').reset();
+   $('loanDocUploadDetails').open=false;
    await reload();
    const updated=state.loans.find(x=>x.id===Number(lid));
    if(updated)documentRows(updated);
