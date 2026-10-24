@@ -192,11 +192,11 @@
   }
 
   function versionUpload(o) {
-    return `<form class="offer-version-upload" data-version-upload="${o.id}">
+    return `<details class="offer-version-upload-details"><summary>Neue PDF-Version hochladen</summary><form class="offer-version-upload" data-version-upload="${o.id}">
       <label>Neue PDF-Version hochladen<input type="file" name="file" accept=".pdf,application/pdf" required></label>
       <label>Analyseart<select name="analysis_mode"><option value="local">Lokal</option><option value="ai">ChatGPT</option></select></label>
       <button type="submit" class="mini">Neue Version analysieren</button>
-      <span data-version-upload-status="${o.id}" role="status"></span></form>`;
+      <span data-version-upload-status="${o.id}" role="status"></span></form></details>`;
   }
 
   function renderDraft(o) {
