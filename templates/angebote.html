@@ -4,7 +4,7 @@
 <body class="phb-app phb-page-angebote">
 {% set phb_active = 'angebote' %}{% set phb_title = 'Angebote' %}{% include '_shell_open.html' %}
 <main id="phbMain" class="budget-main phb-main offers-page">
-  <div class="heading offers-heading"><div><span class="phb-page-kicker">Finanzen / Handwerkerangebote</span><h1>Angebote</h1><p>Alle Angebote an einem Ort: per PDF einlesen oder direkt eingeben, vergleichen und später entscheiden.</p></div><a class="mini" href="/kosten">Kostenübersicht ansehen →</a></div>
+  <div class="heading offers-heading"><div><span class="phb-page-kicker">Finanzen / Handwerkerangebote</span><h1>Angebote</h1><p>Alle Angebote an einem Ort: per PDF einlesen oder direkt eingeben, vergleichen und später entscheiden.</p></div><div class="phb-workflow-actions"><button type="button" id="openOfferWorkflow" class="primary">+ Angebot erfassen</button><a class="mini" href="/kosten">Kostenübersicht ansehen →</a></div></div>
   <div class="offers-how" aria-label="So funktioniert die Angebotsverwaltung">
     <span><b>1</b> Angebot erfassen</span><span class="offers-how-arrow" aria-hidden="true">→</span>
     <span><b>2</b> PDF-Daten und Positionen prüfen</span><span class="offers-how-arrow" aria-hidden="true">→</span>
@@ -12,6 +12,9 @@
   </div>
   <p class="offers-clarity">Erst wenn du <strong>„Annehmen“</strong> auswählst, wird die Bruttosumme in <a href="/kosten">Kosten & Budget</a> übernommen. Hochladen, Speichern oder Vergleichen kostet noch nichts.</p>
   <div class="offers-stats" aria-live="polite"><div><span>Zu prüfen</span><strong id="offersCountDraft">–</strong></div><div><span>Im Vergleich</span><strong id="offersCountListed">–</strong></div><div><span>Angenommen</span><strong id="offersCountAccepted">–</strong></div></div>
+  <dialog id="offerWorkflowDialog" class="phb-workflow-dialog phb-offer-workflow" aria-labelledby="offerWorkflowTitle">
+   <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebotsverwaltung</span><h2 id="offerWorkflowTitle">Angebot erfassen und prüfen</h2><p>PDF analysieren, erkannte Positionen direkt prüfen und erst danach übernehmen.</p></div><button id="closeOfferWorkflow" type="button" class="subtle">Schließen</button></div>
+   <div class="phb-workflow-body">
   <section class="panel budget-panel offers-create" id="angebot-erfassen"><div class="panelbar"><div><h2>Neues Angebot erfassen</h2><p>Wähle den für dich einfachsten Weg. Beide landen in derselben Angebotsliste.</p></div></div>
    <div class="offer-entry-switch" role="group" aria-label="Art der Angebotserfassung">
      <button type="button" id="offerMethodPdf" class="offer-method is-selected" aria-pressed="true">PDF hochladen <small>Automatisch auslesen & prüfen</small></button>
@@ -37,6 +40,8 @@
    </form>
   </section>
   <section class="panel budget-panel offer-review-section" id="angebote-pruefen"><div class="panelbar"><div><h2>Angebotsentwürfe und neue Versionen prüfen <span id="offersDraftBadge" class="offers-counter"></span></h2><p>Prüfe eingelesene Angebote und neue Versionsentwürfe, bevor sie sichtbar aktuell werden.</p></div><a class="mini" href="/belege">Kategorien verwalten ↗</a></div><div id="offerDrafts" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div></section>
+   </div></dialog>
+  <div class="phb-workflow-inline-trigger"><button type="button" id="openOfferDrafts" class="subtle">Offene Entwürfe prüfen <span id="offerDraftTriggerCount"></span></button></div>
   <section class="panel budget-panel offer-compare-section" id="angebotsliste"><div class="panelbar"><div><h2>Deine Angebote</h2><p>Nur die jeweils aktuelle Version wird angezeigt. Frühere PDFs, Summen und Positionen findest du über „Versionshistorie“.</p></div><label class="offers-filter">Gewerk <select id="offerCategoryFilter"><option value="">Alle Kategorien</option></select></label></div>
    <div id="offerList" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div>
    <p class="section-note">Bei angenommener Leistung wird der Bruttogesamtbetrag genau einmal übernommen. Wenn du eine Kostenplanposition zuordnest, ersetzt der angenommene Preis deren Schätzung. Zu jedem <strong>angenommenen Angebot</strong> siehst du hier die Teilrechnungen, den bereits bezahlten Betrag und mögliche Überziehungen. Rechnungen werden unter <a href="/belege">Rechnungen & Belege</a> erfasst.</p>
