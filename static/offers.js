@@ -319,11 +319,16 @@
     const submit=form.querySelector('button[type=submit]');submit.disabled=true;
     inform('offerImportStatus',form.elements.analysis_mode.value==='ai'?'PDF wird mit ChatGPT analysiert …':'PDF wird lokal analysiert …');
     try {
-      const formData=aiAppend(form);
-      await request('/api/offers/import',{method:'POST',formData,ai:formData.get('analysis_mode')==='ai'});
-      form.reset(); await reload();
-      inform('offerImportStatus','PDF analysiert. Jetzt die Beträge und Einzelpositionen hier im Dialog prüfen.');
-      openWorkflow(true);
+      const mode=form.elements.analysis_mode.value;
+      let model='';
+      if(mode==='ai')model=window.PHBAI?.selection()?.model||'';
+      const files=form.elements.files.files;
+      const jobs=await window.PHBImports.enqueue({
+        kind:'offers',files,analysisMode:mode,model
+      });
+      form.reset();
+      inform('offerImportStatus',jobs.length+' PDF(s) in der Warteschlange. Die Verarbeitung läuft nacheinander im Hintergrund.');
+      workflow.close();
     } catch(err) {inform('offerImportStatus','Fehler: '+err.message,true)}
     finally{offerUploading=false;submit.disabled=false;}
   });
@@ -505,7 +510,19 @@
       updateAICompareSelection();
     }
   });
-  reload().catch(error=>{
+  document.addEventListener('phb-import-updated',event=>{
+    if(event.detail.kind==='offers'&&!workflow.open)reload().catch(()=>{});
+  });
+  reload().then(()=>{
+    const draftId=Number(new URLSearchParams(location.search).get('offer_draft'));
+    if(!draftId)return;
+    const isKnown=offers.some(o=>o.id===draftId&&o.status==='Entwurf')||
+      versionDrafts.some(v=>v.id===draftId||v.offer_id===draftId);
+    if(isKnown){
+      openWorkflow(true);
+      requestAnimationFrame(()=>$('offerDrafts').querySelector('[data-offer-card="'+draftId+'"]')?.scrollIntoView({block:'nearest'}));
+    }
+  }).catch(error=>{
     $('offerList').textContent='Angebote konnten nicht geladen werden: '+error.message;
     $('offerDrafts').textContent='Verbindung zur Angebotsverwaltung fehlgeschlagen.';
   });
