@@ -106,15 +106,15 @@ $('docEditForm').onsubmit=async e=>{
  e.preventDefault();const data=Object.fromEntries(new FormData($('docEditForm')));
  const id=data.id;delete data.id;
  try{await api('/api/project-documents/'+id,'PATCH',data);
-   $('docEditDialog').close();await reload();report('Dokumentdetails gespeichert.');}
+   $('docEditDialog').close();await reload();report('Dokumentdetails gespeichert.',false,'docPageStatus');}
  catch(err){report(err.message,true,'docEditMessage');}
 };
 $('docDelete').onclick=async()=>{
  const id=$('docEditForm').elements.namedItem('id').value;
  if(!confirm('Originaldokument endgültig löschen? Der Quellenvermerk in der Entscheidungshistorie bleibt erhalten.'))return;
  try{await api('/api/project-documents/'+id,'DELETE');$('docEditDialog').close();
-   await reload();report('Dokument gelöscht.');}
+   await reload();report('Dokument gelöscht.',false,'docPageStatus');}
  catch(err){report(err.message,true,'docEditMessage');}
 };
-reload().catch(err=>report(err.message,true));
+reload().catch(err=>report(err.message,true,'docPageStatus'));
 })();
