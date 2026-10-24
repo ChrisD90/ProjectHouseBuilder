@@ -9,12 +9,12 @@
   <div class="phb-workflow-body">
   <section class="panel receipt-upload-panel"><h2>Beleg hochladen</h2>
 <form id="upload">
-  <label class="receipt-upload-file">Datei (PDF, JPG, PNG oder WEBP; max. 15 MB)<input required type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" capture="environment"></label>
+  <label class="receipt-upload-file">Dateien (PDF, JPG, PNG oder WEBP; max. 8 Dateien à 15 MB)<input required type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*" capture="environment"></label>
   <label class="receipt-upload-method">Analyseart<select name="analysis_mode" id="receiptAnalysisMode">
     <option value="local">Lokal analysieren (keine Datenübertragung)</option>
     <option value="ai">Mit ChatGPT analysieren (ausdrückliche Freigabe)</option>
   </select></label>
-  <button id="receiptUploadButton" type="submit">Datei lokal analysieren</button>
+  <button id="receiptUploadButton" type="submit">Dateien im Hintergrund analysieren</button>
 </form>
 <p class="note" id="receiptAIHint" hidden>Bei ChatGPT werden die ausgewählte Rechnung oder das Foto zur Analyse übertragen. Es wird nur ein Entwurf gespeichert. Bitte vorher im ChatGPT-Verbindungsdialog die Credit-Warnung bestätigen.</p>
 <p class="note" id="uploadStatus" role="status">PDF-Text und Fotos werden lokal mit OCR ausgewertet. Bei OCR-Problemen kannst du alle Felder selbst eintragen.</p>
