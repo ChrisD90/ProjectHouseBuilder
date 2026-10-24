@@ -628,7 +628,7 @@ def _analyse_offer_with_mode(data,name):
       'Abweichungen, Ausschlüsse und Unsicherheiten im warnings-Array festhalten.')
     if len(data)>15*1024*1024:raise ValueError('KI-Analyse: maximal 15 MB.')
     content=[{'type':'input_file','filename':name,'file_data':'data:application/pdf;base64,'+
-                base64.b64encode(data).decode('ascii'),'detail':'low'},
+                base64.b64encode(data).decode('ascii')},
              {'type':'input_text','text':prompt}]
     result=extract_json(chatgpt.run([{'role':'user','content':content}],
                   'Faktenorientierter Angebotsprüfer für Altbausanierung. Nur JSON.',model))
