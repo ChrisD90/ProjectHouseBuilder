@@ -246,3 +246,16 @@ Unter /dokumente lassen sich Baupläne, technische Zeichnungen, Versicherungsunt
 Beim Hochladen wird vorhandener PDF-/DOCX-/TXT-Text ausschließlich lokal ausgelesen. Scans und Zeichnungen werden nicht automatisch oder ungefragt von ChatGPT interpretiert. Im Bauzeitenplan-Chat lassen sich je Nachricht bis zu drei aktuelle Dokumente explizit auswählen. Nur diese Dateien werden dann im Rahmen der bereits freigegebenen ChatGPT-Anfrage übertragen. Antworten sollen Dokumentquellen als DOK-ID bezeichnen; verwendete Dateiversionen mit Prüfsumme werden in der Entscheidungshistorie festgehalten. Änderungen am Bauzeitenplan bleiben bestätigungspflichtig.
 
 Die separate Projektdokumentation verändert keine vorhandenen Angebots-PDFs, Rechnungen oder Kreditanhänge. Alte Dokumentfassungen können den Status Überholt erhalten. Die Auswahlfunktion ist serverseitig wiederverwendbar und kann später auch beim Angebotsvergleich oder anderen KI-Funktionen eingesetzt werden. Technische Fachprüfungen werden dadurch nicht ersetzt.
+
+
+## Dezente Upload-Einstiege und durchgängige Bearbeitungsdialoge (Oktober 2026)
+
+Datei-Uploads sind auf den Arbeitsseiten nicht mehr als dauerhaft große Formulare sichtbar. Für **Angebote**, **Rechnungen & Belege**, **Projektdokumente** und zugeordnete **Kostenunterlagen** gibt es einen kurzen Upload-Button. Der einheitliche, responsive Dialogstil liegt in `static/workflow-dialogs.css` und unterstützt Hell/Dunkel. Die bereits vorhandenen Kreditdialoge verwenden für optionale ChatGPT-Kreditdokumente und Kredit-Anhänge standardmäßig geschlossene, aufklappbare Abschnitte.
+
+Bei **Angeboten** bleibt nach lokaler oder ChatGPT-PDF-Analyse derselbe Dialog geöffnet und zeigt den importierten Entwurf mit Korrekturen der Angebotsdaten und sämtlichen Einzelpositionen. Speichern, Prüfen, Freigeben und Hochladen überarbeiteter Versionen gehören zum bestehenden Ablauf; die Angebotsliste und das KI-Vergleichswerkzeug bleiben auf der Hauptseite. Über „Offene Entwürfe prüfen“ lässt sich der Bearbeitungsdialog erneut öffnen. Neue Versionen können an vorhandene Angebote angehängt und anschließend im Dialog geprüft werden.
+
+Bei **Rechnungen** öffnet die Analyse den vollständigen Prüfschritt **im selben Modal**: Rechnungsbeträge, USt, Lohnkosten, Zuordnung zu Angebot/Betrieb/Eigenleistung, Notizen, Originalbeleg, Speichern und verbindliches Buchen funktionieren dort weiter. Klicks auf bestehende Belege in der Übersicht öffnen ebenfalls den Bearbeitungsdialog. Bereits gebuchte Beträge sind weiterhin geschützt.
+
+Bei **Projektdokumenten** folgt auf den Upload unmittelbar der Bearbeitungsdialog für Titel, Klassifikation, Schlagworte und aktuellen Dokumentstatus. Die zentrale Bibliothek bleibt ohne Uploadformular sichtbar. Bei **Kosten & Budget** wurden die bestehenden Dokumenten-Zuordnungsfelder zusammen mit dem Dateiupload in einen Dialog verlegt. Dateien werden nur nach der bisherigen bewussten Benutzeraktion verarbeitet.
+
+Alle Uploaddialoge behalten Lade- und Fehlermeldungen sichtbar, während ein Vorgang läuft; die Schließen-Aktion wird während eines aktiven Uploads blockiert. Es wurden keine Datenbanktabellen, Endpunkte, Backups oder fachlichen Beleg-/Angebots-Freigaberegeln verändert. Die vorhandene UI-Bibliothek musste nicht gewechselt werden.
