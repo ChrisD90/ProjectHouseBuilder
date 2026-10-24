@@ -4,7 +4,7 @@ import os
 import unittest
 from unittest.mock import patch
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import (app,db,initialize,Trade,Category,Contractor,Receipt,Offer,ImportJob,
+from app import (app,db,initialize,Trade,Category,Contractor,Receipt,Offer,Setting,ImportJob,
                  ProjectDocument,DEFAULT_TRADES,CATEGORIES,IMPORT_QUEUE_ROOT,
                  _run_import_job)
 
@@ -18,6 +18,18 @@ class ReferenceDefaultsTest(unittest.TestCase):
         for j in db.session.query(ImportJob):
             (IMPORT_QUEUE_ROOT/j.stored_name).unlink(missing_ok=True)
         db.session.remove();db.drop_all();self.ctx.pop()
+
+    def test_existing_custom_trades_are_kept_when_first_default_seed_runs(self):
+        db.session.delete(db.session.get(Setting,'trades_initialized'))
+        missing=db.session.query(Trade).filter_by(name='Elektroinstallation').one()
+        db.session.delete(missing)
+        db.session.add(Trade(name='Bestehendes Spezialgewerk'))
+        db.session.commit()
+        initialize()
+        names={t.name for t in db.session.query(Trade)}
+        self.assertIn('Elektroinstallation',names)
+        self.assertIn('Bestehendes Spezialgewerk',names)
+        self.assertEqual(len(names),len(DEFAULT_TRADES)+1)
 
     def test_trades_seeded_once_and_reset_restores_without_overwriting_used_custom(self):
         initial={x.name for x in db.session.query(Trade)}
