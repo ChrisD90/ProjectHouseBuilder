@@ -30,6 +30,8 @@ USAGE_URL = 'https://chatgpt.com/#settings/usage'
 REQUIRED_SCOPES = {'resource.invoke', 'chatgpt.tokens.use.direct'}
 SCOPES = 'openid profile email offline_access resource.invoke chatgpt.tokens.use.direct'
 MAX_STREAM_TEXT = 140_000
+# Set only within one trusted background import worker thread.
+_background_hooks=threading.local()
 
 class AIError(Exception):
     """Safe, user-facing error from ChatGPT plan usage."""
@@ -342,7 +344,13 @@ class ChatGPTLocal:
             raise AIError('KI-Eingabe muss aus Text oder einer nichtleeren Nachrichtenliste bestehen.')
         payload={'model':model,'input':input_items,'instructions':instructions,
                  'store':False,'stream':True}
-        output=[];total=0;complete=False
+        output=[];total=0;complete=False;first_delta=False
+        progress=getattr(_background_hooks,'progress',None)
+        def phase(message):
+            if callable(progress):
+                try:progress(message)
+                except Exception:pass  # UI status must never break the actual AI request.
+        phase('Verbindung zu ChatGPT wird aufgebaut …')
         try:
             with requests.post(RESOURCE+'/responses', json=payload,headers={
                 'Authorization':'Bearer '+self.token(), 'Content-Type':'application/json',
@@ -353,6 +361,7 @@ class ChatGPTLocal:
                     err=detail.get('error',detail) if isinstance(detail,dict) else {}
                     code=err.get('code',err.get('detail','ChatGPT nicht verfügbar')) if isinstance(err,dict) else 'ChatGPT nicht verfügbar'
                     raise AIError('ChatGPT-Anfrage abgelehnt: '+str(code)[:150])
+                phase('ChatGPT prüft die hochgeladene Datei …')
                 for raw in response.iter_lines(decode_unicode=True):
                     if isinstance(raw,bytes):raw=raw.decode('utf-8','replace')
                     if not raw or not raw.startswith('data: '):continue
@@ -360,11 +369,16 @@ class ChatGPTLocal:
                     except ValueError:continue
                     typ=event.get('type')
                     if typ=='response.output_text.delta':
+                        if not first_delta:
+                            first_delta=True
+                            phase('ChatGPT liefert die Auswertung – Daten werden empfangen …')
                         delta=event.get('delta','')
                         total+=len(delta)
                         if total>MAX_STREAM_TEXT:raise AIError('Antwort überschreitet die maximale Länge.')
                         output.append(delta)
-                    elif typ=='response.completed':complete=True
+                    elif typ=='response.completed':
+                        complete=True
+                        phase('ChatGPT-Antwort vollständig – der Entwurf wird angelegt …')
                     elif typ in ('response.failed','error','response.incomplete'):
                         detail=event.get('response',{}).get('error') or event.get('error') or {}
                         code=detail.get('code','Anfrage fehlgeschlagen') if isinstance(detail,dict) else 'Anfrage fehlgeschlagen'
