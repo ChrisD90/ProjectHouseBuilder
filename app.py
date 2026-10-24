@@ -3249,10 +3249,10 @@ def _sync_import_reviews():
     for job in db.session.scalars(select(ImportJob).where(ImportJob.status=='Fertig')).all():
         if job.kind=='offers':
             offer=db.session.get(Offer,job.result_id)
-            reviewed=offer is None or offer.status!='Entwurf'
+            reviewed=offer is not None and offer.status!='Entwurf'
         elif job.kind=='receipts':
             receipt=db.session.get(Receipt,job.result_id)
-            reviewed=receipt is None or receipt.status=='Gebucht'
+            reviewed=receipt is not None and receipt.status=='Gebucht'
         elif job.kind=='versions':
             meta=json.loads(job.extra_json or '{}')
             number=meta.get('version_number')
