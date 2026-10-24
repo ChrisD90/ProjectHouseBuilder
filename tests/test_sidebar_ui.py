@@ -201,6 +201,29 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("costDocumentUploading",js)
         self.assertIn("await reload()",js)
 
+    def test_global_import_progress_and_review_notifications_are_available_everywhere(self):
+        for page in ('index','kosten','angebote','belege','finanzierung',
+                     'dokumente','stammdaten','daten'):
+            with self.subTest(page=page):
+                html=self.render(page)
+                self.assertEqual(html.count('id="phbImportCenter"'),1)
+                self.assertEqual(html.count('id="phbImportToast"'),1)
+                self.assertEqual(html.count('src="/static/import_jobs.js"'),1)
+        for page,element in (
+            ('angebote','offerImportForm'),
+            ('belege','upload'),
+            ('dokumente','projectDocumentUpload')):
+            html=self.render(page)
+            self.assertIn('id="'+element+'"',html)
+            self.assertRegex(html,r'<input[^>]*type="file"[^>]*multiple|<input[^>]*multiple[^>]*type="file"')
+        script=(STATIC/'import_jobs.js').read_text()
+        self.assertIn("kind:'receipts'",(STATIC/'receipts.js').read_text())
+        self.assertIn("kind:'offers'",(STATIC/'offers.js').read_text())
+        self.assertIn("kind:'documents'",(STATIC/'dokumente.js').read_text())
+        self.assertIn('review_url',script)
+        self.assertIn('/api/import-jobs',script)
+        self.assertIn('Notification.permission',script)
+
     def test_optional_credit_and_version_uploads_stay_collapsed(self):
         financing=self.render('finanzierung')
         for name in ('loanAiDetails','loanDocUploadDetails'):
