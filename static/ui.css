@@ -510,3 +510,27 @@ body.phb-app .phb-import-toast-actions button{padding:8px 12px;border:1px solid 
 body.phb-app .phb-import-toast-actions button:first-child{background:var(--ui-accent);color:white;border-color:var(--ui-accent)}
 @media(max-width:640px){body.phb-app .phb-import-center{left:10px;bottom:10px;width:min(380px,calc(100vw - 78px))}body.phb-app .phb-import-toast{top:74px;right:10px;width:calc(100vw - 20px)}body.phb-app .phb-import-feed{max-height:60dvh}}
 @media(prefers-reduced-motion:reduce){body.phb-app .phb-import-dot.is-working{animation-duration:3s}}
+
+/* Identical top-right primary actions across financial and document areas. */
+body.phb-app .phb-action-header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:15px 24px;flex-wrap:wrap
+}
+body.phb-app .phb-action-header>div:first-child{flex:1 1 380px;min-width:0}
+body.phb-app .phb-action-header .phb-header-actions{
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;
+  flex:0 0 auto;flex-wrap:wrap;margin-left:auto
+}
+body.phb-app .phb-action-header .phb-header-actions button.primary{
+  min-height:42px;padding:10px 17px;font-size:13px;white-space:nowrap
+}
+body.phb-app.phb-page-belege #stats{margin:14px 0 17px}
+body.phb-app.phb-page-stammdaten #restoreTrades,
+body.phb-app.phb-page-stammdaten #restoreCategories{
+  font-size:11px;line-height:1.35;padding:8px 11px;
+  white-space:normal;max-width:190px;flex:0 0 auto
+}
+body.phb-app.phb-page-stammdaten .master-panel-head{align-items:flex-start;gap:11px;flex-wrap:wrap}
+@media(max-width:680px){
+ body.phb-app .phb-action-header .phb-header-actions{width:100%;justify-content:flex-start;margin-left:0}
+}
