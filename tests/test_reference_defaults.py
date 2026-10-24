@@ -4,7 +4,7 @@ import os
 import unittest
 from unittest.mock import patch
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import (app,db,initialize,Trade,Category,Contractor,Receipt,ImportJob,
+from app import (app,db,initialize,Trade,Category,Contractor,Receipt,Offer,ImportJob,
                  ProjectDocument,DEFAULT_TRADES,CATEGORIES,IMPORT_QUEUE_ROOT,
                  _run_import_job)
 
@@ -72,6 +72,26 @@ class ReferenceDefaultsTest(unittest.TestCase):
                 'files':[(io.BytesIO(content),name)]},content_type='multipart/form-data')
         self.assertEqual(resp.status_code,202,resp.json)
         return resp.json['jobs'][0]['id']
+
+    def test_imported_offer_disappears_only_after_explicit_list_accept_or_reject(self):
+        created=self.client.post('/api/offers/manual',json={
+            'vendor':'Handwerksbetrieb','gross':'1190','category':'Elektro'})
+        self.assertEqual(created.status_code,201,created.json)
+        oid=created.json['id']
+        offer=db.session.get(Offer,oid)
+        offer.status='Entwurf'
+        db.session.commit()
+        # Simulate an already processed PDF whose editable offer draft now exists.
+        job=ImportJob(batch_id='test',kind='offers',filename='offer.pdf',
+                      stored_name='test-only.pdf',analysis_mode='local',
+                      status='Fertig',stage='Bitte prüfen',result_id=oid)
+        db.session.add(job);db.session.commit()
+        self.assertEqual(len(self.client.get('/api/import-jobs').json['jobs']),1)
+        listing=self.client.patch('/api/offers/'+str(oid),json={'status':'Angebot'})
+        self.assertEqual(listing.status_code,200,listing.json)
+        self.assertEqual(self.client.get('/api/import-jobs').json['jobs'],[])
+        self.assertEqual(db.session.get(ImportJob,job.id).status,'Übernommen')
+        self.assertIsNotNone(db.session.get(Offer,oid))
 
     def test_receipt_disappears_from_queue_only_after_explicit_editor_confirmation(self):
         job_id=self.enqueue('receipts',b'%PDF-1.4 test','rechnungsbeleg.pdf')
