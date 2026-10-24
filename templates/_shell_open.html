@@ -68,3 +68,19 @@
   </div>
 </div>
 <span id="phbBusyStatus" class="visually-hidden" role="status" aria-live="polite"></span>
+
+<section id="phbImportCenter" class="phb-import-center" aria-label="Hintergrundimporte" hidden>
+  <button type="button" id="phbImportToggle" class="phb-import-toggle" aria-expanded="false" aria-controls="phbImportFeed">
+    <span class="phb-import-toggle-icon" aria-hidden="true">⇪</span>
+    <span><strong>Dokumenten-Importe</strong><small id="phbImportCount">Keine Aufträge</small></span>
+  </button>
+  <div id="phbImportFeed" class="phb-import-feed" hidden>
+    <div class="phb-import-feed-head"><h2>Verarbeitung &amp; Prüfung</h2>
+      <button type="button" id="phbImportClose" aria-label="Importübersicht schließen">Schließen</button>
+    </div>
+    <p>Dateien werden einzeln verarbeitet. Du kannst auf anderen Seiten weiterarbeiten; fertige Entwürfe warten auf deine Prüfung.</p>
+    <div id="phbImportList" class="phb-import-list" aria-live="polite"></div>
+  </div>
+</section>
+<div id="phbImportToast" class="phb-import-toast" role="status" aria-live="polite" hidden></div>
+<script defer src="/static/import_jobs.js"></script>
