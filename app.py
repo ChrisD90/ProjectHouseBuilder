@@ -30,6 +30,9 @@ from chatgpt_local import chatgpt, AIError, IdentityValidationError, extract_jso
 import base64
 import time
 import secrets
+from queue import Queue
+from threading import Thread, Lock
+from werkzeug.datastructures import FileStorage
 from flask import Flask, jsonify, render_template, request, Response, send_file, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import select, text, inspect as sa_inspect
@@ -105,7 +108,7 @@ if DATABASE_URL.startswith('postgres://'):
     DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 app.config.update(SQLALCHEMY_DATABASE_URI=DATABASE_URL, SQLALCHEMY_TRACK_MODIFICATIONS=False, JSON_AS_ASCII=False)
 db = SQLAlchemy(app)
-app.config['MAX_CONTENT_LENGTH'] = 30 * 1024 * 1024  # 30 MB je Datei
+app.config['MAX_CONTENT_LENGTH'] = 85 * 1024 * 1024  # Mehrfach-Upload: pro Datei weiterhin maximal 15 MB
 DOCUMENT_ROOT = ROOT / 'private' / 'documents'
 DOCUMENT_EXTENSIONS = {'.pdf', '.docx', '.xlsx', '.jpg', '.jpeg', '.png', '.txt'}
 
@@ -162,6 +165,25 @@ class ScheduleHistory(db.Model):
     changes_json=db.Column(db.Text,nullable=False,default='[]')
     plan_digest=db.Column(db.String(64),nullable=False,default='')
     source_documents=db.Column(db.Text,nullable=False,default='[]',server_default='[]')
+
+
+class ImportJob(db.Model):
+    __tablename__='import_job'
+    id=db.Column(db.Integer,primary_key=True)
+    batch_id=db.Column(db.String(32),nullable=False,index=True)
+    kind=db.Column(db.String(20),nullable=False)
+    filename=db.Column(db.String(240),nullable=False)
+    stored_name=db.Column(db.String(90),nullable=False)
+    analysis_mode=db.Column(db.String(10),nullable=False)
+    model=db.Column(db.String(100),nullable=False,default='')
+    extra_json=db.Column(db.Text,nullable=False,default='{}')
+    status=db.Column(db.String(20),nullable=False,default='Wartend')
+    stage=db.Column(db.String(250),nullable=False,default='In Warteschlange')
+    error=db.Column(db.String(500),nullable=False,default='')
+    result_id=db.Column(db.Integer,nullable=True)
+    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
+    updated_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
+    finished_at=db.Column(db.DateTime,nullable=True)
 
 
 class ProjectDocument(db.Model):
@@ -3182,9 +3204,239 @@ def create_manual_backup():
     except (ValueError, OSError, sqlite3.DatabaseError, zipfile.BadZipFile) as e:
         return jsonify(error='Backup nicht erstellt: '+str(e)),409
 
+
+# One daemon worker, shared across invoice, offer and project-document jobs.
+# The queue is local to this running Flask process; durable task states and
+# spooled originals remain on disk. We never start a second worker per upload.
+IMPORT_QUEUE_ROOT=ROOT/'private'/'import-queue'
+_import_queue=Queue()
+_import_guard=Lock()
+_import_thread=None
+_MAX_IMPORT_COUNT=8
+_MAX_IMPORT_BATCH_BYTES=75*1024*1024
+_ALLOWED_IMPORTS={
+    'offers':{'.pdf'},
+    'receipts':{'.pdf','.jpg','.jpeg','.png','.webp'},
+    'documents':{'.pdf','.docx','.txt','.jpg','.jpeg','.png','.webp'}
+}
+
+
+def _import_json(job):
+    return {'id':job.id,'batch_id':job.batch_id,'kind':job.kind,
+            'filename':job.filename,'analysis_mode':job.analysis_mode,
+            'status':job.status,'stage':job.stage,'error':job.error,
+            'result_id':job.result_id,
+            'created_at':job.created_at.isoformat() if job.created_at else '',
+            'updated_at':job.updated_at.isoformat() if job.updated_at else '',
+            'finished_at':job.finished_at.isoformat() if job.finished_at else ''}
+
+
+def _import_result(job):
+    if job.result_id is None:return None
+    prefix={'offers':'/angebote?offer_draft=',
+            'receipts':'/belege?receipt_id=',
+            'documents':'/dokumente?document_id='}[job.kind]
+    return prefix+str(job.result_id)
+
+
+def _run_import_job(job_id):
+    with app.app_context():
+        job=db.session.get(ImportJob,job_id)
+        if not job or job.status!='Wartend':return
+        job.status='Läuft'
+        job.stage='ChatGPT analysiert die Datei …' if job.analysis_mode=='ai' else 'Datei wird lokal eingelesen …'
+        job.updated_at=datetime.utcnow()
+        db.session.commit()
+        filename=job.filename
+        job_type=job.kind
+        mode=job.analysis_mode
+        ai_model=job.model
+        meta=json.loads(job.extra_json or '{}')
+        source=IMPORT_QUEUE_ROOT/job.stored_name
+        try:
+            raw=source.read_bytes()
+            fields={'file':(io.BytesIO(raw),filename)}
+            if job_type in ('offers','receipts'):
+                fields.update(analysis_mode=mode,model=ai_model,plan_only='true')
+            else:
+                fields.update(meta)
+                fields.setdefault('title',Path(filename).stem[:200])
+            # Call the exact validated import route, not a parallel parser or
+            # a new business-logic path. The user authenticated and explicitly
+            # authorized AI at enqueue time; no browser credentials are stored.
+            with app.test_request_context(
+                '/api/'+{'offers':'offers/import','receipts':'receipts',
+                         'documents':'project-documents'}[job_type],
+                method='POST',data=fields,
+                headers={'X-PHB-AI':'1'} if mode=='ai' else {},
+                environ_base={'REMOTE_ADDR':'127.0.0.1'},
+                base_url='http://127.0.0.1:5055'):
+                result={'offers':offers_import,'receipts':receipt_upload,
+                        'documents':project_document_upload}[job_type]()
+                if isinstance(result,tuple):
+                    response,status_code=result[0],result[1]
+                else:
+                    response,status_code=result,200
+                payload=response.get_json() or {}
+            if status_code>=400:
+                raise ValueError(str(payload.get('error','Import fehlgeschlagen'))[:450])
+            result_id=payload.get('id') if job_type!='documents' else payload.get('document',{}).get('id')
+            if not result_id:raise ValueError('Server hat keinen gespeicherten Entwurf zurückgegeben.')
+            job=db.session.get(ImportJob,job_id)
+            job.result_id=int(result_id)
+            job.status='Fertig'
+            job.stage='Entwurf angelegt – bitte Daten prüfen'
+            job.error=''
+            job.finished_at=datetime.utcnow()
+            job.updated_at=datetime.utcnow()
+            db.session.commit()
+            source.unlink(missing_ok=True)
+        except Exception as exc:
+            db.session.rollback()
+            job=db.session.get(ImportJob,job_id)
+            if job:
+                job.status='Fehler'
+                job.stage='Analyse oder Speicherung fehlgeschlagen'
+                job.error=str(exc)[:450] if isinstance(exc,(ValueError,AIError)) else (
+                    'Der Import konnte nicht abgeschlossen werden. Bitte erneut versuchen.')
+                job.finished_at=datetime.utcnow()
+                job.updated_at=datetime.utcnow()
+                db.session.commit()
+        finally:
+            db.session.remove()
+
+
+def _import_worker():
+    while True:
+        ident=_import_queue.get()
+        try:_run_import_job(ident)
+        except Exception:
+            app.logger.exception('Import job unexpectedly failed: %s',ident)
+        finally:_import_queue.task_done()
+
+
+def _start_import_worker():
+    global _import_thread
+    with _import_guard:
+        if _import_thread is None or not _import_thread.is_alive():
+            _import_thread=Thread(target=_import_worker,name='phb-sequential-imports',daemon=True)
+            _import_thread.start()
+
+
+@app.post('/api/import-jobs')
+def enqueue_import_jobs():
+    kind=request.form.get('kind','')
+    if kind not in _ALLOWED_IMPORTS:
+        return jsonify(error='Unbekannter Dokumenttyp.'),400
+    mode=request.form.get('analysis_mode','local')
+    if mode not in ('ai','local') or (kind=='documents' and mode!='local'):
+        return jsonify(error='Unbekannte Analyseart.'),400
+    model=request.form.get('model','')
+    if mode=='ai':
+        _ai_request_required()
+        if not isinstance(model,str) or not model.strip() or len(model)>100:
+            return jsonify(error='Bitte ChatGPT-Modell auswählen.'),400
+    files=request.files.getlist('files')
+    if not 1<=len(files)<=_MAX_IMPORT_COUNT:
+        return jsonify(error='Bitte eine bis acht Dateien auswählen.'),400
+    staged=[];total=0
+    IMPORT_QUEUE_ROOT.mkdir(parents=True,exist_ok=True)
+    try:
+        for file in files:
+            filename=Path(file.filename or '').name[:240]
+            extension=Path(filename).suffix.lower()
+            if extension not in _ALLOWED_IMPORTS[kind]:
+                raise ValueError('Nicht unterstützte Datei: '+filename)
+            data=file.read(15*1024*1024+1)
+            total+=len(data)
+            if not data or len(data)>15*1024*1024:
+                raise ValueError('Datei leer oder zu groß (15 MB je Datei): '+filename)
+            if total>_MAX_IMPORT_BATCH_BYTES:
+                raise ValueError('Maximal 75 MB je Upload-Durchgang.')
+            if extension=='.pdf' and not data.startswith(b'%PDF-'):
+                raise ValueError('PDF-Signatur ungültig: '+filename)
+            stored=uuid4().hex+extension
+            path=IMPORT_QUEUE_ROOT/stored
+            path.write_bytes(data)
+            staged.append((filename,stored))
+        meta={}
+        if kind=='documents':
+            for key in ('title','category','area','status','tags','description'):
+                if key in request.form:meta[key]=request.form[key][:1500]
+            # Batch titles use the filename to avoid confusing duplicate titles.
+            if len(files)>1:meta.pop('title',None)
+        batch=uuid4().hex
+        jobs=[]
+        for filename,stored in staged:
+            job=ImportJob(batch_id=batch,kind=kind,filename=filename,stored_name=stored,
+                          analysis_mode=mode,model=model if mode=='ai' else '',
+                          extra_json=json.dumps(meta,ensure_ascii=False),
+                          stage='Wartet auf die sequenzielle Verarbeitung')
+            db.session.add(job);jobs.append(job)
+        db.session.commit()
+        result=[_import_json(job) for job in jobs]
+    except (ValueError,OSError) as exc:
+        db.session.rollback()
+        for _,stored in staged:(IMPORT_QUEUE_ROOT/stored).unlink(missing_ok=True)
+        return jsonify(error=str(exc)),400
+    except Exception:
+        db.session.rollback()
+        for _,stored in staged:(IMPORT_QUEUE_ROOT/stored).unlink(missing_ok=True)
+        return jsonify(error='Dateien konnten nicht in die Warteschlange gelegt werden.'),500
+    _start_import_worker()
+    for job in jobs:_import_queue.put(job.id)
+    return jsonify(jobs=result,batch_id=batch),202
+
+
+@app.get('/api/import-jobs')
+def list_import_jobs():
+    rows=db.session.scalars(select(ImportJob).order_by(ImportJob.id.desc()).limit(40)).all()
+    response=jsonify(jobs=[{**_import_json(job),'review_url':_import_result(job)}
+                           for job in rows])
+    response.headers['Cache-Control']='no-store'
+    return response
+
+
+@app.post('/api/import-jobs/<int:job_id>/retry')
+def retry_import_job(job_id):
+    job=db.session.get(ImportJob,job_id)
+    if not job:return jsonify(error='Importauftrag nicht gefunden.'),404
+    if job.status not in ('Fehler','Unterbrochen'):
+        return jsonify(error='Nur fehlgeschlagene Aufträge dürfen wiederholt werden.'),409
+    if job.analysis_mode=='ai':
+        _ai_request_required()
+        model=request.get_json(silent=True) or {}
+        if isinstance(model.get('model'),str) and model['model']:
+            job.model=model['model'][:100]
+    if not (IMPORT_QUEUE_ROOT/job.stored_name).is_file():
+        return jsonify(error='Temporäre Quelldatei fehlt, bitte Datei erneut hochladen.'),409
+    job.status='Wartend'
+    job.error=''
+    job.stage='Erneut zur Warteschlange hinzugefügt'
+    job.finished_at=None
+    job.updated_at=datetime.utcnow()
+    db.session.commit()
+    _start_import_worker()
+    _import_queue.put(job.id)
+    return jsonify(job=_import_json(job)),202
+
+
+def _recover_interrupted_imports():
+    # Called at startup, not during requests, so active workers never race.
+    for job in db.session.scalars(select(ImportJob).where(
+            ImportJob.status.in_(['Wartend','Läuft']))).all():
+        job.status='Unterbrochen'
+        job.error='Die Anwendung wurde während des Imports beendet. Bitte erneut starten.'
+        job.stage='Import nach Neustart unterbrochen'
+        job.updated_at=datetime.utcnow()
+    db.session.commit()
+
+
 if __name__=='__main__':
     if DATABASE_URL.startswith('sqlite:'):
         from schema_manager import upgrade_database
         upgrade_database()
-    with app.app_context():initialize()
+    with app.app_context():
+        initialize()
+        _recover_interrupted_imports()
     app.run(host=os.environ.get('HOST','127.0.0.1'),port=int(os.environ.get('PORT','5055')),debug=False)
