@@ -389,6 +389,31 @@ class ChatGPTLocalTests(unittest.TestCase):
         self.assertEqual(len(self.client.get('/api/project').json['tasks']),2)
         self.assertEqual(self.client.post('/api/ai/schedule/apply',headers=self.headers(),json={'confirm':True,'tasks':steps}).status_code,409)
 
+    def test_background_pdf_progress_reports_real_stream_milestones(self):
+        from chatgpt_local import ChatGPTLocal, _background_hooks
+        local=ChatGPTLocal()
+        class Stream:
+            status_code=200
+            def __enter__(self):return self
+            def __exit__(self,*_):return False
+            def iter_lines(self,**_):
+                yield b'data: {"type":"response.output_text.delta","delta":"ok"}'
+                yield b'data: {"type":"response.completed"}'
+        stages=[]
+        _background_hooks.progress=stages.append
+        try:
+            with patch.object(local,'models',return_value=[{'slug':'m1'}]), \
+                 patch.object(local,'token',return_value='oauth'), \
+                 patch('chatgpt_local.requests.post',return_value=Stream()):
+                self.assertEqual(local.run('PDF','PDF auslesen','m1'),'ok')
+        finally:
+            _background_hooks.progress=None
+        self.assertEqual(len(stages),4)
+        self.assertIn('Verbindung',stages[0])
+        self.assertIn('prüft',stages[1])
+        self.assertIn('empfangen',stages[2])
+        self.assertIn('Entwurf',stages[3])
+
     def test_failed_stream_never_returns_partial_result(self):
         from chatgpt_local import ChatGPTLocal
         local=ChatGPTLocal()
