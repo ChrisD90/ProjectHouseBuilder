@@ -3217,6 +3217,7 @@ _MAX_IMPORT_COUNT=8
 _MAX_IMPORT_BATCH_BYTES=75*1024*1024
 _ALLOWED_IMPORTS={
     'offers':{'.pdf'},
+    'versions':{'.pdf'},
     'receipts':{'.pdf','.jpg','.jpeg','.png','.webp'},
     'documents':{'.pdf','.docx','.txt','.jpg','.jpeg','.png','.webp'}
 }
@@ -3235,6 +3236,7 @@ def _import_json(job):
 def _import_result(job):
     if job.result_id is None:return None
     prefix={'offers':'/angebote?offer_draft=',
+            'versions':'/angebote?offer_draft=',
             'receipts':'/belege?receipt_id=',
             'documents':'/dokumente?document_id='}[job.kind]
     return prefix+str(job.result_id)
@@ -3264,7 +3266,7 @@ def _run_import_job(job_id):
             ai_background_hooks.progress=update_stage
             raw=source.read_bytes()
             fields={'file':(io.BytesIO(raw),filename)}
-            if job_type in ('offers','receipts'):
+            if job_type in ('offers','versions','receipts'):
                 fields.update(analysis_mode=mode,model=ai_model,plan_only='true')
             else:
                 fields.update(meta)
@@ -3273,14 +3275,16 @@ def _run_import_job(job_id):
             # a new business-logic path. The user authenticated and explicitly
             # authorized AI at enqueue time; no browser credentials are stored.
             with app.test_request_context(
-                '/api/'+{'offers':'offers/import','receipts':'receipts',
-                         'documents':'project-documents'}[job_type],
+                '/api/'+{'offers':'offers/import','versions':'offers/'+str(meta['offer_id'])+'/versions',
+                         'receipts':'receipts','documents':'project-documents'}[job_type],
                 method='POST',data=fields,
                 headers={'X-PHB-AI':'1'} if mode=='ai' else {},
                 environ_base={'REMOTE_ADDR':'127.0.0.1'},
                 base_url='http://127.0.0.1:5055'):
-                result={'offers':offers_import,'receipts':receipt_upload,
-                        'documents':project_document_upload}[job_type]()
+                result={'offers':lambda:offers_import(),
+                        'versions':lambda:upload_offer_version(meta['offer_id']),
+                        'receipts':lambda:receipt_upload(),
+                        'documents':lambda:project_document_upload()}[job_type]()
                 if isinstance(result,tuple):
                     response,status_code=result[0],result[1]
                 else:
@@ -3288,7 +3292,9 @@ def _run_import_job(job_id):
                 payload=response.get_json() or {}
             if status_code>=400:
                 raise ValueError(str(payload.get('error','Import fehlgeschlagen'))[:450])
-            result_id=payload.get('id') if job_type!='documents' else payload.get('document',{}).get('id')
+            result_id=(payload.get('document',{}).get('id') if job_type=='documents'
+                       else payload.get('offer_id') if job_type=='versions'
+                       else payload.get('id'))
             if not result_id:raise ValueError('Server hat keinen gespeicherten Entwurf zurückgegeben.')
             job=db.session.get(ImportJob,job_id)
             job.result_id=int(result_id)
@@ -3370,6 +3376,14 @@ def enqueue_import_jobs():
             path.write_bytes(data)
             staged.append((filename,stored))
         meta={}
+        if kind=='versions':
+            try:offer_id=int(request.form.get('offer_id',''))
+            except (ValueError,TypeError):raise ValueError('Angebot für neue Version auswählen.')
+            if offer_id<1 or db.session.get(Offer,offer_id) is None:
+                raise ValueError('Angebot für diese Version nicht gefunden.')
+            if len(files)!=1:
+                raise ValueError('Pro Angebotsversion genau ein PDF auswählen.')
+            meta['offer_id']=offer_id
         if kind=='documents':
             for key in ('title','category','area','status','tags','description'):
                 if key in request.form:meta[key]=request.form[key][:1500]
