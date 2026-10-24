@@ -88,7 +88,7 @@ class ImportJobsTest(unittest.TestCase):
         _recover_interrupted_imports()
         obj=db.session.get(ImportJob,ident)
         self.assertEqual(obj.status,'Unterbrochen')
-        self.assertIn('Neustart',obj.error)
+        self.assertIn('erneut starten',obj.error)
         self.assertTrue((IMPORT_QUEUE_ROOT/obj.stored_name).exists())
 
     def test_invalid_batches_and_ai_without_consent_fail(self):
