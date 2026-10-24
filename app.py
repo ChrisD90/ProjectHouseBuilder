@@ -441,8 +441,9 @@ def initialize():
         db.session.add(Setting(key='start', value='2027-03-01'))
     # Seed trade names exactly once. Deleting/renaming them later must persist.
     if db.session.get(Setting,'trades_initialized') is None:
-        if not db.session.scalar(select(Trade.id).limit(1)):
-            db.session.add_all(Trade(name=name) for name in DEFAULT_TRADES)
+        existing={name.casefold() for name in db.session.scalars(select(Trade.name))}
+        db.session.add_all(Trade(name=name) for name in DEFAULT_TRADES
+                           if name.casefold() not in existing)
         db.session.add(Setting(key='trades_initialized',value='1'))
     # Intentionally no automatic schedule seed. The user can import the
     # curated template explicitly after reviewing it; never silently refill
