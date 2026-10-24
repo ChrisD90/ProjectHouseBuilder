@@ -2739,6 +2739,8 @@ def receipt_edit(rid):
             # installments are checked when the invoice is booked.
             _validate_invoice_advance(r,_accepted_receipt_offer(r))
         if r.status=='Gebucht':_validate_receipt_booking(r)
+        if data.get('reviewed') is True:
+            _mark_import_reviewed('receipts',rid)
         db.session.commit();return jsonify(_receipt_json(r))
     except (ValueError,TypeError) as err:
         db.session.rollback();return jsonify(error=str(err)),400
@@ -2778,7 +2780,9 @@ def receipt_book(rid):
             other=db.session.scalar(select(Receipt.id).where(Receipt.id!=r.id,Receipt.status=='Gebucht',
                 Receipt.invoice_number==r.invoice_number,Receipt.supplier==r.supplier).limit(1))
             if other:raise ValueError('Mögliche Doppelbuchung: Lieferant und Rechnungsnummer bereits gebucht (#'+str(other)+').')
-        r.status='Gebucht';db.session.commit();return jsonify(_receipt_json(r))
+        r.status='Gebucht'
+        _mark_import_reviewed('receipts',rid)
+        db.session.commit();return jsonify(_receipt_json(r))
     except ValueError as err:
         db.session.rollback();return jsonify(error=str(err)),409
 
