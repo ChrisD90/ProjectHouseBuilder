@@ -875,6 +875,7 @@ def project_document_edit(did):
         if set(body)-allowed:raise ValueError('Nicht erlaubte Dokumenteigenschaften.')
         fields=_document_fields(body,partial=True)
         for key,value in fields.items():setattr(record,key,value)
+        _mark_import_reviewed('documents',did)
         db.session.commit()
         return jsonify(document=_document_json(record))
     except ValueError as exc:
@@ -3233,6 +3234,38 @@ def _import_json(job):
             'finished_at':job.finished_at.isoformat() if job.finished_at else ''}
 
 
+def _mark_import_reviewed(kind, result_id):
+    """Retain audited job history, remove reviewed items from active queue."""
+    for job in db.session.scalars(select(ImportJob).where(
+            ImportJob.kind==kind,ImportJob.result_id==result_id,
+            ImportJob.status=='Fertig')):
+        job.status='Übernommen'
+        job.stage='Fachlich geprüft und übernommen'
+        job.updated_at=datetime.utcnow()
+
+
+def _sync_import_reviews():
+    """Detect final business decisions even if they were made elsewhere."""
+    for job in db.session.scalars(select(ImportJob).where(ImportJob.status=='Fertig')).all():
+        if job.kind=='offers':
+            offer=db.session.get(Offer,job.result_id)
+            reviewed=offer is None or offer.status!='Entwurf'
+        elif job.kind=='receipts':
+            receipt=db.session.get(Receipt,job.result_id)
+            reviewed=receipt is None or receipt.status=='Gebucht'
+        elif job.kind=='versions':
+            meta=json.loads(job.extra_json or '{}')
+            number=meta.get('version_number')
+            version=db.session.scalar(select(OfferVersion).where(
+                OfferVersion.offer_id==job.result_id,
+                OfferVersion.version_number==number)) if number else None
+            reviewed=version is not None and version.state!='draft'
+        else:
+            reviewed=False  # Explicit metadata confirmation marks library documents.
+        if reviewed:_mark_import_reviewed(job.kind,job.result_id)
+    db.session.commit()
+
+
 def _import_result(job):
     if job.result_id is None:return None
     prefix={'offers':'/angebote?offer_draft=',
@@ -3300,6 +3333,9 @@ def _run_import_job(job_id):
             if not result_id:raise ValueError('Server hat keinen gespeicherten Entwurf zurückgegeben.')
             job=db.session.get(ImportJob,job_id)
             job.result_id=int(result_id)
+            if job_type=='versions':
+                meta['version_number']=payload.get('version',{}).get('version')
+                job.extra_json=json.dumps(meta,ensure_ascii=False)
             job.status='Fertig'
             job.stage='Entwurf angelegt – bitte Daten prüfen'
             job.error=''
@@ -3423,7 +3459,9 @@ def enqueue_import_jobs():
 @app.get('/api/import-jobs')
 def list_import_jobs():
     _ensure_import_recovery()
-    rows=db.session.scalars(select(ImportJob).order_by(ImportJob.id.desc()).limit(40)).all()
+    _sync_import_reviews()
+    rows=db.session.scalars(select(ImportJob).where(
+        ImportJob.status!='Übernommen').order_by(ImportJob.id.desc()).limit(40)).all()
     response=jsonify(jobs=[{**_import_json(job),'review_url':_import_result(job)}
                            for job in rows])
     response.headers['Cache-Control']='no-store'
