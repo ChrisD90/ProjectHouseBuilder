@@ -160,6 +160,7 @@ function inputs(){
  result.assignment_type=mode;
  result.cost_item_id=(mode==='Angebot'||mode==='Kostenposition')?$('costItems').value:null;
  result.contractor_id=mode==='Betrieb'?$('receiptContractor').value:null;
+ result.reviewed=true; // Explicitly saved and confirmed in the editor.
  return result;
 }
 function fillSelect(node,values,getTitle){node.innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${safe(getTitle(x))}</option>`).join('')}
