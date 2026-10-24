@@ -3274,9 +3274,11 @@ def _run_import_job(job_id):
             # Call the exact validated import route, not a parallel parser or
             # a new business-logic path. The user authenticated and explicitly
             # authorized AI at enqueue time; no browser credentials are stored.
+            endpoint=('offers/'+str(meta['offer_id'])+'/versions') if job_type=='versions' else {
+                'offers':'offers/import','receipts':'receipts',
+                'documents':'project-documents'}[job_type]
             with app.test_request_context(
-                '/api/'+{'offers':'offers/import','versions':'offers/'+str(meta['offer_id'])+'/versions',
-                         'receipts':'receipts','documents':'project-documents'}[job_type],
+                '/api/'+endpoint,
                 method='POST',data=fields,
                 headers={'X-PHB-AI':'1'} if mode=='ai' else {},
                 environ_base={'REMOTE_ADDR':'127.0.0.1'},
