@@ -4,6 +4,7 @@
   const $ = id => document.getElementById(id);
   if (!$('offerImportForm') || !$('offerList')) return;
   let offers = [], categories = [], budgets = [], versionDrafts = [];
+  const expandedOffers=new Set();
   let comparingOffers = false;
   let offerUploading = false;
   const workflow=$('offerWorkflowDialog');
@@ -224,16 +225,34 @@
   }
 
   function renderListed(o) {
-    const [label,color] = stage(o);
-    const accepted = ['Angenommen','Beauftragt'].includes(o.status);
-    const rejected = o.status==='Abgelehnt';
-    const extras = o.notes ? `<p class="offer-notes">${esc(o.notes)}</p>` : '';
-    return `<article class="offer-card offer-list-card" data-offer-card="${o.id}"><div class="offer-card-head"><div><span class="offer-stage ${color}">${label}</span><h3>${esc(o.vendor)} <small>${esc(o.number)}</small></h3><p>${esc(o.category)} · ${esc(o.issued || 'Ohne Datum')} · ${sourceLabel(o)}</p></div><div class="offer-sum"><span>Brutto</span><strong>${fmt(o.gross)}</strong></div></div>
-      <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>${extras}
-      <div class="offer-actions">${accepted
-          ? `<span class="offer-accepted-note">✓ In der Kostenprognose berücksichtigt</span><a class="mini" href="/belege?offer_id=${o.id}">Rechnung zuordnen</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
-          : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder berücksichtigen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`}
-      </div>${accepted?billingBlock(o):''}${versionUpload(o)}${versionHistory(o)}<div class="offer-inline-edit" id="offerEditor${o.id}" hidden></div>${notice(o)}${parsedPositions(o)}</article>`;
+    const [label,color]=stage(o);
+    const accepted=['Angenommen','Beauftragt'].includes(o.status);
+    const rejected=o.status==='Abgelehnt';
+    const expanded=expandedOffers.has(o.id);
+    const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
+    const notes=o.notes?`<p class="offer-notes">${esc(o.notes)}</p>`:'';
+    const actions=accepted
+      ? `<span class="offer-accepted-note">✓ Berücksichtigt</span><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
+      : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
+    return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
+      <button type="button" class="offer-tile-toggle" data-offer-expand="${o.id}"
+        aria-expanded="${expanded}" aria-controls="offerDetails${o.id}"
+        aria-label="Details zu ${esc(o.vendor)} ${expanded?'schließen':'öffnen'}">
+        <span class="offer-stage ${color}">${label}</span>
+        <strong class="offer-tile-vendor">${esc(o.vendor)}</strong>
+        <span class="offer-tile-meta">${meta}${o.number?` · Nr. ${esc(o.number)}`:''}</span>
+        <strong class="offer-tile-price">${fmt(o.gross)}</strong>
+        <span class="offer-tile-chevron" aria-hidden="true">${expanded?'−':'+'}</span>
+      </button>
+      <div class="offer-actions offer-tile-actions">${actions}</div>
+      <div class="offer-tile-details" id="offerDetails${o.id}" ${expanded?'':'hidden'}>
+        <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>
+        ${notes}${accepted?billingBlock(o):''}
+        ${versionUpload(o)}${versionHistory(o)}
+        <div class="offer-inline-edit" id="offerEditor${o.id}" hidden></div>
+        ${notice(o)}${parsedPositions(o)}
+      </div>
+    </article>`;
   }
 
   function refreshUI() {
@@ -442,6 +461,20 @@
       await reload();
     }catch(err){alert(err.message)}
   });
+  document.addEventListener('click',event=>{
+    const toggle=event.target.closest('button[data-offer-expand]');
+    if(!toggle)return;
+    const id=Number(toggle.dataset.offerExpand);
+    const details=$('offerDetails'+id);
+    if(!details)return;
+    const open=details.hidden;
+    details.hidden=!open;
+    toggle.setAttribute('aria-expanded',String(open));
+    toggle.setAttribute('aria-label',toggle.getAttribute('aria-label').replace(
+      open?'öffnen':'schließen',open?'schließen':'öffnen'));
+    toggle.querySelector('.offer-tile-chevron').textContent=open?'−':'+';
+    if(open)expandedOffers.add(id);else expandedOffers.delete(id);
+  });
   document.addEventListener('click',async e=>{
     const button=e.target.closest('button[data-offer-promote],button[data-offer-accept],button[data-offer-reject],button[data-offer-relist],button[data-offer-unaccept],button[data-offer-edit],button[data-offer-delete]');
     if(!button)return;
@@ -451,6 +484,13 @@
     try {
       if(key==='offerEdit'){
         const box=$('offerEditor'+id),o=offers.find(item=>String(item.id)===String(id));
+        const tile=$('offerDetails'+id);
+        if(tile){
+          tile.hidden=false;expandedOffers.add(Number(id));
+          const toggle=document.querySelector('[data-offer-expand="'+id+'"]');
+          if(toggle){toggle.setAttribute('aria-expanded','true');
+            toggle.querySelector('.offer-tile-chevron').textContent='−';}
+        }
         if(!box||!o)return;
         if(!box.hidden){box.hidden=true;button.textContent='Bearbeiten';return}
         box.innerHTML=`<h4>Angaben korrigieren</h4><form class="offer-review-form" data-review="${id}">${fields(o)}<div class="offer-form-actions"><button type="submit" class="primary">Änderungen speichern</button><button type="button" class="mini" data-edit-cancel="${id}">Abbrechen</button></div></form>`;
