@@ -224,6 +224,35 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('/api/import-jobs',script)
         self.assertIn('Notification.permission',script)
 
+    def test_upload_and_create_actions_sit_in_matching_page_headers(self):
+        for page,button in (('angebote','openOfferWorkflow'),
+                            ('belege','openReceiptWorkflow'),
+                            ('dokumente','openDocUpload'),
+                            ('kosten','openCostUpload'),
+                            ('finanzierung','newLoan')):
+            html=self.render(page)
+            header=html.index('phb-action-header')
+            button_index=html.index('id="'+button+'"')
+            self.assertLess(header,button_index,page)
+            self.assertLess(button_index,html.index('</section>',header)
+                if page in ('belege','finanzierung') else
+                html.index('</div>',html.index('phb-header-actions',header))+200)
+            self.assertEqual(html.count('id="'+button+'"'),1)
+        styles=(STATIC/'ui.css').read_text()
+        self.assertIn('.phb-action-header .phb-header-actions',styles)
+        self.assertIn('justify-content:flex-end',styles)
+
+    def test_offer_tiles_are_compact_and_expandable_with_quick_actions(self):
+        js=(STATIC/'offers.js').read_text()
+        css=(STATIC/'angebote.css').read_text()
+        for marker in ('offer-tile-toggle','offer-tile-details',
+                       'data-offer-expand','data-offer-accept','data-offer-edit',
+                       'data-offer-reject','aria-expanded'):
+            self.assertIn(marker,js)
+        self.assertIn('#offerList .offer-tile',css)
+        self.assertIn('grid-template-columns:repeat(auto-fill',css)
+        self.assertIn('.offer-tile-details[hidden]',css)
+
     def test_optional_credit_and_version_uploads_stay_collapsed(self):
         financing=self.render('finanzierung')
         for name in ('loanAiDetails','loanDocUploadDetails'):
