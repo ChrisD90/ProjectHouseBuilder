@@ -26,9 +26,8 @@
 <form id="loanForm" class="modal">
   <div class="modal-head"><h2 id="loanDialogTitle">Kredit anlegen</h2><button type="button" class="secondary" id="closeLoan">Schließen</button></div>
   <p class="hint loan-editor-intro" id="loanFormHelp">Alle Angaben können nach dem Speichern ergänzt oder korrigiert werden. Bereits gebuchte Zahlungen bleiben erhalten.</p>
-  <div class="loan-ai-assistant">
-    <div><strong>Kreditdaten mit ChatGPT übernehmen</strong>
-      <p class="hint">Optional: Kreditvertrag oder Bankanschreiben auslesen und die Felder zur Prüfung vorausfüllen. Die manuelle Erfassung bleibt unverändert.</p></div>
+  <details class="loan-ai-assistant loan-ai-collapsible" id="loanAiDetails">
+    <summary><strong>Kreditunterlagen mit ChatGPT einlesen</strong><small>Optional · Vertragsdaten automatisch vorausfüllen</small></summary>
     <div class="loan-ai-actions">
       <label>Kreditunterlage (PDF oder Foto, maximal 15 MB)
         <input id="loanAiFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
@@ -39,7 +38,7 @@
     <p class="hint">Die ausgewählte Unterlage wird nur beim Klick auf „Mit ChatGPT vorausfüllen“ übertragen. Standardmäßig werden bestehende Vertragsdaten nicht überschrieben. Ohne deine Prüfung wird nichts gespeichert.</p>
     <p id="loanAiStatus" class="hint" role="status"></p>
     <ul id="loanAiWarnings" class="loan-ai-warnings" hidden></ul>
-  </div>
+  </details>
   <input type="hidden" name="id"><div class="fields">
 <label>Bezeichnung<input name="name" required maxlength="160" placeholder="Kredit A"></label><label>Bank<input name="bank" maxlength="160"></label><label>Vertragsreferenz<input name="reference" maxlength="120"></label><label>Darlehensrahmen (€)<input name="principal" type="number" required min="0.01" step="0.01"></label><label>Sollzins p. a. (%)<input name="interest_rate" type="number" required min="0" max="100" step="0.001" value="0"></label><label>Monatliche Rate (€)<input name="monthly_payment" type="number" required min="0" step="0.01" value="0"></label><label>Anfängliche Tilgung (%)<input name="initial_repayment_rate" type="number" min="0" max="100" step="0.001" value="0"></label><label>Sondertilgung p. a. (%)<input name="extra_repayment_pct" type="number" min="0" max="100" step="0.001" value="0"></label><label>Vertragsdatum<input name="contract_date" type="date"></label><label>Zinsbindung bis<input name="fixed_until" type="date"></label><label>Bereitstellungszins ab<input name="interest_free_until" type="date"></label><label>Bereitstellungszins p. a. (%)<input name="commitment_interest_rate" type="number" min="0" max="100" step="0.001" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div>
   <p id="loanSaveStatus" class="hint loan-save-status" role="status" aria-live="polite"></p>
@@ -51,6 +50,8 @@
 <section id="loanDocuments" class="loan-documents" hidden>
   <h3>Kreditunterlagen &amp; Schriftverkehr</h3>
   <p class="hint">Dokumente werden diesem Kredit zugeordnet und lokal zusammen mit dem Projekt gesichert. Ein Anhang ändert keine Kreditkonditionen.</p>
+  <details class="loan-doc-upload-details" id="loanDocUploadDetails">
+    <summary>+ Dokument an Kredit anhängen</summary>
   <form id="loanDocumentUpload" class="loan-doc-form">
     <label>Dokument (PDF oder Foto, maximal 15 MB)
       <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
@@ -59,6 +60,7 @@
     <button type="submit" id="loanDocumentAdd">An Kredit anhängen</button>
   </form>
   <p id="loanDocumentStatus" class="hint" role="status"></p>
+  </details>
   <div id="loanDocumentList" class="loan-document-list"></div>
 </section>
 </dialog>
