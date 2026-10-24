@@ -149,5 +149,24 @@
       }catch(error){note(error.message,true);}
     };
   }
+  for(const [button,kind,label] of [
+    ['restoreTrades','trade','Gewerke'],
+    ['restoreCategories','category','Rechnungs- und Kostenkategorien']
+  ]){
+    $(button).onclick=async()=>{
+      if(!confirm('Standardliste für '+label+' wiederherstellen? Fehlende Standardwerte werden ergänzt. Nicht mehr benötigte eigene Einträge werden entfernt, bereits verwendete Einträge bleiben geschützt.'))return;
+      const target=$(button);target.disabled=true;
+      try{
+        const result=await api(endpoints[kind]+'/restore-defaults','POST',{confirm:true});
+        await reload();
+        const parts=['Standardliste wiederhergestellt',
+          result.added.length+' ergänzt',result.removed.length+' ungenutzte Einträge entfernt'];
+        if(result.preserved.length)parts.push(
+          result.preserved.length+' verwendete eigene Einträge bleiben erhalten');
+        note(parts.join(' · ')+'.');
+      }catch(error){note(error.message,true);}
+      finally{target.disabled=false;}
+    };
+  }
   reload().catch(error=>note('Stammdaten konnten nicht geladen werden: '+error.message,true));
 })();
