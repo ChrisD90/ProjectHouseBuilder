@@ -102,3 +102,19 @@ body.phb-app .loan-doc-upload-details>p{margin:9px 0 0}
  body.phb-app .receipt-header-actions{align-items:flex-start;gap:11px}
  body.phb-app .receipt-list-panel{padding:15px}
 }
+
+body.phb-app .phb-cost-workflow{width:min(790px,calc(100vw - 36px))}
+body.phb-app .phb-cost-workflow .upload-form{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ padding:2px 0 15px;gap:15px;align-items:end;
+}
+body.phb-app .phb-cost-workflow .upload-form label{color:var(--ui-ink-soft)}
+body.phb-app .phb-cost-workflow .upload-form :is(input,select){min-width:0;width:100%}
+body.phb-app .phb-cost-workflow .upload-form label:first-child{grid-column:1/-1}
+body.phb-app .phb-cost-workflow .upload-form button{justify-self:start;margin-top:3px}
+body.phb-app .phb-cost-workflow #uploadMessage{margin:0;line-height:1.6;color:var(--ui-muted)}
+body.phb-app .phb-page-kosten #openCostUpload{min-height:39px;padding:9px 13px}
+@media(max-width:700px){
+ body.phb-app .phb-cost-workflow .upload-form{grid-template-columns:1fr}
+ body.phb-app .phb-cost-workflow .upload-form label:first-child{grid-column:1}
+}
