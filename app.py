@@ -3212,6 +3212,7 @@ IMPORT_QUEUE_ROOT=ROOT/'private'/'import-queue'
 _import_queue=Queue()
 _import_guard=Lock()
 _import_thread=None
+_import_recovery_done=False
 _MAX_IMPORT_COUNT=8
 _MAX_IMPORT_BATCH_BYTES=75*1024*1024
 _ALLOWED_IMPORTS={
@@ -3333,6 +3334,7 @@ def _start_import_worker():
 
 @app.post('/api/import-jobs')
 def enqueue_import_jobs():
+    _ensure_import_recovery()
     kind=request.form.get('kind','')
     if kind not in _ALLOWED_IMPORTS:
         return jsonify(error='Unbekannter Dokumenttyp.'),400
@@ -3398,6 +3400,7 @@ def enqueue_import_jobs():
 
 @app.get('/api/import-jobs')
 def list_import_jobs():
+    _ensure_import_recovery()
     rows=db.session.scalars(select(ImportJob).order_by(ImportJob.id.desc()).limit(40)).all()
     response=jsonify(jobs=[{**_import_json(job),'review_url':_import_result(job)}
                            for job in rows])
@@ -3407,6 +3410,7 @@ def list_import_jobs():
 
 @app.post('/api/import-jobs/<int:job_id>/retry')
 def retry_import_job(job_id):
+    _ensure_import_recovery()
     job=db.session.get(ImportJob,job_id)
     if not job:return jsonify(error='Importauftrag nicht gefunden.'),404
     if job.status not in ('Fehler','Unterbrochen'):
@@ -3430,7 +3434,7 @@ def retry_import_job(job_id):
 
 
 def _recover_interrupted_imports():
-    # Called at startup, not during requests, so active workers never race.
+    # Called once per process before any background tasks can start.
     for job in db.session.scalars(select(ImportJob).where(
             ImportJob.status.in_(['Wartend','Läuft']))).all():
         job.status='Unterbrochen'
@@ -3440,11 +3444,20 @@ def _recover_interrupted_imports():
     db.session.commit()
 
 
+def _ensure_import_recovery():
+    global _import_recovery_done
+    if _import_recovery_done:return
+    with _import_guard:
+        if not _import_recovery_done:
+            _recover_interrupted_imports()
+            _import_recovery_done=True
+
+
 if __name__=='__main__':
     if DATABASE_URL.startswith('sqlite:'):
         from schema_manager import upgrade_database
         upgrade_database()
     with app.app_context():
         initialize()
-        _recover_interrupted_imports()
+        _ensure_import_recovery()
     app.run(host=os.environ.get('HOST','127.0.0.1'),port=int(os.environ.get('PORT','5055')),debug=False)
