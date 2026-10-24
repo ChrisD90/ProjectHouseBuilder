@@ -176,11 +176,13 @@ class SidebarUITest(unittest.TestCase):
         self.assertNotIn("scrollIntoView({behavior:'smooth',block:'start'})",offers)
         receipt=(STATIC/'receipts.js').read_text()
         self.assertIn('openReceiptDialog(true)',receipt)
-        self.assertIn('await reload(data.id)',receipt)
+        self.assertIn("kind:'receipts'",receipt)
+        self.assertIn('linkReceipt',receipt)
         self.assertIn("receiptDialog.classList.toggle('is-reviewing'",receipt)
         docs=(STATIC/'dokumente.js').read_text()
         self.assertIn('uploadDialog.close();',docs)
-        self.assertIn('edit(result.document.id)',docs)
+        self.assertIn("kind:'documents'",docs)
+        self.assertIn('edit(documentId)',docs)
 
     def test_cost_document_attachment_has_optional_mapping_dialog(self):
         page=self.render('kosten')
