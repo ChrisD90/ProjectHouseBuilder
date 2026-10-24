@@ -182,6 +182,23 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('uploadDialog.close();',docs)
         self.assertIn('edit(result.document.id)',docs)
 
+    def test_cost_document_attachment_has_optional_mapping_dialog(self):
+        page=self.render('kosten')
+        self.assertIn('id="openCostUpload"',page)
+        self.assertIn('id="costDocumentDialog"',page)
+        self.assertIn('id="closeCostUpload"',page)
+        self.assertIn('id="uploadForm"',page)
+        self.assertIn('/static/workflow-dialogs.css',page)
+        start=page.index('id="costDocumentDialog"')
+        end=page.index('</dialog>',start)
+        self.assertIn('id="uploadForm"',page[start:end])
+        self.assertIn('name="contractor_id"',page[start:end])
+        self.assertIn('name="budget_line_id"',page[start:end])
+        js=(STATIC/'costs.js').read_text()
+        self.assertIn("costDocumentDialog.showModal()",js)
+        self.assertIn("costDocumentUploading",js)
+        self.assertIn("await reload()",js)
+
     def test_optional_credit_and_version_uploads_stay_collapsed(self):
         financing=self.render('finanzierung')
         for name in ('loanAiDetails','loanDocUploadDetails'):
