@@ -20,9 +20,9 @@
      <button type="button" id="offerMethodPdf" class="offer-method is-selected" aria-pressed="true">PDF hochladen <small>Automatisch auslesen & prüfen</small></button>
      <button type="button" id="offerMethodManual" class="offer-method" aria-pressed="false">Manuell erfassen <small>Firma und Gesamtbetrag eingeben</small></button>
    </div>
-   <form id="offerImportForm" class="offer-entry-form"><label class="offer-file-label">Angebots-PDF auswählen <input type="file" name="file" accept=".pdf,application/pdf" required></label>
+   <form id="offerImportForm" class="offer-entry-form"><label class="offer-file-label">Angebots-PDFs auswählen (bis zu 8) <input type="file" name="files" accept=".pdf,application/pdf" multiple required></label>
      <label>Analyseart<select name="analysis_mode" id="offerAnalysisMode"><option value="local">Lokal analysieren (keine Datenübertragung)</option><option value="ai">Mit ChatGPT analysieren (nach Freigabe)</option></select></label>
-     <button type="submit" class="primary">PDF analysieren</button><p class="offer-import-status" id="offerImportStatus" role="status">Die PDF wird lokal analysiert. Du kannst Positionen korrigieren und eine überarbeitete PDF später als neue Version desselben Angebots hochladen. Alte Versionen bleiben erhalten.</p></form>
+     <button type="submit" class="primary">Dateien im Hintergrund analysieren</button><p class="offer-import-status" id="offerImportStatus" role="status">Die Dateien werden nacheinander analysiert. Du kannst währenddessen weiterarbeiten und jeden fertigen Entwurf anschließend im Prüf-Dialog bearbeiten.</p></form>
    <form id="offerManualForm" class="offer-entry-form offer-manual-form" hidden>
     <label>Firma / Anbieter <input name="vendor" maxlength="200" required placeholder="z. B. Elektro Mustermann"></label>
     <label>Bruttogesamtsumme (€) <input name="gross" inputmode="decimal" required placeholder="z. B. 8.500,00"></label>
