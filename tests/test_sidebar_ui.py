@@ -150,6 +150,55 @@ class SidebarUITest(unittest.TestCase):
         script=(STATIC/'schedule_chat.js').read_text()
         self.assertIn('document_ids:[...selectedDocuments]',script)
 
+    def test_upload_entry_points_use_consistent_modal_workflow(self):
+        pages={
+            'angebote':('offerWorkflowDialog','openOfferWorkflow','offerImportForm','offerDrafts','offerManualForm'),
+            'belege':('receiptWorkflowDialog','openReceiptWorkflow','upload','review','book'),
+            'dokumente':('docUploadDialog','openDocUpload','projectDocumentUpload',None,None),
+        }
+        for name,(dialog,trigger,upload,review,confirm) in pages.items():
+            with self.subTest(page=name):
+                html=self.render(name)
+                self.assertIn('id="'+dialog+'"',html)
+                self.assertIn('id="'+trigger+'"',html)
+                self.assertIn('aria-labelledby=',html)
+                self.assertIn('/static/workflow-dialogs.css',html)
+                start=html.index('id="'+dialog+'"')
+                close=html.index('</dialog>',start)
+                dialog_html=html[start:close]
+                self.assertIn('id="'+upload+'"',dialog_html)
+                if review:self.assertIn('id="'+review+'"',dialog_html)
+                if confirm:self.assertIn('id="'+confirm+'"',dialog_html)
+                self.assertEqual(html.count('id="'+upload+'"'),1)
+        offers=(STATIC/'offers.js').read_text()
+        self.assertIn('openWorkflow(true)',offers)
+        self.assertIn("'angebote-pruefen'",offers)
+        self.assertNotIn("scrollIntoView({behavior:'smooth',block:'start'})",offers)
+        receipt=(STATIC/'receipts.js').read_text()
+        self.assertIn('openReceiptDialog(true)',receipt)
+        self.assertIn('await reload(data.id)',receipt)
+        self.assertIn("receiptDialog.classList.toggle('is-reviewing'",receipt)
+        docs=(STATIC/'dokumente.js').read_text()
+        self.assertIn('uploadDialog.close();',docs)
+        self.assertIn('edit(result.document.id)',docs)
+
+    def test_optional_credit_and_version_uploads_stay_collapsed(self):
+        financing=self.render('finanzierung')
+        for name in ('loanAiDetails','loanDocUploadDetails'):
+            self.assertIn('id="'+name+'"',financing)
+        self.assertIn('id="loanAiFile"',financing)
+        self.assertIn('id="loanDocumentUpload"',financing)
+        offers=(STATIC/'offers.js').read_text()
+        self.assertIn('offer-version-upload-details',offers)
+        self.assertIn('data-version-upload',offers)
+        self.assertIn('openWorkflow(true)',offers)
+        css=(STATIC/'workflow-dialogs.css').read_text()
+        self.assertIn('var(--ui-surface)',css)
+        self.assertIn('max-height',css)
+        self.assertIn(':not([open])',css)
+        sw=(STATIC/'sw.js').read_text()
+        self.assertIn("'/static/workflow-dialogs.css'",sw)
+
     def test_invoice_labor_is_separately_editable_and_visible(self):
         page=self.render('belege')
         self.assertIn('id="receiptLabor"',page)
