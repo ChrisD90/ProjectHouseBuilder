@@ -21,6 +21,7 @@ def upgrade():
         sa.Column('stored_name',sa.String(90),nullable=False),
         sa.Column('analysis_mode',sa.String(10),nullable=False),
         sa.Column('model',sa.String(100),nullable=False,server_default=''),
+        sa.Column('extra_json',sa.Text(),nullable=False,server_default='{}'),
         sa.Column('status',sa.String(20),nullable=False,server_default='Wartend'),
         sa.Column('stage',sa.String(250),nullable=False,server_default='In Warteschlange'),
         sa.Column('error',sa.String(500),nullable=False,server_default=''),
