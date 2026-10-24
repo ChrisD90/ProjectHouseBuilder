@@ -205,6 +205,19 @@ class ProjectDocument(db.Model):
     uploaded_at=db.Column(db.DateTime,nullable=False,server_default=db.func.current_timestamp())
 
 
+DEFAULT_TRADES=(
+    'Abbruch & Entkernung','Architektur & Planung','Bauleitung','Statik',
+    'Rohbau & Maurerarbeiten','Zimmerer & Holzbau','Dachdecker',
+    'Spengler / Klempner','Fenster & Türen','Fassade & Wärmedämmung',
+    'Gerüstbau','Elektroinstallation','Photovoltaik','Sanitär',
+    'Heizung & Wärmepumpe','Klima & Lüftung','Trockenbau',
+    'Innen- & Außenputz','Estrich','Fliesen','Bodenbeläge',
+    'Maler & Lackierer','Schreiner / Tischler','Treppenbau',
+    'Metallbau / Schlosser','Abdichtung','Garten- & Landschaftsbau',
+    'Tiefbau & Erdarbeiten','Sonstiges'
+)
+
+
 class Trade(db.Model):
     """Editable trade names; distinct from financial/receipt categories."""
     id=db.Column(db.Integer,primary_key=True)
@@ -426,6 +439,11 @@ def initialize():
         db.session.commit()
     if not db.session.get(Setting,'start'):
         db.session.add(Setting(key='start', value='2027-03-01'))
+    # Seed trade names exactly once. Deleting/renaming them later must persist.
+    if db.session.get(Setting,'trades_initialized') is None:
+        if not db.session.scalar(select(Trade.id).limit(1)):
+            db.session.add_all(Trade(name=name) for name in DEFAULT_TRADES)
+        db.session.add(Setting(key='trades_initialized',value='1'))
     # Intentionally no automatic schedule seed. The user can import the
     # curated template explicitly after reviewing it; never silently refill
     # an empty or previously reset project.
@@ -2855,6 +2873,54 @@ def trades_delete(tid):
         return jsonify(error='Gewerk wird von Firmen oder Arbeitspaketen verwendet; bitte zunächst umbenennen oder neu zuordnen.'),409
     db.session.delete(item);db.session.commit()
     return jsonify(ok=True)
+
+
+def _restore_defaults(kind):
+    """Restore default names, remove unused extras only, never break references."""
+    is_trade=kind=='trades'
+    model=Trade if is_trade else Category
+    default_names=DEFAULT_TRADES if is_trade else tuple(CATEGORIES)
+    existing=db.session.scalars(select(model)).all()
+    original={row.name.casefold():row for row in existing}
+    created=[];deleted=[];protected=[]
+    for index,name in enumerate(default_names):
+        if name.casefold() not in original:
+            if is_trade:db.session.add(Trade(name=name))
+            else:db.session.add(Category(name=name,sort_order=index))
+            created.append(name)
+        elif not is_trade:
+            original[name.casefold()].sort_order=index
+    for record in existing:
+        if record.name.casefold() in {n.casefold() for n in default_names}:continue
+        if is_trade:
+            used=bool(db.session.scalar(select(Contractor.id).where(
+                Contractor.trade==record.name).limit(1)) or db.session.scalar(
+                select(Task.id).where(Task.trade==record.name).limit(1)))
+        else:
+            used=any(db.session.scalar(select(m.id).where(
+                m.category==record.name).limit(1)) is not None
+                for m in (Receipt,CostItem,BudgetLine,Offer))
+        if used:protected.append(record.name)
+        else:db.session.delete(record);deleted.append(record.name)
+    db.session.commit()
+    return jsonify(ok=True,added=created,removed=deleted,preserved=protected,
+                   message='Standardliste wiederhergestellt; verwendete eigene Einträge bleiben erhalten.')
+
+
+@app.post('/api/trades/restore-defaults')
+def trades_restore_defaults():
+    data=request.get_json(silent=True) or {}
+    if data.get('confirm') is not True:
+        return jsonify(error='Bitte Rücksetzung ausdrücklich bestätigen.'),400
+    return _restore_defaults('trades')
+
+
+@app.post('/api/categories/restore-defaults')
+def categories_restore_defaults():
+    data=request.get_json(silent=True) or {}
+    if data.get('confirm') is not True:
+        return jsonify(error='Bitte Rücksetzung ausdrücklich bestätigen.'),400
+    return _restore_defaults('categories')
 
 
 @app.get('/kosten')
