@@ -6,6 +6,8 @@ let selected=null,list=[],overview=null;
 const receiptDialog=$('receiptWorkflowDialog');
 let uploading=false;
 function openReceiptDialog(review=false){
+  receiptDialog.classList.toggle('is-reviewing',Boolean(review));
+  $('receiptUploadAgain').hidden=!review;
   if(!receiptDialog.open)receiptDialog.showModal();
   if(review){
     requestAnimationFrame(()=>$('review').querySelector('input:not(:disabled)')?.focus({preventScroll:true}));
@@ -14,6 +16,11 @@ function openReceiptDialog(review=false){
   }
 }
 $('openReceiptWorkflow').onclick=()=>{
+  selected=null;
+  $('review').hidden=true;$('placeholder').hidden=false;
+  openReceiptDialog(false);
+};
+$('receiptUploadAgain').onclick=()=>{
   selected=null;
   $('review').hidden=true;$('placeholder').hidden=false;
   openReceiptDialog(false);
