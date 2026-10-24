@@ -395,13 +395,18 @@
     const id=form.dataset.versionUpload;
     const status=form.querySelector('[data-version-upload-status]');
     const button=form.querySelector('button[type="submit"]');
-    button.disabled=true; status.textContent='Neue Version wird lokal analysiert …';
+    button.disabled=true; status.textContent='Neue Version wird in die Warteschlange gestellt …';
     try{
-      const formData=aiAppend(form);
-      await request(offerUrl(id)+'/versions',{method:'POST',formData,ai:formData.get('analysis_mode')==='ai'});
-      await reload();
-      openWorkflow(true);
-    }catch(err){status.textContent='Fehler: '+err.message;button.disabled=false;}
+      const mode=form.elements.analysis_mode.value;
+      const model=mode==='ai'?window.PHBAI?.selection()?.model||'':'';
+      await window.PHBImports.enqueue({
+        kind:'versions',files:form.elements.file.files,analysisMode:mode,
+        model,fields:{offer_id:String(id)}
+      });
+      form.reset();
+      status.textContent='PDF eingereiht. Du kannst weiterarbeiten; die Prüfung erfolgt nach Abschluss über die Importübersicht.';
+    }catch(err){status.textContent='Fehler: '+err.message;}
+    finally{button.disabled=false;}
   });
   document.addEventListener('toggle',async e=>{
     const details=e.target;
@@ -511,7 +516,7 @@
     }
   });
   document.addEventListener('phb-import-updated',event=>{
-    if(event.detail.kind==='offers'&&!workflow.open)reload().catch(()=>{});
+    if(['offers','versions'].includes(event.detail.kind)&&!workflow.open)reload().catch(()=>{});
   });
   reload().then(()=>{
     const draftId=Number(new URLSearchParams(location.search).get('offer_draft'));
