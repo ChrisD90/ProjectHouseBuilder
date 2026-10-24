@@ -3,6 +3,14 @@
 const $=id=>document.getElementById(id);
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let records=[],options=null;
+const uploadDialog=$('docUploadDialog');
+let uploadRunning=false;
+$('openDocUpload').onclick=()=>uploadDialog.showModal();
+$('closeDocUpload').onclick=()=>{if(!uploadRunning)uploadDialog.close();};
+uploadDialog.addEventListener('cancel',e=>{if(uploadRunning)e.preventDefault();});
+uploadDialog.addEventListener('click',e=>{
+ if(e.target===uploadDialog&&!uploadRunning)uploadDialog.close();
+});
 const report=(msg,error=false,id='docMessage')=>{const n=$(id);n.textContent=msg;n.classList.toggle('error',error);};
 async function api(url,method='GET',data){
  const opts={method};
@@ -85,11 +93,13 @@ $('projectDocumentUpload').elements.namedItem('file').addEventListener('change',
 $('projectDocumentUpload').onsubmit=async e=>{
  e.preventDefault();
  const form=$('projectDocumentUpload'),btn=$('docUploadButton');
- btn.disabled=true;report('Dokument wird lokal geprüft und gespeichert …');
+ btn.disabled=true;uploadRunning=true;report('Dokument wird lokal geprüft und gespeichert …');
  try{const result=await api('/api/project-documents','POST',new FormData(form));form.reset();await reload();
-   report('Dokument „'+result.document.title+'“ lokal gespeichert. Eine KI-Übertragung erfolgt nur nach ausdrücklicher Auswahl.');}
+   uploadDialog.close();
+   edit(result.document.id);
+   report('Dokument „'+result.document.title+'“ gespeichert. Prüfe die Angaben und den Dokumentstatus. Es wurde nichts an ChatGPT übertragen.',false,'docEditMessage');}
  catch(err){report(err.message,true);}
- finally{btn.disabled=false;}
+ finally{btn.disabled=false;uploadRunning=false;}
 };
 $('docClose').onclick=()=>$('docEditDialog').close();
 $('docEditForm').onsubmit=async e=>{
