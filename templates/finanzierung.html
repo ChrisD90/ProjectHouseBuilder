@@ -6,12 +6,12 @@
 {% set phb_active = 'finanzierung' %}{% set phb_title = 'Finanzierung' %}{% include '_shell_open.html' %}
 
 <main id="phbMain" class="phb-main">
-<section class="intro"><div><span class="phb-page-kicker">Finanzen / Liquidität</span><h1>Kredite, Eigenkapital und Rechnungen</h1><p>Jede Zahlung erhält eine nachvollziehbare Finanzierungsquelle. Projektkosten werden dabei nicht doppelt berechnet.</p></div></section>
+<section class="intro phb-action-header"><div><span class="phb-page-kicker">Finanzen / Liquidität</span><h1>Kredite, Eigenkapital und Rechnungen</h1><p>Jede Zahlung erhält eine nachvollziehbare Finanzierungsquelle. Projektkosten werden dabei nicht doppelt berechnet.</p></div><div class="phb-header-actions"><button type="button" id="newLoan" class="primary">+ Kredit erfassen</button></div></section>
 <div id="notice" role="status" class="notice" hidden></div>
 <section class="tiles" id="totals"><p>Lade Finanzierungsübersicht …</p></section>
 <section id="warnings" class="alerts" aria-live="polite"></section>
 <section class="columns">
-<div class="panel"><div class="panel-title"><div><h2>Darlehen</h2><p>Vertragskonditionen und tatsächliche Abrufe getrennt erfassen.</p></div><button type="button" id="newLoan">+ Kredit</button></div><div id="loanList" class="cards"></div></div>
+<div class="panel"><div class="panel-title"><div><h2>Darlehen</h2><p>Vertragskonditionen und tatsächliche Abrufe getrennt erfassen.</p></div></div><div id="loanList" class="cards"></div></div>
 <div class="panel"><div class="panel-title"><div><h2>Eigenkapital</h2><p>Kontostand und gewünschte Sicherheitsreserve verwalten.</p></div><button type="button" id="newEquity">+ Konto</button></div><div id="equityList" class="cards"></div></div>
 </section>
 <section class="columns">
