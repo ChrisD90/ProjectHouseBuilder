@@ -99,6 +99,25 @@ class ImportJobsTest(unittest.TestCase):
         self.assertEqual(resp.status_code,403)
         self.assertEqual(self.client.get('/api/import-jobs').status_code,200)
 
+    def test_offer_revision_uses_serial_worker_and_returns_original_offer_link(self):
+        created=self.client.post('/api/offers/manual',json={
+            'vendor':'Elektrobetrieb','gross':'1190','category':'Elektro'})
+        self.assertEqual(created.status_code,201,created.json)
+        oid=created.json['id']
+        data={'kind':'versions','analysis_mode':'local','offer_id':str(oid),
+              'files':[(io.BytesIO(b'%PDF-1.4\nRevision'), 'aenderung.pdf')]}
+        with patch('app._start_import_worker'):
+            enqueued=self.client.post('/api/import-jobs',data=data,content_type='multipart/form-data')
+        self.assertEqual(enqueued.status_code,202,enqueued.json)
+        from flask import jsonify
+        with patch('app.upload_offer_version',
+                   return_value=(jsonify(offer_id=oid,version={'version':2}),201)) as mocked:
+            _run_import_job(enqueued.json['jobs'][0]['id'])
+            mocked.assert_called_once_with(oid)
+        ready=self.client.get('/api/import-jobs').json['jobs'][0]
+        self.assertEqual(ready['status'],'Fertig',ready)
+        self.assertEqual(ready['review_url'],'/angebote?offer_draft='+str(oid))
+
     def test_multifile_project_docs_produce_distinct_editable_library_records(self):
         raw={'kind':'documents','analysis_mode':'local','area':'Elektrik',
              'category':'Technische Zeichnung','status':'Aktuell','tags':'Leitungsführung',
