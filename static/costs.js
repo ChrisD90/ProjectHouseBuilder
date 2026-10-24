@@ -63,4 +63,26 @@ for(const type of ['Budget','Cost','Funding'])el('add'+(type==='Budget'?'Line':t
 el('editBudget').addEventListener('click',async()=>{let v=prompt('Wie hoch ist das Projektbudget in Euro?',state.summary?.budget??0);if(v===null)return;let num=Number(String(v).replace(/\./g,'').replace(',','.'));if(!Number.isFinite(num)||num<0){alert('Bitte einen gültigen Euro-Betrag eingeben.');return}try{await api('/api/budget/config',{method:'PATCH',body:JSON.stringify({budget:num})});await reload()}catch(e){alert(e.message)}});
 reload().catch(e=>alert('Kostenverwaltung kann nicht geladen werden: '+e.message));
 
-el('uploadForm').addEventListener('submit',async e=>{e.preventDefault();el('uploadMessage').textContent='Datei wird gespeichert …';const form=new FormData(e.target);try{const r=await fetch('/api/documents',{method:'POST',body:form});const data=await r.json();if(!r.ok)throw Error(data.error||'Fehler beim Hochladen');el('uploadMessage').textContent='Datei wurde lokal gespeichert.';e.target.reset();await reload()}catch(err){el('uploadMessage').textContent='Fehler: '+err.message}});
+const costDocumentDialog=el('costDocumentDialog');
+let costDocumentUploading=false;
+el('openCostUpload').onclick=()=>costDocumentDialog.showModal();
+el('closeCostUpload').onclick=()=>{if(!costDocumentUploading)costDocumentDialog.close();};
+costDocumentDialog.addEventListener('cancel',e=>{if(costDocumentUploading)e.preventDefault();});
+costDocumentDialog.addEventListener('click',e=>{
+ if(e.target===costDocumentDialog&&!costDocumentUploading)costDocumentDialog.close();
+});
+el('uploadForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ if(costDocumentUploading)return;
+ costDocumentUploading=true;
+ const button=e.target.querySelector('button[type=submit]');button.disabled=true;
+ el('uploadMessage').textContent='Datei wird gespeichert …';
+ try{
+   const response=await fetch('/api/documents',{method:'POST',body:new FormData(e.target)});
+   const data=await response.json();
+   if(!response.ok)throw Error(data.error||'Fehler beim Hochladen');
+   e.target.reset();await reload();
+   el('uploadMessage').textContent='Datei gespeichert und in der Tabelle ergänzt. Du kannst weitere Dateien zuordnen oder den Dialog schließen.';
+ }catch(err){el('uploadMessage').textContent='Fehler: '+err.message;}
+ finally{costDocumentUploading=false;button.disabled=false;}
+});
