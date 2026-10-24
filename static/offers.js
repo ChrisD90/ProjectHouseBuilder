@@ -8,6 +8,8 @@
   let offerUploading = false;
   const workflow=$('offerWorkflowDialog');
   const openWorkflow=(review=false)=>{
+    workflow.classList.toggle('is-reviewing',Boolean(review));
+    $('anotherOffer').hidden=!review;
     if(!workflow.open)workflow.showModal();
     if(review){
       const section=$('angebote-pruefen');
@@ -18,6 +20,7 @@
   };
   $('openOfferWorkflow').onclick=()=>openWorkflow();
   $('openOfferDrafts').onclick=()=>openWorkflow(true);
+  $('anotherOffer').onclick=()=>openWorkflow(false);
   $('closeOfferWorkflow').onclick=()=>{if(!offerUploading)workflow.close();};
   workflow.addEventListener('cancel',event=>{if(offerUploading)event.preventDefault();});
   workflow.addEventListener('click',event=>{
