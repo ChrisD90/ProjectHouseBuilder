@@ -115,7 +115,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('id="aiScheduleChatPanel" hidden',page)
         self.assertIn('role="dialog" aria-modal="false"',page)
         self.assertIn('id="scheduleChatPreview" hidden',page)
-        self.assertIn('id="scheduleHistoryDetails"',page)
+        self.assertIn('id="scheduleHistoryDialog"',page)
         self.assertIn('href="/static/icons/ui-icons.svg#message-circle"',page)
         self.assertIn('id="message-circle"', (STATIC/'icons'/'ui-icons.svg').read_text())
 
