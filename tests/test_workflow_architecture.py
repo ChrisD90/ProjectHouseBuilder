@@ -56,7 +56,7 @@ class WorkflowArchitectureTests(unittest.TestCase):
         js=(STATIC/'phb-workflow.js').read_text(encoding='utf-8')
         for invariant in ('function signature(form)','function manage(config)',
                           'function cancel()','function setBusy(next)',
-                          'function stage(index)','function snapshot()','function run(callback',
+                          'function stage(index)','const snapshot=()','function run(callback',
                           "'beforeunload'",'aria-current', 'opener.focus'):
             self.assertIn(invariant,js)
         css=(STATIC/'phb-workflow.css').read_text(encoding='utf-8')
