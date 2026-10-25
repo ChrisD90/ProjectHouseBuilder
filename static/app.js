@@ -64,8 +64,7 @@ $('companySuggestions').onclick=()=>{
       const source=(company.sources||[]).map(escapeHtml).join(' · ');
       const choices=freeTasks.map(task=>{
         // Recommendation is only a visual hint: all unassigned tasks are selectable.
-        const probable=proposals(task.id).some(p=>p.contractor_id===company.contractor_id);
-        return `<label class="company-task-choice"><input type="checkbox" data-company-id="${company.contractor_id}" data-company-task="${task.id}"><span><strong>${escapeHtml(task.code)} · ${escapeHtml(task.name)}</strong><small>${escapeHtml(task.phase)} · ${escapeHtml(task.trade)}${probable?' · möglicher Bezug':''}</small></span></label>`;
+        return `<label class="company-task-choice"><input type="checkbox" data-company-id="${company.contractor_id}" data-company-task="${task.id}"><span><strong>${escapeHtml(task.code)} · ${escapeHtml(task.name)}</strong><small>${escapeHtml(task.phase)} · ${escapeHtml(task.trade)}</small></span></label>`;
       }).join('');
       return `<section class="company-task-group"><h3>${escapeHtml(company.name)}</h3><p class="company-help">${escapeHtml(company.trade)} · ${source}</p><div class="company-task-choices">${choices}</div></section>`;
     }).join('');
