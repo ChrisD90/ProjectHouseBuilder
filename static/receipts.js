@@ -196,6 +196,8 @@ async function open(id){
  $('receiptTaxRate').value=detectReceiptTaxRate(x);
  updateLaborHint(x.labor_source,x.labor_amount);
  $('book').hidden=x.status==='Gebucht';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status==='Gebucht';
+ $('payReceipt').hidden=x.status!=='Gebucht';
+ $('receiptPaymentsPanel').hidden=true;
  for(let node of $('review').querySelectorAll('input,select,textarea'))node.disabled=x.status==='Gebucht'&&node.name!=='notes'&&node.name!=='paid_amount'&&node.name!=='due_date';
  $('receiptTaxRate').disabled=x.status==='Gebucht';
  $('receiptTaxHint').textContent='Wenn du den Bruttobetrag bearbeitest, werden Netto und USt mit dem gewählten Satz automatisch berechnet. Bei gemischten Steuersätzen „manuell“ auswählen. Originalbeleg prüfen.';
@@ -208,6 +210,86 @@ async function open(id){
  $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Gebucht'?'Gebucht: Für Betragsänderungen zuerst Buchung zurücknehmen.':'Bitte Daten prüfen, dann speichern und buchen.');
  }catch(e){notice(e.message,true)}
 }
+let paymentState=null;
+const paymentForm=$('receiptPaymentForm');
+function paymentAccountOptions(){
+ if(!paymentState)return;
+ const source=$('receiptPaymentSource').value;
+ const accounts=source==='loan'?paymentState.loans:paymentState.equity;
+ const available=a=>Number(source==='loan'?a.balance.unallocated_drawn:a.balance.available)||0;
+ const usable=accounts.filter(x=>available(x)>0.005);
+ $('receiptPaymentAccount').innerHTML=usable.map(a=>
+   '<option value="'+a.id+'">'+safe(a.name)+' · frei '+money(available(a))+'</option>').join('');
+ const receipt=paymentState.receipts.find(x=>x.id===selected);
+ const account=usable[0];
+ const max=Math.min(Number(receipt?.open||0),available(account||{}));
+ $('receiptPaymentAmount').value=max>0?max.toFixed(2):'';
+ $('submitReceiptPayment').disabled=!usable.length||!receipt||receipt.open<=0;
+ $('receiptPaymentMessage').textContent=usable.length?'':'Keine frei verfügbaren Mittel aus dieser Finanzierungsart. Konten und Kreditabrufe unter Finanzierung prüfen.';
+}
+async function showReceiptPayments(){
+ if(!selected)return;
+ const current=list.find(r=>r.id===selected);
+ if(!current||current.status!=='Gebucht')return;
+ paymentState=await api('/api/financing');
+ const receipt=paymentState.receipts.find(x=>x.id===selected);
+ if(!receipt)throw Error('Gebuchte Rechnung wurde nicht in der Finanzierungsübersicht gefunden.');
+ const allocations=paymentState.payments.filter(x=>x.receipt_id===selected);
+ $('receiptPaymentsPanel').hidden=false;
+ $('receiptPaymentTotals').innerHTML='<span>Rechnungsbetrag: <b>'+money(receipt.gross)+'</b></span>'+
+   '<span>Bereits bezahlt: <b>'+money(receipt.paid)+'</b></span>'+
+   '<span>Noch offen: <b>'+money(receipt.open)+'</b></span>';
+ $('receiptPaymentMessage').textContent='';
+ $('receiptPaymentForm').hidden=receipt.open<=0;
+ $('receiptPaymentHistory').innerHTML='<h4>Erfasste Zahlungen</h4>'+
+   (allocations.length?allocations.map(p=>'<div class="receipt-payment-history-row"><span>'+
+     money(p.amount)+' · '+safe(p.payment_date)+' · '+
+     safe((p.source==='loan'?paymentState.loans:paymentState.equity).find(a=>a.id===(p.loan_id||p.equity_id))?.name||p.source)+
+     (p.notes?' · '+safe(p.notes):'')+
+     '</span><button type="button" data-undo-finance-payment="'+p.id+'">Zahlung stornieren</button></div>').join(''):'<p class="note">Noch keine zugeordneten Zahlungen erfasst.</p>');
+ if(receipt.open>0&&receipt.paid>allocations.reduce((sum,p)=>sum+Number(p.amount),0)+0.005)
+   $('receiptPaymentMessage').textContent='Für diesen Beleg existiert bereits eine manuell erfasste Zahlung ohne Finanzierungsquelle. Bitte den bisherigen Zahlbetrag im Beleg berichtigen, bevor du die Finanzierungsquelle zuordnest.';
+ paymentForm.elements.namedItem('payment_date').value=new Date().toLocaleDateString('sv-SE');
+ paymentAccountOptions();
+ requestAnimationFrame(()=>$('receiptPaymentsPanel').scrollIntoView({block:'nearest'}));
+}
+$('payReceipt').onclick=async()=>{
+ try{await showReceiptPayments();}
+ catch(err){notice(err.message,true);}
+};
+$('closeReceiptPayment').onclick=()=>$('receiptPaymentsPanel').hidden=true;
+$('receiptPaymentSource').onchange=paymentAccountOptions;
+paymentForm.onsubmit=async event=>{
+ event.preventDefault();
+ if(!selected||!paymentState)return;
+ const submit=$('submitReceiptPayment');
+ const data=Object.fromEntries(new FormData(paymentForm).entries());
+ const account=$('receiptPaymentAccount').value;
+ if(!account){$('receiptPaymentMessage').textContent='Bitte eine Finanzierungsquelle auswählen.';return;}
+ data.receipt_id=selected;
+ data[data.source==='loan'?'loan_id':'equity_id']=account;
+ if(!confirm('Zahlung von '+money(data.amount)+' verbindlich aus '+(data.source==='loan'?'Kredit':'Eigenkapital')+' buchen?'))return;
+ submit.disabled=true;$('receiptPaymentMessage').textContent='Zahlung wird geprüft und verbucht …';
+ try{
+   await api('/api/financing/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+   await reload(selected);
+   await showReceiptPayments();
+   $('receiptPaymentMessage').textContent='Zahlung verbucht. Offener Rechnungsbetrag und verfügbare Mittel wurden aktualisiert.';
+ }catch(error){$('receiptPaymentMessage').textContent='Zahlung fehlgeschlagen: '+error.message;}
+ finally{submit.disabled=false;}
+};
+$('receiptPaymentHistory').addEventListener('click',async event=>{
+ const button=event.target.closest('[data-undo-finance-payment]');
+ if(!button)return;
+ if(!confirm('Diese Zahlung stornieren? Der offene Rechnungsbetrag und die verfügbaren Mittel werden neu berechnet.'))return;
+ button.disabled=true;
+ try{
+   await api('/api/financing/payments/'+button.dataset.undoFinancePayment,{method:'DELETE'});
+   await reload(selected);await showReceiptPayments();
+   $('receiptPaymentMessage').textContent='Zahlung storniert.';
+ }catch(error){notice(error.message,true);button.disabled=false;}
+});
+
 $('upload').onsubmit=async e=>{
  e.preventDefault();
  if(uploading)return;
