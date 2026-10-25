@@ -230,7 +230,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
             warnings.append('Mindestens ein Eigenkapitalkonto liegt unter der gewünschten Reserve.')
         if old_unassigned > ZERO:
             warnings.append('Es bestehen ältere Zahlungen ohne hinterlegte Finanzierungsquelle.')
-        return {'loan_frame':float(loan_total), 'loan_drawn':float(drawn), 'loan_undrawn':float(undrawn),
+        return {'project_budget':cost['budget'], 'loan_frame':float(loan_total), 'loan_drawn':float(drawn), 'loan_undrawn':float(undrawn),
                 'loan_unallocated':float(unallocated), 'loan_debt':float(sum((x['outstanding_principal'] for x in ls),ZERO)),
                 'equity_available':float(eq_available), 'equity_reserve':float(reserved),
                 'total_available':float(available),'paid_loan':float(sum((x['paid_for_project'] for x in ls),ZERO)),
