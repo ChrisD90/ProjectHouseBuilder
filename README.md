@@ -2,6 +2,14 @@
 
 **Aktuelle Version:** `feature/synology-nas` (eine Codebasis, lokal auf dem Mac oder optional auf der NAS). Die empfohlene Betriebsart ist **SQLite lokal auf dem Mac**, ohne dauerhaften Server.
 
+
+## Belegprüfung und Firmen im Bauzeitenplan
+
+- Bei **Angeboten** die hochgeladenen PDF-Dateien im Prüf-Dialog direkt neben den erkannten Beträgen und Positionen ansehen. Neue Versionen erhalten dieselbe Vorschau. Auch bei **Rechnungen & Belegen** wird das Original (PDF oder Foto) neben dem Eingabeformular angezeigt.
+- Ein Arbeitspaket per Klick öffnen und mit **Abschließen** beenden. Die Anwendung setzt `Erledigt`, `100 %` und das aktuelle **Ist-Ende**, protokolliert den Abschluss aber ändert nicht die geplante Dauer.
+- Bei **angenommenen Angeboten** erscheint ein Link **Firma im Bauzeitenplan zuordnen**. Im Bauzeitenplan listet **Firmenvorschläge** mögliche Gewerke/Firmen auf, abgeleitet aus akzeptierten Angeboten und beauftragten Kostenpositionen. Nur nach Bestätigung werden Zuordnungen gespeichert; Eigenleistungen und bestehende Zuordnungen bleiben unberührt.
+- Euro-Eingabefelder verwenden deutsche Tausenderpunkte während des Tippens; gespeichert werden weiterhin reine Zahlen. Bestätigungen und Rückfragen erscheinen in einem kleinen Dialog innerhalb der App.
+
 ## Schnellstart in VS Code (macOS)
 
 1. Das Projekt in VS Code öffnen; ggf. `git switch feature/synology-nas` ausführen.
