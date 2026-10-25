@@ -2,32 +2,8 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let records=[],library=[],options=null,costInfo=null;
+let records=[],library=[],options=null;
 const uploadDialog=$('docUploadDialog');
-const costDocumentDialog=$('costDocumentDialog');
-let costDocumentUploading=false;
-$('openCostUpload').onclick=()=>costDocumentDialog.showModal();
-$('closeCostUpload').onclick=()=>{if(!costDocumentUploading)costDocumentDialog.close();};
-costDocumentDialog.addEventListener('cancel',e=>{if(costDocumentUploading)e.preventDefault();});
-costDocumentDialog.addEventListener('click',e=>{
-  if(e.target===costDocumentDialog&&!costDocumentUploading)costDocumentDialog.close();
-});
-$('uploadForm').onsubmit=async e=>{
-  e.preventDefault();if(costDocumentUploading)return;
-  const button=e.currentTarget.querySelector('button[type="submit"]');
-  costDocumentUploading=true;button.disabled=true;
-  $('uploadMessage').textContent='Originaldatei wird gespeichert …';
-  try{
-    const result=await fetch('/api/documents',{method:'POST',body:new FormData(e.currentTarget)});
-    const payload=await result.json();
-    if(!result.ok)throw Error(payload.error||'Hochladen fehlgeschlagen.');
-    e.currentTarget.reset();await reload();
-    $('uploadMessage').textContent='Originaldatei gespeichert und in der Gesamtliste ergänzt.';
-    costDocumentDialog.close();
-  }catch(error){$('uploadMessage').textContent=error.message;}
-  finally{costDocumentUploading=false;button.disabled=false;}
-};
-
 let uploadRunning=false;
 $('openDocUpload').onclick=()=>uploadDialog.showModal();
 $('closeDocUpload').onclick=()=>{if(!uploadRunning)uploadDialog.close();};
@@ -60,90 +36,110 @@ function setup(){
  $('docUploadStatus').value='Aktuell';
  $('docUploadCategory').value='Bauplan';
 }
+const LINKED_GROUPS=[
+  {source:'Angebote',title:'Angebote & Auftragsbestätigungen',description:'Aktuelle und frühere Angebots-PDFs sowie zugehörige Auftragsbestätigungen.',href:'/angebote',label:'Angebote öffnen'},
+  {source:'Rechnungen & Belege',title:'Rechnungen & Belege',description:'Gebuchte Rechnungen, Entwürfe und Kassenzettel.',href:'/belege',label:'Rechnungen öffnen'},
+  {source:'Finanzierung',title:'Kredite & Finanzierung',description:'Kreditverträge und weitere Unterlagen zu den Finanzierungsquellen.',href:'/finanzierung',label:'Finanzierung öffnen'},
+  {source:'Weitere Projektunterlagen',title:'Weitere Kostenunterlagen',description:'Verträge und zugeordnete Kostenbelege außerhalb des Angebots- und Rechnungsjournals.',href:'/kosten#kosten-unterlagen',label:'Kostenunterlagen öffnen'}
+];
+function documentMatches(doc,search){
+  return [doc.title,doc.filename,doc.type,doc.source,doc.status,doc.description]
+    .join(' ').toLocaleLowerCase('de').includes(search);
+}
+function documentRow(doc,editable){
+  const row=document.createElement('article');row.className='docs-item';
+  const info=document.createElement('div');info.className='docs-item-text';
+  const meta=document.createElement('div');meta.className='docs-item-meta';
+  for(const value of [doc.type,doc.status]){
+    if(!value)continue;
+    const chip=document.createElement('span');chip.className='docs-chip';
+    chip.textContent=value;meta.append(chip);
+  }
+  const heading=document.createElement('h3');heading.textContent=doc.title||doc.filename;
+  const description=document.createElement('p');description.textContent=doc.description||doc.filename;
+  const subtitle=document.createElement('small');
+  subtitle.textContent=doc.filename+(doc.date?' · '+doc.date.slice(0,10):'');
+  info.append(meta,heading,description,subtitle);
+  const actions=document.createElement('div');actions.className='docs-item-actions';
+  if(doc.view_url){
+    const preview=document.createElement('a');preview.href=doc.view_url;
+    preview.target='_blank';preview.rel='noopener noreferrer';preview.textContent='Ansehen';
+    actions.append(preview);
+  }
+  if(doc.download_url){
+    const download=document.createElement('a');download.href=doc.download_url;
+    download.textContent='Original herunterladen';actions.append(download);
+  }
+  if(editable&&doc.project_document_id){
+    const button=document.createElement('button');button.type='button';button.textContent='Bearbeiten';
+    button.onclick=()=>edit(doc.project_document_id);actions.append(button);
+  }else if(!editable&&doc.module_url){
+    const moduleLink=document.createElement('a');moduleLink.href=doc.module_url;
+    moduleLink.textContent='Im Fachbereich öffnen';moduleLink.className='docs-owner-link';
+    actions.append(moduleLink);
+  }
+  row.append(info,actions);
+  return row;
+}
 function refresh(){
-  const q=$('docSearch').value.toLocaleLowerCase('de').trim();
+  const search=$('docSearch').value.toLocaleLowerCase('de').trim();
   const area=$('docFilterArea').value,status=$('docFilterStatus').value;
-  const filtered=library.filter(d=>
-    [d.title,d.filename,d.type,d.source,d.status,d.description].join(' ')
-      .toLocaleLowerCase('de').includes(q)
-    &&(!area||d.source==='Projektdokumente' && records.some(x=>x.id===d.project_document_id && x.area===area))
-    &&(!status||d.status===status));
-  $('docCount').textContent=filtered.length+' von '+library.length+' Dateien · alle Fachbereiche';
-  const container=$('docList');container.replaceChildren();
+  const general=library.filter(doc=>Boolean(doc.project_document_id));
+  const filtered=general.filter(doc=>
+    documentMatches(doc,search)
+    &&(!area||records.some(record=>record.id===doc.project_document_id&&record.area===area))
+    &&(!status||doc.status===status));
+  $('docCount').textContent=filtered.length+' von '+general.length+' Unterlagen';
+  const list=$('docList');list.replaceChildren();
   if(!filtered.length){
-    const p=document.createElement('p');p.textContent='Keine passenden Dokumente vorhanden.';container.append(p);
+    const message=document.createElement('p');message.className='docs-empty';
+    message.textContent=general.length?'Keine passenden allgemeinen Projektdokumente.':'Noch keine allgemeinen Projektdokumente hochgeladen.';
+    list.append(message);
   }
-  for(const doc of filtered){
-    const row=document.createElement('article');row.className='docs-item';
-    const info=document.createElement('div');info.className='docs-item-text';
-    const meta=document.createElement('div');meta.className='docs-item-meta';
-    for(const item of [doc.source,doc.type,doc.status]){
-      if(!item)continue;
-      const span=document.createElement('span');span.className='docs-chip';span.textContent=item;meta.append(span);
-    }
-    const heading=document.createElement('h3');heading.textContent=doc.title;
-    const details=document.createElement('p');details.textContent=doc.description||doc.filename;
-    const subtitle=document.createElement('small');
-    subtitle.textContent=doc.filename+(doc.date?' · '+doc.date.slice(0,10):'');
-    info.append(meta,heading,details,subtitle);
-    const actions=document.createElement('div');actions.className='docs-item-actions';
-    if(doc.view_url){
-      const preview=document.createElement('a');preview.href=doc.view_url;
-      preview.target='_blank';preview.rel='noopener noreferrer';preview.textContent='Vorschau';
-      actions.append(preview);
-    }
-    const link=document.createElement('a');link.href=doc.download_url;
-    link.textContent='Original herunterladen';actions.append(link);
-    if(doc.project_document_id){
-      const button=document.createElement('button');button.type='button';button.textContent='Bearbeiten';
-      button.onclick=()=>edit(doc.project_document_id);actions.append(button);
-    }else if(doc.module_url){
-      const back=document.createElement('a');back.href=doc.module_url;
-      back.textContent='Im Fachbereich öffnen';actions.append(back);
-    }
-    row.append(info,actions);container.append(row);
-  }
+  for(const doc of filtered)list.append(documentRow(doc,true));
+  refreshLinked();
 }
-function optionsMarkup(values,title){
-  return '<option value="">Keine Zuordnung</option>'+
-    values.map(x=>'<option value="'+safe(x.id)+'">'+safe(x[title])+'</option>').join('');
-}
-function renderCostAttachments(){
-  if(!costInfo)return;
-  const contractors=new Map((costInfo.contractors||[]).map(x=>[x.id,x.name]));
-  const budget=new Map((costInfo.budget_lines||[]).map(x=>[x.id,x.title]));
-  const attachmentList=costInfo.documents||[];
-  $('documents').innerHTML=attachmentList.map(d=>`<tr><td><a href="/api/documents/${d.id}/download">${safe(d.name)}</a></td>
-    <td>${safe(d.kind)}</td><td>${safe(contractors.get(d.contractor_id)||'–')}</td>
-    <td>${safe(budget.get(d.budget_line_id)||(costInfo.items||[]).find(i=>i.id===d.cost_item_id)?.title||'–')}</td>
-    <td>${safe(d.notes)}</td><td>${safe((d.uploaded_at||'').slice(0,10))}</td>
-    <td><button type="button" class="mini" data-delete-doc="${d.id}">Löschen</button></td></tr>`).join('')
-    ||'<tr><td colspan="7">Keine weiteren zugeordneten Projektunterlagen.</td></tr>';
-  for(const [node,values,title] of [
-    ['fileContractor',costInfo.contractors||[],'name'],
-    ['fileBudget',(costInfo.budget_lines||[]).filter(x=>!x.is_group),'title'],
-    ['fileCost',costInfo.items||[],'title']
-  ]){
-    $(node).innerHTML=optionsMarkup(values,title);
+function refreshLinked(){
+  const search=$('linkedDocSearch').value.toLocaleLowerCase('de').trim();
+  const source=$('linkedDocType').value;
+  const linked=library.filter(doc=>!doc.project_document_id);
+  const matching=linked.filter(doc=>documentMatches(doc,search)&&(!source||doc.source===source));
+  $('linkedDocCount').textContent=matching.length+' von '+linked.length+' Dateien · nur Ansicht';
+  const host=$('linkedDocGroups');host.replaceChildren();
+  for(const group of LINKED_GROUPS){
+    if(source&&group.source!==source)continue;
+    const files=matching.filter(doc=>doc.source===group.source);
+    const section=document.createElement('section');section.className='docs-linked-group';
+    section.id='docs-group-'+group.source.toLowerCase().replace(/[^a-z]+/g,'-');
+    const header=document.createElement('header');header.className='docs-linked-group-head';
+    const headText=document.createElement('div');
+    const title=document.createElement('h3');title.textContent=group.title;
+    const details=document.createElement('p');details.textContent=group.description;
+    headText.append(title,details);
+    const count=document.createElement('span');count.className='docs-chip';
+    count.textContent=files.length+' Datei'+(files.length===1?'':'en');
+    const moduleLink=document.createElement('a');moduleLink.href=group.href;
+    moduleLink.textContent=group.label;moduleLink.className='docs-owner-link';
+    header.append(headText,count,moduleLink);
+    const list=document.createElement('div');list.className='docs-list';
+    if(!files.length){
+      const empty=document.createElement('p');empty.className='docs-empty';
+      empty.textContent=search?'Keine Treffer in diesem Fachbereich.':'Noch keine Dokumente aus diesem Fachbereich.';
+      list.append(empty);
+    }
+    for(const doc of files)list.append(documentRow(doc,false));
+    section.append(header,list);
+    host.append(section);
   }
-  $('documents').querySelectorAll('[data-delete-doc]').forEach(button=>{
-    button.onclick=async()=>{
-      if(!await PHBUI.confirm('Diese zugeordnete Projektunterlage endgültig löschen?'))return;
-      try{await api('/api/documents/'+button.dataset.deleteDoc,'DELETE');await reload();
-        report('Dokument gelöscht.',false,'docPageStatus');}
-      catch(error){report(error.message,true,'docPageStatus');}
-    };
-  });
 }
 async function reload(){
-  const [projectFiles,libraryFiles,costs]=await Promise.all([
-    api('/api/project-documents'),api('/api/document-library'),api('/api/costs')
+  const [projectFiles,libraryFiles]=await Promise.all([
+    api('/api/project-documents'),api('/api/document-library')
   ]);
   records=projectFiles.documents||[];
   library=libraryFiles.documents||[];
-  costInfo=costs;
   if(!options){options=projectFiles;setup();}
-  refresh();renderCostAttachments();
+  refresh();
 }
 function edit(id){
  const doc=records.find(d=>d.id===id);if(!doc)return;
@@ -155,6 +151,8 @@ function edit(id){
 $('docSearch').addEventListener('input',refresh);
 $('docFilterArea').addEventListener('change',refresh);
 $('docFilterStatus').addEventListener('change',refresh);
+$('linkedDocSearch').addEventListener('input',refreshLinked);
+$('linkedDocType').addEventListener('change',refreshLinked);
 $('projectDocumentUpload').elements.namedItem('files').addEventListener('change',event=>{
  const name=event.target.files?.[0]?.name;
  const input=$('projectDocumentUpload').elements.namedItem('title');
@@ -197,10 +195,6 @@ $('docDelete').onclick=async()=>{
  catch(err){report(err.message,true,'docEditMessage');}
 };
 reload().then(()=>{
- if(location.hash==='#weitere-projektunterlagen'){
-   $('weitere-projektunterlagen')?.scrollIntoView({block:'start'});
-   costDocumentDialog.showModal();
- }
  const documentId=Number(new URLSearchParams(location.search).get('document_id'));
  if(documentId)edit(documentId);
 }).catch(err=>report(err.message,true,'docPageStatus'));

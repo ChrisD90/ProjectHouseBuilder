@@ -9,9 +9,9 @@
 {% set phb_active = 'dokumente' %}{% set phb_title = 'Projektdokumente' %}{% include '_shell_open.html' %}
 <main id="phbMain" class="phb-main">
 <div class="phb-page-intro phb-action-header"><div><span class="phb-page-kicker">Projekt / Dokumentation</span><h1>Projektdokumente</h1>
-<p>Alle Dokumente an einem Ort: Baupläne, Angebote, Rechnungen, Verträge, Kreditunterlagen und weitere Belege. Die Verwaltung der Angebote und Rechnungen bleibt in den jeweiligen Fachbereichen.</p></div><div class="phb-header-actions"><button type="button" id="openDocUpload" class="primary">+ Dokument hochladen</button></div></div><p id="docPageStatus" class="docs-feedback" role="status"></p>
+<p>Allgemeine Projektunterlagen hier verwalten; Angebote, Auftragsbestätigungen, Rechnungen, Kredite und Kostenanhänge darunter nach Fachbereich geordnet und ausschließlich zur Ansicht.</p></div><div class="phb-header-actions"><button type="button" id="openDocUpload" class="primary">+ Allgemeines Dokument hochladen</button></div></div><p id="docPageStatus" class="docs-feedback" role="status"></p>
 <dialog id="docUploadDialog" class="phb-workflow-dialog phb-document-workflow" aria-labelledby="docUploadTitle">
-<div class="phb-workflow-head"><div><span class="phb-page-kicker">Projektdokumente</span><h2 id="docUploadTitle">Dokument hochladen</h2><p>Einmal erfassen, anschließend die Details im Dialog prüfen.</p></div><button type="button" id="closeDocUpload" class="subtle">Schließen</button></div>
+<div class="phb-workflow-head"><div><span class="phb-page-kicker">Projektdokumente</span><h2 id="docUploadTitle">Allgemeines Projektdokument hochladen</h2><p>Einmal erfassen, anschließend die Details im Dialog prüfen.</p></div><button type="button" id="closeDocUpload" class="subtle">Schließen</button></div>
 <div class="phb-workflow-body">
 <section class="panel docs-upload"><h2>Dokument ablegen</h2>
 <form id="projectDocumentUpload" class="docs-form">
@@ -31,18 +31,38 @@
 <p>Technische Zeichnungen werden nicht ungeprüft in verbindliche Planungsentscheidungen umgewandelt. Maße, Statik und Elektroplanung fachlich prüfen.</p></aside></details></div>
 </dialog>
 
-<section class="panel docs-library"><h2>Dokumentenbibliothek – sämtliche Originale</h2><p id="docCount"></p>
-<div class="docs-toolbar"><label>Suche<input type="search" id="docSearch" placeholder="Titel, Gewerk, Schlagworte …"></label>
-<label>Bereich<select id="docFilterArea"><option value="">Alle Bereiche</option></select></label>
-<label>Status<select id="docFilterStatus"><option value="">Alle</option></select></label></div>
-<div id="docList" class="docs-list"></div></section>
-<section class="panel docs-library docs-extra-files" id="weitere-projektunterlagen"><div class="panelbar"><div><h2>Weitere Projektunterlagen</h2><p>Bestehende zugeordnete Verträge, Auftragsbestätigungen und sonstige Kostenunterlagen; auch in der Gesamtliste oben sichtbar.</p></div><button type="button" id="openCostUpload" class="primary">+ Zugeordnete Unterlage</button></div>
-<dialog id="costDocumentDialog" class="phb-workflow-dialog phb-cost-workflow" aria-labelledby="costDocumentTitle">
-  <div class="phb-workflow-head"><div><h2 id="costDocumentTitle">Dokument einer Kostenposition zuordnen</h2><p>Firma und Position prüfen und die Datei anschließend lokal speichern.</p></div><button id="closeCostUpload" type="button" class="subtle">Schließen</button></div>
-  <div class="phb-workflow-body">
-<form id="uploadForm" class="upload-form"><label>Datei auswählen <input type="file" name="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt" required></label><label>Typ <select name="kind"><option>Auftragsbestätigung</option><option>Vertrag</option><option>Rechnung</option><option>Sonstiges</option></select></label><label>Firma <select name="contractor_id" id="fileContractor"></select></label><label>Planposition <select name="budget_line_id" id="fileBudget"></select></label><label>Kostenposition <select name="cost_item_id" id="fileCost"></select></label><label>Notiz <input name="notes" placeholder="Optional"></label><button class="primary" type="submit">Datei speichern</button></form>
-<p class="section-note" id="uploadMessage" role="status">Die Datei wird lokal abgelegt und in den Komplettbackups mitgesichert.</p></div></dialog><div class="tablewrap"><table><thead><tr><th>Dokument</th><th>Art</th><th>Firma</th><th>Zuordnung</th><th>Hinweis</th><th>Datum</th><th></th></tr></thead><tbody id="documents"></tbody></table></div></section>
-
+<section class="panel docs-library" id="allgemeine-projektdokumente" aria-labelledby="generalDocsTitle">
+  <div class="docs-section-heading">
+    <div><span class="phb-page-kicker">Eigene Projektunterlagen</span><h2 id="generalDocsTitle">Allgemeine Projektdokumente</h2>
+      <p>Baupläne, Grundrisse, Genehmigungen, technische Zeichnungen, Protokolle und andere allgemeine Unterlagen. Nur diese Dokumente verwaltest du direkt hier.</p></div>
+    <span id="docCount" class="docs-section-count" aria-live="polite"></span>
+  </div>
+  <div class="docs-toolbar">
+    <label>Allgemeine Dokumente durchsuchen<input type="search" id="docSearch" placeholder="Bauplan, Raum, Beschreibung …"></label>
+    <label>Bereich<select id="docFilterArea"><option value="">Alle Bereiche</option></select></label>
+    <label>Status<select id="docFilterStatus"><option value="">Alle</option></select></label>
+  </div>
+  <div id="docList" class="docs-list"></div>
+</section>
+<section class="panel docs-library docs-linked-library" id="fachunterlagen" aria-labelledby="linkedDocsTitle">
+  <div class="docs-section-heading">
+    <div><span class="phb-page-kicker">Dokumente aus anderen Bereichen</span>
+      <h2 id="linkedDocsTitle">Angebote, Rechnungen, Kredite &amp; weitere Unterlagen</h2>
+      <p><strong>Hier nur ansehen und herunterladen.</strong> Angebote, Auftragsbestätigungen, Rechnungen, Kreditunterlagen und Kostenanhänge werden ausschließlich in ihren jeweiligen Fachbereichen bearbeitet oder gelöscht.</p></div>
+    <span id="linkedDocCount" class="docs-section-count" aria-live="polite"></span>
+  </div>
+  <div class="docs-toolbar docs-linked-toolbar">
+    <label>Fachunterlagen durchsuchen<input id="linkedDocSearch" type="search" placeholder="Rechnung, Anbieter, Auftragsnummer …"></label>
+    <label>Fachbereich<select id="linkedDocType">
+      <option value="">Alle Fachbereiche</option>
+      <option value="Angebote">Angebote &amp; Auftragsbestätigungen</option>
+      <option value="Rechnungen &amp; Belege">Rechnungen &amp; Belege</option>
+      <option value="Finanzierung">Kredite &amp; Finanzierung</option>
+      <option value="Weitere Projektunterlagen">Weitere Kostenunterlagen</option>
+    </select></label>
+  </div>
+  <div id="linkedDocGroups" class="docs-linked-groups" aria-live="polite"></div>
+</section>
 <dialog id="docEditDialog" class="docs-dialog"><form id="docEditForm" class="docs-dialog-inner">
 <div class="docs-dialog-head"><h2>Dokument pflegen</h2><button type="button" id="docClose">Schließen</button></div>
 <input type="hidden" name="id">

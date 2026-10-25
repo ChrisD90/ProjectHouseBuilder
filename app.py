@@ -922,7 +922,7 @@ def document_library():
                         'download_url':f'/api/documents/{d.id}/download',
                         'view_url':f'/api/documents/{d.id}/preview'
                             if Path(d.original_name).suffix.lower()=='.pdf' else None,
-                        'module_url':'/angebote' if offer else None,
+                        'module_url':f'/angebote?offer_id={offer.id}' if offer else '/kosten#kosten-unterlagen',
                         'legacy_document_id':d.id if not offer else None})
     for r in db.session.scalars(select(Receipt)).all():
         kind='Rechnungen & Belege'
@@ -942,7 +942,7 @@ def document_library():
                         'description':ld.notes or '',
                         'date':ld.uploaded_at.isoformat() if ld.uploaded_at else '',
                         'download_url':f'/api/financing/loans/{ld.loan_id}/documents/{ld.id}/download',
-                        'view_url':None,'module_url':'/finanzierung'})
+                        'view_url':None,'module_url':f'/finanzierung?loan_id={ld.loan_id}'})
     entries.sort(key=lambda entry:(entry['date'],entry['id']),reverse=True)
     response=jsonify(documents=entries,total=len(entries))
     response.headers['Cache-Control']='no-store'

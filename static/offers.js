@@ -693,6 +693,11 @@
     if(['offers','versions'].includes(event.detail.kind)&&!workflow.open)reload().catch(()=>{});
   });
   reload().then(()=>{
+    const linkedOfferId=Number(new URLSearchParams(location.search).get('offer_id'));
+    if(linkedOfferId&&offers.some(offer=>offer.id===linkedOfferId)){
+      expandedOffers.add(linkedOfferId);refreshUI();
+      requestAnimationFrame(()=>document.querySelector('[data-offer-card="'+linkedOfferId+'"]')?.scrollIntoView({block:'center'}));
+    }
     const draftId=Number(new URLSearchParams(location.search).get('offer_draft'));
     if(!draftId)return;
     const isKnown=offers.some(o=>o.id===draftId&&o.status==='Entwurf')||
