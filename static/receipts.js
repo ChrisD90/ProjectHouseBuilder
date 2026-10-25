@@ -66,7 +66,7 @@ function renderCostItems(){
   const offered=itemList.filter(x=>x.offer_id&&accepted.has(x.offer_id)&&x.selected);
   $('costItems').innerHTML='<option value="">Angebot wählen</option>'+offered.map(x=>{
     const o=accepted.get(x.offer_id);
-    return `<option value="${x.id}">${safe(o.vendor)} · ${safe(o.number||'ohne Nummer')} · ${money(o.gross)}</option>`;
+    return `<option value="${x.id}">${safe(o.vendor)} · ${safe(o.number||'ohne Nummer')} · ${money(o.agreed_gross??o.gross)}</option>`;
   }).join('');
   const contractors=overview?.contractors||[];
   $('receiptContractor').innerHTML='<option value="">Betrieb wählen</option>'+
@@ -143,7 +143,7 @@ function updateInvoiceControls(){
  $('deductionHint').hidden=$('billingType').value!=='Schlussrechnung';
  const hint=$('billableHint');
  hint.textContent=isAccepted
-   ? `Mit dem angenommenen Angebot „${offer.vendor}“ verknüpft. Abschläge und Schlussrechnung werden zum Vertragsbetrag von ${money(offer.gross)} addiert, ohne verrechnete Abschläge doppelt zu zählen.`
+   ? `Mit dem angenommenen Angebot „${offer.vendor}“ verknüpft. Abschläge und Schlussrechnung werden zum Vertragsbetrag von ${money(offer.agreed_gross??offer.gross)} addiert, ohne verrechnete Abschläge doppelt zu zählen.`
    : mode==='Betrieb'?'Direkt einem Betrieb zugeordnet; keine automatische Verknüpfung zu einem Angebot. Die Rechnung wird nur einmal als Ausgabe berücksichtigt.'
    : mode==='Eigenleistung'?'Eigenleistung/Material: Keine Verknüpfung zu einem Handwerker oder Angebot. Falls vorhanden, die passende Budgetposition auswählen.'
    : mode==='Kostenposition'?'Historische Kostenpositionszuordnung. Für Änderungen kann ein regulärer Zuordnungstyp ausgewählt werden.'
