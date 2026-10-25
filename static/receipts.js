@@ -196,6 +196,8 @@ async function reload(keepId=selected){
 async function open(id){
  try{let x=await api('/api/receipts/'+id);selected=id;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;
+ $('receiptReviewLayout').hidden=false;
+ $('receiptReviewStage').hidden=false;
  openReceiptDialog(true);showReceiptPreview(x);
  const legacy=x.assignment_type==='Kostenposition';
  const legacyOption=$('receiptAssignmentType').querySelector('option[value="Kostenposition"]');
@@ -214,7 +216,10 @@ async function open(id){
  $('book').hidden=x.status==='Gebucht';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status==='Gebucht';
  $('payReceipt').hidden=x.status!=='Gebucht';
  $('receiptPaymentsPanel').hidden=true;
+ $('receiptReviewLayout').hidden=false;
+ $('receiptReviewStage').hidden=false;
  for(let node of $('review').querySelectorAll('input,select,textarea'))node.disabled=x.status==='Gebucht'&&node.name!=='notes'&&node.name!=='paid_amount'&&node.name!=='due_date';
+ $('review').elements.namedItem('paid_amount').disabled=true;
  $('receiptTaxRate').disabled=x.status==='Gebucht';
  $('receiptTaxHint').textContent='Wenn du den Bruttobetrag bearbeitest, werden Netto und USt mit dem gewählten Satz automatisch berechnet. Bei gemischten Steuersätzen „manuell“ auswählen. Originalbeleg prüfen.';
  if(linkedCostItem&&x.status==='Entwurf'&&!x.cost_item_id&&!x.assignment_type){
@@ -252,6 +257,8 @@ async function showReceiptPayments(){
  if(!receipt)throw Error('Gebuchte Rechnung wurde nicht in der Finanzierungsübersicht gefunden.');
  const allocations=paymentState.payments.filter(x=>x.receipt_id===selected);
  $('receiptPaymentsPanel').hidden=false;
+ $('receiptReviewLayout').hidden=true;
+ $('receiptReviewStage').hidden=true;
  $('receiptPaymentTotals').innerHTML='<span>Rechnungsbetrag: <b>'+money(receipt.gross)+'</b></span>'+
    '<span>Bereits bezahlt: <b>'+money(receipt.paid)+'</b></span>'+
    '<span>Noch offen: <b>'+money(receipt.open)+'</b></span>';
