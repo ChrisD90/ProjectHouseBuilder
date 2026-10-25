@@ -108,6 +108,7 @@
       await api('/api/contractors'+(activeCompany?'/'+activeCompany.id:''),
                 activeCompany?'PUT':'POST',data);
       await reload();
+      PHBUI.dialogs.saved($('companyDialog'));
       $('companyDialog').close();
       note('Firmenstammdaten gespeichert. Bestehende Zuordnungen bleiben erhalten.');
     }catch(error){$('companyStatus').textContent=error.message;}
