@@ -3520,6 +3520,12 @@ def _backup_create():
     return backup_manager.make_backup()
 
 
+@app.get('/api/ocr/status')
+def ocr_status():
+    from receipt_parser import ocr_diagnostics
+    return jsonify(ocr_diagnostics())
+
+
 @app.get('/api/backup/status')
 def backup_status():
     try:
