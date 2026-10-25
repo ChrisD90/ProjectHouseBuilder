@@ -253,6 +253,31 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('grid-template-columns:repeat(auto-fill',css)
         self.assertIn('.offer-tile-details[hidden]',css)
 
+    def test_finance_budget_and_invoice_payment_workflows_are_on_correct_pages(self):
+        finance=self.render('finanzierung')
+        costs=self.render('kosten')
+        receipts=self.render('belege')
+        self.assertIn('id="newLoan"',finance)
+        self.assertIn('id="newEquity"',finance)
+        self.assertNotIn('id="paymentForm"',finance)
+        self.assertNotIn('Liquiditätsvorschau',finance)
+        self.assertNotIn('id="editBudget"',costs)
+        self.assertIn('Kreditrahmen + Eigenkapital',costs)
+        self.assertIn('id="payReceipt"',receipts)
+        self.assertIn('id="receiptPaymentForm"',receipts)
+        self.assertIn('id="receiptPaymentSource"',receipts)
+        self.assertIn('id="receiptPaymentHistory"',receipts)
+        receipt_js=(STATIC/'receipts.js').read_text()
+        self.assertIn("'/api/financing/payments'",receipt_js)
+        self.assertIn('showReceiptPayments()',receipt_js)
+        self.assertIn("submitReceiptPayment",receipt_js)
+        finance_js=(STATIC/'finanzierung.js').read_text()
+        self.assertNotIn("paymentForm",finance_js)
+        self.assertIn("'Projektbudget',s.project_budget",finance_js)
+        import_js=(STATIC/'import_jobs.js').read_text()
+        self.assertIn("'phbImportDismissAll'",import_js)
+        self.assertIn("'/api/import-jobs/'+id+'/dismiss'",import_js)
+
     def test_optional_credit_and_version_uploads_stay_collapsed(self):
         financing=self.render('finanzierung')
         for name in ('loanAiDetails','loanDocUploadDetails'):
