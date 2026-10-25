@@ -103,7 +103,7 @@ function setPreview(type,url,download,description){
  const hint=el(type==='offer'?'offerPdfHint':'uploadPdfHint');
  const link=el(type==='offer'?'offerPdfDownload':'uploadPdfDownload');
  if(!url){clearPreview(type);return}
- frame.src=url;frame.classList.add('has-pdf');
+ if(frame.getAttribute('src')!==url)frame.src=url;frame.classList.add('has-pdf');
  hint.textContent=description||'Lokale PDF-Vorschau';
  link.hidden=!download;if(download)link.href=download;
 }
