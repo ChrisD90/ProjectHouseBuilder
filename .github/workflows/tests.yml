@@ -27,6 +27,10 @@ jobs:
           node --check static/costs.js
           node --check static/offers.js
           node --check static/receipts.js
+          node --check static/ui.js
+          node --check static/stammdaten.js
+          node --check static/schedule_chat.js
+          node --check static/import_jobs.js
           node --check static/finanzierung.js
           node --check static/shell.js
           node --check static/daten.js
