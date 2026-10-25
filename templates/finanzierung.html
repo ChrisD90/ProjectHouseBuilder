@@ -6,22 +6,20 @@
 {% set phb_active = 'finanzierung' %}{% set phb_title = 'Finanzierung' %}{% include '_shell_open.html' %}
 
 <main id="phbMain" class="phb-main">
-<section class="intro phb-action-header"><div><span class="phb-page-kicker">Finanzen / Liquidität</span><h1>Kredite, Eigenkapital und Rechnungen</h1><p>Jede Zahlung erhält eine nachvollziehbare Finanzierungsquelle. Projektkosten werden dabei nicht doppelt berechnet.</p></div><div class="phb-header-actions"><button type="button" id="newLoan" class="primary">+ Kredit erfassen</button></div></section>
+<section class="intro phb-action-header"><div><span class="phb-page-kicker">Finanzen / Finanzierung</span><h1>Finanzierung & Eigenkapital</h1><p>Jede Zahlung erhält eine nachvollziehbare Finanzierungsquelle. Projektkosten werden dabei nicht doppelt berechnet.</p></div><div class="phb-header-actions"><button type="button" id="newLoan" class="primary">+ Kredit erfassen</button><button type="button" id="newEquity" class="primary">+ Konto</button></div></section>
 <div id="notice" role="status" class="notice" hidden></div>
 <section class="tiles" id="totals"><p>Lade Finanzierungsübersicht …</p></section>
 <section id="warnings" class="alerts" aria-live="polite"></section>
 <section class="columns">
 <div class="panel"><div class="panel-title"><div><h2>Darlehen</h2><p>Vertragskonditionen und tatsächliche Abrufe getrennt erfassen.</p></div></div><div id="loanList" class="cards"></div></div>
-<div class="panel"><div class="panel-title"><div><h2>Eigenkapital</h2><p>Kontostand und gewünschte Sicherheitsreserve verwalten.</p></div><button type="button" id="newEquity">+ Konto</button></div><div id="equityList" class="cards"></div></div>
+<div class="panel"><div class="panel-title"><div><h2>Eigenkapital</h2><p>Kontostand und gewünschte Sicherheitsreserve verwalten.</p></div></div><div id="equityList" class="cards"></div></div>
 </section>
 <section class="columns">
 <div class="panel"><h2>Kreditabrufe & Geldbewegungen</h2><form id="eventForm" class="fields"><label>Vorgang<select name="kind" id="eventKind"><option value="loan_drawdown">Kreditabruf</option><option value="loan_repayment">Tilgung</option><option value="loan_interest">Gezahlte Zinsen</option><option value="loan_fee">Bankgebühren</option><option value="equity_deposit">Eigenkapital aufstocken</option><option value="equity_withdrawal">Eigenkapital entnehmen</option></select></label>
 <label>Quelle<select id="eventSource" required></select></label><label>Betrag (€)<input required name="amount" type="number" min="0.01" step="0.01"></label><label>Datum<input required name="event_date" type="date"></label><label class="wide">Notiz<input name="notes" maxlength="2000" placeholder="Optional"></label><button type="submit" class="primary wide">Geldbewegung speichern</button></form><p class="hint">Tilgungen und Zinsen sind Finanzierungsvorgänge und keine erneuten Baukosten. Kreditabrufe sind kein Ertrag.</p><div id="events" class="records"></div></div>
-<div class="panel"><h2>Rechnungen bezahlen</h2><p>Belege zunächst unter <a href="/belege">Rechnungen & Kassenzettel</a> prüfen und buchen. Hier kannst du sie auch in Teilbeträgen aus mehreren Quellen bezahlen.</p>
-<form id="paymentForm" class="fields"><label class="wide">Gebuchte Rechnung<select required name="receipt_id" id="paymentReceipt"></select></label><label>Art der Zahlung<select name="source" id="paymentSource"><option value="loan">Aus Kredit</option><option value="equity">Aus Eigenkapital</option></select></label><label>Kredit / Eigenkapitalkonto<select required id="paymentAccount"></select></label><label>Zahlungsbetrag (€)<input required name="amount" type="number" min="0.01" step="0.01"></label><label>Bezahlt am<input required name="payment_date" type="date"></label><label class="wide">Notiz<input name="notes" maxlength="2000" placeholder="Teilzahlung / Verwendungszweck"></label><button type="submit" class="primary wide">Zahlung verbuchen</button></form>
-<p class="hint">Ein bereits manuell als bezahlt markierter Beleg muss vor der ersten Finanzierungszuordnung korrigiert werden. Die Beleg-Gesamtsumme und der bezahlte Betrag werden nicht doppelt addiert.</p><div id="payments" class="records"></div></div>
+
 </section>
-<section class="panel"><div class="panel-title"><div><h2>Liquiditätsvorschau</h2><p>Fällige, gebuchte und noch unbezahlte Rechnungen – erwartete Termine sind keine verbindliche Prognose für alle künftigen Baukosten.</p></div></div><div id="monthly" class="months"></div><p id="undated" class="hint"></p></section>
+
 <dialog id="loanDialog" class="loan-dialog">
 <form id="loanForm" class="modal">
   <div class="modal-head"><h2 id="loanDialogTitle">Kredit anlegen</h2><button type="button" class="secondary" id="closeLoan">Schließen</button></div>
