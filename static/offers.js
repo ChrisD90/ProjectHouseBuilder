@@ -35,6 +35,12 @@
 
   const acceptDialog=$('offerAcceptanceDialog');
   let acceptingOfferId=null,acceptanceBusy=false;
+  const acceptFlow=PHBFlow.manage({
+    dialog:'offerAcceptanceDialog',forms:['offerAcceptanceForm'],
+    dismiss:['cancelOfferAcceptance','offerAcceptanceBack'],
+    isBusy:()=>acceptanceBusy,
+    onClose:()=>{acceptingOfferId=null;}
+  });
   function acceptanceMode(){
     const confirmed=$('offerAcceptanceForm').elements.namedItem('mode').value==='confirmation';
     $('offerAcceptanceUpload').hidden=!confirmed;
@@ -53,7 +59,7 @@
     $('offerAcceptanceGross').value=PHBUI.currency.format(offer.gross);
     $('offerAcceptanceError').textContent='';
     acceptanceMode();
-    acceptDialog.showModal();
+    acceptFlow.open();
   }
   const closeOfferAcceptance=()=>{
     if(acceptanceBusy)return;
@@ -95,6 +101,15 @@
   };
   const editDialog=$('offerEditDialog');
   let editingOfferId=null,offerEditBusy=false;
+  const editFlow=PHBFlow.manage({
+    dialog:'offerEditDialog',forms:['offerEditForm'],
+    dismiss:['closeOfferEdit','cancelOfferEdit'],
+    isBusy:()=>offerEditBusy,
+    onClose:()=>{
+      $('offerEditPdfFrame').removeAttribute('src');
+      editingOfferId=null;
+    }
+  });
   function openOfferEdit(id){
     const offer=offers.find(o=>o.id===id);
     if(!offer)return;
@@ -112,7 +127,7 @@
       frame.src='/api/documents/'+offer.document_id+'/preview';
       $('offerEditPdfDownload').href='/api/documents/'+offer.document_id+'/download';
     }else frame.removeAttribute('src');
-    editDialog.showModal();
+    editFlow.open();
   }
   const closeEdit=()=>{
     if(offerEditBusy)return;
@@ -148,10 +163,17 @@
     }
   };
     const workflow=$('offerWorkflowDialog');
+    const workflowFlow=PHBFlow.manage({
+      dialog:'offerWorkflowDialog',
+      forms:['offerImportForm','offerManualForm'],
+      dismiss:['closeOfferWorkflow'],steps:['Erfassen','Prüfen'],
+      isBusy:()=>offerUploading
+    });
   const openWorkflow=(review=false)=>{
     workflow.classList.toggle('is-reviewing',Boolean(review));
     $('anotherOffer').hidden=!review;
-    if(!workflow.open)workflow.showModal();
+    if(!workflow.open)workflowFlow.open({step:review?1:0});
+    else workflowFlow.stage(review?1:0);
     if(review){
       const section=$('angebote-pruefen');
       requestAnimationFrame(()=>section.scrollIntoView({block:'start'}));
