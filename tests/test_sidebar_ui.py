@@ -204,6 +204,23 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("api('/api/document-library')",js)
         self.assertIn('await reload()',js)
 
+    def test_review_has_original_inline_and_quote_edit_uses_separate_modal(self):
+        offers=self.render('angebote')
+        receipts=self.render('belege')
+        plan=self.render('')
+        self.assertIn('id="offerPdfFrame"',offers)
+        self.assertIn('id="offerEditDialog"',offers)
+        self.assertIn('id="offerEditPdfFrame"',offers)
+        self.assertIn('id="receiptPdfFrame"',receipts)
+        self.assertIn('id="receiptImagePreview"',receipts)
+        self.assertIn('id="complete"',plan)
+        self.assertNotIn('id="close" title="Schließen"',plan)
+        javascript=(STATIC/'offers.js').read_text()
+        self.assertIn('openOfferEdit(Number(id))',javascript)
+        self.assertNotIn('box.innerHTML=\`<h4>Angaben korrigieren',javascript)
+        worker=(STATIC/'sw.js').read_text()
+        self.assertIn('event.respondWith(fetch(event.request)',worker)
+
     def test_global_import_progress_and_review_notifications_are_available_everywhere(self):
         for page in ('index','kosten','angebote','belege','finanzierung',
                      'dokumente','stammdaten','daten'):
