@@ -68,8 +68,13 @@ class ReceiptWebappTest(unittest.TestCase):
         rid1=first.json['id']
         self.assertEqual(self.client.patch(f'/api/receipts/{rid1}',json={
             'book_now':True,'reviewed':True}).status_code,200)
-        second=self.upload(name='rechnung2.pdf',
-            text='Elektro Muster GmbH\\nRechnungsnummer 2026-99\\nDatum 21.10.2026\\nGesamtbetrag 145,00 EUR')
+        other_text=('Elektro Muster GmbH\\nRechnungsnummer 2026-99\\n'
+                    'Datum 21.10.2026\\nGesamtbetrag 145,00 EUR')
+        with patch('app.extract_text',return_value=(other_text,'PDF-Text')):
+            second=self.client.post('/api/receipts',data={
+                'file':(io.BytesIO(b'%PDF-1.4\\nDIFFERENT'),'rechnung2.pdf')},
+                content_type='multipart/form-data')
+        self.assertEqual(second.status_code,201,second.json)
         rid2=second.json['id']
         failed=self.client.patch(f'/api/receipts/{rid2}',json={
             'book_now':True,'reviewed':True,'notes':'Nicht vorzeitig speichern'})
