@@ -94,7 +94,7 @@
     finally{acceptanceBusy=false;$('offerAcceptanceSubmit').disabled=false;}
   };
   const editDialog=$('offerEditDialog');
-  let editingOfferId=null;
+  let editingOfferId=null,offerEditBusy=false;
   function openOfferEdit(id){
     const offer=offers.find(o=>o.id===id);
     if(!offer)return;
@@ -115,25 +115,37 @@
     editDialog.showModal();
   }
   const closeEdit=()=>{
+    if(offerEditBusy)return;
     editDialog.close();
     $('offerEditPdfFrame').removeAttribute('src');
     editingOfferId=null;
   };
   $('closeOfferEdit').onclick=closeEdit;
   $('cancelOfferEdit').onclick=closeEdit;
+  editDialog.addEventListener('cancel',e=>{if(offerEditBusy)e.preventDefault();});
   $('offerEditForm').onsubmit=async e=>{
-    e.preventDefault();if(!editingOfferId)return;
+    e.preventDefault();if(!editingOfferId||offerEditBusy)return;
     const submit=e.currentTarget.querySelector('button[type=submit]');
+    offerEditBusy=true;
     submit.disabled=true;
+    $('closeOfferEdit').disabled=true;
+    $('cancelOfferEdit').disabled=true;
     try{
       // Only the reviewed metadata is updated; positions belong to PDF drafts/versions.
       await update(editingOfferId,readForm(e.currentTarget));
-      closeEdit();
       await reload();
+      editDialog.close();
+      $('offerEditPdfFrame').removeAttribute('src');
+      editingOfferId=null;
       await PHBUI.alert('Angebotsangaben gespeichert.');
     }catch(error){
       $('offerEditError').textContent=error.message;
-    }finally{submit.disabled=false;}
+    }finally{
+      offerEditBusy=false;
+      submit.disabled=false;
+      $('closeOfferEdit').disabled=false;
+      $('cancelOfferEdit').disabled=false;
+    }
   };
     const workflow=$('offerWorkflowDialog');
   const openWorkflow=(review=false)=>{
