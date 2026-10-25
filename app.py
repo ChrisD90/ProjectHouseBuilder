@@ -3512,7 +3512,7 @@ def create_manual_backup():
 
 
 # Two-stage restore: first validate archive, then require an explicit typed confirmation.
-_BACKUP_RESTORE_UPLOADS=Path(tempfile.gettempdir())/('phb-restore-uploads-'+str(os.getuid()))
+_BACKUP_RESTORE_UPLOADS=Path.home()/'.cache'/'ProjectHouseBuilder'/'restore-staging'
 
 
 @app.post('/api/backup/inspect')
@@ -3520,20 +3520,27 @@ def backup_inspect():
     try:
         if 'file' in request.files:
             upload=request.files['file']
-            if not upload.filename.lower().endswith('.zip'):
+            if not (upload.filename or '').lower().endswith('.zip'):
                 raise ValueError('Bitte ein ZIP-Backup auswählen.')
             _BACKUP_RESTORE_UPLOADS.mkdir(mode=0o700,parents=True,exist_ok=True)
+            if _BACKUP_RESTORE_UPLOADS.is_symlink():
+                raise ValueError('Unsicherer Upload-Zielpfad.')
+            _BACKUP_RESTORE_UPLOADS.chmod(0o700)
+            # Expire unused, sensitive ZIP uploads after a day.
+            for old in _BACKUP_RESTORE_UPLOADS.glob('*.zip'):
+                if old.is_file() and not old.is_symlink() and time.time()-old.stat().st_mtime>86400:
+                    old.unlink(missing_ok=True)
             key=secrets.token_hex(16)
             archive=_BACKUP_RESTORE_UPLOADS/(key+'.zip')
-            with archive.open('xb') as output:
-                size=0
-                while True:
-                    block=upload.stream.read(1024*1024)
-                    if not block:break
-                    size+=len(block)
-                    if size>1024**3:raise ValueError('Maximal 1 GB Uploadgröße.')
-                    output.write(block)
             try:
+                with archive.open('xb') as output:
+                    size=0
+                    while True:
+                        block=upload.stream.read(1024*1024)
+                        if not block:break
+                        size+=len(block)
+                        if size>1024**3:raise ValueError('Maximal 1 GB Uploadgröße.')
+                        output.write(block)
                 manifest=_verify_selected_backup(archive)
             except Exception:
                 archive.unlink(missing_ok=True)
