@@ -86,9 +86,9 @@ docker compose -f compose.synology.yaml exec app sh -c 'command -v tesseract; co
     </div>
   </details>
 </section>
-<dialog id="backupConfigDialog" class="phb-data-dialog">
+<dialog id="backupConfigDialog" class="phb-data-dialog" aria-labelledby="backupConfigTitle">
     <form id="backupConfigForm">
-      <h2>Backup-Zielordner festlegen</h2>
+      <h2 id="backupConfigTitle">Backup-Zielordner festlegen</h2>
       <p id="backupRootDescription">Wähle einen für die Anwendung erreichbaren Ordner. Auf der Synology werden nur Verzeichnisse innerhalb des eingebundenen Backup-Speichers angeboten.</p>
       <label for="backupFolder">Ausgewählter Backup-Zielordner</label>
       <input id="backupFolder" name="folder" required readonly placeholder="Bitte über den Ordnerbrowser auswählen">
@@ -104,8 +104,8 @@ docker compose -f compose.synology.yaml exec app sh -c 'command -v tesseract; co
       <div class="phb-data-dialog-actions"><button type="button" id="backupConfigCancel" class="subtle">Abbrechen</button><button type="submit" class="primary">Ziel speichern</button></div>
     </form>
   </dialog>
-  <dialog id="backupRestoreDialog" class="phb-data-dialog phb-restore-dialog">
-    <h2>Projekt aus Backup wiederherstellen</h2>
+  <dialog id="backupRestoreDialog" class="phb-data-dialog phb-restore-dialog" aria-labelledby="backupRestoreTitle">
+    <h2 id="backupRestoreTitle">Projekt aus Backup wiederherstellen</h2>
     <p><strong>Achtung:</strong> Der aktuelle Projektstand wird ersetzt. Die Anwendung legt vor der Wiederherstellung zusätzlich eine Sicherheitssicherung an und behält die alten Daten zur Rückkehr vor.</p>
     <label for="restoreBackupSelect">Vorhandenes Backup</label>
     <select id="restoreBackupSelect"><option value="">Bitte auswählen</option></select>

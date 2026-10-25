@@ -17,7 +17,7 @@ function showReceiptPreview(item){
  $('receiptPdfDownload').href='/api/receipts/'+item.id+'/download';
 }
 
-let uploading=false;
+let uploading=false,receiptBusy=false;
 function openReceiptDialog(review=false){
   receiptDialog.classList.toggle('is-reviewing',Boolean(review));
   $('receiptUploadAgain').hidden=!review;
@@ -38,10 +38,10 @@ $('receiptUploadAgain').onclick=()=>{
   $('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);
   openReceiptDialog(false);
 };
-$('closeReceiptWorkflow').onclick=()=>{if(!uploading)receiptDialog.close();};
-receiptDialog.addEventListener('cancel',event=>{if(uploading)event.preventDefault();});
+$('closeReceiptWorkflow').onclick=()=>{if(!uploading&&!receiptBusy)receiptDialog.close();};
+receiptDialog.addEventListener('cancel',event=>{if(uploading||receiptBusy)event.preventDefault();});
 receiptDialog.addEventListener('click',event=>{
-  if(event.target===receiptDialog&&!uploading)receiptDialog.close();
+  if(event.target===receiptDialog&&!uploading&&!receiptBusy)receiptDialog.close();
 });
 const navigation=new URLSearchParams(window.location.search);
 const linkOffer=Number(navigation.get('offer_id'))||null;
@@ -344,9 +344,50 @@ document.addEventListener('phb-import-updated',event=>{
  if(event.detail.kind==='receipts'&&!receiptDialog.open)reload().catch(()=>{});
 });
 
-$('review').onsubmit=async e=>{e.preventDefault();if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});await reload(selected);notice('Änderungen gespeichert. Noch nicht automatisch gebucht.')}catch(err){notice(err.message,true)}};
-$('book').onclick=async()=>{if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});if(!await PHBUI.confirm('Beleg verbindlich in die Kostenübersicht übernehmen? Noch nicht bezahlte Rechnungen bleiben offen.'))return;await api('/api/receipts/'+selected+'/book',{method:'POST'});await reload(selected);notice('Rechnung gebucht. Im zweiten Schritt kannst du nun Zahlungen erfassen.')}catch(err){notice(err.message,true)}};
-$('unbook').onclick=async()=>{if(!selected||!await PHBUI.confirm('Buchung zurücknehmen? Die Belegausgaben werden aus der Übersicht entfernt.'))return;try{await api('/api/receipts/'+selected+'/unbook',{method:'POST'});await reload(selected)}catch(err){notice(err.message,true)}};
-$('delete').onclick=async()=>{if(!selected||!await PHBUI.confirm('Diesen Entwurf einschließlich Originaldatei dauerhaft löschen?'))return;try{await api('/api/receipts/'+selected,{method:'DELETE'});selected=null;await reload(null)}catch(err){notice(err.message,true)}};
+async function receiptAction(action,button,success){
+ if(!selected||receiptBusy)return;
+ receiptBusy=true;button.disabled=true;
+ try{
+  await action();
+  await reload(selected);
+  if(success)notice(success);
+ }catch(error){notice(error.message,true);}
+ finally{receiptBusy=false;button.disabled=false;}
+}
+$('review').onsubmit=async e=>{
+ e.preventDefault();
+ await receiptAction(async()=>{
+  await api('/api/receipts/'+selected,{
+   method:'PATCH',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify(inputs())
+  });
+ },$('review').querySelector('button[type=submit]'),'Änderungen gespeichert. Die Rechnung ist noch nicht gebucht.');
+};
+$('book').onclick=async()=>{
+ if(!selected||receiptBusy)return;
+ // A cancelled confirmation must never mutate the draft.
+ if(!await PHBUI.confirm('Rechnungsdaten speichern und den Beleg verbindlich buchen? Unbezahlte Rechnungen bleiben offen.'))return;
+ await receiptAction(async()=>{
+  const fields=inputs();
+  await api('/api/receipts/'+selected,{
+   method:'PATCH',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({...fields,book_now:true})
+  });
+ },$('book'),'Rechnung gebucht. Zahlungen kannst du anschließend separat erfassen.');
+};
+$('unbook').onclick=async()=>{
+ if(!selected||receiptBusy||!await PHBUI.confirm('Buchung zurücknehmen? Die Belegausgaben werden aus der Übersicht entfernt.'))return;
+ await receiptAction(()=>api('/api/receipts/'+selected+'/unbook',{method:'POST'}),$('unbook'),'Buchung zurückgenommen.');
+};
+$('delete').onclick=async()=>{
+ if(!selected||receiptBusy||!await PHBUI.confirm('Diesen Entwurf einschließlich Originaldatei dauerhaft löschen?'))return;
+ const button=$('delete');receiptBusy=true;button.disabled=true;
+ try{
+  await api('/api/receipts/'+selected,{method:'DELETE'});
+  selected=null;await reload(null);
+  notice('Entwurf gelöscht.');
+ }catch(error){notice(error.message,true);}
+ finally{receiptBusy=false;button.disabled=false;}
+};
 
 reload().catch(e=>notice(e.message,true));

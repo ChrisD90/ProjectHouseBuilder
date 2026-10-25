@@ -1,5 +1,5 @@
 'use strict';
-let state={},mode='',current=null,ownedDocumentIds=new Set();
+let state={},mode='',current=null,editorBusy=false,ownedDocumentIds=new Set();
 const el=id=>document.getElementById(id), euro=x=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(x)||0), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nf=x=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:1}).format(x||0);
 const fields={
@@ -56,13 +56,45 @@ function openEditor(type,id=null,defaults={}){mode=type;current=id;const record=
  else if(kind==='textarea')control=`<textarea name="${key}" rows="3">${esc(value)}</textarea>`;
  else control=`<input name="${key}" type="${kind==='number'?'number':'text'}" ${kind==='number'?'min="0" step="0.01"':kind==='money'?'inputmode="decimal" data-euro="true"':''} ${['title','name'].includes(key)?'required':''} value="${esc(value)}">`;
  return `<label class="${kind==='textarea'?'wide':''}">${esc(label)}${control}</label>`}).join('');el('editor').showModal()}
-async function saveEditor(e){e.preventDefault();PHBUI.currency.normalizeForm(e.target);const data=Object.fromEntries(new FormData(e.target));for(const key of ['selected','active','is_group'])if(fields[mode].some(x=>x[0]===key))data[key]=e.target.elements.namedItem(key).checked;
- const urls={cost:'/api/costs',budget:'/api/budget/lines',funding:'/api/funding'};
- const method=current?'PUT':'POST',url=urls[mode]+(current?'/'+current:'');
- try{await api(url,{method,body:JSON.stringify(data)});el('editor').close();await reload()}catch(err){el('formError').textContent=err.message}}
-async function removeEditor(){if(!current||!await PHBUI.confirm('Diesen Eintrag wirklich löschen?'))return;const urls={cost:'/api/costs/',budget:'/api/budget/lines/'};if(!urls[mode])return;try{await api(urls[mode]+current,{method:'DELETE'});el('editor').close();await reload()}catch(e){el('formError').textContent=e.message}}
+async function saveEditor(e){
+ e.preventDefault();
+ if(editorBusy)return;
+ const form=e.currentTarget,button=e.submitter||form.querySelector('button[type=submit]');
+ try{
+  PHBUI.currency.normalizeForm(form);
+  const data=Object.fromEntries(new FormData(form));
+  for(const key of ['selected','active','is_group']){
+   if(fields[mode].some(x=>x[0]===key))data[key]=form.elements.namedItem(key).checked;
+  }
+  const urls={cost:'/api/costs',budget:'/api/budget/lines',funding:'/api/funding'};
+  const url=urls[mode]+(current?'/'+current:'');
+  editorBusy=true;button.disabled=true;
+  await api(url,{method:current?'PUT':'POST',body:JSON.stringify(data)});
+  el('editor').close();
+  await reload();
+ }catch(err){el('formError').textContent=err.message;}
+ finally{editorBusy=false;button.disabled=false;}
+}
+async function removeEditor(){
+ if(!current||editorBusy||!await PHBUI.confirm('Diesen Eintrag wirklich löschen?'))return;
+ const urls={cost:'/api/costs/',budget:'/api/budget/lines/'};
+ if(!urls[mode])return;
+ editorBusy=true;el('remove').disabled=true;
+ try{
+  await api(urls[mode]+current,{method:'DELETE'});
+  el('editor').close();
+  await reload();
+ }catch(e){el('formError').textContent=e.message;}
+ finally{editorBusy=false;el('remove').disabled=false;}
+}
 el('addOwnWork').onclick=()=>openEditor('cost',null,{kind:'Eigenleistung',category:'Eigenleistung',state:'Schätzung'});
-el('budgetSearch').addEventListener('input',render);el('editForm').addEventListener('submit',saveEditor);el('remove').addEventListener('click',removeEditor);el('closeDialog').addEventListener('click',()=>el('editor').close());el('cancelDialog').addEventListener('click',()=>el('editor').close());
+el('budgetSearch').addEventListener('input',render);
+el('editForm').addEventListener('submit',saveEditor);
+el('remove').addEventListener('click',removeEditor);
+el('closeDialog').addEventListener('click',()=>{if(!editorBusy)el('editor').close()});
+el('cancelDialog').addEventListener('click',()=>{if(!editorBusy)el('editor').close()});
+el('editor').addEventListener('cancel',event=>{if(editorBusy)event.preventDefault()});
+
 for(const type of ['Budget','Cost','Funding'])el('add'+(type==='Budget'?'Line':type)).addEventListener('click',()=>openEditor(type.toLowerCase()));
 
 const costDocumentDialog=el('costDocumentDialog');
