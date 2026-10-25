@@ -145,7 +145,15 @@
       await refresh();message(res.warning||'Verbindung getrennt.');
     }catch(e){message(e.message);}
   };
-  if(new URLSearchParams(location.search).get('ai')==='permission'){
+  if(new URLSearchParams(location.search).get('ai')==='connected'){
+    setTimeout(async()=>{
+      await refresh();
+      if(!state.credits_acknowledged){
+        show();
+        message('ChatGPT ist verbunden. Bitte die Credit-Warnung jetzt einmalig für dieses Konto bestätigen.');
+      }
+    },200);
+  }else if(new URLSearchParams(location.search).get('ai')==='permission'){
     setTimeout(()=>{show();message('ChatGPT angemeldet, aber Plannutzung noch nicht erlaubt.');},200);
   }else if(new URLSearchParams(location.search).get('ai')==='error'){
     setTimeout(()=>{show();message('ChatGPT-Anmeldung fehlgeschlagen. Die technischen Details kannst du bei Bedarf aufklappen.');showDiagnostics('callback');},200);
