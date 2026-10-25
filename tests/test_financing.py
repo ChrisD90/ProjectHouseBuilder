@@ -129,6 +129,29 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertEqual(self.state()['summary']['equity_available'],400)
         self.assertEqual(self.state()['equity'][0]['balance']['after_reserve'],200)
 
+    def test_project_budget_comes_from_credit_and_equity_only(self):
+        self.assertEqual(self.client.get('/api/costs').json['summary']['budget'],0)
+        lid=self.loan('1000')
+        eid=self.equity('600','200')
+        first=self.client.get('/api/costs').json['summary']
+        self.assertEqual(first['budget'],1600)
+        self.assertEqual(self.state()['summary']['project_budget'],1600)
+        self.assertEqual(self.event('equity_deposit','100',equity_id=eid).status_code,201)
+        self.assertEqual(self.event('equity_withdrawal','50',equity_id=eid).status_code,201)
+        self.assertEqual(self.client.get('/api/costs').json['summary']['budget'],1650)
+        self.assertEqual(self.event('loan_drawdown','400',loan_id=lid).status_code,201)
+        rid=self.receipt('200')
+        self.assertEqual(self.pay(rid,'150','loan',lid).status_code,201)
+        self.assertEqual(self.client.get('/api/costs').json['summary']['budget'],1650)
+        self.assertEqual(self.state()['summary']['project_budget'],1650)
+        self.assertEqual(self.client.patch('/api/budget/config',
+            json={'budget':999999}).status_code,409)
+        page=self.client.get('/finanzierung').get_data(as_text=True)
+        self.assertIn('id="newLoan"',page)
+        self.assertIn('id="newEquity"',page)
+        self.assertNotIn('id="paymentForm"',page)
+        self.assertNotIn('Liquiditätsvorschau',page)
+
     def test_split_paid_receipt_counts_once(self):
         loan=self.loan();equity=self.equity()
         self.assertEqual(self.event('loan_drawdown','500',loan_id=loan).status_code,201)
