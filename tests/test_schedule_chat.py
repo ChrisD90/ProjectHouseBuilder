@@ -26,7 +26,7 @@ class ScheduleChatTests(unittest.TestCase):
     def tasks(self):
         return {t['code']:t for t in self.client.get('/api/project').json['tasks']}
     def ask(self,reply,message='Wir verlegen die Heizung selbst.'):
-        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+        with patch.object(chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}), \
              patch.object(chatgpt,'run',return_value=json.dumps(reply,ensure_ascii=False)) as run:
             result=self.client.post('/api/ai/schedule/chat',json={
                 'model':'m1','plan_only':True,'message':message},headers=self.headers,
@@ -147,7 +147,7 @@ class ScheduleChatTests(unittest.TestCase):
                 json={'message':'Bitte anpassen','plan_only':True},
                 base_url='http://127.0.0.1:5055')
         self.assertEqual(response.status_code,403)
-        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+        with patch.object(chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}), \
              patch.object(chatgpt,'run') as runner:
             no_consent=self.client.post('/api/ai/schedule/chat',
                 headers=self.headers,json={'message':'Bitte anpassen'},
@@ -156,7 +156,7 @@ class ScheduleChatTests(unittest.TestCase):
             runner.assert_not_called()
         db.session.query(Task).delete();db.session.commit()
         # Empty plan must go through the separate first-planning workflow.
-        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+        with patch.object(chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}), \
              patch.object(chatgpt,'run') as runner:
             no_plan=self.client.post('/api/ai/schedule/chat',
                 headers=self.headers,
