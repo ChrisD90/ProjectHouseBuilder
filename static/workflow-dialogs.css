@@ -128,3 +128,42 @@ body.phb-app .phb-offer-workflow .offer-review-layout>.offer-cards{padding:0;mar
   body.phb-app .phb-receipt-workflow.is-reviewing,
   body.phb-app .phb-offer-workflow.is-reviewing{width:calc(100vw - 24px);}
 }
+
+/* Shared dialog UI contract: semantics and responsive composition without
+   overriding document-specific layouts or the native modal display. */
+body.phb-app dialog.phb-managed-dialog{
+  color:var(--ui-ink);background:var(--ui-surface);
+  border-color:var(--ui-line);border-radius:16px;
+  max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);
+}
+body.phb-app dialog.phb-managed-dialog::backdrop{background:rgba(6,20,30,.65)}
+body.phb-app dialog.phb-managed-dialog :is(input,select,textarea){
+  min-width:0;max-width:100%;box-sizing:border-box;
+}
+body.phb-app dialog.phb-managed-dialog :is(.actions,.modal-actions,.dialog-actions,.docs-actions,.master-dialog-actions,.phb-workflow-actions){
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+body.phb-app dialog.phb-managed-dialog button:disabled{
+  cursor:progress;opacity:.58;
+}
+body.phb-app dialog.phb-managed-dialog :is(p[role="alert"],.phb-dialog-notice){
+  overflow-wrap:anywhere;line-height:1.55;font-size:12px;
+}
+body.phb-app dialog.phb-managed-dialog .phb-dialog-notice{
+  color:var(--ui-ink-soft);margin:10px 0;
+}
+body.phb-app dialog.phb-managed-dialog .phb-dialog-notice.is-error{
+  color:var(--ui-danger);
+}
+body.phb-app dialog.phb-managed-dialog:focus-visible{
+  outline:2px solid var(--ui-accent);outline-offset:2px;
+}
+body.phb-app dialog.phb-managed-dialog[aria-busy="true"] [data-phb-close]{
+  opacity:.55;pointer-events:none;
+}
+@media(max-width:680px){
+  body.phb-app dialog.phb-managed-dialog{max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px)}
+  body.phb-app dialog.phb-managed-dialog :is(.actions,.modal-actions,.dialog-actions,.docs-actions,.master-dialog-actions,.phb-workflow-actions){
+    row-gap:9px;
+  }
+}
