@@ -1,5 +1,14 @@
 'use strict';
 const $=id=>document.getElementById(id);
+const loanFlow=PHBFlow.manage({
+ dialog:'loanDialog',forms:['loanForm'],dismiss:['closeLoan'],
+ isBusy:()=>loanAiBusy,
+ busyMessage:'Die Vertragsanalyse läuft noch. Bitte das Ergebnis abwarten.'
+});
+const equityFlow=PHBFlow.manage({
+ dialog:'equityDialog',forms:['equityForm'],dismiss:['closeEquity']
+});
+
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const euro=n=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(n)||0);
 let state=null;
@@ -76,9 +85,9 @@ function openLoan(id=null){
  $('loanDocUploadDetails').open=false;
  updateLoanEditorMode(id);
  if(loan)documentRows(loan);
- $('loanDialog').showModal();
+ loanFlow.open();
 }
-function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;$('equityDialog').showModal()}
+function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;equityFlow.open()}
 $('newLoan').onclick=()=>openLoan();$('newEquity').onclick=()=>openEquity();
 
 let loanAiBusy=false;
@@ -195,6 +204,7 @@ $('loanForm').onsubmit=async event=>{
      documentRows(loan);
    }
    updateLoanEditorMode(saved.id);
+   loanFlow.snapshot();
    status.textContent='Änderungen gespeichert. Der Kredit kann hier weiter ergänzt werden.';
    status.classList.remove('error');
  }catch(err){
