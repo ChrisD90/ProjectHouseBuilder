@@ -134,7 +134,7 @@ class ReceiptWebappTest(unittest.TestCase):
             'labor_amount':'595,00','category':'Werkzeug',
             'kind':'Rechnung','billing_type':'Normal','warnings':['Preis prüfen']
         })
-        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+        with patch.object(chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}), \
              patch.object(chatgpt,'run',return_value=result) as run:
             no_header=make_upload({'plan_only':'true'})
             self.assertEqual(no_header.status_code,403,no_header.json)
@@ -168,7 +168,7 @@ class ReceiptWebappTest(unittest.TestCase):
         data=json.dumps({'supplier':'Foto-Rechnung','invoice_number':'B-4',
                          'document_date':'2026-10-22','gross_amount':42,
                          'warnings':[]})
-        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+        with patch.object(chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}), \
              patch.object(chatgpt,'run',return_value=data) as run, \
              patch('app.extract_text',side_effect=AssertionError('local OCR must not run')):
             response=self.client.post('/api/receipts',data={
