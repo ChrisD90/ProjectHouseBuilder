@@ -26,25 +26,3 @@
 .offer-optional{color:#99643a;background:#fffaf1}
 .offer-import-status{font-size:.82rem;align-self:center;color:var(--muted,#68717a)}
 @media(max-width:760px){.offer-card{padding:12px}.offer-card-head{flex-direction:column}.offer-card-head>div:last-child{text-align:left}.offer-status-row{display:block}.offer-status-row>*{margin:7px 0}}
-
-
-/* Split-View mit fixer PDF-Vorschau beim Prüfen von Angeboten und Rechnungen */
-.review-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(330px,.85fr);align-items:start;gap:17px;padding:0 22px 18px}
-.review-main{min-width:0}
-.review-main .upload-form{padding:10px 0 18px;grid-template-columns:repeat(2,minmax(0,1fr))}
-.review-main .upload-form label{min-width:0}
-.review-main .offer-cards{margin-top:6px}
-.review-main .offer-card{padding:14px}
-.preview-pane{position:sticky;top:16px;min-width:0;border:1px solid #d5e4e9;background:#f7fbfc;border-radius:12px;overflow:hidden;padding:12px}
-.preview-head{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:3px 2px 9px}
-.preview-head strong{font-size:13px}
-.preview-pane p{font-size:12px;color:#71888e;line-height:1.45;margin:5px 2px 10px}
-.preview-pane iframe{display:none;width:100%;height:min(76vh,950px);background:white;border:1px solid #d3e1e5;border-radius:7px}
-.preview-pane iframe.has-pdf{display:block}
-.preview-pane a[hidden]{display:none}
-.document-review .upload-form{grid-template-columns:repeat(2,minmax(0,1fr))}
-.document-review .section-note{padding:2px 0 12px}
-.offer-card .offer-status-row{gap:7px}
-.offer-table select{min-width:170px;max-width:260px}
-@media(max-width:1080px){.review-layout{grid-template-columns:1fr}.preview-pane{position:static}.preview-pane iframe{height:580px}}
-@media(max-width:650px){.review-layout{padding:0 12px 14px}.review-main .upload-form,.document-review .upload-form{grid-template-columns:1fr}.preview-pane iframe{height:420px}}
