@@ -40,21 +40,59 @@ def decimal_amount(s):
 
 
 def ocr_diagnostics():
-    """Check the actual worker environment without exposing document data."""
+    """Report what the *running worker* can execute, not what the Dockerfile requests.
+
+    Old images can serve new source files mounted from a NAS share, so checking
+    the build-time image marker helps distinguish stale image from broken OCR.
+    No secrets, paths to private documents or environment values are returned.
+    """
+    import os
     import shutil
-    tools={name:bool(shutil.which(name)) for name in ('tesseract','pdftoppm')}
+    import sys
+    locations={name:shutil.which(name) for name in ('tesseract','pdftoppm')}
+    tools={name:bool(path) for name,path in locations.items()}
     languages=[]
+    versions={}
     if tools['tesseract']:
         try:
-            result=subprocess.run(['tesseract','--list-langs'],capture_output=True,
-                                  text=True,timeout=8,check=False)
-            languages=[line.strip() for line in (result.stdout+'\n'+result.stderr).splitlines()
+            langs=subprocess.run([locations['tesseract'],'--list-langs'],capture_output=True,
+                                 text=True,timeout=8,check=False)
+            languages=[line.strip() for line in (langs.stdout+'\n'+langs.stderr).splitlines()
                        if re.fullmatch(r'[a-z]{3}(?:_[A-Za-z0-9]+)?',line.strip())]
+            ver=subprocess.run([locations['tesseract'],'--version'],capture_output=True,
+                               text=True,timeout=8,check=False)
+            versions['tesseract']=(ver.stdout or ver.stderr).splitlines()[0][:110] if (
+                ver.stdout or ver.stderr) else ''
         except (OSError,subprocess.TimeoutExpired):
             pass
-    return {'tools':tools,'languages':languages,
-            'ready':all(tools.values()) and 'deu' in languages,
-            'hint':'Tesseract, deutsches Sprachpaket und Poppler im Server/Container erforderlich.'}
+    if tools['pdftoppm']:
+        try:
+            ver=subprocess.run([locations['pdftoppm'],'-v'],capture_output=True,
+                               text=True,timeout=8,check=False)
+            versions['pdftoppm']=(ver.stderr or ver.stdout).splitlines()[0][:110] if (
+                ver.stderr or ver.stdout) else ''
+        except (OSError,subprocess.TimeoutExpired):
+            pass
+    docker=Path('/.dockerenv').exists() or bool(os.environ.get('PHB_OCR_IMAGE'))
+    image=os.environ.get('PHB_OCR_IMAGE','')
+    ready=all(tools.values()) and 'deu' in languages and 'eng' in languages
+    if ready:
+        reason='OCR im laufenden App-Prozess einsatzbereit.'
+    elif docker and not image:
+        reason=('Der laufende Container verwendet offenbar nicht das aktuelle OCR-geprüfte '
+                'App-Image. App-Image ohne Cache neu bauen und App-Container neu erstellen.')
+    elif docker:
+        reason=('OCR-Pakete sind im laufenden App-Container nicht nutzbar. '
+                'Build-/Startprotokoll und Sprachen prüfen; App-Image neu bauen.')
+    elif sys.platform=='darwin':
+        reason='OCR fehlt auf dem lokalen Mac. Homebrew tesseract, tesseract-lang und poppler installieren.'
+    else:
+        reason='Tesseract, Poppler und die Sprachdaten deu+eng auf dem App-Server installieren.'
+    return {'tools':tools,'languages':languages,'ready':ready,'versions':versions,
+            'environment':'container' if docker else 'local',
+            'image_marker':image,'reason':reason,
+            'hint':'OCR wird serverseitig geprüft; der Browser muss keine OCR-Pakete installieren.'}
+
 
 
 def _ocr(path):
