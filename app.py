@@ -1517,28 +1517,34 @@ def update_task(task_id):
 
 @app.post('/api/tasks/<int:task_id>/complete')
 def task_complete(task_id):
+    """Finish a work package atomically, preserving its original completion date."""
     t=db.session.get(Task,task_id)
     if not t:return jsonify(error='Arbeitspaket nicht gefunden.'),404
-    previous_status=t.status
-    previous_progress=t.progress
-    previous_end=t.actual_end
-    if t.status!='Erledigt':
-        t.status='Erledigt'
+    try:
+        before={'status':t.status,'progress':t.progress,
+                'actual_end':t.actual_end.isoformat() if t.actual_end else ''}
+        if t.status!='Erledigt':
+            t.status='Erledigt'
+            t.actual_end=date.today()
+        elif not t.actual_end:
+            t.actual_end=date.today()
         t.progress=100
-        t.actual_end=date.today()
-    else:
-        t.progress=100
-        if not t.actual_end:t.actual_end=date.today()
-    if previous_status!=t.status or previous_progress!=t.progress or previous_end!=t.actual_end:
-        _schedule_audit('Manuell','Arbeitspaket '+t.code+' abgeschlossen.',
-                        [{'action':'update','code':t.code,'name':t.name,
-                          'changes':[{'field':'status','before':previous_status,'after':t.status},
-                                     {'field':'progress','before':previous_progress,'after':t.progress},
-                                     {'field':'actual_end',
-                                      'before':previous_end.isoformat() if previous_end else '',
-                                      'after':t.actual_end.isoformat()}]}])
-        db.session.commit()
-    return jsonify(ok=True,actual_end=t.actual_end.isoformat())
+        after={'status':t.status,'progress':t.progress,
+               'actual_end':t.actual_end.isoformat()}
+        if before!=after:
+            _schedule_audit('Manuell','Arbeitspaket '+t.code+' abgeschlossen.',
+                [{'action':'update','code':t.code,'name':t.name,
+                  'changes':[{'field':field,'before':before[field],
+                              'after':after[field]} for field in after
+                             if before[field]!=after[field]]}])
+            db.session.commit()
+        return jsonify(ok=True,status=t.status,progress=t.progress,
+                       actual_end=t.actual_end.isoformat())
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Arbeitspaket %s konnte nicht abgeschlossen werden',task_id)
+        return jsonify(error='Abschluss fehlgeschlagen. Details stehen im Serverprotokoll.'),500
+
 
 @app.post('/api/tasks/assign-contractors')
 def tasks_assign_contractors():
