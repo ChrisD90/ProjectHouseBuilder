@@ -3,11 +3,13 @@ import os
 import tempfile
 import unittest
 from datetime import date
+import io
+from pypdf import PdfWriter
 from pathlib import Path
 
 os.environ['DATABASE_URL']='sqlite:///:memory:'
 import app as backend
-from app import app, db, initialize, Contractor, Task, Offer, OfferSection, Document, Receipt, ProjectDocument
+from app import app, db, initialize, Contractor, Task, Offer, OfferSection, Document, Receipt, ProjectDocument, OrderAcceptance, CostItem
 from assignment_suggestions import suggestions
 
 
@@ -93,6 +95,74 @@ class SynologyWorkflowTest(unittest.TestCase):
             {'task_id':self.tid,'contractor_id':self.cid}]})
         self.assertEqual(duplicate.status_code,409)
         self.assertIsNone(db.session.get(Task,self.tid).contractor_id)
+
+    def test_accept_quote_without_confirmation_keeps_original_price(self):
+        response=self.client.post(f'/api/offers/{self.oid}/accept',
+                                  data={'confirm':'true','mode':'offer'})
+        self.assertEqual(response.status_code,201,response.json)
+        self.assertEqual(response.json['offer']['agreed_gross'],119)
+        self.assertEqual(response.json['offer']['gross'],119)
+        self.assertEqual(response.json['offer']['acceptance']['mode'],'offer')
+        self.assertIsNone(response.json['offer']['acceptance']['document_id'])
+        self.assertEqual(db.session.get(Offer,self.oid).status,'Angenommen')
+        item=db.session.scalar(db.select(CostItem).where(CostItem.offer_id==self.oid))
+        self.assertEqual(item.committed,119)
+        self.assertEqual(self.client.post(f'/api/offers/{self.oid}/accept',
+                         data={'confirm':'true','mode':'offer'}).status_code,409)
+
+    def test_accept_confirmation_preserves_quote_and_fixes_new_contract_value(self):
+        writer=PdfWriter();writer.add_blank_page(width=600,height=800)
+        buffer=io.BytesIO();writer.write(buffer)
+        with tempfile.TemporaryDirectory() as temp:
+            root=backend.DOCUMENT_ROOT
+            backend.DOCUMENT_ROOT=Path(temp)
+            try:
+                response=self.client.post(f'/api/offers/{self.oid}/accept',data={
+                    'confirm':'true','mode':'confirmation',
+                    'agreed_gross':'125,50',
+                    'confirmation':(io.BytesIO(buffer.getvalue()),'Bestätigung.pdf')},
+                    content_type='multipart/form-data')
+                self.assertEqual(response.status_code,201,response.json)
+                offer=response.json['offer']
+                self.assertEqual(offer['gross'],119)
+                self.assertEqual(offer['agreed_gross'],125.50)
+                self.assertEqual(offer['acceptance']['quoted_gross'],119)
+                doc_id=offer['acceptance']['document_id']
+                doc=db.session.get(Document,doc_id)
+                self.assertEqual(doc.kind,'Auftragsbestätigung')
+                self.assertEqual((Path(temp)/doc.stored_name).read_bytes(),buffer.getvalue())
+                self.assertEqual(db.session.scalar(db.select(CostItem).where(
+                    CostItem.offer_id==self.oid)).committed,125.50)
+                self.assertEqual(self.client.get('/api/offers').json['offers'][0]['billing']['agreed'],125.50)
+                library=self.client.get('/api/document-library').json['documents']
+                self.assertTrue(any(row['filename']=='Bestätigung.pdf' and
+                    row['source']=='Angebote' for row in library))
+                blocked=self.client.patch(f'/api/offers/{self.oid}',json={'status':'Angebot'})
+                self.assertEqual(blocked.status_code,409)
+                self.assertEqual(db.session.get(Offer,self.oid).status,'Angenommen')
+            finally:backend.DOCUMENT_ROOT=root
+
+    def test_acceptance_cannot_change_price_without_confirmation(self):
+        response=self.client.post(f'/api/offers/{self.oid}/accept',
+                                  data={'confirm':'true','mode':'offer','agreed_gross':'200'})
+        self.assertEqual(response.status_code,409)
+        self.assertIsNone(db.session.scalar(db.select(OrderAcceptance).where(
+            OrderAcceptance.offer_id==self.oid)))
+        self.assertEqual(db.session.get(Offer,self.oid).status,'Angebot')
+
+    def test_invalid_confirmation_keeps_offer_open(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=backend.DOCUMENT_ROOT
+            backend.DOCUMENT_ROOT=Path(temp)
+            try:
+                response=self.client.post(f'/api/offers/{self.oid}/accept',
+                    data={'confirm':'true','mode':'confirmation','agreed_gross':'800',
+                          'confirmation':(io.BytesIO(b'%PDF-garbage'),'Bestätigung.pdf')},
+                    content_type='multipart/form-data')
+                self.assertEqual(response.status_code,400)
+                self.assertEqual(db.session.get(Offer,self.oid).status,'Angebot')
+                self.assertEqual(list(Path(temp).iterdir()),[])
+            finally:backend.DOCUMENT_ROOT=root
 
     def test_close_task_sets_actual_end(self):
         response=self.client.post(f'/api/tasks/{self.tid}/complete')

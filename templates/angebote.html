@@ -57,6 +57,23 @@
     </div>
   </div>
 </dialog>
+<dialog id="offerAcceptanceDialog" class="phb-workflow-dialog phb-offer-acceptance-dialog" aria-labelledby="offerAcceptanceTitle">
+    <div class="phb-workflow-head"><div><span class="phb-page-kicker">Auftrag verbindlich übernehmen</span><h2 id="offerAcceptanceTitle">Angebot annehmen</h2><p>Das Originalangebot bleibt unverändert. Der bestätigte Auftragswert wird für Kostenplanung und Rechnungsabgleich fixiert.</p></div><button id="cancelOfferAcceptance" type="button" class="subtle">Abbrechen</button></div>
+    <form id="offerAcceptanceForm" class="offer-acceptance-form">
+      <p id="offerAcceptanceSummary" class="offer-acceptance-summary"></p>
+      <fieldset class="offer-acceptance-choices"><legend>Wie wurde der Auftrag bestätigt?</legend>
+        <label><input type="radio" name="mode" value="offer" checked> <span><strong>Angebot unverändert übernehmen</strong><small>Keine Auftragsbestätigung vorhanden. Angebotssumme 1:1 als verbindlichen Auftragswert übernehmen.</small></span></label>
+        <label><input type="radio" name="mode" value="confirmation"> <span><strong>Auftragsbestätigung hochladen</strong><small>Original-PDF ablegen und endgültigen Auftragswert bei Abweichungen korrigieren.</small></span></label>
+      </fieldset>
+      <div id="offerAcceptanceUpload" class="offer-acceptance-upload" hidden>
+        <label>Auftragsbestätigung (PDF, max. 15 MB)<input id="offerAcceptanceFile" type="file" name="confirmation" accept=".pdf,application/pdf"></label>
+        <label>Verbindlicher Brutto-Auftragswert (€)<input id="offerAcceptanceGross" type="text" name="agreed_gross" inputmode="decimal" data-euro="true" required></label>
+        <p class="muted">Bitte den Betrag mit der Auftragsbestätigung vergleichen. Der Angebotspreis bleibt im Original erhalten.</p>
+      </div>
+      <p id="offerAcceptanceError" role="alert"></p>
+      <div class="offer-form-actions"><button type="button" id="offerAcceptanceBack" class="subtle">Abbrechen</button><button id="offerAcceptanceSubmit" type="submit" class="primary">Auftrag verbindlich annehmen</button></div>
+    </form>
+  </dialog>
 <div class="phb-workflow-inline-trigger"><button type="button" id="openOfferDrafts" class="subtle">Offene Entwürfe prüfen <span id="offerDraftTriggerCount"></span></button></div>
   <section class="panel budget-panel offer-compare-section" id="angebotsliste"><div class="panelbar"><div><h2>Deine Angebote</h2><p>Nur die jeweils aktuelle Version wird angezeigt. Frühere PDFs, Summen und Positionen findest du über „Versionshistorie“.</p></div><label class="offers-filter">Gewerk <select id="offerCategoryFilter"><option value="">Alle Kategorien</option></select></label></div>
    <div id="offerList" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div>

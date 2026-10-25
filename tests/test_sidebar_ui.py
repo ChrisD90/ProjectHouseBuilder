@@ -92,7 +92,7 @@ class SidebarUITest(unittest.TestCase):
             'id="templatePanel" aria-labelledby="templateTitle" hidden',
             'id="aiSchedulePanel" hidden',
             'id="aiScheduleChatPanel" hidden',
-            'id="scheduleHistoryDetails"',
+            'id="scheduleHistoryDialog"',
             'id="scheduleChatApprove"',
             'id="scheduleChatReject"',
             '/static/schedule_chat.js'
@@ -104,7 +104,7 @@ class SidebarUITest(unittest.TestCase):
         assistant=(STATIC/'schedule_chat.js').read_text()
         self.assertIn("selection()",assistant)
         self.assertIn("confirm:approve",assistant)
-        self.assertIn("scheduleHistoryDetails",assistant)
+        self.assertIn("openScheduleHistory",assistant)
 
     def test_floating_schedule_chat_toggle_closes_on_outside_click_and_escape(self):
         page=self.render('index')
@@ -115,7 +115,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('id="aiScheduleChatPanel" hidden',page)
         self.assertIn('role="dialog" aria-modal="false"',page)
         self.assertIn('id="scheduleChatPreview" hidden',page)
-        self.assertIn('id="scheduleHistoryDetails"',page)
+        self.assertIn('id="scheduleHistoryDialog"',page)
         self.assertIn('href="/static/icons/ui-icons.svg#message-circle"',page)
         self.assertIn('id="message-circle"', (STATIC/'icons'/'ui-icons.svg').read_text())
 
@@ -272,6 +272,36 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('#offerList .offer-tile',css)
         self.assertIn('grid-template-columns:repeat(auto-fill',css)
         self.assertIn('.offer-tile-details[hidden]',css)
+
+    def test_task_list_and_history_are_on_demand_and_do_not_take_page_space(self):
+        page=self.render('index')
+        self.assertIn('id="openTaskList"',page)
+        self.assertIn('id="taskListDialog"',page)
+        self.assertIn('id="openScheduleHistory"',page)
+        self.assertIn('id="scheduleHistoryDialog"',page)
+        self.assertNotIn('<section class="panel tablepanel">',page)
+        js=(STATIC/'app.js').read_text()
+        self.assertIn("taskListDialog').showModal()",js)
+        history=(STATIC/'schedule_chat.js').read_text()
+        self.assertIn("scheduleHistoryDialog').showModal()",history)
+
+    def test_order_acceptance_dialog_and_separate_payment_steps(self):
+        offers=self.render('angebote')
+        receipts=self.render('belege')
+        self.assertIn('id="offerAcceptanceDialog"',offers)
+        self.assertIn('id="offerAcceptanceFile"',offers)
+        self.assertIn('id="offerAcceptanceGross"',offers)
+        script=(STATIC/'offers.js').read_text()
+        self.assertIn("offerUrl(id)+'/accept'",script)
+        self.assertIn('openOfferAcceptance(Number(id))',script)
+        self.assertIn('id="receiptReviewLayout"',receipts)
+        self.assertIn('id="receiptReviewStage"',receipts)
+        self.assertIn('id="receiptPaymentsPanel"',receipts)
+        self.assertIn('Schritt 1 von 2',receipts)
+        self.assertIn('Schritt 2 von 2',receipts)
+        rjs=(STATIC/'receipts.js').read_text()
+        self.assertIn("delete result.paid_amount",rjs)
+        self.assertIn("receiptReviewLayout').hidden=true",rjs)
 
     def test_finance_budget_and_invoice_payment_workflows_are_on_correct_pages(self):
         finance=self.render('finanzierung')

@@ -272,3 +272,19 @@ body.phb-app .phb-offer-workflow .offer-review-layout>.offer-cards{padding:0;mar
  body.phb-app .phb-offer-edit-dialog iframe,
  body.phb-app .phb-offer-workflow .phb-inline-pdf iframe{min-height:360px;height:480px}
 }
+
+/* Two-path formal order acceptance: quotation 1:1 or documented final amount. */
+.phb-offer-acceptance-dialog{width:min(720px,calc(100vw - 28px));max-height:92dvh}
+.offer-acceptance-form{padding:18px 24px 24px;display:grid;gap:16px}
+.offer-acceptance-summary{margin:0;padding:13px 15px;border-radius:10px;background:var(--ui-soft,#eef6f8);font-weight:650}
+.offer-acceptance-choices{display:grid;gap:12px;border:0;padding:0;margin:0}
+.offer-acceptance-choices legend{font-weight:700;margin-bottom:12px}
+.offer-acceptance-choices label{display:flex;gap:12px;padding:14px;border:1px solid var(--ui-line,#d6e3e7);border-radius:10px;cursor:pointer;align-items:flex-start}
+.offer-acceptance-choices label input{margin-top:2px;flex:none;accent-color:#0e7782}
+.offer-acceptance-choices label span{display:grid;gap:4px}
+.offer-acceptance-choices label small{color:var(--ui-muted,#667e88)}
+.offer-acceptance-upload{display:grid;gap:12px;border-top:1px solid var(--ui-line,#d6e3e7);padding-top:14px}
+.offer-acceptance-upload[hidden]{display:none!important}
+.offer-acceptance-upload label{display:grid;gap:7px;font-weight:600}
+.offer-acceptance-upload input{max-width:100%}
+#offerAcceptanceError{color:#a52f3d}

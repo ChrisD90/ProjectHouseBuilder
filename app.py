@@ -351,6 +351,28 @@ class Offer(db.Model):
     sections=db.relationship('OfferSection',cascade='all,delete-orphan',lazy='select')
     positions=db.relationship('OfferPosition',cascade='all,delete-orphan',lazy='select')
 
+class OrderAcceptance(db.Model):
+    """Immutable accepted-order amount, keeping the quoted PDF and values intact."""
+    __tablename__='order_acceptance'
+    id=db.Column(db.Integer,primary_key=True)
+    offer_id=db.Column(db.Integer,db.ForeignKey('offer.id',ondelete='RESTRICT'),nullable=False,unique=True)
+    confirmation_document_id=db.Column(db.Integer,db.ForeignKey('document.id'),nullable=True)
+    quoted_gross=db.Column(db.Numeric(12,2),nullable=False)
+    agreed_gross=db.Column(db.Numeric(12,2),nullable=False)
+    mode=db.Column(db.String(20),nullable=False)  # 'offer' or 'confirmation'
+    created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
+
+
+def _order_acceptance(offer):
+    if offer.id is None:return None
+    return db.session.scalar(select(OrderAcceptance).where(OrderAcceptance.offer_id==offer.id))
+
+
+def _contract_gross(offer):
+    accepted=_order_acceptance(offer)
+    return float(accepted.agreed_gross) if accepted else float(offer.gross or 0)
+
+
 class OfferVersion(db.Model):
     """Immutable snapshot of historic quotes, plus editable pending revisions."""
     __tablename__='offer_version'
@@ -886,6 +908,9 @@ def document_library():
         for v in o.versions:
             if v.document_id:
                 by_document.setdefault(v.document_id,o)
+    for accepted in db.session.scalars(select(OrderAcceptance)).all():
+        if accepted.confirmation_document_id:
+            by_document[accepted.confirmation_document_id]=db.session.get(Offer,accepted.offer_id)
     for d in db.session.scalars(select(Document)).all():
         offer=by_document.get(d.id)
         entries.append({'source':'Angebote' if offer else 'Weitere Projektunterlagen',
@@ -1802,7 +1827,7 @@ def offer_billing_dict(offer):
         if ids else [])
     billed=sum((_receipt_increment(r) for r in receipts),Decimal('0'))
     paid=sum((Decimal(r.paid_amount or 0) for r in receipts),Decimal('0'))
-    agreed=Decimal(str(offer.gross or 0))
+    agreed=Decimal(str(_contract_gross(offer)))
     remaining=agreed-billed
     ratio=float(billed/agreed*100) if agreed>0 else 0
     stage='overrun' if billed>agreed else 'fully_billed' if billed==agreed else 'warning' if ratio>=80 else 'normal'
@@ -1959,7 +1984,8 @@ def _sync_offer_costs(offer):
                 raise ValueError('Das Angebot hat bereits Zahlungen oder verknüpfte Belege. Bitte zuerst prüfen.')
             db.session.delete(item)
         return
-    if offer.gross is None or not math.isfinite(offer.gross) or offer.gross<=0:
+    amount=_contract_gross(offer)
+    if not math.isfinite(amount) or amount<=0:
         raise ValueError('Vor Annahme muss eine positive Bruttogesamtsumme bestätigt sein.')
     line=None
     if offer.budget_line_id is not None:
@@ -1979,13 +2005,13 @@ def _sync_offer_costs(offer):
             raise ValueError('Eine frühere Leistungsgruppe hat Zahlungen oder Belege.')
         db.session.delete(duplicate)
     if _offer_has_dependencies(item) and (item.budget_line_id!=offer.budget_line_id
-             or abs(float(item.offer or 0)-float(offer.gross))>0.001):
+             or abs(float(item.offer or 0)-amount)>0.001):
         raise ValueError('Betrag oder Zuordnung eines bereits bezahlten Auftrags dürfen nicht still verändert werden.')
     item.offer_id=offer.id;item.budget_line_id=offer.budget_line_id
     item.title=(f'{offer.vendor}: Angebot {offer.number or "ohne Nummer"}')[:300]
     item.category=line.category if line else offer.category
     item.kind='Fremdleistung';item.contractor_id=offer.contractor_id
-    item.offer=float(offer.gross);item.committed=float(offer.gross)
+    item.offer=amount;item.committed=amount
     item.state='Beauftragt';item.selected=True;item.source_ref=offer.number
     db.session.add(item)
 
@@ -2120,8 +2146,8 @@ def _sync_revised_contract(o,old_budget_line):
         _sync_offer_costs(o)
         return
     for item in items:
-        item.offer=float(o.gross)
-        item.committed=float(o.gross)
+        item.offer=_contract_gross(o)
+        item.committed=_contract_gross(o)
         item.title=(f'{o.vendor}: Angebot {o.number or "ohne Nummer"}')[:300]
         item.category=o.category if not o.budget_line_id else db.session.get(BudgetLine,o.budget_line_id).category
         item.contractor_id=o.contractor_id
@@ -2253,7 +2279,15 @@ def list_offer_versions(offer_id):
 
 
 def offer_dict(o):
-    return {'id':o.id,'number':o.number,'vendor':o.vendor,'filename':o.filename,
+    acceptance=_order_acceptance(o)
+    acceptance_json=({'id':acceptance.id,'mode':acceptance.mode,
+        'quoted_gross':float(acceptance.quoted_gross),
+        'agreed_gross':float(acceptance.agreed_gross),
+        'document_id':acceptance.confirmation_document_id,
+        'created_at':acceptance.created_at.isoformat() if acceptance.created_at else ''}
+        if acceptance else None)
+    return {'acceptance':acceptance_json,'agreed_gross':_contract_gross(o),
+            'id':o.id,'number':o.number,'vendor':o.vendor,'filename':o.filename,
             'issued':o.issued,'expires':o.expires,'net':o.net,'vat':o.vat,'gross':o.gross,
             'category':o.category,'budget_line_id':o.budget_line_id,'notes':o.notes,
             'tax_rate':o.tax_rate,'status':o.status,'reconciled':o.reconciled,
@@ -2541,6 +2575,99 @@ def offer_draft_update(offer_id):
         return jsonify(error=str(exc)), 400
 
 
+@app.post('/api/offers/<int:offer_id>/accept')
+def offer_accept_with_confirmation(offer_id):
+    """Accept a reviewed quote in one transaction and optionally attach its order confirmation.
+
+    The original offer and its version snapshots never get overwritten.
+    If there is no confirmation PDF, the quote is accepted exactly 1:1.
+    """
+    offer=db.session.get(Offer,offer_id)
+    if not offer:return jsonify(error='Angebot nicht gefunden.'),404
+    if offer.status!='Angebot' or _order_acceptance(offer):
+        return jsonify(error='Nur ein offenes, geprüftes Angebot kann einmalig angenommen werden.'),409
+    if any(v.state=='draft' for v in offer.versions):
+        return jsonify(error='Bitte offene Angebotsversionen erst prüfen.'),409
+    if not offer.vendor.strip() or offer.vendor=='Firma nicht erkannt' or not offer.gross or not math.isfinite(offer.gross) or offer.gross<=0:
+        return jsonify(error='Firma und positive Angebotssumme müssen vor der Annahme geprüft sein.'),409
+    if request.form.get('confirm')!='true':
+        return jsonify(error='Die verbindliche Angebotsannahme ausdrücklich bestätigen.'),400
+    mode=request.form.get('mode')
+    uploaded=request.files.get('confirmation')
+    if mode not in ('offer','confirmation'):
+        return jsonify(error='Bitte Angebot übernehmen oder Auftragsbestätigung auswählen.'),400
+    if mode=='offer' and uploaded and uploaded.filename:
+        return jsonify(error='Datei nur bei Auftragsbestätigung erlaubt.'),400
+    data=None;filename=None
+    if mode=='confirmation':
+        if not uploaded or not uploaded.filename or Path(uploaded.filename).suffix.lower()!='.pdf':
+            return jsonify(error='Bitte die Auftragsbestätigung als PDF hochladen.'),400
+        data=uploaded.read(15*1024*1024+1)
+        if not data or len(data)>15*1024*1024 or not data.startswith(b'%PDF-'):
+            return jsonify(error='Die Auftragsbestätigung muss ein gültiges PDF bis 15 MB sein.'),400
+        try:
+            from pypdf import PdfReader
+            pdf=PdfReader(io.BytesIO(data))
+            if pdf.is_encrypted or not pdf.pages:
+                return jsonify(error='Die Auftragsbestätigung ist verschlüsselt oder leer.'),400
+        except Exception:
+            return jsonify(error='Das PDF ist beschädigt oder nicht lesbar.'),400
+        filename=Path(uploaded.filename).name[:240]
+        if 'agreed_gross' not in request.form or not request.form['agreed_gross'].strip():
+            return jsonify(error='Bitte den endgültigen Auftragswert prüfen und eintragen.'),400
+        try:amount=_offer_amount(request.form['agreed_gross'],'Auftragswert')
+        except ValueError as exc:return jsonify(error=str(exc)),400
+    else:
+        amount=float(offer.gross)
+        if request.form.get('agreed_gross') not in (None,''):
+            try:requested=_offer_amount(request.form['agreed_gross'],'Auftragswert')
+            except ValueError as exc:return jsonify(error=str(exc)),400
+            if abs(requested-amount)>.001:
+                return jsonify(error='Ohne Auftragsbestätigung muss die Angebotssumme 1:1 übernommen werden.'),409
+    if not amount or amount<=0 or not math.isfinite(amount):
+        return jsonify(error='Der bestätigte Auftragswert muss größer als 0 € sein.'),400
+    stored=None
+    try:
+        if data is not None:
+            DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)
+            stored=uuid4().hex+'.pdf'
+            (DOCUMENT_ROOT/stored).write_bytes(data)
+            doc=Document(original_name=filename,stored_name=stored,kind='Auftragsbestätigung',
+                notes='Auftragsbestätigung zu Angebot #'+str(offer.id)+'; verbindlicher Auftragswert',
+                contractor_id=offer.contractor_id,budget_line_id=offer.budget_line_id)
+            db.session.add(doc);db.session.flush()
+            doc_id=doc.id
+        else:doc_id=None
+        db.session.add(OrderAcceptance(offer_id=offer.id,mode=mode,
+            confirmation_document_id=doc_id,quoted_gross=offer.gross,
+            agreed_gross=amount))
+        db.session.flush()
+        offer.status='Angenommen'
+        if offer.contractor_id is None:
+            company=db.session.scalar(select(Contractor).where(
+                db.func.lower(Contractor.name)==offer.vendor.lower()).limit(1))
+            if company is None:
+                company=Contractor(name=offer.vendor,trade=offer.category or 'Sonstiges',
+                    notes='Aus angenommenem Angebot angelegt.')
+                db.session.add(company);db.session.flush()
+            offer.contractor_id=company.id
+        if doc_id is not None:
+            doc.contractor_id=offer.contractor_id
+        _sync_offer_costs(offer)
+        _sync_current_version(offer)
+        db.session.commit()
+        return jsonify(ok=True,offer=offer_dict(offer)),201
+    except (ValueError,TypeError) as exc:
+        db.session.rollback()
+        if stored:(DOCUMENT_ROOT/stored).unlink(missing_ok=True)
+        return jsonify(error=str(exc)),409
+    except Exception:
+        db.session.rollback()
+        if stored:(DOCUMENT_ROOT/stored).unlink(missing_ok=True)
+        app.logger.exception('Auftragsannahme fehlgeschlagen')
+        return jsonify(error='Auftragsannahme fehlgeschlagen; keine Kosten übernommen.'),500
+
+
 @app.patch('/api/offers/<int:offer_id>')
 def offer_update(offer_id):
     offer=db.session.get(Offer,offer_id)
@@ -2550,6 +2677,8 @@ def offer_update(offer_id):
         return jsonify(error='Erlaubt sind In Liste übernehmen, Annehmen und Ablehnen.'),400
     if offer.status=='Entwurf' and target!='Angebot':
         return jsonify(error='Entwurf erst prüfen und in die Angebotsliste übernehmen.'),409
+    if _order_acceptance(offer) and target!='Angenommen':
+        return jsonify(error='Fixierter Auftrag: Rücknahme nur über einen geprüften gesonderten Korrekturprozess möglich.'),409
     if offer.status in ('Angenommen','Beauftragt') and target=='Angenommen':
         return jsonify(ok=True,offer=offer_dict(offer))
     if target=='Angebot' and (not offer.vendor.strip() or offer.vendor=='Firma nicht erkannt'

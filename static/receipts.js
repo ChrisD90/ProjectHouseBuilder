@@ -66,7 +66,7 @@ function renderCostItems(){
   const offered=itemList.filter(x=>x.offer_id&&accepted.has(x.offer_id)&&x.selected);
   $('costItems').innerHTML='<option value="">Angebot wählen</option>'+offered.map(x=>{
     const o=accepted.get(x.offer_id);
-    return `<option value="${x.id}">${safe(o.vendor)} · ${safe(o.number||'ohne Nummer')} · ${money(o.gross)}</option>`;
+    return `<option value="${x.id}">${safe(o.vendor)} · ${safe(o.number||'ohne Nummer')} · ${money(o.agreed_gross??o.gross)}</option>`;
   }).join('');
   const contractors=overview?.contractors||[];
   $('receiptContractor').innerHTML='<option value="">Betrieb wählen</option>'+
@@ -143,7 +143,7 @@ function updateInvoiceControls(){
  $('deductionHint').hidden=$('billingType').value!=='Schlussrechnung';
  const hint=$('billableHint');
  hint.textContent=isAccepted
-   ? `Mit dem angenommenen Angebot „${offer.vendor}“ verknüpft. Abschläge und Schlussrechnung werden zum Vertragsbetrag von ${money(offer.gross)} addiert, ohne verrechnete Abschläge doppelt zu zählen.`
+   ? `Mit dem angenommenen Angebot „${offer.vendor}“ verknüpft. Abschläge und Schlussrechnung werden zum Vertragsbetrag von ${money(offer.agreed_gross??offer.gross)} addiert, ohne verrechnete Abschläge doppelt zu zählen.`
    : mode==='Betrieb'?'Direkt einem Betrieb zugeordnet; keine automatische Verknüpfung zu einem Angebot. Die Rechnung wird nur einmal als Ausgabe berücksichtigt.'
    : mode==='Eigenleistung'?'Eigenleistung/Material: Keine Verknüpfung zu einem Handwerker oder Angebot. Falls vorhanden, die passende Budgetposition auswählen.'
    : mode==='Kostenposition'?'Historische Kostenpositionszuordnung. Für Änderungen kann ein regulärer Zuordnungstyp ausgewählt werden.'
@@ -167,6 +167,8 @@ function notice(msg,err=false){$('message').textContent=msg;$('message').classLi
 function inputs(){
  PHBUI.currency.normalizeForm($('review'));
   const result=Object.fromEntries(new FormData($('review')));
+  // Payment is always recorded separately, with a financing source, after booking.
+  delete result.paid_amount;
  const mode=$('receiptAssignmentType').value;
  if(!mode)throw Error('Bitte die Rechnung einem Angebot, Betrieb oder der Eigenleistung zuordnen.');
  if(mode==='Angebot'&&!$('costItems').value)throw Error('Bitte ein angenommenes Angebot auswählen.');
@@ -194,6 +196,8 @@ async function reload(keepId=selected){
 async function open(id){
  try{let x=await api('/api/receipts/'+id);selected=id;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;
+ $('receiptReviewLayout').hidden=false;
+ $('receiptReviewStage').hidden=false;
  openReceiptDialog(true);showReceiptPreview(x);
  const legacy=x.assignment_type==='Kostenposition';
  const legacyOption=$('receiptAssignmentType').querySelector('option[value="Kostenposition"]');
@@ -212,7 +216,10 @@ async function open(id){
  $('book').hidden=x.status==='Gebucht';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status==='Gebucht';
  $('payReceipt').hidden=x.status!=='Gebucht';
  $('receiptPaymentsPanel').hidden=true;
+ $('receiptReviewLayout').hidden=false;
+ $('receiptReviewStage').hidden=false;
  for(let node of $('review').querySelectorAll('input,select,textarea'))node.disabled=x.status==='Gebucht'&&node.name!=='notes'&&node.name!=='paid_amount'&&node.name!=='due_date';
+ $('review').elements.namedItem('paid_amount').disabled=true;
  $('receiptTaxRate').disabled=x.status==='Gebucht';
  $('receiptTaxHint').textContent='Wenn du den Bruttobetrag bearbeitest, werden Netto und USt mit dem gewählten Satz automatisch berechnet. Bei gemischten Steuersätzen „manuell“ auswählen. Originalbeleg prüfen.';
  if(linkedCostItem&&x.status==='Entwurf'&&!x.cost_item_id&&!x.assignment_type){
@@ -250,6 +257,8 @@ async function showReceiptPayments(){
  if(!receipt)throw Error('Gebuchte Rechnung wurde nicht in der Finanzierungsübersicht gefunden.');
  const allocations=paymentState.payments.filter(x=>x.receipt_id===selected);
  $('receiptPaymentsPanel').hidden=false;
+ $('receiptReviewLayout').hidden=true;
+ $('receiptReviewStage').hidden=true;
  $('receiptPaymentTotals').innerHTML='<span>Rechnungsbetrag: <b>'+money(receipt.gross)+'</b></span>'+
    '<span>Bereits bezahlt: <b>'+money(receipt.paid)+'</b></span>'+
    '<span>Noch offen: <b>'+money(receipt.open)+'</b></span>';
@@ -271,7 +280,11 @@ $('payReceipt').onclick=async()=>{
  try{await showReceiptPayments();}
  catch(err){notice(err.message,true);}
 };
-$('closeReceiptPayment').onclick=()=>$('receiptPaymentsPanel').hidden=true;
+$('closeReceiptPayment').onclick=()=>{
+  $('receiptPaymentsPanel').hidden=true;
+  $('receiptReviewLayout').hidden=false;
+  $('receiptReviewStage').hidden=false;
+};
 $('receiptPaymentSource').onchange=paymentAccountOptions;
 paymentForm.onsubmit=async event=>{
  event.preventDefault();
@@ -332,7 +345,7 @@ document.addEventListener('phb-import-updated',event=>{
 });
 
 $('review').onsubmit=async e=>{e.preventDefault();if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});await reload(selected);notice('Änderungen gespeichert. Noch nicht automatisch gebucht.')}catch(err){notice(err.message,true)}};
-$('book').onclick=async()=>{if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});if(!await PHBUI.confirm('Beleg verbindlich in die Kostenübersicht übernehmen? Noch nicht bezahlte Rechnungen bleiben offen.'))return;await api('/api/receipts/'+selected+'/book',{method:'POST'});await reload(selected);notice('Beleg wurde übernommen.')}catch(err){notice(err.message,true)}};
+$('book').onclick=async()=>{if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});if(!await PHBUI.confirm('Beleg verbindlich in die Kostenübersicht übernehmen? Noch nicht bezahlte Rechnungen bleiben offen.'))return;await api('/api/receipts/'+selected+'/book',{method:'POST'});await reload(selected);notice('Rechnung gebucht. Im zweiten Schritt kannst du nun Zahlungen erfassen.')}catch(err){notice(err.message,true)}};
 $('unbook').onclick=async()=>{if(!selected||!await PHBUI.confirm('Buchung zurücknehmen? Die Belegausgaben werden aus der Übersicht entfernt.'))return;try{await api('/api/receipts/'+selected+'/unbook',{method:'POST'});await reload(selected)}catch(err){notice(err.message,true)}};
 $('delete').onclick=async()=>{if(!selected||!await PHBUI.confirm('Diesen Entwurf einschließlich Originaldatei dauerhaft löschen?'))return;try{await api('/api/receipts/'+selected,{method:'DELETE'});selected=null;await reload(null)}catch(err){notice(err.message,true)}};
 

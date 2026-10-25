@@ -142,3 +142,11 @@ body.phb-app .phb-receipt-workflow .phb-inline-pdf img{
  body.phb-app .phb-receipt-workflow .receipt-review-layout .phb-inline-pdf{position:static}
  body.phb-app .phb-receipt-workflow .phb-inline-pdf iframe{min-height:380px;height:480px}
 }
+
+/* Invoice posting and cash payment are distinct, sequential workflow steps. */
+.receipt-stage-label{display:grid;gap:5px;margin:0 0 16px;padding:12px 16px;background:var(--ui-soft,#f1f7f8);border:1px solid var(--ui-line,#dae6e8);border-radius:10px}
+.receipt-stage-label span{color:#177481;font-size:12px;font-weight:700}
+.receipt-stage-label strong{font-size:15px}
+.receipt-stage-label p{margin:0;font-size:12px;color:var(--ui-muted,#637983)}
+#receiptReviewLayout[hidden],#receiptReviewStage[hidden],#receiptPaymentsPanel[hidden],.receipt-legacy-paid[hidden]{display:none!important}
+.receipt-payment-panel{margin-top:8px}

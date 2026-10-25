@@ -13,7 +13,9 @@
   const selectedDocuments = new Set();
   let pendingId = null;
   let busy = false;
-  const fieldLabel = {
+  $('openScheduleHistory').onclick=()=>$('scheduleHistoryDialog').showModal();
+  $('closeScheduleHistory').onclick=()=>$('scheduleHistoryDialog').close();
+    const fieldLabel = {
     name:'Arbeitsschritt',phase:'Bauphase',trade:'Gewerk',
     execution_type:'Ausführung',duration:'Dauer (Tage)',
     lag_days:'Abstand (Tage)',predecessors:'Vorgänger',
