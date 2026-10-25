@@ -76,7 +76,7 @@
          const data=await response.json();
          if(!response.ok)throw Error(data.error||'Neustart nicht möglich');
          await poll();
-       }catch(error){alert(error.message);}
+       }catch(error){PHBUI.alert(error.message);}
        finally{button.disabled=false;}
      };
      actions.append(button);
@@ -88,7 +88,7 @@
      dismiss.onclick=async()=>{
        dismiss.disabled=true;
        try{await dismissJob(j.id);}
-       catch(error){alert(error.message);dismiss.disabled=false;}
+       catch(error){PHBUI.alert(error.message);dismiss.disabled=false;}
      };
      actions.append(dismiss);
    }
@@ -138,7 +138,7 @@
    $('phbImportToggle').onclick=()=>{panelOpen=!panelOpen;render();};
    $('phbImportClose').onclick=()=>{panelOpen=false;render();};
    $('phbImportDismissAll').onclick=async()=>{
-     if(!confirm('Alle fertig verarbeiteten, fehlgeschlagenen und unterbrochenen Importmeldungen ausblenden? Bereits importierte Dokumente und Daten bleiben erhalten.'))return;
+     if(!await PHBUI.confirm('Alle fertig verarbeiteten, fehlgeschlagenen und unterbrochenen Importmeldungen ausblenden? Bereits importierte Dokumente und Daten bleiben erhalten.'))return;
      const button=$('phbImportDismissAll');button.disabled=true;
      try{
        const response=await fetch('/api/import-jobs/dismiss-completed',{method:'POST'});
@@ -146,7 +146,7 @@
        if(!response.ok)throw Error(result.error||'Ausblenden fehlgeschlagen');
        $('phbImportToast').hidden=true;
        await poll();schedule();
-     }catch(error){alert(error.message);}
+     }catch(error){PHBUI.alert(error.message);}
      finally{button.disabled=false;}
    };
    poll().then(schedule);
