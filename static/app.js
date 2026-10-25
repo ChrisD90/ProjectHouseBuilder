@@ -66,7 +66,7 @@ $('companyProposalsApply').onclick=async()=>{
 };
 $('delete').onclick=async()=>{if(!await PHBUI.confirm('Arbeitspaket wirklich löschen?'))return;try{await api('/api/tasks/'+editing,{method:'DELETE'});closeModal();await reload();message('Arbeitspaket gelöscht')}catch(e){$('error').textContent=e.message}};
 $('today').onclick=()=>{let container=document.querySelector('.ganttwrap');let origin=firstMonday(project.start);let n=diff(origin,new Date().toISOString().slice(0,10));container.scrollLeft=Math.max(0,n*($('scale').value==='week'?26:7)-320)};
-reload().then(()=>{if(!project.tasks.length)loadTemplatePreview();});
+reload().then(()=>{if(!project.tasks.length)loadTemplatePreview();if(new URLSearchParams(location.search).get('firmenvorschlaege')==='1')$('companySuggestions').click();});
 document.addEventListener('phb-ai-status',renderTemplatePreview);
 
 /* ChatGPT plan-funded schedule suggestions: preview-only until explicit import. */
