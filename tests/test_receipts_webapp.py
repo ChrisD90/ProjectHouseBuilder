@@ -33,6 +33,51 @@ class ReceiptWebappTest(unittest.TestCase):
         self.assertEqual(self.client.post(f'/api/receipts/{rid}/unbook').status_code,200)
         self.assertEqual(self.client.get('/api/costs').json['summary']['paid'],start['paid'])
         self.assertEqual(self.client.delete(f'/api/receipts/{rid}').status_code,200)
+    def test_atomic_book_validated_fields_and_status_together(self):
+        response=self.upload()
+        rid=response.json['id']
+        result=self.client.patch(f'/api/receipts/{rid}',json={
+            'supplier':'Final geprüfter Händler',
+            'invoice_number':'FINAL-01',
+            'document_date':'2026-10-25',
+            'category':'Elektro',
+            'reviewed':True,'book_now':True})
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(result.json['status'],'Gebucht')
+        self.assertEqual(result.json['supplier'],'Final geprüfter Händler')
+        self.assertEqual(db.session.get(Receipt,rid).invoice_number,'FINAL-01')
+        second=self.client.patch(f'/api/receipts/{rid}',json={'book_now':True})
+        self.assertEqual(second.status_code,409)
+
+    def test_atomic_book_rolls_back_all_edits_on_validation_failure(self):
+        response=self.upload()
+        rid=response.json['id']
+        before=self.client.get(f'/api/receipts/{rid}').json
+        invalid=self.client.patch(f'/api/receipts/{rid}',json={
+            'supplier':'', 'invoice_number':'WIRD-NICHT-GESPEICHERT',
+            'category':'Sanitär', 'reviewed':True, 'book_now':True})
+        self.assertEqual(invalid.status_code,400,invalid.json)
+        after=self.client.get(f'/api/receipts/{rid}').json
+        self.assertEqual(after['status'],'Entwurf')
+        self.assertEqual(after['supplier'],before['supplier'])
+        self.assertEqual(after['invoice_number'],before['invoice_number'])
+        self.assertEqual(after['category'],before['category'])
+
+    def test_atomic_book_rejects_duplicate_invoice_without_saving_second_draft(self):
+        first=self.upload(name='rechnung1.pdf')
+        rid1=first.json['id']
+        self.assertEqual(self.client.patch(f'/api/receipts/{rid1}',json={
+            'book_now':True,'reviewed':True}).status_code,200)
+        second=self.upload(name='rechnung2.pdf',
+            text='Elektro Muster GmbH\\nRechnungsnummer 2026-99\\nDatum 21.10.2026\\nGesamtbetrag 145,00 EUR')
+        rid2=second.json['id']
+        failed=self.client.patch(f'/api/receipts/{rid2}',json={
+            'book_now':True,'reviewed':True,'notes':'Nicht vorzeitig speichern'})
+        self.assertEqual(failed.status_code,400,failed.json)
+        original=self.client.get(f'/api/receipts/{rid2}').json
+        self.assertEqual(original['status'],'Entwurf')
+        self.assertNotEqual(original['notes'],'Nicht vorzeitig speichern')
+
     def test_detected_labor_is_separate_editable_and_never_autobooked(self):
         invoice=('Elektro Muster GmbH\nRechnungsnummer 2026-99\n'
                  'Rechnungsdatum 21.10.2026\n'
