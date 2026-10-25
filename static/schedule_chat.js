@@ -306,7 +306,7 @@
   });
   async function resolve(approve){
     if(!pendingId||busy)return;
-    if(approve&&!confirm('Die angezeigten Arbeitsschritte und Abhängigkeiten wirklich in den Bauzeitenplan übernehmen? Alle vorgeschlagenen Änderungen werden als eine Transaktion gespeichert.'))return;
+    if(approve&&!await PHBUI.confirm('Die angezeigten Arbeitsschritte und Abhängigkeiten wirklich in den Bauzeitenplan übernehmen? Alle vorgeschlagenen Änderungen werden als eine Transaktion gespeichert.'))return;
     const id=pendingId;
     busy=true;
     $('scheduleChatApprove').disabled=true;

@@ -109,3 +109,16 @@
  .phb-page-belege .receipt-payment-fields{grid-template-columns:1fr}
  .phb-page-belege .receipt-payment-wide{grid-column:1}
 }
+
+
+/* Gemeinsame PDF-Vorschau direkt neben der Formularprüfung */
+.phb-inline-pdf{min-width:0;border:1px solid #dce8ed;background:#f5f9fa;border-radius:12px;padding:10px;position:sticky;top:8px;align-self:start;}
+.phb-inline-pdf[hidden]{display:none!important;}
+.phb-inline-pdf header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px 9px;font-size:12px;}
+.phb-inline-pdf iframe,.phb-inline-pdf img{border:1px solid #d9e5e9;background:#fff;border-radius:8px;width:100%;height:min(68vh,880px);object-fit:contain;}
+.phb-inline-pdf iframe[hidden],.phb-inline-pdf img[hidden]{display:none;}
+
+
+.receipt-review-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.9fr);gap:14px;align-items:start;min-width:0;}
+.receipt-review-layout #review{min-width:0;}
+@media(max-width:1050px){.receipt-review-layout{grid-template-columns:1fr;}.phb-inline-pdf{position:static;}.phb-inline-pdf iframe,.phb-inline-pdf img{height:480px;}}

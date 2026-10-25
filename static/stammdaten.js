@@ -114,7 +114,7 @@
     finally{button.disabled=false;}
   };
   $('deleteCompany').onclick=async()=>{
-    if(!activeCompany||!confirm('Firma endgültig löschen? Verknüpfte Firmen können nicht gelöscht werden.'))return;
+    if(!activeCompany||!await PHBUI.confirm('Firma endgültig löschen? Verknüpfte Firmen können nicht gelöscht werden.'))return;
     try{
       await api('/api/contractors/'+activeCompany.id,'DELETE');
       $('companyDialog').close();await reload();note('Firma gelöscht.');
@@ -127,9 +127,9 @@
     if(!record)return;
     let name;
     if(operation==='rename'){
-      name=prompt('Neuer Name für '+record.name+':',record.name);
+      name=await PHBUI.prompt('Neuer Name für '+record.name+':',record.name);
       if(name===null||!name.trim()||name.trim()===record.name)return;
-    }else if(!confirm('„'+record.name+'“ wirklich löschen? Verwendete Einträge sind geschützt.')){
+    }else if(!await PHBUI.confirm('„'+record.name+'“ wirklich löschen? Verwendete Einträge sind geschützt.')){
       return;
     }
     try{
@@ -154,7 +154,7 @@
     ['restoreCategories','category','Rechnungs- und Kostenkategorien']
   ]){
     $(button).onclick=async()=>{
-      if(!confirm('Standardliste für '+label+' wiederherstellen? Fehlende Standardwerte werden ergänzt. Nicht mehr benötigte eigene Einträge werden entfernt, bereits verwendete Einträge bleiben geschützt.'))return;
+      if(!await PHBUI.confirm('Standardliste für '+label+' wiederherstellen? Fehlende Standardwerte werden ergänzt. Nicht mehr benötigte eigene Einträge werden entfernt, bereits verwendete Einträge bleiben geschützt.'))return;
       const target=$(button);target.disabled=true;
       try{
         const result=await api(endpoints[kind]+'/restore-defaults','POST',{confirm:true});

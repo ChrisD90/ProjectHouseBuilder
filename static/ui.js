@@ -145,5 +145,106 @@
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});
   else setup();
-  window.PHBUI={setTheme,currentTheme:selectedTheme};
+
+  // Native <dialog> instead of blocking browser confirm/alert/prompt.
+  async function ask(message,{title='Bitte bestätigen',confirm='Bestätigen',cancel=true,initial}={}){
+    return new Promise(resolve=>{
+      const dialog=document.createElement('dialog');dialog.className='phb-messagebox';
+      const heading=document.createElement('h2');heading.textContent=title;
+      const paragraph=document.createElement('p');paragraph.textContent=String(message);
+      const actions=document.createElement('div');actions.className='phb-messagebox-actions';
+      dialog.append(heading,paragraph);
+      let field;
+      if(initial!==undefined){
+        field=document.createElement('input');field.type='text';field.value=String(initial);
+        field.setAttribute('aria-label','Eingabe');dialog.append(field);
+      }
+      if(cancel){
+        const cancelButton=document.createElement('button');cancelButton.textContent='Abbrechen';cancelButton.type='button';
+        cancelButton.onclick=()=>dialog.close('cancel');actions.append(cancelButton);
+      }
+      const acceptButton=document.createElement('button');acceptButton.textContent=confirm;acceptButton.type='button';acceptButton.className='primary';
+      acceptButton.onclick=()=>{dialog._answer=field?field.value:true;dialog.close('accept');};
+      actions.append(acceptButton);dialog.append(actions);document.body.append(dialog);
+      dialog.addEventListener('close',()=>{
+        const result=dialog.returnValue==='accept'?dialog._answer:(field?null:false);
+        dialog.remove();resolve(result);
+      },{once:true});
+      dialog.showModal();(field||acceptButton).focus();
+    });
+  }
+  const currencyNames=new Set([
+    'amount','gross','net','vat','gross_amount','net_amount','vat_amount',
+    'unit_price','optional_amount','labor_amount','paid_amount','advance_deduction',
+    'estimate','offer','committed','paid','own_hourly','expected','confirmed','received',
+    'principal','monthly_payment','opening_balance','reserve'
+  ]);
+  function isMoneyField(input){
+    return input instanceof HTMLInputElement &&
+      (input.dataset.euro==='true'||(currencyNames.has(input.name)&&input.dataset.euro!=='false'));
+  }
+  function parseMoney(raw){
+    if(typeof raw==='number')return raw;
+    const input=String(raw??'').trim().replace(/\s/g,'');
+    if(!input)return null;
+    if(!/^[0-9.,]+$/.test(input))return NaN;
+    const normalized=input.includes(',')
+      ?input.replace(/\./g,'').replace(',','.')
+      :/^\d{1,3}(?:\.\d{3})+$/.test(input)?input.replace(/\./g,''):input;
+    const num=Number(normalized);
+    return Number.isFinite(num)?num:NaN;
+  }
+  const formatMoney=amount=>amount==null||amount===''?''
+    :new Intl.NumberFormat('de-DE',{minimumFractionDigits:0,maximumFractionDigits:2}).format(Number(amount));
+  function moneyEdit(input){
+    const old=input.value,caret=input.selectionStart??old.length;
+    const digitCount=(old.slice(0,caret).match(/\d/g)||[]).length;
+    const clean=old.replace(/[^0-9,]/g,'');
+    const commaIndex=clean.indexOf(',');
+    const integer=(commaIndex<0?clean:clean.slice(0,commaIndex)).replace(/^0+(?=\d)/,'');
+    const decimals=commaIndex<0?'':clean.slice(commaIndex+1).replace(/,/g,'').slice(0,2);
+    const formatted=integer.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+
+      (commaIndex<0?'':','+decimals);
+    input.value=formatted;
+    let pos=0,count=0;
+    while(pos<formatted.length&&count<digitCount){
+      if(/\d/.test(formatted[pos]))count++;
+      pos++;
+    }
+    if(commaIndex>=0&&caret>old.indexOf(','))pos=Math.max(pos,formatted.indexOf(',')+1);
+    input.setSelectionRange(pos,pos);
+  }
+  function prepareCurrency(input){
+    if(!isMoneyField(input))return;
+    if(input.type==='number'){input.type='text';input.inputMode='decimal';input.removeAttribute('step');input.removeAttribute('min');}
+    input.dataset.phbCurrency='true';
+    const n=parseMoney(input.value);
+    if(input.value!==''&&Number.isFinite(n))input.value=formatMoney(n);
+  }
+  function normalizeMoneyForm(form){
+    for(const field of form.querySelectorAll('input')){
+      if(!isMoneyField(field))continue;
+      const n=parseMoney(field.value);
+      if(field.value.trim()!==''&&!Number.isFinite(n))throw Error('Ungültiger Euro-Betrag: '+(field.name||'Eingabe'));
+      field.value=n==null?'':String(n);
+    }
+  }
+  document.addEventListener('focusin',e=>{
+    if(isMoneyField(e.target))prepareCurrency(e.target);
+  },true);
+  document.addEventListener('input',e=>{
+    if(isMoneyField(e.target)&&e.target.type==='text')moneyEdit(e.target);
+  },true);
+  document.addEventListener('focusout',e=>{
+    if(isMoneyField(e.target)){const n=parseMoney(e.target.value);if(Number.isFinite(n))e.target.value=formatMoney(n);}
+  },true);
+
+  window.PHBUI={
+    setTheme,currentTheme:selectedTheme,
+    confirm:message=>ask(message),
+    alert:message=>ask(message,{title:'Hinweis',confirm:'OK',cancel:false}),
+    prompt:(message,initial='')=>ask(message,{title:'Eingabe',confirm:'Übernehmen',initial}),
+    currency:{parse:parseMoney,format:formatMoney,prepare:prepareCurrency,
+              normalizeForm:normalizeMoneyForm,bind:root=>root.querySelectorAll('input').forEach(prepareCurrency)}
+  };
 })();

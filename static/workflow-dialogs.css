@@ -118,3 +118,13 @@ body.phb-app .phb-page-kosten #openCostUpload{min-height:39px;padding:9px 13px}
  body.phb-app .phb-cost-workflow .upload-form{grid-template-columns:1fr}
  body.phb-app .phb-cost-workflow .upload-form label:first-child{grid-column:1}
 }
+
+
+/* Für die Beleg-/Angebotsprüfung Platz für Formular und PDF gleichzeitig */
+body.phb-app .phb-receipt-workflow.is-reviewing,
+body.phb-app .phb-offer-workflow.is-reviewing{width:min(1450px,calc(100vw - 36px));}
+body.phb-app .phb-offer-workflow .offer-review-layout>.offer-cards{padding:0;margin:0;}
+@media(max-width:1050px){
+  body.phb-app .phb-receipt-workflow.is-reviewing,
+  body.phb-app .phb-offer-workflow.is-reviewing{width:calc(100vw - 24px);}
+}

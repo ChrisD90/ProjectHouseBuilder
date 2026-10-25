@@ -1,0 +1,94 @@
+"""Synology workflow tests: firm proposals, task completion and in-place previews."""
+import os
+import tempfile
+import unittest
+from datetime import date
+from pathlib import Path
+
+os.environ['DATABASE_URL']='sqlite:///:memory:'
+import app as backend
+from app import app, db, initialize, Contractor, Task, Offer, OfferSection, Document, Receipt
+from assignment_suggestions import suggestions
+
+
+class AssignmentEngineTest(unittest.TestCase):
+    def test_diy_and_existing_firms_are_never_suggested(self):
+        source=[{'contractor_id':5,'contractor':'Solar Beispiel',
+                 'category':'Photovoltaik','trade':'Elektro',
+                 'details':'PV Wechselrichter installieren','reason':'Angenommenes Angebot'}]
+        tasks=[
+            {'id':1,'trade':'Elektro','name':'PV Wechselrichter','execution_type':'Fremdleistung','company':'','contractor_id':None},
+            {'id':2,'trade':'Elektro','name':'PV Wechselrichter','execution_type':'Eigenleistung','company':'','contractor_id':None},
+            {'id':3,'trade':'Elektro','name':'PV Wechselrichter','execution_type':'Fremdleistung','company':'','contractor_id':10},
+        ]
+        output=suggestions(tasks,source)
+        self.assertEqual(output['1'][0]['contractor_id'],5)
+        self.assertNotIn('2',output)
+        self.assertNotIn('3',output)
+
+
+class SynologyWorkflowTest(unittest.TestCase):
+    def setUp(self):
+        self.scope=app.app_context();self.scope.push()
+        db.drop_all();initialize()
+        self.client=app.test_client()
+        company=Contractor(name='Solar Beispiel GmbH',trade='Photovoltaik')
+        task=Task(code='SOLAR-DEMO',phase='Haustechnik',trade='PV / Elektro',
+                  name='Photovoltaikanlage mit Wechselrichter montieren',
+                  execution_type='Fremdleistung',position=999)
+        db.session.add_all([company,task]);db.session.flush()
+        quote=Offer(digest='d'*64,contractor_id=company.id,vendor=company.name,
+                    filename='beispiel.pdf',status='Angebot',
+                    category='Photovoltaik',gross=119,net=100,vat=19)
+        db.session.add(quote);db.session.flush()
+        db.session.add(OfferSection(offer_id=quote.id,name='Photovoltaikanlage mit Wechselrichter',
+                                    net=100,gross=119))
+        db.session.commit()
+        self.cid,self.tid,self.oid=company.id,task.id,quote.id
+
+    def tearDown(self):
+        db.session.remove();self.scope.pop()
+
+    def test_accept_offer_then_assign_after_confirmation(self):
+        self.assertFalse(self.client.get('/api/project').json['contractor_suggestions'])
+        result=self.client.patch(f'/api/offers/{self.oid}',json={'status':'Angenommen'})
+        self.assertEqual(result.status_code,200,result.json)
+        options=self.client.get('/api/project').json['contractor_suggestions']
+        self.assertEqual(options[str(self.tid)][0]['contractor_id'],self.cid)
+        self.assertIsNone(db.session.get(Task,self.tid).contractor_id)
+        result=self.client.post('/api/tasks/assign-contractors',json={'assignments':[
+            {'task_id':self.tid,'contractor_id':self.cid}]})
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(db.session.get(Task,self.tid).contractor_id,self.cid)
+        result=self.client.post('/api/tasks/assign-contractors',json={'assignments':[
+            {'task_id':self.tid,'contractor_id':self.cid}]})
+        self.assertEqual(result.status_code,409)
+
+    def test_close_task_sets_actual_end(self):
+        response=self.client.post(f'/api/tasks/{self.tid}/complete')
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertEqual(response.json['actual_end'],date.today().isoformat())
+        t=db.session.get(Task,self.tid)
+        self.assertEqual(t.status,'Erledigt')
+        self.assertEqual(t.progress,100)
+        self.assertEqual(t.actual_end,date.today())
+        self.assertEqual(self.client.post(f'/api/tasks/{self.tid}/complete').status_code,200)
+
+    def test_pdf_preview_stays_inline(self):
+        root=backend.DOCUMENT_ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            backend.DOCUMENT_ROOT=Path(tmp)
+            try:
+                (Path(tmp)/'example.pdf').write_bytes(b'%PDF-1.4\n%%EOF')
+                doc=Document(original_name='example.pdf',stored_name='example.pdf',kind='Angebot')
+                db.session.add(doc);db.session.commit()
+                response=self.client.get(f'/api/documents/{doc.id}/preview')
+                self.assertEqual(response.status_code,200)
+                self.assertEqual(response.mimetype,'application/pdf')
+                self.assertIn('inline',response.headers.get('Content-Disposition',''))
+            finally:
+                backend.DOCUMENT_ROOT=root
+
+
+if __name__=='__main__':
+    unittest.main()

@@ -4,6 +4,19 @@ const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt
 const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
 let selected=null,list=[],overview=null;
 const receiptDialog=$('receiptWorkflowDialog');
+function showReceiptPreview(item){
+ const pane=$('receiptPdfPane'),frame=$('receiptPdfFrame'),image=$('receiptImagePreview');
+ const name=item?.original_name||item?.filename||'';
+ const isPdf=/\.pdf$/i.test(name),isImage=/\.(png|jpe?g|webp)$/i.test(name);
+ pane.hidden=!item||(!isPdf&&!isImage);
+ if(pane.hidden){frame.removeAttribute('src');image.removeAttribute('src');return;}
+ const url='/api/receipts/'+encodeURIComponent(item.id)+'/preview';
+ frame.hidden=!isPdf;image.hidden=!isImage;
+ if(isPdf&&frame.getAttribute('src')!==url)frame.src=url;
+ if(isImage)image.src=url;
+ $('receiptPdfDownload').href='/api/receipts/'+item.id+'/download';
+}
+
 let uploading=false;
 function openReceiptDialog(review=false){
   receiptDialog.classList.toggle('is-reviewing',Boolean(review));
@@ -17,12 +30,12 @@ function openReceiptDialog(review=false){
 }
 $('openReceiptWorkflow').onclick=()=>{
   selected=null;
-  $('review').hidden=true;$('placeholder').hidden=false;
+  $('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);
   openReceiptDialog(false);
 };
 $('receiptUploadAgain').onclick=()=>{
   selected=null;
-  $('review').hidden=true;$('placeholder').hidden=false;
+  $('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);
   openReceiptDialog(false);
 };
 $('closeReceiptWorkflow').onclick=()=>{if(!uploading)receiptDialog.close();};
@@ -72,12 +85,12 @@ function calculateReceiptTax(){
   const gross=$('receiptGross').value;
   const rate=$('receiptTaxRate').value;
   if(!gross||rate==='manual')return;
-  const calculated=grossToTaxParts(gross,rate);
+  const calculated=grossToTaxParts(PHBUI.currency.parse(gross),rate);
   if(!calculated)return;
-  $('receiptNet').value=calculated.net;
-  $('receiptVat').value=calculated.vat;
+  $('receiptNet').value=PHBUI.currency.format(calculated.net);
+  $('receiptVat').value=PHBUI.currency.format(calculated.vat);
   $('receiptTaxHint').textContent='Berechnet mit '+rate+' % USt: Netto '+calculated.net+
-    ' € + USt '+calculated.vat+' € = Brutto '+Number(gross).toFixed(2)+
+    ' € + USt '+calculated.vat+' € = Brutto '+Number(PHBUI.currency.parse(gross)).toFixed(2)+
     ' €. Bitte mit dem Originalbeleg abgleichen.';
 }
 function detectReceiptTaxRate(x){
@@ -152,7 +165,8 @@ $('receiptAnalysisMode').addEventListener('change',()=>{
 async function api(path,opts={}){const res=await fetch(path,opts);let data=await res.json();if(!res.ok)throw new Error(data.error||'Anfrage fehlgeschlagen');return data}
 function notice(msg,err=false){$('message').textContent=msg;$('message').classList.toggle('error',err)}
 function inputs(){
- const result=Object.fromEntries(new FormData($('review')));
+ PHBUI.currency.normalizeForm($('review'));
+  const result=Object.fromEntries(new FormData($('review')));
  const mode=$('receiptAssignmentType').value;
  if(!mode)throw Error('Bitte die Rechnung einem Angebot, Betrieb oder der Eigenleistung zuordnen.');
  if(mode==='Angebot'&&!$('costItems').value)throw Error('Bitte ein angenommenes Angebot auswählen.');
@@ -174,13 +188,13 @@ async function reload(keepId=selected){
  document.querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
  if(keepId&&list.some(x=>x.id===keepId))await open(keepId);
  else if(linkReceipt&&list.some(x=>x.id===linkReceipt))await open(linkReceipt);
- else if(!list.length){$('review').hidden=true;$('placeholder').hidden=false;}
+ else if(!list.length){$('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);}
  if(linkOffer&&!selected){$('uploadStatus').textContent='Angebot ausgewählt: Lade die Rechnung hoch und prüfe danach die Verknüpfung im Entwurf.';}
 }
 async function open(id){
  try{let x=await api('/api/receipts/'+id);selected=id;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;
- openReceiptDialog(true);
+ openReceiptDialog(true);showReceiptPreview(x);
  const legacy=x.assignment_type==='Kostenposition';
  const legacyOption=$('receiptAssignmentType').querySelector('option[value="Kostenposition"]');
  if(legacyOption)legacyOption.remove();
@@ -191,7 +205,7 @@ async function open(id){
      $('costItems').add(new Option(item?item.title:'Bisherige Kostenposition',String(x.cost_item_id)));
    }
  }
- for(let [k,v] of Object.entries(x)){const input=$('review').elements.namedItem(k);if(input&&v!==undefined)input.value=v??'';}
+ for(let [k,v] of Object.entries(x)){const input=$('review').elements.namedItem(k);if(input&&v!==undefined){input.value=v??'';if(input instanceof HTMLInputElement)PHBUI.currency.prepare(input);}}
  $('receiptAssignmentType').value=x.assignment_type||'';
  $('receiptTaxRate').value=detectReceiptTaxRate(x);
  updateLaborHint(x.labor_source,x.labor_amount);
@@ -223,7 +237,7 @@ function paymentAccountOptions(){
  const receipt=paymentState.receipts.find(x=>x.id===selected);
  const account=usable[0];
  const max=Math.min(Number(receipt?.open||0),available(account||{}));
- $('receiptPaymentAmount').value=max>0?max.toFixed(2):'';
+ $('receiptPaymentAmount').value=max>0?PHBUI.currency.format(max):'';
  $('submitReceiptPayment').disabled=!usable.length||!receipt||receipt.open<=0;
  $('receiptPaymentMessage').textContent=usable.length?'':'Keine frei verfügbaren Mittel aus dieser Finanzierungsart. Konten und Kreditabrufe unter Finanzierung prüfen.';
 }
@@ -263,12 +277,13 @@ paymentForm.onsubmit=async event=>{
  event.preventDefault();
  if(!selected||!paymentState)return;
  const submit=$('submitReceiptPayment');
- const data=Object.fromEntries(new FormData(paymentForm).entries());
+ PHBUI.currency.normalizeForm(paymentForm);
+  const data=Object.fromEntries(new FormData(paymentForm).entries());
  const account=$('receiptPaymentAccount').value;
  if(!account){$('receiptPaymentMessage').textContent='Bitte eine Finanzierungsquelle auswählen.';return;}
  data.receipt_id=selected;
  data[data.source==='loan'?'loan_id':'equity_id']=account;
- if(!confirm('Zahlung von '+money(data.amount)+' verbindlich aus '+(data.source==='loan'?'Kredit':'Eigenkapital')+' buchen?'))return;
+ if(!await PHBUI.confirm('Zahlung von '+money(PHBUI.currency.parse(data.amount))+' verbindlich aus '+(data.source==='loan'?'Kredit':'Eigenkapital')+' buchen?'))return;
  submit.disabled=true;$('receiptPaymentMessage').textContent='Zahlung wird geprüft und verbucht …';
  try{
    await api('/api/financing/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
@@ -281,7 +296,7 @@ paymentForm.onsubmit=async event=>{
 $('receiptPaymentHistory').addEventListener('click',async event=>{
  const button=event.target.closest('[data-undo-finance-payment]');
  if(!button)return;
- if(!confirm('Diese Zahlung stornieren? Der offene Rechnungsbetrag und die verfügbaren Mittel werden neu berechnet.'))return;
+ if(!await PHBUI.confirm('Diese Zahlung stornieren? Der offene Rechnungsbetrag und die verfügbaren Mittel werden neu berechnet.'))return;
  button.disabled=true;
  try{
    await api('/api/financing/payments/'+button.dataset.undoFinancePayment,{method:'DELETE'});
@@ -317,8 +332,8 @@ document.addEventListener('phb-import-updated',event=>{
 });
 
 $('review').onsubmit=async e=>{e.preventDefault();if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});await reload(selected);notice('Änderungen gespeichert. Noch nicht automatisch gebucht.')}catch(err){notice(err.message,true)}};
-$('book').onclick=async()=>{if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});if(!confirm('Beleg verbindlich in die Kostenübersicht übernehmen? Noch nicht bezahlte Rechnungen bleiben offen.'))return;await api('/api/receipts/'+selected+'/book',{method:'POST'});await reload(selected);notice('Beleg wurde übernommen.')}catch(err){notice(err.message,true)}};
-$('unbook').onclick=async()=>{if(!selected||!confirm('Buchung zurücknehmen? Die Belegausgaben werden aus der Übersicht entfernt.'))return;try{await api('/api/receipts/'+selected+'/unbook',{method:'POST'});await reload(selected)}catch(err){notice(err.message,true)}};
-$('delete').onclick=async()=>{if(!selected||!confirm('Diesen Entwurf einschließlich Originaldatei dauerhaft löschen?'))return;try{await api('/api/receipts/'+selected,{method:'DELETE'});selected=null;await reload(null)}catch(err){notice(err.message,true)}};
+$('book').onclick=async()=>{if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});if(!await PHBUI.confirm('Beleg verbindlich in die Kostenübersicht übernehmen? Noch nicht bezahlte Rechnungen bleiben offen.'))return;await api('/api/receipts/'+selected+'/book',{method:'POST'});await reload(selected);notice('Beleg wurde übernommen.')}catch(err){notice(err.message,true)}};
+$('unbook').onclick=async()=>{if(!selected||!await PHBUI.confirm('Buchung zurücknehmen? Die Belegausgaben werden aus der Übersicht entfernt.'))return;try{await api('/api/receipts/'+selected+'/unbook',{method:'POST'});await reload(selected)}catch(err){notice(err.message,true)}};
+$('delete').onclick=async()=>{if(!selected||!await PHBUI.confirm('Diesen Entwurf einschließlich Originaldatei dauerhaft löschen?'))return;try{await api('/api/receipts/'+selected,{method:'DELETE'});selected=null;await reload(null)}catch(err){notice(err.message,true)}};
 
 reload().catch(e=>notice(e.message,true));

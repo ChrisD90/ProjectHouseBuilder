@@ -7,6 +7,28 @@
   const expandedOffers=new Set();
   let comparingOffers = false;
   let offerUploading = false;
+  let currentPreviewDocument=null;
+  function showOfferPreview(docId){
+    const pane=$('offerPdfPane'),frame=$('offerPdfFrame');
+    if(!docId){pane.hidden=true;frame.removeAttribute('src');currentPreviewDocument=null;return;}
+    const url='/api/documents/'+Number(docId)+'/preview';
+    pane.hidden=false;
+    if(currentPreviewDocument!==Number(docId)){frame.src=url;currentPreviewDocument=Number(docId);}
+    $('offerPdfDownload').href='/api/documents/'+Number(docId)+'/download';
+  }
+  function previewOfferCard(target){
+    const version=target.closest('[data-version-card]');
+    if(version){
+      const [id,v]=version.dataset.versionCard.split(':').map(Number);
+      const item=versionDrafts.find(x=>Number(x.offer_id)===id&&Number(x.version)===v);
+      return showOfferPreview(item?.document_id);
+    }
+    const card=target.closest('[data-offer-card]');
+    if(card)showOfferPreview(offers.find(x=>Number(x.id)===Number(card.dataset.offerCard))?.document_id);
+  }
+  $('offerDrafts').addEventListener('focusin',e=>previewOfferCard(e.target),true);
+  $('offerDrafts').addEventListener('click',e=>previewOfferCard(e.target),true);
+
   const workflow=$('offerWorkflowDialog');
   const openWorkflow=(review=false)=>{
     workflow.classList.toggle('is-reviewing',Boolean(review));
@@ -80,9 +102,9 @@
         <label>Leistungsgruppe / Beiblatt<input data-position-field="section" value="${esc(p.section||'')}" maxlength="170" placeholder="z. B. Elektro oder Anlage 2"></label>
         <label>Menge<input data-position-field="quantity" inputmode="decimal" value="${moneyInput(p.quantity)}" placeholder="1"></label>
         <label>Einheit<input data-position-field="unit" value="${esc(p.unit||'')}" maxlength="40" placeholder="Stk., m², Std."></label>
-        <label>Einzelpreis netto (€)<input data-position-field="unit_price" inputmode="decimal" value="${moneyInput(p.unit_price)}" placeholder="0,00"></label>
-        <label>Positionssumme netto (€)<input data-position-field="net_amount" inputmode="decimal" value="${moneyInput(p.net_amount)}" placeholder="0,00"></label>
-        <label>Optionaler Positionsbetrag (€)<input data-position-field="optional_amount" inputmode="decimal" value="${moneyInput(p.optional_amount)}" placeholder="Nur bei optionaler Position"></label>
+        <label>Einzelpreis netto (€)<input data-position-field="unit_price" data-euro="true" inputmode="decimal" value="${moneyInput(p.unit_price)}" placeholder="0,00"></label>
+        <label>Positionssumme netto (€)<input data-position-field="net_amount" data-euro="true" inputmode="decimal" value="${moneyInput(p.net_amount)}" placeholder="0,00"></label>
+        <label>Optionaler Positionsbetrag (€)<input data-position-field="optional_amount" data-euro="true" inputmode="decimal" value="${moneyInput(p.optional_amount)}" placeholder="Nur bei optionaler Position"></label>
         <label>PDF-Seite (optional)<input data-position-field="page" type="number" min="1" max="9999" step="1" value="${moneyInput(p.page)}" placeholder="Seite"></label>
         <label class="offer-position-optional"><input type="checkbox" data-position-field="optional" ${p.optional?'checked':''}> Optionale / nicht beauftragte Position</label>
         <div class="offer-position-tools"><button type="button" class="mini" data-position-calculate>Aus Menge × Einzelpreis berechnen</button><button type="button" class="offer-text-danger" data-position-remove>Position entfernen</button></div>
@@ -111,12 +133,20 @@
         net_amount:field('net_amount').value,optional_amount:field('optional_amount').value,
         page:field('page').value,optional:field('optional').checked};
     });
+    for(const item of data.positions){
+      for(const field of ['unit_price','net_amount','optional_amount']){
+        if(item[field]==='')continue;
+        const value=PHBUI.currency.parse(item[field]);
+        if(!Number.isFinite(value))throw Error('Ungültiger Positionsbetrag: '+field);
+        item[field]=String(value);
+      }
+    }
     return data;
   }
   function readMoney(raw) {
     const text=String(raw??'').trim();
     if (!text) return null;
-    const normalized=/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(text)
+    const normalized=/^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?$/.test(text)
       ? text.replace(/\./g,'').replace(',','.') : text.replace(',','.');
     const n=Number(normalized);
     return Number.isFinite(n)&&n>=0?n:NaN;
@@ -232,7 +262,7 @@
     const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
     const notes=o.notes?`<p class="offer-notes">${esc(o.notes)}</p>`:'';
     const actions=accepted
-      ? `<span class="offer-accepted-note">✓ Berücksichtigt</span><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
+      ? `<span class="offer-accepted-note">✓ Berücksichtigt</span><a class="mini" href="/?firmenvorschlaege=1">Firma im Bauzeitenplan zuordnen</a><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
       : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
     return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
       <button type="button" class="offer-tile-toggle" data-offer-expand="${o.id}"
@@ -267,6 +297,11 @@
       ?'('+String(drafts.length+versionDrafts.length)+')':'';
     $('offerDrafts').innerHTML=(drafts.length||versionDrafts.length) ? [...drafts.map(renderDraft),...versionDrafts.map(renderVersionDraft)].join('') : '<p class="offer-empty">Keine offenen PDF-Entwürfe. Neue PDF-Dateien kannst du oben hochladen.</p>';
     $('offerDrafts').querySelectorAll('form[data-review],form[data-version-review]').forEach(checkPositions);
+    const first=drafts.find(o=>o.document_id)||versionDrafts.find(v=>v.document_id);
+    if(first && (!currentPreviewDocument ||
+        !(drafts.some(o=>o.document_id===currentPreviewDocument)||versionDrafts.some(v=>v.document_id===currentPreviewDocument))))
+      showOfferPreview(first.document_id);
+    if(!first)showOfferPreview(null);
     const filter=$('offerCategoryFilter'), prev=filter.value;
     filter.innerHTML=option('','Alle Kategorien',prev)+categories.map(c=>option(c,c,prev)).join('');
     filter.value=categories.includes(prev)?prev:'';
@@ -303,7 +338,16 @@
     budgets=(c.budget_lines||[]).filter(b=>b.active&&!b.is_group);
     refreshUI();
   }
-  const readForm=form=>Object.fromEntries(new FormData(form).entries());
+  const readForm=form=>{
+    const fields=Object.fromEntries(new FormData(form).entries());
+    for(const key of ['gross','net','vat']){
+      if(fields[key]==null||fields[key]==='')continue;
+      const value=PHBUI.currency.parse(fields[key]);
+      if(!Number.isFinite(value))throw Error('Bitte einen gültigen Euro-Betrag eingeben: '+key);
+      fields[key]=String(value);
+    }
+    return fields;
+  };
   function inform(id,message,isError=false) {
     const node=$(id); if(!node)return;
     node.textContent=message;node.classList.toggle('offer-error',isError);
@@ -360,7 +404,7 @@
       inform('offerManualStatus','Angebot gespeichert. Du kannst es im Hintergrund vergleichen oder annehmen.');
     } catch(err) {inform('offerManualStatus','Fehler: '+err.message,true)}
   });
-  document.addEventListener('click',e=>{
+  document.addEventListener('click',async e=>{
     const add=e.target.closest('[data-position-add]');
     if(add){
       const editor=add.closest('[data-positions-editor]');
@@ -372,7 +416,7 @@
     }
     const remove=e.target.closest('[data-position-remove]');
     if(remove){
-      if(!confirm('Diese Einzelposition aus dem Entwurf entfernen? Die Änderung wird erst beim Speichern wirksam.'))return;
+      if(!await PHBUI.confirm('Diese Einzelposition aus dem Entwurf entfernen? Die Änderung wird erst beim Speichern wirksam.'))return;
       const form=remove.closest('form');remove.closest('[data-position-row]').remove();checkPositions(form);
       return;
     }
@@ -382,7 +426,7 @@
       const q=readMoney(row.querySelector('[data-position-field="quantity"]').value);
       const price=readMoney(row.querySelector('[data-position-field="unit_price"]').value);
       if(q===null||price===null||!Number.isFinite(q)||!Number.isFinite(price)){
-        alert('Bitte zuerst eine gültige Menge und einen gültigen Einzelpreis eingeben.');return;
+        await PHBUI.alert('Bitte zuerst eine gültige Menge und einen gültigen Einzelpreis eingeben.');return;
       }
       const value=(Math.round((q*price+Number.EPSILON)*100)/100).toFixed(2);
       const target=row.querySelector(row.querySelector('[data-position-field="optional"]').checked
@@ -406,7 +450,7 @@
       else await update(form.dataset.review,collectDraft(form));
       await reload();
     }
-    catch(err){alert(err.message)}
+    catch(err){await PHBUI.alert(err.message)}
   });
   document.addEventListener('submit',async e=>{
     const form=e.target.closest('form[data-version-upload]');if(!form)return;
@@ -445,21 +489,21 @@
       if(activation){
         const form=button.closest('form');if(!form.reportValidity())return;
         const review=checkPositions(form);
-        if(review.warning&&!confirm('Die Positionen sind möglicherweise unvollständig. Version dennoch als aktuell übernehmen?'))return;
+        if(review.warning&&!await PHBUI.confirm('Die Positionen sind möglicherweise unvollständig. Version dennoch als aktuell übernehmen?'))return;
         const active=offers.find(o=>String(o.id)===id);
         const isAccepted=['Angenommen','Beauftragt'].includes(active?.status);
         const prompt=isAccepted
           ? 'Neue PDF-Version verbindlich übernehmen? Die Angebotssumme des angenommenen Auftrags wird angepasst. Alle bisherigen Rechnungen bleiben mit diesem Angebot verknüpft.'
           : 'Diese geprüfte Version als aktuelles Angebot übernehmen? Die alte Version bleibt in der Historie erhalten.';
-        if(!confirm(prompt))return;
+        if(!await PHBUI.confirm(prompt))return;
         await request(offerUrl(id)+'/versions/'+v+'/draft',{method:'PATCH',data:collectDraft(form)});
         await request(offerUrl(id)+'/versions/'+v+'/activate',{method:'POST'});
       }else{
-        if(!confirm('Versionsentwurf verwerfen? Das PDF bleibt als historischer Nachweis gespeichert.'))return;
+        if(!await PHBUI.confirm('Versionsentwurf verwerfen? Das PDF bleibt als historischer Nachweis gespeichert.'))return;
         await request(offerUrl(id)+'/versions/'+v+'/discard',{method:'POST'});
       }
       await reload();
-    }catch(err){alert(err.message)}
+    }catch(err){await PHBUI.alert(err.message)}
   });
   document.addEventListener('click',event=>{
     const toggle=event.target.closest('button[data-offer-expand]');
@@ -501,25 +545,25 @@
         const form=button.closest('form');
         if(!form.reportValidity())return;
         const checked=checkPositions(form);
-        if(checked.warning && !confirm('Einige Positionsbeträge fehlen oder die Positionssumme weicht von der Angebotssumme ab. Trotzdem als geprüft in die Liste übernehmen?'))return;
+        if(checked.warning && !await PHBUI.confirm('Einige Positionsbeträge fehlen oder die Positionssumme weicht von der Angebotssumme ab. Trotzdem als geprüft in die Liste übernehmen?'))return;
         await update(id,collectDraft(form));await changeStatus(id,'Angebot');
         workflow.close();
       }
       if(key==='offerAccept'){
-        if(!confirm('Dieses Angebot verbindlich annehmen? Der Bruttogesamtbetrag wird dadurch einmalig in deine Kostenprognose übernommen.'))return;
+        if(!await PHBUI.confirm('Dieses Angebot verbindlich annehmen? Der Bruttogesamtbetrag wird dadurch einmalig in deine Kostenprognose übernommen.'))return;
         await changeStatus(id,'Angenommen');
       }
       if(key==='offerReject') await changeStatus(id,'Abgelehnt');
       if(key==='offerRelist') await changeStatus(id,'Angebot');
       if(key==='offerUnaccept'){
-        if(!confirm('Annahme zurücknehmen? Das ist nur möglich, solange keine Rechnungen oder Zahlungen verknüpft sind.'))return;
+        if(!await PHBUI.confirm('Annahme zurücknehmen? Das ist nur möglich, solange keine Rechnungen oder Zahlungen verknüpft sind.'))return;
         await changeStatus(id,'Angebot');
       }
       if(key==='offerDelete'){
-        if(!confirm('Entwurf entfernen? Ein bereits hochgeladenes Originaldokument bleibt im Archiv.'))return;
+        if(!await PHBUI.confirm('Entwurf entfernen? Ein bereits hochgeladenes Originaldokument bleibt im Archiv.'))return;
         await request(offerUrl(id),{method:'DELETE'});await reload();
       }
-    } catch(err) {alert(err.message)}
+    } catch(err) {await PHBUI.alert(err.message)}
   });
   document.addEventListener('click',e=>{
     const btn=e.target.closest('[data-edit-cancel]');if(!btn)return;
