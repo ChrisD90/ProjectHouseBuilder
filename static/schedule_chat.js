@@ -5,6 +5,9 @@
   const panel = $('aiScheduleChatPanel');
   const fab = $('scheduleChatFab');
   if (!panel || !fab) return;
+  // Closed by default; never reveal this panel merely by loading or navigating.
+  panel.hidden=true;
+  fab.hidden=true;
   let isOpen = false;
   let history = [];
   let taskCount = 0;
@@ -13,7 +16,12 @@
   const selectedDocuments = new Set();
   let pendingId = null;
   let busy = false;
-  $('openScheduleHistory').onclick=()=>$('scheduleHistoryDialog').showModal();
+  $('openScheduleHistory').onclick=()=>{
+    $('scheduleHistoryDialog').showModal();
+    loadHistory().catch(error=>{
+      $('scheduleHistoryEntries').textContent='Historie nicht verfügbar: '+error.message;
+    });
+  };
   $('closeScheduleHistory').onclick=()=>$('scheduleHistoryDialog').close();
     const fieldLabel = {
     name:'Arbeitsschritt',phase:'Bauphase',trade:'Gewerk',
@@ -246,6 +254,7 @@
     if(!canChat)setPopoverOpen(false,false);
   }
   fab.addEventListener('click',()=>setPopoverOpen(!isOpen,true));
+  $('scheduleChatClose').addEventListener('click',()=>setPopoverOpen(false,true));
   // A pointer interaction outside closes the popover, but does not block the click
   // that the user intended on the underlying Gantt chart.
   document.addEventListener('pointerdown',event=>{
@@ -273,9 +282,8 @@
     connected=Boolean(event.detail?.sharing);
     visibility();
   });
-  $('scheduleHistoryDetails').addEventListener('toggle',()=>{
-    if($('scheduleHistoryDetails').open)loadHistory().catch(e=>status(e.message));
-  });
+  // History is a dedicated dialog, not an old <details> panel.
+  // Its contents refresh when the user explicitly opens it.
   $('scheduleChatForm').addEventListener('submit',async event=>{
     event.preventDefault();
     if(busy||pendingId!==null)return;
