@@ -89,6 +89,20 @@ class ChatGPTConsentTest(unittest.TestCase):
         self.assertTrue(chatgpt_local.ChatGPTLocal().status()['credits_acknowledged'])
         self.assertEqual((self.path/'profile.json').stat().st_mode & 0o777,0o600)
 
+    def test_confirmation_endpoint_is_explicit_and_idempotent(self):
+        record={'subject':'verified-example','client_id':'dummy',
+                'refresh_token':'dummy-test','scopes':list(chatgpt_local.REQUIRED_SCOPES)}
+        chatgpt_local._write_secret('profile.json',record)
+        client=app.test_client()
+        headers={'X-PHB-AI':'1'}
+        bad=client.post('/api/ai/acknowledge-credits',headers=headers,json={'acknowledged':False})
+        self.assertEqual(bad.status_code,400)
+        self.assertFalse(chatgpt_local.ChatGPTLocal().status()['credits_acknowledged'])
+        for _ in range(2):
+            response=client.post('/api/ai/acknowledge-credits',headers=headers,json={'acknowledged':True})
+            self.assertEqual(response.status_code,200,response.json)
+            self.assertTrue(response.json['credits_acknowledged'])
+
     def test_no_anonymous_consent(self):
         with self.assertRaises(chatgpt_local.AIError):
             chatgpt_local.ChatGPTLocal().acknowledge_credits()
