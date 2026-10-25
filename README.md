@@ -68,6 +68,13 @@ Im Browser unter **„Kosten & Kontakte“**:
 - Fehlende und zirkuläre Vorgänger werden abgefangen. Ist-Daten und Plantermine sind getrennt.
 - **Nicht implementiert:** Feiertagskalender, Ressourcenkonflikte, kritischer Pfad, Rechnungs-PDF-Erkennung, Mehrbenutzerbetrieb, automatische Zahlungsabgleiche, Produktionsauthentifizierung.
 
+## Belegprüfung und Bauzeitenplanung
+
+- Beim PDF-Angebotsimport und beim Hochladen von Rechnungen und weiteren PDF-Belegen wird das Original rechts neben dem Formular angezeigt. Gespeicherte PDFs lassen sich ohne zusätzliches Fenster überprüfen.
+- Mit **Abschließen** setzt die Anwendung ein Arbeitspaket auf `Erledigt`, den Fortschritt auf `100 %` und das Ist-Ende auf den aktuellen Tag.
+- Angenommene Angebote und beauftragte Kostenpositionen dienen als Quelle für Firmenvorschläge. In der Bauzeitenplanung können passende Firmen einzeln oder gesammelt bestätigt werden. Bereits zugeordnete Firmen bleiben unverändert.
+- Euro-Felder formatieren Eingaben mit Tausenderpunkten. Rückfragen und Fehlermeldungen erscheinen in App-Dialogen statt Browser-Popups.
+
 ## Entwicklung und Tests
 
 ```bash
@@ -75,6 +82,8 @@ python -m unittest discover -s tests -v
 python -m compileall -q app.py scheduler.py financials.py
 node --check static/app.js
 node --check static/costs.js
+node --check static/offers.js
+node --check static/ui.js
 ```
 
 Abhängigkeiten: Flask, Flask-SQLAlchemy, psycopg. Bei Neuinstallationen werden aktuelle kompatible Versionen aus den in `requirements.txt` angegebenen Bereichen aufgelöst.
