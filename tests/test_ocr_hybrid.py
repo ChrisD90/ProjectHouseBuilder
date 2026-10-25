@@ -64,10 +64,10 @@ class HybridOCRTests(unittest.TestCase):
                 self.returncode=0
         def pretend_run(args,**kwargs):
             if '--list-langs' in args:
-                return Done(stderr='List of available languages (3):\\neng\\ndeu\\nosd\\n')
+                return Done(stderr=chr(10).join(['List of available languages (3):','eng','deu','osd','']))
             if '--version' in args:
-                return Done(stderr='tesseract 5.5.0\\n')
-            return Done(stderr='pdftoppm version 25.1.0\\n')
+                return Done(stderr='tesseract 5.5.0')
+            return Done(stderr='pdftoppm version 25.1.0')
         with (patch('shutil.which',side_effect=lambda name:'/usr/bin/'+name),
               patch('receipt_parser.subprocess.run',side_effect=pretend_run),
               patch.dict(os.environ,{'PHB_OCR_IMAGE':'deu-eng-poppler-test'})):
