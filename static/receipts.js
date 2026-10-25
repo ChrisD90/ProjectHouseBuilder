@@ -167,6 +167,8 @@ function notice(msg,err=false){$('message').textContent=msg;$('message').classLi
 function inputs(){
  PHBUI.currency.normalizeForm($('review'));
   const result=Object.fromEntries(new FormData($('review')));
+  // Payment is always recorded separately, with a financing source, after booking.
+  delete result.paid_amount;
  const mode=$('receiptAssignmentType').value;
  if(!mode)throw Error('Bitte die Rechnung einem Angebot, Betrieb oder der Eigenleistung zuordnen.');
  if(mode==='Angebot'&&!$('costItems').value)throw Error('Bitte ein angenommenes Angebot auswählen.');
@@ -271,7 +273,11 @@ $('payReceipt').onclick=async()=>{
  try{await showReceiptPayments();}
  catch(err){notice(err.message,true);}
 };
-$('closeReceiptPayment').onclick=()=>$('receiptPaymentsPanel').hidden=true;
+$('closeReceiptPayment').onclick=()=>{
+  $('receiptPaymentsPanel').hidden=true;
+  $('receiptReviewLayout').hidden=false;
+  $('receiptReviewStage').hidden=false;
+};
 $('receiptPaymentSource').onchange=paymentAccountOptions;
 paymentForm.onsubmit=async event=>{
  event.preventDefault();
@@ -332,7 +338,7 @@ document.addEventListener('phb-import-updated',event=>{
 });
 
 $('review').onsubmit=async e=>{e.preventDefault();if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});await reload(selected);notice('Änderungen gespeichert. Noch nicht automatisch gebucht.')}catch(err){notice(err.message,true)}};
-$('book').onclick=async()=>{if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});if(!await PHBUI.confirm('Beleg verbindlich in die Kostenübersicht übernehmen? Noch nicht bezahlte Rechnungen bleiben offen.'))return;await api('/api/receipts/'+selected+'/book',{method:'POST'});await reload(selected);notice('Beleg wurde übernommen.')}catch(err){notice(err.message,true)}};
+$('book').onclick=async()=>{if(!selected)return;try{await api('/api/receipts/'+selected,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(inputs())});if(!await PHBUI.confirm('Beleg verbindlich in die Kostenübersicht übernehmen? Noch nicht bezahlte Rechnungen bleiben offen.'))return;await api('/api/receipts/'+selected+'/book',{method:'POST'});await reload(selected);notice('Rechnung gebucht. Im zweiten Schritt kannst du nun Zahlungen erfassen.')}catch(err){notice(err.message,true)}};
 $('unbook').onclick=async()=>{if(!selected||!await PHBUI.confirm('Buchung zurücknehmen? Die Belegausgaben werden aus der Übersicht entfernt.'))return;try{await api('/api/receipts/'+selected+'/unbook',{method:'POST'});await reload(selected)}catch(err){notice(err.message,true)}};
 $('delete').onclick=async()=>{if(!selected||!await PHBUI.confirm('Diesen Entwurf einschließlich Originaldatei dauerhaft löschen?'))return;try{await api('/api/receipts/'+selected,{method:'DELETE'});selected=null;await reload(null)}catch(err){notice(err.message,true)}};
 
