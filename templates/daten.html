@@ -68,8 +68,9 @@
     <form id="backupConfigForm">
       <h2>Backup-Zielordner festlegen</h2>
       <p id="backupRootDescription">Wähle einen für die Anwendung erreichbaren Ordner. Auf der Synology werden nur Verzeichnisse innerhalb des eingebundenen Backup-Speichers angeboten.</p>
-      <label for="backupFolder">Zielordner / Unterordner</label>
-      <input id="backupFolder" name="folder" required placeholder="z. B. Sanierung/2026">
+      <label for="backupFolder">Ausgewählter Backup-Zielordner</label>
+      <input id="backupFolder" name="folder" required readonly placeholder="Bitte über den Ordnerbrowser auswählen">
+      <div class="phb-data-dialog-actions"><button id="backupNativeFolder" type="button" class="subtle" hidden>System-Ordnerauswahl öffnen …</button><button id="backupNewSubfolder" type="button" class="subtle" hidden>+ Neuen Unterordner anlegen</button></div>
       <div id="backupFolderBrowser" hidden>
         <p id="backupBrowseCurrent" class="phb-data-footnote"></p>
         <div id="backupBrowseList" class="phb-folder-list"></div>
