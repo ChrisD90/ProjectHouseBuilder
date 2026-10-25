@@ -80,3 +80,9 @@
  .phb-page-finanzierung .loan-dialog .modal-actions{align-items:stretch}
  .phb-page-finanzierung .loan-dialog .modal-actions button{flex:1 1 100%}
 }
+
+/* Finance management stays compact after invoice payments moved to receipts. */
+.phb-page-finanzierung .finance-events>.panel{width:100%;margin-bottom:18px}
+.phb-page-finanzierung .finance-events .fields{max-width:900px}
+.phb-page-finanzierung .phb-header-actions{gap:10px}
+.phb-page-finanzierung .phb-header-actions button.primary{min-height:42px}
