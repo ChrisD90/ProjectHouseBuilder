@@ -18,10 +18,18 @@ function showReceiptPreview(item){
 }
 
 let uploading=false,receiptBusy=false;
+const receiptFlow=PHBFlow.manage({
+ dialog:'receiptWorkflowDialog',
+ forms:['upload','review','receiptPaymentForm'],
+ dismiss:['closeReceiptWorkflow'],
+ steps:['Erfassen','Prüfen & buchen','Bezahlen'],
+ isBusy:()=>uploading||receiptBusy
+});
 function openReceiptDialog(review=false){
   receiptDialog.classList.toggle('is-reviewing',Boolean(review));
   $('receiptUploadAgain').hidden=!review;
-  if(!receiptDialog.open)receiptDialog.showModal();
+  if(!receiptDialog.open)receiptFlow.open({step:review?1:0});
+  else receiptFlow.stage(review?1:0);
   if(review){
     requestAnimationFrame(()=>$('review').querySelector('input:not(:disabled)')?.focus({preventScroll:true}));
   } else {
@@ -257,6 +265,7 @@ async function showReceiptPayments(){
  if(!receipt)throw Error('Gebuchte Rechnung wurde nicht in der Finanzierungsübersicht gefunden.');
  const allocations=paymentState.payments.filter(x=>x.receipt_id===selected);
  $('receiptPaymentsPanel').hidden=false;
+  receiptFlow.stage(2);
  $('receiptReviewLayout').hidden=true;
  $('receiptReviewStage').hidden=true;
  $('receiptPaymentTotals').innerHTML='<span>Rechnungsbetrag: <b>'+money(receipt.gross)+'</b></span>'+
@@ -282,6 +291,7 @@ $('payReceipt').onclick=async()=>{
 };
 $('closeReceiptPayment').onclick=()=>{
   $('receiptPaymentsPanel').hidden=true;
+  receiptFlow.stage(1);
   $('receiptReviewLayout').hidden=false;
   $('receiptReviewStage').hidden=false;
 };
