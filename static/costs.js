@@ -1,5 +1,5 @@
 'use strict';
-let state={},mode='',current=null;
+let state={},mode='',current=null,ownedDocumentIds=new Set();
 const el=id=>document.getElementById(id), euro=x=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(x)||0), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nf=x=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:1}).format(x||0);
 const fields={
@@ -8,7 +8,13 @@ const fields={
  funding:[['name','Fördermaßnahme'],['expected','Erwarteter Förderbetrag (€)','money'],['confirmed','Bewilligter Betrag (€)','money'],['received','Ausgezahlter Betrag (€)','money'],['notes','Notizen','textarea']]
 };
 async function api(url,opts={}){const r=await fetch(url,{...opts,headers:opts.body?{'Content-Type':'application/json'}:{}});const d=await r.json();if(!r.ok)throw Error(d.error||'Unbekannter Fehler');return d}
-async function reload(){state=await api('/api/costs');render()}
+async function reload(){
+ const [costs,docs]=await Promise.all([api('/api/costs'),api('/api/document-library')]);
+ state=costs;
+ ownedDocumentIds=new Set((docs.documents||[]).filter(d=>d.source==='Weitere Projektunterlagen')
+   .map(d=>d.legacy_document_id));
+ render();
+}
 function fmtcell(n){return `<td class="amount">${euro(n)}</td>`}
 function render(){const s=state.summary;
  for(const [key,val] of Object.entries({budget:euro(s.budget),planned:euro(s.planned),overrun:(s.overrun>0?'+':'')+euro(s.overrun),committed:euro(s.committed),paid:euro(s.paid),remaining:euro(s.remaining),ownbudget:euro(s.own_budget),hours:nf(s.own_hours)+' h',ownvalue:'Kalkulatorisch: '+euro(s.own_imputed_value)}))el(key).textContent=val;
@@ -31,6 +37,7 @@ function render(){const s=state.summary;
  el('fundingrows').innerHTML=state.funding.map(f=>`<tr><td>${esc(f.name)}</td>${fmtcell(f.expected)}${fmtcell(f.confirmed)}${fmtcell(f.received)}<td>${esc(f.notes)}</td><td><button class="mini" data-funding="${f.id}">Bearbeiten</button></td></tr>`).join('');
  el('fundingExpected').textContent=euro(s.funding_expected);el('fundingConfirmed').textContent=euro(s.funding_confirmed);el('net').textContent=euro(s.net_after_confirmed);
 
+ renderCostDocuments();
  for(const typ of ['budget','cost','funding'])document.querySelectorAll('[data-'+typ+']').forEach(btn=>btn.addEventListener('click',()=>openEditor(typ,Number(btn.dataset[typ]))));
  
 }
@@ -57,6 +64,61 @@ async function removeEditor(){if(!current||!await PHBUI.confirm('Diesen Eintrag 
 el('addOwnWork').onclick=()=>openEditor('cost',null,{kind:'Eigenleistung',category:'Eigenleistung',state:'Schätzung'});
 el('budgetSearch').addEventListener('input',render);el('editForm').addEventListener('submit',saveEditor);el('remove').addEventListener('click',removeEditor);el('closeDialog').addEventListener('click',()=>el('editor').close());el('cancelDialog').addEventListener('click',()=>el('editor').close());
 for(const type of ['Budget','Cost','Funding'])el('add'+(type==='Budget'?'Line':type)).addEventListener('click',()=>openEditor(type.toLowerCase()));
+
+const costDocumentDialog=el('costDocumentDialog');
+let costDocumentUploading=false;
+el('openCostUpload').onclick=()=>costDocumentDialog.showModal();
+el('closeCostUpload').onclick=()=>{if(!costDocumentUploading)costDocumentDialog.close()};
+costDocumentDialog.addEventListener('cancel',e=>{if(costDocumentUploading)e.preventDefault()});
+costDocumentDialog.addEventListener('click',e=>{
+ if(e.target===costDocumentDialog&&!costDocumentUploading)costDocumentDialog.close();
+});
+function costDocumentChoices(node,rows,label){
+ node.innerHTML='<option value="">Keine Zuordnung</option>'+
+   rows.map(item=>'<option value="'+esc(item.id)+'">'+esc(item[label])+'</option>').join('');
+}
+function renderCostDocuments(){
+ const contractors=new Map((state.contractors||[]).map(c=>[c.id,c.name]));
+ const budget=new Map((state.budget_lines||[]).map(b=>[b.id,b.title]));
+ const linked=(state.documents||[]).filter(d=>ownedDocumentIds.has(d.id));
+ el('documents').innerHTML=linked.map(doc=>`<tr>
+  <td><a href="/api/documents/${doc.id}/download">${esc(doc.name)}</a></td>
+  <td>${esc(doc.kind)}</td><td>${esc(contractors.get(doc.contractor_id)||'–')}</td>
+  <td>${esc(budget.get(doc.budget_line_id)||(state.items||[]).find(i=>i.id===doc.cost_item_id)?.title||'–')}</td>
+  <td>${esc(doc.notes)}</td><td>${esc((doc.uploaded_at||'').slice(0,10))}</td>
+  <td><button type="button" class="mini" data-delete-cost-document="${doc.id}">Löschen</button></td></tr>`).join('')
+  ||'<tr><td colspan="7">Noch keine weiteren Kostenunterlagen zugeordnet.</td></tr>';
+ costDocumentChoices(el('fileContractor'),state.contractors||[],'name');
+ costDocumentChoices(el('fileBudget'),(state.budget_lines||[]).filter(b=>!b.is_group),'title');
+ costDocumentChoices(el('fileCost'),state.items||[],'title');
+ el('documents').querySelectorAll('[data-delete-cost-document]').forEach(button=>{
+  button.onclick=async()=>{
+   const id=Number(button.dataset.deleteCostDocument);
+   if(!ownedDocumentIds.has(id))return;
+   if(!await PHBUI.confirm('Diese zugeordnete Kostenunterlage und ihre Originaldatei endgültig löschen?'))return;
+   button.disabled=true;
+   try{
+    await api('/api/documents/'+id,{method:'DELETE'});
+    await reload();
+   }catch(error){await PHBUI.alert(error.message);button.disabled=false;}
+  };
+ });
+}
+el('uploadForm').onsubmit=async e=>{
+ e.preventDefault();if(costDocumentUploading)return;
+ const form=e.currentTarget,button=form.querySelector('button[type=submit]');
+ costDocumentUploading=true;button.disabled=true;
+ el('uploadMessage').textContent='Kostenunterlage wird gespeichert …';
+ try{
+  const resp=await fetch('/api/documents',{method:'POST',body:new FormData(form)});
+  const data=await resp.json();
+  if(!resp.ok)throw Error(data.error||'Upload fehlgeschlagen.');
+  form.reset();
+  await reload();
+  costDocumentDialog.close();
+ }catch(error){el('uploadMessage').textContent=error.message;}
+ finally{costDocumentUploading=false;button.disabled=false;}
+};
 
 reload().catch(e=>PHBUI.alert('Kostenverwaltung kann nicht geladen werden: '+e.message));
 
