@@ -41,6 +41,10 @@ function render(){const s=state.summary;
  for(const typ of ['budget','cost','funding'])document.querySelectorAll('[data-'+typ+']').forEach(btn=>btn.addEventListener('click',()=>openEditor(typ,Number(btn.dataset[typ]))));
  
 }
+const editorFlow=PHBFlow.manage({
+ dialog:'editor',forms:['editForm'],
+ dismiss:['closeDialog','cancelDialog'],isBusy:()=>editorBusy
+});
 const sources={budget:'budget_lines',cost:'items',funding:'funding'};
 function selector(key,val){let arr=key==='budget_line_id'?state.budget_lines.filter(x=>!x.is_group):key==='contractor_id'?state.contractors:key==='task_id'?state.tasks:state.budget_lines.filter(x=>x.is_group);let o=`<option value="">Keine Zuordnung</option>`;return o+arr.map(x=>`<option value="${esc(key==='parent_code'?x.code:x.id)}" ${String(val??'')===String(key==='parent_code'?x.code:x.id)?'selected':''}>${esc(key==='task_id'?x.code+' · '+x.name:key==='contractor_id'?x.name:x.category+' · '+x.title)}</option>`).join('')}
 function openEditor(type,id=null,defaults={}){mode=type;current=id;const record=(state[sources[type]]||[]).find(x=>x.id===id)||defaults;el('editTitle').textContent=(id?'Bearbeiten: ':'Neu: ')+({budget:'Kostenplanposition',cost:'Weitere Kosten / Eigenleistung',funding:'Förderung'}[type]);el('formError').textContent='';el('remove').hidden=!id||type==='funding';
@@ -55,7 +59,7 @@ function openEditor(type,id=null,defaults={}){mode=type;current=id;const record=
  else if(kind==='bool')control=`<input name="${key}" type="checkbox" value="true" ${value?'checked':''} style="width:20px;height:20px">`;
  else if(kind==='textarea')control=`<textarea name="${key}" rows="3">${esc(value)}</textarea>`;
  else control=`<input name="${key}" type="${kind==='number'?'number':'text'}" ${kind==='number'?'min="0" step="0.01"':kind==='money'?'inputmode="decimal" data-euro="true"':''} ${['title','name'].includes(key)?'required':''} value="${esc(value)}">`;
- return `<label class="${kind==='textarea'?'wide':''}">${esc(label)}${control}</label>`}).join('');el('editor').showModal()}
+ return `<label class="${kind==='textarea'?'wide':''}">${esc(label)}${control}</label>`}).join('');editorFlow.open()}
 async function saveEditor(e){
  e.preventDefault();
  if(editorBusy)return;
@@ -99,7 +103,11 @@ for(const type of ['Budget','Cost','Funding'])el('add'+(type==='Budget'?'Line':t
 
 const costDocumentDialog=el('costDocumentDialog');
 let costDocumentUploading=false;
-el('openCostUpload').onclick=()=>costDocumentDialog.showModal();
+const attachmentFlow=PHBFlow.manage({
+ dialog:'costDocumentDialog',forms:['uploadForm'],
+ dismiss:['closeCostUpload'],isBusy:()=>costDocumentUploading
+});
+el('openCostUpload').onclick=()=>attachmentFlow.open();
 el('closeCostUpload').onclick=()=>{if(!costDocumentUploading)costDocumentDialog.close()};
 costDocumentDialog.addEventListener('cancel',e=>{if(costDocumentUploading)e.preventDefault()});
 costDocumentDialog.addEventListener('click',e=>{
