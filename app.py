@@ -559,8 +559,11 @@ def _ai_request_required(require_plan=True):
         data=request.get_json(silent=True) or request.form
         if str(data.get('plan_only','')).lower() not in ('true','1','yes'):
             raise AIError('Vor der KI-Nutzung bestätigen, dass kostenpflichtige Credits in ChatGPT deaktiviert sind.')
-        if not chatgpt.status()['sharing']:
+        state=chatgpt.status()
+        if not state['sharing']:
             raise AIError('Bitte zuerst mit ChatGPT verbinden und Plannutzung freigeben.')
+        if not state.get('credits_acknowledged'):
+            raise AIError('Bitte die Credit-Warnung einmalig im ChatGPT-Anmeldedialog bestätigen.')
 
 
 @app.errorhandler(AIError)
@@ -619,6 +622,14 @@ def ai_diagnostics():
                        diagnostic=detail if isinstance(detail, dict) else None)
     response.headers['Cache-Control'] = 'no-store'
     return response
+
+
+@app.post('/api/ai/acknowledge-credits')
+def ai_acknowledge_credits():
+    _ai_request_required(False)
+    if (request.get_json(silent=True) or {}).get('acknowledged') is not True:
+        return jsonify(error='Bitte die Warnung ausdrücklich bestätigen.'),400
+    return jsonify(chatgpt.acknowledge_credits())
 
 
 @app.post('/api/ai/disconnect')
