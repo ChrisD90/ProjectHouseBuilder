@@ -45,6 +45,7 @@ function setup(){
  $('docUploadCategory').value='Bauplan';
 }
 const LINKED_GROUPS=[
+  {source:'Kostenplanung',title:'Kostenplanungen',description:'Originale der hochgeladenen Kostenaufstellungen; Bearbeitung und Übernahme unter Kosten & Budget.',href:'/kosten',label:'Kostenplanung öffnen'},
   {source:'Angebote',title:'Angebote & Auftragsbestätigungen',description:'Aktuelle und frühere Angebots-PDFs sowie zugehörige Auftragsbestätigungen.',href:'/angebote',label:'Angebote öffnen'},
   {source:'Rechnungen & Belege',title:'Rechnungen & Belege',description:'Gebuchte Rechnungen, Entwürfe und Kassenzettel.',href:'/belege',label:'Rechnungen öffnen'},
   {source:'Finanzierung',title:'Kredite & Finanzierung',description:'Kreditverträge und weitere Unterlagen zu den Finanzierungsquellen.',href:'/finanzierung',label:'Finanzierung öffnen'},

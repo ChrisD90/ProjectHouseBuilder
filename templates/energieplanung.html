@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de"><head><link rel="stylesheet" href="/static/vendor-bootstrap-5.3.6.min.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Energetische Planung · ProjectHouseBuilder</title><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/kosten.css"><meta name="theme-color" content="#0e7782"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="apple-touch-icon" href="/static/icons/icon-192.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/static/shell.css"><link rel="stylesheet" href="/static/chatgpt.css"><link rel="stylesheet" href="/static/ui.css"><link rel="stylesheet" href="/static/workflow-dialogs.css"><script src="/static/ui.js"></script><link rel="stylesheet" href="/static/planung.css"><link rel="stylesheet" href="/static/phb-workflow.css"><script src="/static/phb-workflow.js"></script></head>
+<body class="phb-app phb-page-energieplanung">
+{% set phb_active = 'energieplanung' %}{% set phb_title = 'Energetische Planung' %}{% include '_shell_open.html' %}
+<main id="phbMain" class="phb-main">
+ <div class="phb-action-header"><div><span class="phb-page-kicker">Projekt / Energie &amp; Förderungen</span><h1>Energetische Planung</h1><p>Förderungen manuell planen, Fristen festhalten und passenden Angeboten oder Kostenplanpositionen zuordnen.</p></div><button id="addEnergyFunding" class="primary" type="button">+ Förderung erfassen</button></div>
+ <div class="kpi-grid"><article class="kpi"><span>Erwartet</span><strong id="energyExpected">–</strong></article><article class="kpi"><span>Bewilligt</span><strong id="energyConfirmed">–</strong></article><article class="kpi"><span>Erhalten</span><strong id="energyReceived">–</strong></article><article class="kpi"><span>Prognose nach bewilligter Förderung</span><strong id="energyNet">–</strong></article></div>
+ <p class="section-note">Erwartete Förderungen werden nicht von den Bruttokosten abgezogen. Bewilligungen und Auszahlungen werden separat dokumentiert; sie erzeugen keine automatischen Finanzierungsbuchungen.</p>
+ <section class="panel"><div class="panelbar"><h2>Deine Förderplanung</h2><input id="energySearch" type="search" aria-label="Förderungen suchen" placeholder="Förderung, Programm oder Status suchen"></div>
+ <p id="energyMessage" role="status"></p><div class="tablewrap"><table><thead><tr><th>Maßnahme / Programm</th><th>Status / Frist</th><th>Zuordnung</th><th>Erwartet</th><th>Bewilligt</th><th>Erhalten</th><th></th></tr></thead><tbody id="energyRows"></tbody></table></div></section>
+ <section class="panel"><h2>Fördercheck vorbereiten</h2><p>Vor Auftrag und Maßnahmenbeginn die aktuellen Programmbedingungen prüfen. Häufig relevant: Gebäude und Standort, technische Anforderungen, Energieberatung/iSFP, Antragstermin, Vertragsbedingungen und die Kombination mehrerer Förderwege.</p>
+ <p>Eine Angebotskategorie allein belegt keine Förderfähigkeit. Technische Nachweise und gegebenenfalls eine zugelassene Energieberatung sind separat zu prüfen. Die Links dienen der eigenen Recherche; es sind keine aktuellen Fördersätze oder Förderzusagen hinterlegt.</p>
+ <div class="energy-sources">{% for source in sources %}<article><h3><a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.name }} ↗</a></h3><p>{{ source.description }}</p></article>{% endfor %}</div></section>
+ <dialog id="energyFundingDialog" class="phb-workflow-dialog" aria-labelledby="energyFundingTitle">
+ <div class="phb-workflow-head"><h2 id="energyFundingTitle">Förderung erfassen</h2><button id="closeEnergyFunding" type="button">Schließen</button></div>
+ <form id="energyFundingForm" class="phb-workflow-body"><div class="dialog-grid">
+ <label>Maßnahme *<input name="name" required maxlength="200"></label><label>Fördergeber<input name="provider" maxlength="200" placeholder="z. B. KfW, BAFA, Land oder Kommune"></label>
+ <label>Programm / Nummer<input name="program" maxlength="200"></label><label>Status<select name="status" id="energyStatus"></select></label>
+ <label>Erwartet (€)<input name="expected" data-euro="true" inputmode="decimal" required value="0"></label><label>Bewilligt (€)<input name="confirmed" data-euro="true" inputmode="decimal" required value="0"></label><label>Ausgezahlt (€)<input name="received" data-euro="true" inputmode="decimal" required value="0"></label>
+ <label>Antragsfrist<input name="deadline" type="date"></label><label>Antrag gestellt am<input name="applied_on" type="date"></label><label>Aktenzeichen<input name="reference" maxlength="160"></label>
+ <label>Angebot<select name="offer_id" id="energyOffer"></select></label><label>Planposition<select name="budget_line_id" id="energyBudgetLine"></select></label>
+ <label class="wide">Programmquelle<input name="source_url" type="url" maxlength="1000" placeholder="https://"></label><label class="wide">Notizen / Voraussetzungen<textarea name="notes" maxlength="3000" rows="3"></textarea></label>
+ </div><p id="energyFormMessage" role="alert"></p><div class="dialog-actions"><button id="deleteEnergyFunding" type="button" class="danger">Löschen</button><button class="primary" type="submit">Förderung speichern</button></div></form></dialog>
+</main></div></div><script src="/static/energieplanung.js"></script>
+<dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+  <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
+  <h2 id="phbAITitle">ChatGPT verbinden</h2>
+  <p id="phbAIConnection">Verbindung wird geprüft …</p>
+  <div class="phb-ai-controls">
+    <button type="button" id="phbAIConnect" class="phb-ai-primary">Mit ChatGPT anmelden</button>
+    <button type="button" id="phbAIDisconnect" hidden>Verbindung trennen</button>
+    <label id="phbAIModelWrap" hidden>ChatGPT-Modell <select id="phbAIModel"></select></label>
+  </div>
+  <div class="phb-ai-warning">
+    <strong>Keine API-Schlüssel und kein kostenpflichtiger Fallback.</strong>
+    <p>Wichtig: ChatGPT kann nach Erreichen des Plankontingents zusätzliche Credits verwenden,
+       falls du dies in deinem ChatGPT-Konto für Apps erlaubt hast. ProjectHouseBuilder kann
+       diese Kontoeinstellung nicht auslesen und daher keine absolute Kostensperre garantieren.</p>
+    <p><a href="https://chatgpt.com/#settings/usage" target="_blank" rel="noopener noreferrer">ChatGPT Einstellungen → Nutzung / App-Limits öffnen ↗</a></p>
+    <label class="phb-ai-confirm"><input type="checkbox" id="phbAINoCredits"> Ich habe die Nutzung kostenpflichtiger Credits für Apps in ChatGPT deaktiviert und erlaube ausdrücklich KI-Anfragen aus dieser Anwendung.</label>
+  </div>
+  <p class="phb-ai-disclosure">Nur mit KI gestartete Anfragen übertragen ausgewählte PDF- oder Projektinformationen an OpenAI. Ergebnisse bleiben Vorschläge, bis du sie prüfst und übernimmst. Zugangstokens bleiben lokal außerhalb der Projektbackups.</p>
+  <p id="phbAIMessage" role="status"></p>
+</dialog>
+<script src="/static/chatgpt.js"></script>
+<script src="/static/shell.js"></script></body></html>

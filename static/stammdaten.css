@@ -35,6 +35,13 @@
 .phb-page-stammdaten .master-tag-row strong{font-size:13px;color:#35545c;overflow-wrap:anywhere}
 .phb-page-stammdaten .master-tag-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
 .phb-page-stammdaten .master-tag-actions button{font-size:12px;padding:7px 10px}
+.master-reference-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.master-reference-actions .subtle{border-left:1px solid var(--ui-line,#cad9de);padding-left:16px;margin-left:4px}
+.master-research{margin-top:20px;padding:16px;border:1px solid var(--ui-line,#cad9de);border-radius:10px;background:var(--ui-surface,#fff)}
+.master-research h3{font-size:17px;margin:0 0 8px}
+.master-research p{font-size:13px}
+.master-research label{display:grid;gap:5px;margin-bottom:12px}
+.master-research-result{padding:14px 0;border-top:1px solid var(--ui-line,#cad9de);overflow-wrap:anywhere}
 .phb-page-stammdaten .master-empty{font-size:13px;color:#74848b}
 .phb-page-stammdaten .master-dialog{width:min(800px,calc(100vw - 24px));max-height:90dvh;overflow:auto;border:0;border-radius:15px;padding:0;box-shadow:0 16px 60px #163b4a55}
 .phb-page-stammdaten .master-dialog::backdrop{background:#163b4a77}

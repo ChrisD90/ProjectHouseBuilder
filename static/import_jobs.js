@@ -10,7 +10,7 @@
    if(Array.isArray(arr))arr.slice(-200).forEach(x=>finished.add(Number(x)));
  }catch(_){}
  let records=[],pending=false,panelOpen=false,activePoll=null;
- const labels={offers:'Angebot',receipts:'Rechnung',documents:'Projektdokument'};
+ const labels={costplans:'Kostenplanung',offers:'Angebot',receipts:'Rechnung',documents:'Projektdokument'};
  const finishedState=j=>['Fertig','Fehler','Unterbrochen'].includes(j.status);
  const alive=j=>j.status==='Wartend'||j.status==='Läuft';
  function remember(id){

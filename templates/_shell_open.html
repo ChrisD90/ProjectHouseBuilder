@@ -22,6 +22,7 @@
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'belege' else '' }}" data-section="belege" href="/belege" title="Rechnungen & Belege" {% if phb_active == 'belege' %}aria-current="page"{% endif %}>{{ icon('receipt') }}<span class="phb-nav-text">Rechnungen &amp; Belege</span></a>
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'finanzierung' else '' }}" data-section="finanzierung" href="/finanzierung" title="Finanzierung" {% if phb_active == 'finanzierung' %}aria-current="page"{% endif %}>{{ icon('landmark') }}<span class="phb-nav-text">Finanzierung</span></a>
       </nav>
+      <nav class="phb-nav" aria-label="Energetische Planung"><a class="phb-nav-link {{ 'is-current' if phb_active == 'energieplanung' else '' }}" data-section="energieplanung" href="/energieplanung" {% if phb_active == 'energieplanung' %}aria-current="page"{% endif %}>{{ icon('house') }}<span class="phb-nav-text">Energetische Planung</span></a></nav>
       <div class="phb-nav-label">VERWALTUNG</div>
       <nav class="phb-nav" aria-label="Verwaltung">
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'dokumente' else '' }}" data-section="dokumente" href="/dokumente" title="Projektdokumente" {% if phb_active == 'dokumente' %}aria-current="page"{% endif %}>{{ icon('file-check') }}<span class="phb-nav-text">Projektdokumente</span></a>

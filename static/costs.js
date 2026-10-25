@@ -4,8 +4,7 @@ const el=id=>document.getElementById(id), euro=x=>new Intl.NumberFormat('de-DE',
 const nf=x=>new Intl.NumberFormat('de-DE',{maximumFractionDigits:1}).format(x||0);
 const fields={
  cost:[['category','Gewerk / Kategorie','category'],['title','Bezeichnung'],['kind','Leistungsart','choice',['Fremdleistung','Eigenleistung']],['state','Stand (zusätzliche Kostenposition)','choice',['Schätzung','Beauftragt','Abgeschlossen','Alternative','Abgelehnt']],['budget_line_id','Kostenplanposition','budget'],['selected','Für Prognose auswählen (nur ein Angebot pro Planposition)','bool'],['contractor_id','Firma','contractor'],['task_id','Gantt-Arbeitspaket','task'],['estimate','Kostenschätzung (€)','money'],['offer','Bekannter Preis (€) – kein Angebot','money'],['committed','Beauftragter Wert (€)','money'],['paid','Bereits bezahlt (€)','money'],['own_hours','Eigenleistungsstunden','number'],['own_hourly','Kalkulatorischer Stundenwert (nur Informationswert)','money'],['source_ref','Angebots- / Vertragsreferenz'],['notes','Notizen','textarea']],
- budget:[['category','Gewerk','category'],['title','Position'],['parent_code','Unterposition von','parent'],['kind','Leistungsart','choice',['Fremdleistung','Eigenleistung']],['estimate','Schätzung (€)','money'],['company_hint','Firmenhinweis (unverbindlich)'],['notes','Notizen','textarea'],['active','In Prognose einbeziehen','bool'],['is_group','Nur Gruppenüberschrift, nicht summieren','bool']],
- funding:[['name','Fördermaßnahme'],['expected','Erwarteter Förderbetrag (€)','money'],['confirmed','Bewilligter Betrag (€)','money'],['received','Ausgezahlter Betrag (€)','money'],['notes','Notizen','textarea']]
+ budget:[['category','Gewerk','category'],['title','Position'],['parent_code','Unterposition von','parent'],['kind','Leistungsart','choice',['Fremdleistung','Eigenleistung']],['estimate','Schätzung (€)','money'],['company_hint','Firmenhinweis (unverbindlich)'],['notes','Notizen','textarea'],['active','In Prognose einbeziehen','bool'],['is_group','Nur Gruppenüberschrift, nicht summieren','bool']]
 };
 async function api(url,opts={}){const r=await fetch(url,{...opts,headers:opts.body?{'Content-Type':'application/json'}:{}});const d=await r.json();if(!r.ok)throw Error(d.error||'Unbekannter Fehler');return d}
 async function reload(){
@@ -34,20 +33,17 @@ function render(){const s=state.summary;
  el('ownworkrows').innerHTML=ownRows+extraRows||'<tr><td colspan="7">Noch keine Eigenleistungen angelegt.</td></tr>';
  document.querySelectorAll('[data-own]').forEach(btn=>btn.onclick=()=>openEditor('cost',null,{budget_line_id:Number(btn.dataset.own),kind:'Eigenleistung',category:state.budget_lines.find(x=>x.id===Number(btn.dataset.own))?.category||'Eigenleistung',title:state.budget_lines.find(x=>x.id===Number(btn.dataset.own))?.title||'Eigenleistung',state:'Schätzung'}));
  document.querySelectorAll('[data-ownedit]').forEach(btn=>btn.onclick=()=>openEditor('cost',Number(btn.dataset.ownedit)));
- el('fundingrows').innerHTML=state.funding.map(f=>`<tr><td>${esc(f.name)}</td>${fmtcell(f.expected)}${fmtcell(f.confirmed)}${fmtcell(f.received)}<td>${esc(f.notes)}</td><td><button class="mini" data-funding="${f.id}">Bearbeiten</button></td></tr>`).join('');
- el('fundingExpected').textContent=euro(s.funding_expected);el('fundingConfirmed').textContent=euro(s.funding_confirmed);el('net').textContent=euro(s.net_after_confirmed);
-
  renderCostDocuments();
- for(const typ of ['budget','cost','funding'])document.querySelectorAll('[data-'+typ+']').forEach(btn=>btn.addEventListener('click',()=>openEditor(typ,Number(btn.dataset[typ]))));
+ for(const typ of ['budget','cost'])document.querySelectorAll('[data-'+typ+']').forEach(btn=>btn.addEventListener('click',()=>openEditor(typ,Number(btn.dataset[typ]))));
  
 }
 const editorFlow=PHBFlow.manage({
  dialog:'editor',forms:['editForm'],
  dismiss:['closeDialog','cancelDialog'],isBusy:()=>editorBusy
 });
-const sources={budget:'budget_lines',cost:'items',funding:'funding'};
+const sources={budget:'budget_lines',cost:'items'};
 function selector(key,val){let arr=key==='budget_line_id'?state.budget_lines.filter(x=>!x.is_group):key==='contractor_id'?state.contractors:key==='task_id'?state.tasks:state.budget_lines.filter(x=>x.is_group);let o=`<option value="">Keine Zuordnung</option>`;return o+arr.map(x=>`<option value="${esc(key==='parent_code'?x.code:x.id)}" ${String(val??'')===String(key==='parent_code'?x.code:x.id)?'selected':''}>${esc(key==='task_id'?x.code+' · '+x.name:key==='contractor_id'?x.name:x.category+' · '+x.title)}</option>`).join('')}
-function openEditor(type,id=null,defaults={}){mode=type;current=id;const record=(state[sources[type]]||[]).find(x=>x.id===id)||defaults;el('editTitle').textContent=(id?'Bearbeiten: ':'Neu: ')+({budget:'Kostenplanposition',cost:'Weitere Kosten / Eigenleistung',funding:'Förderung'}[type]);el('formError').textContent='';el('remove').hidden=!id||type==='funding';
+function openEditor(type,id=null,defaults={}){mode=type;current=id;const record=(state[sources[type]]||[]).find(x=>x.id===id)||defaults;el('editTitle').textContent=(id?'Bearbeiten: ':'Neu: ')+({budget:'Kostenplanposition',cost:'Weitere Kosten / Eigenleistung'}[type]);el('formError').textContent='';el('remove').hidden=!id;
  el('editFields').innerHTML=fields[type].map(([key,label,kind,options])=>{const value=record[key]??(kind==='bool'?(key==='active'?true:false):'');let control;
  if(kind==='choice')control=`<select name="${key}">${(value&&!options.includes(value)?[...options,value]:options).map(o=>`<option value="${esc(o)}" ${o===value?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
  else if(kind==='category'){
@@ -70,7 +66,7 @@ async function saveEditor(e){
   for(const key of ['selected','active','is_group']){
    if(fields[mode].some(x=>x[0]===key))data[key]=form.elements.namedItem(key).checked;
   }
-  const urls={cost:'/api/costs',budget:'/api/budget/lines',funding:'/api/funding'};
+  const urls={cost:'/api/costs',budget:'/api/budget/lines'};
   const url=urls[mode]+(current?'/'+current:'');
   editorBusy=true;button.disabled=true;
   await api(url,{method:current?'PUT':'POST',body:JSON.stringify(data)});
@@ -99,7 +95,7 @@ el('closeDialog').addEventListener('click',()=>{if(!editorBusy)el('editor').clos
 el('cancelDialog').addEventListener('click',()=>{if(!editorBusy)el('editor').close()});
 el('editor').addEventListener('cancel',event=>{if(editorBusy)event.preventDefault()});
 
-for(const type of ['Budget','Cost','Funding'])el('add'+(type==='Budget'?'Line':type)).addEventListener('click',()=>openEditor(type.toLowerCase()));
+for(const type of ['Budget','Cost'])el('add'+(type==='Budget'?'Line':type)).addEventListener('click',()=>openEditor(type.toLowerCase()));
 
 const costDocumentDialog=el('costDocumentDialog');
 let costDocumentUploading=false;

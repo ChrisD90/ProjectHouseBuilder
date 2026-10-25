@@ -32,6 +32,24 @@ class SchemaUpgradeTests(unittest.TestCase):
     def setup_backup(self):
         backup_manager.configure(str(self.backups))
 
+    def test_0015_adds_planning_tables_and_preserves_existing_funding(self):
+        schema_manager.upgrade_database()
+        with sqlite3.connect(self.db) as conn:
+            conn.execute('DROP TABLE funding_detail')
+            conn.execute('DROP TABLE cost_plan_import')
+            conn.execute("UPDATE alembic_version SET version_num='0014'")
+            conn.execute("INSERT INTO funding (id,name,expected,confirmed,received,notes) VALUES (7,'Altbestand',5000,3000,1000,'Bewilligung behalten')")
+            conn.execute("INSERT INTO budget_line (code,category,title,estimate,kind,active,is_group,sort_order) VALUES ('ALT','Dach','Bestehende Planung',1234.56,'Fremdleistung',1,0,1)")
+        self.setup_backup()
+        result = schema_manager.upgrade_database()
+        self.assertEqual(result['revision'], '0015')
+        self.assertIsNotNone(result['backup'])
+        self.assertEqual(self.db_rows('SELECT name,expected,confirmed,received,notes FROM funding'),
+                         [('Altbestand',5000,3000,1000,'Bewilligung behalten')])
+        self.assertEqual(self.db_rows('SELECT title,estimate FROM budget_line'), [('Bestehende Planung',1234.56)])
+        self.assertEqual(self.db_rows('SELECT COUNT(*) FROM funding_detail'), [(0,)])
+        self.assertEqual(self.db_rows('SELECT COUNT(*) FROM cost_plan_import'), [(0,)])
+
     def db_rows(self, sql):
         with sqlite3.connect(self.db) as conn:
             return conn.execute(sql).fetchall()
@@ -39,8 +57,8 @@ class SchemaUpgradeTests(unittest.TestCase):
     def test_fresh_database_creates_tables_without_backup(self):
         result = schema_manager.upgrade_database()
         self.assertEqual(result['status'], 'upgraded')
-        self.assertEqual(result['revision'], '0014')
-        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0014',)])
+        self.assertEqual(result['revision'], '0015')
+        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0015',)])
         self.assertIn(('receipt',), self.db_rows("SELECT name FROM sqlite_master WHERE type='table' AND name='receipt'"))
         self.assertFalse(list(self.backups.glob('*.zip')))
 
@@ -71,7 +89,7 @@ class SchemaUpgradeTests(unittest.TestCase):
         self.assertIn('selected', [row[1] for row in self.db_rows('PRAGMA table_info(cost_item)')])
         info = backup_manager.verify_backup(Path(r['backup']))
         self.assertIn('private/receipts/rechnung.pdf', info['files'])
-        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0014',)])
+        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0015',)])
 
     def test_existing_database_without_backup_target_is_untouched(self):
         self.make_legacy_database()
@@ -110,7 +128,7 @@ class SchemaUpgradeTests(unittest.TestCase):
         self.assertEqual(state['status'], 'upgraded')
         self.assertIsNotNone(state['backup'])
         self.assertEqual(self.db_rows('SELECT supplier,paid_amount,gross_amount FROM receipt'), [('Sanitärfirma',100,200)])
-        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0014',)])
+        self.assertEqual(self.db_rows('SELECT version_num FROM alembic_version'), [('0015',)])
         self.assertIn(('finance_loan',), self.db_rows("SELECT name FROM sqlite_master WHERE name='finance_loan'"))
 
     def test_reject_postgresql_in_mac_migrator(self):
@@ -150,10 +168,10 @@ class OfferSchemaMigrationTests(unittest.TestCase):
                   patch.object(backup_manager,'CONFIG_PATH',root/'backup_config.json')):
                 backup_manager.configure(str(sync))
                 result=schema_manager.upgrade_database()
-                self.assertEqual(result['revision'],'0014')
+                self.assertEqual(result['revision'],'0015')
                 backup_manager.verify_backup(Path(result['backup']))
             with sqlite3.connect(db_file) as con:
-                self.assertEqual(con.execute('SELECT version_num FROM alembic_version').fetchone()[0],'0014')
+                self.assertEqual(con.execute('SELECT version_num FROM alembic_version').fetchone()[0],'0015')
                 offer_columns={row[1] for row in con.execute('PRAGMA table_info(offer)')}
                 self.assertTrue({'category','budget_line_id','notes'} <= offer_columns)
                 self.assertEqual(con.execute('SELECT vendor FROM offer WHERE id=1').fetchone()[0],'Testfirma')
@@ -182,7 +200,7 @@ class RetiredSpreadsheetMigrationTests(unittest.TestCase):
                     con.execute("UPDATE alembic_version SET version_num='0003'")
                 backup_manager.configure(str(sync))
                 result=schema_manager.upgrade_database()
-                self.assertEqual(result['revision'],'0014')
+                self.assertEqual(result['revision'],'0015')
                 self.assertTrue(Path(result['backup']).exists())
                 with sqlite3.connect(db_file) as con:
                     cols={row[1] for row in con.execute('PRAGMA table_info(budget_line)')}

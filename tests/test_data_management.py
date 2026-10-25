@@ -166,7 +166,7 @@ with package.app.app_context():
     assert db.session.query(BudgetLine).count()==0, 'spreadsheet seed must not return'
 assert client.get('/api/costs').json['summary']['budget']==0
 with sqlite3.connect(root/'sanierung.db') as con:
-    assert con.execute('SELECT version_num FROM alembic_version').fetchone()==('0014',)
+    assert con.execute('SELECT version_num FROM alembic_version').fetchone()==('0015',)
 print('OK reset and verified backup '+str(archive))
 '''
 
@@ -231,7 +231,8 @@ print('RESTORED')
         for removed in ('/api/excel-original', 'initialize_budget(', 'HistoricalEstimate('):
             self.assertNotIn(removed,code)
         self.assertFalse((ROOT/'data'/'initial_budget.example.json').exists())
-        self.assertNotIn('Excel', (ROOT/'templates'/'kosten.html').read_text())
+        self.assertNotIn('excel-original', (ROOT/'templates'/'kosten.html').read_text())
+        self.assertIn('planUploadForm', (ROOT/'templates'/'kosten.html').read_text())
 
 if __name__ == '__main__':
     unittest.main()

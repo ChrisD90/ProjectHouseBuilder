@@ -341,7 +341,7 @@ class ChatGPTLocal:
         except (requests.RequestException,ValueError,KeyError) as exc:
             raise AIError('ChatGPT-Modellliste nicht verfügbar.') from exc
 
-    def run(self, input_data, instructions, model):
+    def run(self, input_data, instructions, model, *, web_search=False):
         if not isinstance(model,str) or not model or len(model)>100:
             raise AIError('Bitte ein verfügbares ChatGPT-Modell auswählen.')
         catalog=self.models()
@@ -357,7 +357,10 @@ class ChatGPTLocal:
             raise AIError('KI-Eingabe muss aus Text oder einer nichtleeren Nachrichtenliste bestehen.')
         payload={'model':model,'input':input_items,'instructions':instructions,
                  'store':False,'stream':True}
-        output=[];total=0;complete=False;first_delta=False
+        if web_search:
+            payload['tools']=[{'type':'web_search'}]
+            payload['tool_choice']='required'
+        output=[];total=0;complete=False;first_delta=False;searched=False
         progress=getattr(_background_hooks,'progress',None)
         def phase(message):
             if callable(progress):
@@ -369,6 +372,8 @@ class ChatGPTLocal:
                 'Authorization':'Bearer '+self.token(), 'Content-Type':'application/json',
                 'Accept':'text/event-stream'}, stream=True,timeout=(20,145)) as response:
                 if response.status_code!=200:
+                    if web_search:
+                        raise AIError('ChatGPT-Webrecherche ist für dieses Konto oder Modell derzeit nicht verfügbar. Bitte ein anderes verfügbares Modell wählen oder Firmendaten manuell ergänzen.')
                     try:detail=response.json()
                     except ValueError:detail={}
                     err=detail.get('error',detail) if isinstance(detail,dict) else {}
@@ -381,6 +386,8 @@ class ChatGPTLocal:
                     try:event=json.loads(raw[6:])
                     except ValueError:continue
                     typ=event.get('type')
+                    if typ=='response.output_item.done' and event.get('item',{}).get('type')=='web_search_call':
+                        searched=searched or event['item'].get('status')=='completed'
                     if typ=='response.output_text.delta':
                         if not first_delta:
                             first_delta=True
@@ -391,6 +398,7 @@ class ChatGPTLocal:
                         output.append(delta)
                     elif typ=='response.completed':
                         complete=True
+                        searched=searched or any(x.get('type')=='web_search_call' and x.get('status')=='completed' for x in event.get('response',{}).get('output',[]))
                         phase('ChatGPT-Antwort vollständig – der Entwurf wird angelegt …')
                     elif typ in ('response.failed','error','response.incomplete'):
                         detail=event.get('response',{}).get('error') or event.get('error') or {}
@@ -399,6 +407,8 @@ class ChatGPTLocal:
         except requests.RequestException as exc:
             raise AIError('ChatGPT-Verbindung unterbrochen. Es wurden keine Projektdaten verändert.') from exc
         if not complete:raise AIError('ChatGPT-Antwort unvollständig. Es wurden keine Projektdaten verändert.')
+        if web_search and not searched:
+            raise AIError('ChatGPT hat keine abgeschlossene Webrecherche bestätigt. Es wurden keine Firmendaten übernommen.')
         result=''.join(output).strip()
         if not result:raise AIError('ChatGPT hat keine auswertbare Antwort zurückgegeben.')
         return result

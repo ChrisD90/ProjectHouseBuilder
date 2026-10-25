@@ -45,21 +45,19 @@
   <div class="master-two-columns">
     <section class="panel master-panel" id="gewerke">
       <div class="master-panel-head"><div><h2>Gewerke</h2>
-        <p>Für Firmen und Bauzeitenplan. Umbenennen aktualisiert bestehende Firmen und Arbeitspakete.</p></div><button type="button" id="restoreTrades" class="subtle">Standardgewerke wiederherstellen</button></div>
-      <form id="tradeCreate" class="master-create"><label for="tradeNew">Neues Gewerk</label>
-        <div><input id="tradeNew" maxlength="140" required placeholder="z. B. Trockenbau">
-          <button class="primary" type="submit">Hinzufügen</button></div></form>
+        <p>Für Firmen und Bauzeitenplan. Umbenennen aktualisiert bestehende Firmen und Arbeitspakete.</p></div><div class="master-reference-actions"><button type="button" id="addTrade" class="primary">+ Gewerk</button><button type="button" id="restoreTrades" class="subtle">Standardgewerke wiederherstellen</button></div></div>
+      <div class="master-toolbar"><label for="tradeSearch">Gewerke suchen</label><input id="tradeSearch" type="search" placeholder="Gewerk suchen …"></div>
       <div id="tradeRows" class="master-tag-list"></div>
     </section>
     <section class="panel master-panel" id="kategorien">
       <div class="master-panel-head"><div><h2>Rechnungs- und Kostenkategorien</h2>
-        <p>Für Rechnungen, Angebote und Kostenplanung. Umbenennungen werden in allen zugeordneten Datensätzen nachgeführt.</p></div><button type="button" id="restoreCategories" class="subtle">Standardkategorien wiederherstellen</button></div>
-      <form id="categoryCreate" class="master-create"><label for="categoryNew">Neue Kategorie</label>
-        <div><input id="categoryNew" maxlength="120" required placeholder="z. B. Garten / Außenanlagen">
-          <button class="primary" type="submit">Hinzufügen</button></div></form>
+        <p>Für Rechnungen, Angebote und Kostenplanung. Umbenennungen werden in allen zugeordneten Datensätzen nachgeführt.</p></div><div class="master-reference-actions"><button type="button" id="addCategory" class="primary">+ Kategorie</button><button type="button" id="restoreCategories" class="subtle">Standardkategorien wiederherstellen</button></div></div>
+      <div class="master-toolbar"><label for="categorySearch">Kategorien suchen</label><input id="categorySearch" type="search" placeholder="Kategorie suchen …"></div>
       <div id="categoryRows" class="master-tag-list"></div>
     </section>
   </div>
+  <dialog id="tradeCreateDialog" class="master-dialog" aria-labelledby="tradeCreateTitle"><form id="tradeCreate" class="master-dialog-inner"><div class="master-dialog-head"><h2 id="tradeCreateTitle">Gewerk hinzufügen</h2><button type="button" id="tradeCreateClose">Schließen</button></div><label for="tradeNew">Name</label><input id="tradeNew" maxlength="140" required><p id="tradeCreateStatus" role="alert"></p><button class="primary" type="submit">Hinzufügen</button></form></dialog>
+  <dialog id="categoryCreateDialog" class="master-dialog" aria-labelledby="categoryCreateTitle"><form id="categoryCreate" class="master-dialog-inner"><div class="master-dialog-head"><h2 id="categoryCreateTitle">Kategorie hinzufügen</h2><button type="button" id="categoryCreateClose">Schließen</button></div><label for="categoryNew">Name</label><input id="categoryNew" maxlength="120" required><p id="categoryCreateStatus" role="alert"></p><button class="primary" type="submit">Hinzufügen</button></form></dialog>
   <dialog id="companyDialog" class="master-dialog" aria-labelledby="companyTitle">
     <form id="companyForm" class="master-dialog-inner">
       <div class="master-dialog-head"><h2 id="companyTitle">Firma erfassen</h2>
@@ -67,7 +65,7 @@
       <p class="master-description">Firmenstammdaten ändern weder Rechnungsbeträge noch bestehende Beauftragungen.</p>
       <input name="id" type="hidden">
       <div class="master-fields">
-        <label>Firmenname *<input name="name" maxlength="200" required></label>
+        <label>Firmenname *<input id="companyName" name="name" maxlength="200" required></label>
         <label>Gewerk<select name="trade" id="companyTrade"><option value="">Nicht zugeordnet</option></select></label>
         <label>Ansprechpartner<input name="contact" maxlength="200"></label>
         <label>Weiterer Ansprechpartner<input name="contact_secondary" maxlength="200"></label>
@@ -79,6 +77,12 @@
         <label class="wide">Adresse<input name="address" maxlength="400"></label>
         <label class="wide">Notizen<textarea name="notes" rows="3" maxlength="3000"></textarea></label>
       </div>
+      <section id="companyResearchOffer" class="master-research wide" hidden aria-labelledby="companyResearchTitle">
+        <h3 id="companyResearchTitle">Firmendaten mit ChatGPT vervollständigen?</h3><p>Der Firmenname und optional der Ort werden nach deiner Zustimmung für eine Webrecherche an ChatGPT übertragen. Wähle den passenden Treffer und prüfe die Angaben vor dem Speichern.</p>
+        <label>Ort / Postleitzahl zur Eingrenzung<input id="companyResearchLocation" maxlength="100" placeholder="Optional"></label>
+        <div class="master-tag-actions"><button id="researchCompany" type="button">Ja, mit ChatGPT recherchieren</button><button id="skipCompanyResearch" type="button" class="subtle">Manuell fortfahren</button></div>
+        <p id="companyResearchStatus" role="status"></p><div id="companyResearchResults"></div>
+      </section>
       <div class="master-dialog-actions">
         <button id="deleteCompany" type="button" class="danger">Firma löschen</button>
         <button class="primary" type="submit" id="saveCompany">Änderungen speichern</button>

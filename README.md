@@ -300,3 +300,54 @@ Beim ersten Initialisieren der Stammdaten werden die üblichen Renovierungsgewer
 Der Bereich **„Rechnungen bezahlen“** liegt jetzt im bestehenden Belegbearbeitungsdialog unter **Rechnungen & Belege**. Nach Klick auf eine **gebuchte Rechnung** öffnet die Aktion „Rechnung bezahlen“ einen vierstufigen Ablauf: Kredit/Eigenkapital wählen, konkrete Finanzierungsquelle auswählen, Betrag (auch Teilzahlung) und Datum ergänzen, Zahlung bestätigen. Angezeigt werden offene Summe, bereits bezahlte Beträge sowie bisherige Zuordnungen. Einzelne Zahlungszuordnungen können dort storniert werden. Verwendet werden weiterhin die geprüften Endpunkte `/api/financing/payments` – keine neue oder doppelte Kostenbuchung. Bereits manuell erfasste Zahlungen ohne Quelle müssen wie bisher erst berichtigt werden. Kreditzahlungen setzen tatsächlich abgerufene und noch ungebundene Kreditmittel voraus. Die bisherige Liquiditätsvorschau wurde vorläufig aus der Finanzierungsoberfläche entfernt.
 
 Die globale **Importwarteschlange** bietet pro abgeschlossenem/fehlgeschlagenem/unterbrochenem Auftrag „Ausblenden“ sowie die Sammelaktion „Erledigte ausblenden“. Offene und gerade laufende Aufträge sind geschützt. Die Jobs bleiben für die technische Nachvollziehbarkeit als archivierte Datensätze erhalten, verschwinden aber aus der aktiven Übersicht; Originaldokumente, Angebote und Rechnungen werden **nicht** gelöscht. Für fehlgeschlagene Aufträge wird die temporäre Warteschlangendatei beim endgültigen manuellen Ausblenden entfernt; eine erneute Analyse erfordert dann einen neuen Upload. Bereits fachlich übernommene Aufträge verschwinden ebenfalls aus der aktiven Liste.
+
+## Kostenplan importieren, energetische Planung und Firmenergänzung (Migration 0015)
+
+Unter **Kosten & Budget → Kostenplanung** kannst du weiterhin Positionen manuell
+anlegen oder eine Kostenaufstellung aus PDF, XLSX, CSV, DOCX, TXT oder Bildern
+hochladen. Bis zu acht Dateien werden über dieselbe serielle Hintergrundwarteschlange
+wie Angebote und Rechnungen analysiert: lokal oder ausdrücklich mit ChatGPT.
+Excel-/CSV-Tabellen sollten Spalten wie **Position**, **Gewerk**, **Schätzung** oder
+**Gesamtpreis** besitzen. XLSX-Formeln brauchen gespeicherte Ergebniswerte; alte
+`.xls`-Dateien bitte vorher als `.xlsx` oder CSV speichern.
+
+Nach der Analyse führt **Prüfen und bearbeiten** zum Entwurf. Beträge, Gewerke,
+Leistungsart, Firmenhinweise und Notizen lassen sich ändern; Zeilen lassen sich
+entfernen und ergänzen. Summen-/Gruppenzeilen zählen nicht zur Prognose.
+Vollständigkeit und **Bruttobeträge** ausdrücklich prüfen. Entwürfe können ohne
+Kostenwirkung gespeichert werden. Erst die bestätigte Übernahme ergänzt die
+bestehende Planung um neue **Schätzungen**, ohne alte Positionen zu überschreiben.
+Bereits manuell erfasste Positionen vorher aus dem Entwurf entfernen, um doppelte
+Ansätze zu vermeiden. Das Original bleibt geschützt in der Dokumentenbibliothek
+und im Komplettbackup erhalten. Ein identisches Dokument wird nicht erneut importiert.
+Die lokale Extraktion ist ein Hilfsmittel; beliebige Architektenlayouts können
+nicht zuverlässig automatisch rekonstruiert werden.
+
+**Energetische Planung** ist ein eigener Sidebar-Bereich. Bestehende Förderungen
+bleiben erhalten. Fördergeber, Programm, Status, Fristen, Quellen und Verknüpfungen
+zu Angeboten oder Planpositionen lassen sich manuell ergänzen. Erwartete,
+bewilligte und ausgezahlte Beträge bleiben getrennt; Bruttokosten und
+Finanzierungskapital werden nicht automatisch umgebucht. Angenommene Angebote
+bieten den Einstieg **Förderung prüfen**. Offizielle Recherchequellen und ein
+Vorschlag für die spätere fachliche Angebotsprüfung stehen in
+[docs/ENERGETISCHE_PLANUNG.md](docs/ENERGETISCHE_PLANUNG.md).
+
+Unter **Stammdaten** befinden sich Hinzufügen und Standardwiederherstellung im
+jeweiligen Abschnittskopf, optisch getrennt. Die früheren Eingabezeilen filtern
+nun Gewerke beziehungsweise Kategorien; neue Einträge entstehen in Dialogen.
+Beim Anlegen einer Firma erscheint nach Eingabe des Namens **nur bei bestehender
+ChatGPT-Verbindung** die Frage nach einer Ergänzung. Erst Zustimmung überträgt
+Firmenname und optional Ort für eine Webrecherche. Mehrere Treffer werden mit
+Quellen angezeigt. Die Auswahl ergänzt leere Kontaktdaten und bleibt vor dem
+Speichern bearbeitbar. Es gibt keine Google-Integration und keinen zusätzlichen
+Suchdienst-Schlüssel. Wenn Konto oder Modell keine Websuche unterstützen, wird
+dies angezeigt; es werden keine Firmendaten aus reinem Modellgedächtnis übernommen.
+Die bestehende Beschränkung von ChatGPT auf direkten lokalen Zugriff bleibt bestehen.
+
+Migration `0015` ergänzt zwei Tabellen für Importentwürfe und Förderdetails.
+Bestehende Budget- und Förderdaten werden nicht gelöscht oder umgeschrieben.
+Der SQLite-Starter verlangt bei bestehenden Datenbanken weiterhin ein geprüftes
+Vorabbackup. Auf NAS/Docker werden die neuen Tabellen beim Initialisieren angelegt;
+für die neue Excel-Abhängigkeit ist ein Image-Neubau erforderlich. Die Caddy-
+Konfiguration erlaubt Originalvorschauen innerhalb derselben Herkunft (`SAMEORIGIN`),
+während Einbettung durch fremde Websites gesperrt bleibt.

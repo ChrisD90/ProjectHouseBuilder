@@ -13,6 +13,7 @@
 
   const currentSection = () => {
     const path = window.location.pathname;
+    if (path === '/energieplanung') return 'energieplanung';
     if (path === '/kosten') return 'kosten';
     if (path === '/angebote') return 'angebote';
     if (path === '/daten') return 'daten';

@@ -33,6 +33,7 @@
   const labelFor=(path,method,form)=>{
     if(path.includes('/api/ai/schedule/chat'))return 'ChatGPT prüft deine Bauzeitenplanung …';
     if(path.includes('/api/ai/schedule'))return 'ChatGPT erstellt deinen Bauzeitenplan …';
+    if(path.includes('/api/contractors/research'))return 'ChatGPT recherchiert Firmendaten …';
     if(path.includes('/api/ai/offers/compare'))return 'ChatGPT vergleicht die Angebote …';
     if(path.includes('/api/ai/'))return 'ChatGPT verarbeitet deine Anfrage …';
     if(path.includes('/api/financing/loans/ai/extract'))return 'ChatGPT liest die Kreditunterlagen …';
@@ -49,7 +50,7 @@
     return 'Projektinformationen werden geladen …';
   };
   function classify(url,method,form){
-    const expensive=/\/api\/ai\/|\/api\/financing\/loans\/ai\/extract|\/api\/backup\/(manual|create)|\/api\/tasks\/initialize|\/api\/tasks\/clear/.test(url);
+    const expensive=/\/api\/contractors\/research|\/api\/ai\/|\/api\/financing\/loans\/ai\/extract|\/api\/backup\/(manual|create)|\/api\/tasks\/initialize|\/api\/tasks\/clear/.test(url);
     const upload=method==='POST'&&form instanceof FormData&&form.has('file');
     return {long:expensive||upload,message:labelFor(url,method,form)};
   }
@@ -219,7 +220,10 @@
     if(input.type==='number'){input.type='text';input.inputMode='decimal';input.removeAttribute('step');input.removeAttribute('min');}
     input.dataset.phbCurrency='true';
     const n=parseMoney(input.value);
-    if(input.value!==''&&Number.isFinite(n))input.value=formatMoney(n);
+    if(input.value!==''&&Number.isFinite(n)){
+      const formatted=formatMoney(n);
+      if(input.value!==formatted)input.value=formatted;
+    }
   }
   function normalizeMoneyForm(form){
     for(const field of form.querySelectorAll('input')){

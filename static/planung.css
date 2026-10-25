@@ -1,0 +1,22 @@
+.phb-plan-review{width:min(1450px,96vw);max-height:92dvh;border:0;border-radius:14px;padding:0;background:var(--ui-surface,#fff);color:var(--ui-ink,#203f49)}
+.phb-plan-review::backdrop{background:#132c4266}
+.phb-plan-review .phb-workflow-body{max-height:78dvh;overflow:auto}
+.phb-plan-review input:not([type=checkbox]),.phb-plan-review textarea,.phb-plan-review select{width:100%;min-width:100px}
+.phb-plan-review td:first-child{min-width:210px}
+.phb-plan-review textarea{margin-top:6px;min-height:48px}
+#planPreview{width:100%;height:350px;margin:15px 0;border:1px solid var(--ui-line,#d6e1e4)}
+#planUploadForm{display:grid;gap:16px}
+#planUploadForm label{display:grid;gap:6px}
+.energy-sources{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.energy-sources article{border:1px solid var(--ui-line,#d6e1e4);border-radius:10px;padding:16px}
+.energy-sources h3{font-size:16px}
+.phb-page-energieplanung .panel{margin:20px 0;padding:22px}
+#energyFundingForm .dialog-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+#energyFundingForm label{display:grid;gap:5px}
+#energyFundingForm .wide{grid-column:1/-1}
+@media(max-width:650px){.energy-sources,#energyFundingForm .dialog-grid{grid-template-columns:minmax(0,1fr)}.phb-page-energieplanung .panel{padding:14px}}
+@media(max-width:760px){
+ .phb-page-kosten .kpi-grid,.phb-page-energieplanung .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .phb-page-kosten .budget-panel .toolbar{flex-wrap:wrap}
+}
+@media(max-width:480px){.phb-page-kosten .kpi-grid,.phb-page-energieplanung .kpi-grid{grid-template-columns:minmax(0,1fr)}}

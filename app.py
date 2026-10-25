@@ -902,6 +902,7 @@ def document_library():
                         'project_document_id':d.id})
     offers=db.session.scalars(select(Offer)).all()
     by_document={}
+    plans={x.document_id:x for x in db.session.scalars(select(CostPlanImport))}
     for o in offers:
         if o.document_id:
             by_document.setdefault(o.document_id,o)
@@ -913,7 +914,8 @@ def document_library():
             by_document[accepted.confirmation_document_id]=db.session.get(Offer,accepted.offer_id)
     for d in db.session.scalars(select(Document)).all():
         offer=by_document.get(d.id)
-        entries.append({'source':'Angebote' if offer else 'Weitere Projektunterlagen',
+        plan=plans.get(d.id)
+        entries.append({'source':'Angebote' if offer else 'Kostenplanung' if plan else 'Weitere Projektunterlagen',
                         'id':'file-'+str(d.id),'title':d.original_name,
                         'filename':d.original_name,'type':d.kind or 'Dokument',
                         'status':offer.status if offer else 'Abgelegt',
@@ -922,8 +924,8 @@ def document_library():
                         'download_url':f'/api/documents/{d.id}/download',
                         'view_url':f'/api/documents/{d.id}/preview'
                             if Path(d.original_name).suffix.lower()=='.pdf' else None,
-                        'module_url':f'/angebote?offer_id={offer.id}' if offer else '/kosten#kosten-unterlagen',
-                        'legacy_document_id':d.id if not offer else None})
+                        'module_url':f'/angebote?offer_id={offer.id}' if offer else f'/kosten?cost_plan_import={plan.id}' if plan else '/kosten#kosten-unterlagen',
+                        'legacy_document_id':d.id if not offer and not plan else None})
     for r in db.session.scalars(select(Receipt)).all():
         kind='Rechnungen & Belege'
         entries.append({'source':kind,'id':'receipt-'+str(r.id),
@@ -1789,7 +1791,7 @@ def budget_dict(x):
     return {key:getattr(x,key) for key in ('id','code','category','title','parent_code','estimate','company_hint','kind','notes','sort_order','is_group','active')}
 
 def funding_dict(x):
-    return {key:getattr(x,key) for key in ('id','name','expected','confirmed','received','notes')}
+    return energy_funding_dict(x)
 
 def _receipt_increment(r):
     """Amount newly invoiced; a final invoice may repeat earlier installments.
@@ -2743,6 +2745,8 @@ def offer_cost_payment(item_id):
 
 @app.delete('/api/offers/<int:offer_id>')
 def offer_delete(offer_id):
+    if db.session.scalar(select(FundingDetail.funding_id).where(FundingDetail.offer_id==offer_id).limit(1)):
+        return jsonify(error='Förderung verknüpft. Zuerst die Zuordnung in Energetische Planung entfernen.'),409
     offer=db.session.get(Offer,offer_id)
     if not offer:return jsonify(error='Angebot nicht gefunden.'),404
     linked=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer_id)).all()
@@ -3445,6 +3449,8 @@ def budget_line_edit(line_id=None):
     if line_id and not obj:return jsonify(error='Kostenplanposition nicht gefunden.'),404
     try:
         if request.method=='DELETE':
+            if db.session.scalar(select(FundingDetail.funding_id).where(FundingDetail.budget_line_id==line_id).limit(1)):
+                raise ValueError('Förderung verknüpft. Zuerst die Zuordnung in Energetische Planung entfernen.')
             if db.session.scalar(select(CostItem.id).where(CostItem.budget_line_id==line_id).limit(1)) or db.session.scalar(select(Document.id).where(Document.budget_line_id==line_id).limit(1)):
                 raise ValueError('Es sind Angebote/Beauftragungen verknüpft; zuerst diese Zuordnung entfernen.')
             if db.session.scalar(select(Receipt.id).where(Receipt.budget_line_id==line_id,Receipt.status=='Gebucht').limit(1)):
@@ -3471,30 +3477,6 @@ def budget_line_edit(line_id=None):
         db.session.commit();return jsonify(ok=True)
     except (ValueError,TypeError) as e:
         db.session.rollback();return jsonify(error=str(e)),400
-
-@app.put('/api/funding/<int:funding_id>')
-def funding_edit(funding_id):
-    obj=db.session.get(Funding,funding_id)
-    if not obj:return jsonify(error='Förderung nicht gefunden.'),404
-    try:
-        b=request.get_json(force=True)
-        for key in ('expected','confirmed','received'):
-            if key in b:
-                value=float(b[key] or 0)
-                if not math.isfinite(value) or value<0:raise ValueError('Betrag darf nicht negativ sein.')
-                setattr(obj,key,value)
-        if 'notes' in b:obj.notes=str(b['notes'] or '')
-        if 'name' in b:obj.name=str(b['name'] or '')
-        db.session.commit();return jsonify(ok=True)
-    except (ValueError,TypeError) as e:
-        db.session.rollback();return jsonify(error=str(e)),400
-
-@app.post('/api/funding')
-def funding_create():
-    b=request.get_json(force=True)
-    if not str(b.get('name','')).strip():return jsonify(error='Name fehlt.'),400
-    obj=Funding(name=b['name'])
-    db.session.add(obj);db.session.commit();return jsonify(ok=True,id=obj.id)
 
 @app.get('/api/budget.csv')
 def budget_csv():
@@ -3553,6 +3535,8 @@ def download_document(doc_id):
 def delete_document(doc_id):
     row=db.session.get(Document,doc_id)
     if not row:return jsonify(error='Dokument nicht gefunden.'),404
+    if db.session.scalar(select(CostPlanImport.id).where(CostPlanImport.document_id==doc_id).limit(1)):
+        return jsonify(error='Original einer Kostenplanung ist als Importnachweis geschützt.'),409
     if db.session.scalar(select(Offer.id).where(Offer.document_id==doc_id).limit(1)) or db.session.scalar(select(OfferVersion.id).where(OfferVersion.document_id==doc_id).limit(1)):
         return jsonify(error='PDF gehört zu einer Angebotsversion und ist als historischer Nachweis geschützt.'),409
     p=DOCUMENT_ROOT/row.stored_name
@@ -3677,6 +3661,18 @@ from financing import register_financing
     app, db, Receipt, CostItem, BudgetLine, budget_summary,
     root=ROOT, ai_request_required=_ai_request_required,
     chatgpt=chatgpt, extract_json=extract_json)
+
+
+from energy_planning import register_energy_planning
+FundingDetail, energy_funding_dict = register_energy_planning(
+    app, db, Funding, Offer, BudgetLine, budget_summary, CostItem)
+from cost_plan_imports import register_cost_plan_imports
+CostPlanImport, cost_plan_upload = register_cost_plan_imports(
+    app, db, BudgetLine, Document, document_root=lambda: DOCUMENT_ROOT,
+    ai_required=_ai_request_required, chatgpt=chatgpt, extract_json=extract_json,
+    mark_reviewed=lambda kind, iid: _mark_import_reviewed(kind, iid))
+from company_search import register_company_search
+register_company_search(app, ai_required=_ai_request_required, chatgpt=chatgpt, extract_json=extract_json)
 
 
 # Backup settings belong to the server; a browser can only select reachable/mounted paths.
@@ -3956,6 +3952,7 @@ _import_recovery_done=False
 _MAX_IMPORT_COUNT=8
 _MAX_IMPORT_BATCH_BYTES=75*1024*1024
 _ALLOWED_IMPORTS={
+    'costplans':{'.pdf','.xlsx','.csv','.txt','.docx','.jpg','.jpeg','.png','.webp'},
     'offers':{'.pdf'},
     'versions':{'.pdf'},
     'receipts':{'.pdf','.jpg','.jpeg','.png','.webp'},
@@ -4001,13 +3998,17 @@ def _sync_import_reviews():
             reviewed=version is not None and version.state!='draft'
         else:
             reviewed=False  # Explicit metadata confirmation marks library documents.
+        if job.kind=='costplans':
+            plan=db.session.get(CostPlanImport,job.result_id)
+            reviewed=plan is not None and plan.status=='Übernommen'
         if reviewed:_mark_import_reviewed(job.kind,job.result_id)
     db.session.commit()
 
 
 def _import_result(job):
     if job.result_id is None:return None
-    prefix={'offers':'/angebote?offer_draft=',
+    prefix={'costplans':'/kosten?cost_plan_import=',
+            'offers':'/angebote?offer_draft=',
             'versions':'/angebote?offer_draft=',
             'receipts':'/belege?receipt_id=',
             'documents':'/dokumente?document_id='}[job.kind]
@@ -4038,7 +4039,7 @@ def _run_import_job(job_id):
             ai_background_hooks.progress=update_stage
             raw=source.read_bytes()
             fields={'file':(io.BytesIO(raw),filename)}
-            if job_type in ('offers','versions','receipts'):
+            if job_type in ('offers','versions','receipts','costplans'):
                 fields.update(analysis_mode=mode,model=ai_model,plan_only='true')
             else:
                 fields.update(meta)
@@ -4047,7 +4048,7 @@ def _run_import_job(job_id):
             # a new business-logic path. The user authenticated and explicitly
             # authorized AI at enqueue time; no browser credentials are stored.
             endpoint=('offers/'+str(meta['offer_id'])+'/versions') if job_type=='versions' else {
-                'offers':'offers/import','receipts':'receipts',
+                'costplans':'cost-plan-imports','offers':'offers/import','receipts':'receipts',
                 'documents':'project-documents'}[job_type]
             with app.test_request_context(
                 '/api/'+endpoint,
@@ -4055,7 +4056,8 @@ def _run_import_job(job_id):
                 headers={'X-PHB-AI':'1'} if mode=='ai' else {},
                 environ_base={'REMOTE_ADDR':'127.0.0.1'},
                 base_url='http://127.0.0.1:5055'):
-                result={'offers':lambda:offers_import(),
+                result={'costplans':lambda:cost_plan_upload(),
+                        'offers':lambda:offers_import(),
                         'versions':lambda:upload_offer_version(meta['offer_id']),
                         'receipts':lambda:receipt_upload(),
                         'documents':lambda:project_document_upload()}[job_type]()
