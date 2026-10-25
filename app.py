@@ -3606,6 +3606,8 @@ def backup_restore_start():
         _backup_config() # Safety backup destination must be configured and available.
     except (ValueError,OSError,KeyError,zipfile.BadZipFile) as exc:
         return jsonify(error='Keine Wiederherstellung gestartet: '+str(exc)),409
+    if db.session.scalar(select(ImportJob.id).where(ImportJob.status.in_(('Wartend','Läuft'))).limit(1)):
+        return jsonify(error='Es laufen noch Dokumentenimporte. Bitte zuerst abschließen und danach wiederherstellen.'),409
     if not _BACKUP_RESTORE_LOCK.acquire(blocking=False):
         return jsonify(error='Es läuft bereits eine Wiederherstellung.'),409
     global _BACKUP_RESTORE_STATE
