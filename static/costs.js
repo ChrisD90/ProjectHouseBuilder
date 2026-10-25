@@ -109,7 +109,7 @@ function setPreview(type,url,download,description){
 }
 function showSavedPdf(type,docId){
  const documentInfo=(state.documents||[]).find(d=>d.id===docId);
- if(type==='upload' && !documentInfo)return;
+ // Beim unmittelbar neuen Upload kann die Liste noch nicht neu geladen sein.
  const url='/api/documents/'+docId+'/view';
  setPreview(type,url,'/api/documents/'+docId+'/download',documentInfo?.name||'Angebot-PDF');
 }
