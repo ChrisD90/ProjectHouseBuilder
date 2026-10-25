@@ -68,24 +68,25 @@ async function saveEditor(e){
   }
   const urls={cost:'/api/costs',budget:'/api/budget/lines',funding:'/api/funding'};
   const url=urls[mode]+(current?'/'+current:'');
-  editorBusy=true;button.disabled=true;
+  editorBusy=true;PHBUI.dialogs.busy(el('editor'),true);button.disabled=true;
   await api(url,{method:current?'PUT':'POST',body:JSON.stringify(data)});
+  PHBUI.dialogs.saved(el('editor'));
   el('editor').close();
   await reload();
  }catch(err){el('formError').textContent=err.message;}
- finally{editorBusy=false;button.disabled=false;}
+ finally{editorBusy=false;PHBUI.dialogs.busy(el('editor'),false);button.disabled=false;}
 }
 async function removeEditor(){
  if(!current||editorBusy||!await PHBUI.confirm('Diesen Eintrag wirklich löschen?'))return;
  const urls={cost:'/api/costs/',budget:'/api/budget/lines/'};
  if(!urls[mode])return;
- editorBusy=true;el('remove').disabled=true;
+ editorBusy=true;PHBUI.dialogs.busy(el('editor'),true);el('remove').disabled=true;
  try{
   await api(urls[mode]+current,{method:'DELETE'});
   el('editor').close();
   await reload();
  }catch(e){el('formError').textContent=e.message;}
- finally{editorBusy=false;el('remove').disabled=false;}
+ finally{editorBusy=false;PHBUI.dialogs.busy(el('editor'),false);el('remove').disabled=false;}
 }
 el('addOwnWork').onclick=()=>openEditor('cost',null,{kind:'Eigenleistung',category:'Eigenleistung',state:'Schätzung'});
 el('budgetSearch').addEventListener('input',render);
