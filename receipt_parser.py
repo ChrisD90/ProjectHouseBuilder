@@ -39,37 +39,99 @@ def decimal_amount(s):
         return None
 
 
-def extract_text(data, filename):
+def ocr_diagnostics():
+    """Check the actual worker environment without exposing document data."""
+    import shutil
+    tools={name:bool(shutil.which(name)) for name in ('tesseract','pdftoppm')}
+    languages=[]
+    if tools['tesseract']:
+        try:
+            result=subprocess.run(['tesseract','--list-langs'],capture_output=True,
+                                  text=True,timeout=8,check=False)
+            languages=[line.strip() for line in result.stdout.splitlines()[1:] if line.strip()]
+            if not languages:languages=[line.strip() for line in result.stderr.splitlines()
+                                         if line.strip() in ('deu','eng','osd')]
+        except (OSError,subprocess.TimeoutExpired):
+            pass
+    return {'tools':tools,'languages':languages,
+            'ready':all(tools.values()) and 'deu' in languages,
+            'hint':'Tesseract, deutsches Sprachpaket und Poppler im Server/Container erforderlich.'}
+
+
+def _ocr(path):
+    """Try block text and, for sparse scans, a more permissive page layout."""
+    try:
+        results=[]
+        for mode in ('3','6'):
+            p=subprocess.run(['tesseract',str(path),'stdout','-l','deu+eng',
+                              '--psm',mode],timeout=55,check=True,capture_output=True,text=True)
+            text=p.stdout.strip()
+            results.append(text)
+            if len(text)>=45:break
+        return max(results,key=len,default='')
+    except FileNotFoundError as exc:
+        raise ValueError('Tesseract nicht installiert. OCR-Diagnose auf der Datenseite prüfen.') from exc
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError('OCR-Zeitlimit überschritten; Scanauflösung reduzieren.') from exc
+    except subprocess.CalledProcessError as exc:
+        raise ValueError('Tesseract konnte die Datei nicht erkennen (deu/eng Sprachpakete prüfen).') from exc
+
+
+def extract_pdf_pages(data,max_pages=15,layout=False):
+    """Keep native PDF text; OCR only pages with little or no actual text.
+
+    Per-page conversion also fixes mixed scanned/digital documents, and avoids
+    silently dropping everything after page five. No upload leaves this machine.
+    """
+    reader=PdfReader(BytesIO(data))
+    if reader.is_encrypted:raise ValueError('PDF ist verschlüsselt.')
+    if len(reader.pages)>max_pages:raise ValueError('Maximal '+str(max_pages)+' PDF-Seiten.')
+    pages=[]
+    for page in reader.pages:
+        try:
+            text=page.extract_text(extraction_mode='layout') if layout else page.extract_text()
+        except (TypeError,ValueError):
+            text=page.extract_text() or ''
+        pages.append(text or '')
+    scanned=[i for i,text in enumerate(pages) if len(text.strip())<35]
+    if not scanned:return pages,False
+    if len(scanned)>15:raise ValueError('Mehr als 15 Seiten benötigen OCR.')
+    with tempfile.TemporaryDirectory() as temp:
+        source=Path(temp)/'source.pdf';source.write_bytes(data)
+        ocr_success=False
+        for i in scanned:
+            target=Path(temp)/('scan-'+str(i+1))
+            try:
+                subprocess.run(['pdftoppm','-f',str(i+1),'-l',str(i+1),'-singlefile',
+                                '-r','230','-gray','-png',str(source),str(target)],
+                               timeout=60,check=True,stdout=subprocess.DEVNULL,
+                               stderr=subprocess.PIPE)
+                found=_ocr(str(target)+'.png')
+                if found:
+                    pages[i]=found;ocr_success=True
+            except (FileNotFoundError,subprocess.TimeoutExpired,subprocess.CalledProcessError) as exc:
+                if not any(part.strip() for part in pages):
+                    raise ValueError('PDF-OCR fehlgeschlagen. Tesseract, Poppler und Sprache deu prüfen.') from exc
+                # Preserve genuine text on other pages; do not invent content.
+                continue
+    if not any(x.strip() for x in pages):
+        raise ValueError('Weder PDF-Textebene noch OCR-Text lesbar.')
+    return pages,ocr_success
+
+
+def extract_text(data,filename):
     suffix=Path(filename).suffix.lower()
     if suffix=='.pdf':
-        pdf=PdfReader(BytesIO(data))
-        if pdf.is_encrypted: raise ValueError('PDF ist verschlüsselt.')
-        if len(pdf.pages)>15: raise ValueError('Maximal 15 PDF-Seiten pro Beleg.')
-        pages=[p.extract_text() or '' for p in pdf.pages]
-        text='\n'.join(pages)
-        if len(text.strip())>35: return text[:80000], 'PDF-Text'
-        with tempfile.TemporaryDirectory() as tmp:
-            path=Path(tmp)/'input.pdf';path.write_bytes(data)
-            try:
-                subprocess.run(['pdftoppm','-f','1','-l',str(min(len(pages),5)),'-r','170','-gray','-png',str(path),str(Path(tmp)/'page')],timeout=40,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
-                results=[]
-                for image in sorted(Path(tmp).glob('page-*.png')):
-                    results.append(_ocr(str(image)))
-                return '\n'.join(results)[:80000], 'OCR (PDF)'
-            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.CalledProcessError) as e:
-                raise ValueError('OCR nicht verfügbar oder fehlgeschlagen (Tesseract/Poppler prüfen).') from e
+        pages,used_ocr=extract_pdf_pages(data)
+        return '\n'.join(pages)[:80000], 'OCR (PDF)' if used_ocr else 'PDF-Text'
     if suffix in ('.jpg','.jpeg','.png','.webp'):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/('scan'+suffix);path.write_bytes(data)
-            return _ocr(str(path))[:80000], 'OCR (Foto)'
+            text=_ocr(str(path))
+            if not text:raise ValueError('Kein Text auf dem Foto erkannt. Bitte manuell prüfen.')
+            return text[:80000], 'OCR (Foto)'
     raise ValueError('Nur PDF, JPG, PNG oder WEBP unterstützt.')
 
-def _ocr(path):
-    try:
-        r=subprocess.run(['tesseract',path,'stdout','-l','deu+eng','--psm','3'],timeout=35,check=True,capture_output=True,text=True)
-        return r.stdout
-    except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
-        raise ValueError('OCR nicht verfügbar. Tesseract mit deutscher Sprache installieren.') from e
 
 def category_for(text):
     lower=text.lower()
