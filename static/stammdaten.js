@@ -5,6 +5,11 @@
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
   let companies=[],trades=[],categories=[],activeCompany=null;
+  let companyBusy=false;
+  const companyFlow=PHBFlow.manage({
+    dialog:'companyDialog',forms:['companyForm'],
+    dismiss:['closeCompany'],isBusy:()=>companyBusy
+  });
   const note=(text,error=false)=>{
     const node=$('masterNotice');
     node.hidden=false;node.textContent=text;node.classList.toggle('error',error);
@@ -93,7 +98,7 @@
     $('saveCompany').textContent=activeCompany?'Änderungen speichern':'Firma anlegen';
     $('deleteCompany').hidden=!activeCompany;
     $('companyStatus').textContent='';
-    $('companyDialog').showModal();
+    companyFlow.open();
   }
   $('addCompany').onclick=()=>openCompany();
   $('closeCompany').onclick=()=>$('companyDialog').close();
@@ -103,6 +108,7 @@
     const button=$('saveCompany'),form=$('companyForm');
     const data=Object.fromEntries(new FormData(form));
     delete data.id;
+    companyBusy=true;
     button.disabled=true;
     try{
       await api('/api/contractors'+(activeCompany?'/'+activeCompany.id:''),
@@ -111,7 +117,7 @@
       $('companyDialog').close();
       note('Firmenstammdaten gespeichert. Bestehende Zuordnungen bleiben erhalten.');
     }catch(error){$('companyStatus').textContent=error.message;}
-    finally{button.disabled=false;}
+    finally{companyBusy=false;button.disabled=false;}
   };
   $('deleteCompany').onclick=async()=>{
     if(!activeCompany||!await PHBUI.confirm('Firma endgültig löschen? Verknüpfte Firmen können nicht gelöscht werden.'))return;
