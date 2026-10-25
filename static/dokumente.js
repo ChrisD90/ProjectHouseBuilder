@@ -111,7 +111,7 @@ function refreshLinked(){
     const files=matching.filter(doc=>doc.source===group.source);
     const section=document.createElement('section');section.className='docs-linked-group';
     section.id='docs-group-'+group.source.toLowerCase().replace(/[^a-z]+/g,'-');
-    const header=document.createElement('header');header.className='docs-linked-group-head';
+    const header=document.createElement('div');header.className='docs-linked-group-head';
     const headText=document.createElement('div');
     const title=document.createElement('h3');title.textContent=group.title;
     const details=document.createElement('p');details.textContent=group.description;
