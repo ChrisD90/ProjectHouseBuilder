@@ -41,3 +41,25 @@
  .phb-page-dokumente .docs-columns>.panel,.phb-page-dokumente .docs-library{padding:17px}
  .phb-page-dokumente .docs-item{flex-direction:column;align-items:stretch}
  .phb-page-dokumente .docs-item-actions{justify-content:flex-start}}
+
+/* General library and linked modules are intentionally separate surfaces. */
+.phb-page-dokumente .docs-section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+.phb-page-dokumente .docs-section-heading .phb-page-kicker{display:block;margin-bottom:6px}
+.phb-page-dokumente .docs-section-heading h2{margin:0 0 7px}
+.phb-page-dokumente .docs-section-heading p{font-size:13px;max-width:800px;line-height:1.65;color:var(--ui-muted,#677d83);margin:0}
+.phb-page-dokumente .docs-section-count{white-space:nowrap;font-size:12px;font-weight:600;color:var(--ui-ink-soft,#526a75);background:var(--ui-soft,#eef5f7);border:1px solid var(--ui-line,#dbe4e7);padding:9px 13px;border-radius:24px}
+.phb-page-dokumente .docs-linked-toolbar{grid-template-columns:minmax(220px,2fr) minmax(220px,1fr)}
+.phb-page-dokumente .docs-linked-groups{display:grid;gap:22px;margin-top:12px}
+.phb-page-dokumente .docs-linked-group{border:1px solid var(--ui-line,#dae5e9);border-radius:14px;padding:17px;background:var(--ui-soft,#f8fafb);min-width:0}
+.phb-page-dokumente .docs-linked-group-head{display:flex;align-items:center;gap:15px;flex-wrap:wrap;padding:0 0 12px}
+.phb-page-dokumente .docs-linked-group-head>div{flex:1 1 300px;min-width:0}
+.phb-page-dokumente .docs-linked-group-head h3{font-size:17px;margin:0 0 4px}
+.phb-page-dokumente .docs-linked-group-head p{color:var(--ui-muted,#617783);font-size:12px;line-height:1.55;margin:0}
+.phb-page-dokumente .docs-linked-group .docs-item{background:var(--ui-surface,#fff)}
+.phb-page-dokumente .docs-owner-link{font-size:12px;border:1px solid var(--ui-line,#d3e2e6);border-radius:7px;padding:7px 11px;white-space:nowrap;color:var(--ui-accent,#137585);text-decoration:none}
+.phb-page-dokumente .docs-owner-link:hover{text-decoration:underline}
+.phb-page-dokumente .docs-empty{color:var(--ui-muted,#677b86);padding:12px 10px;margin:0;font-size:13px}
+@media(max-width:680px){.phb-page-dokumente .docs-section-heading{display:grid}
+ .phb-page-dokumente .docs-section-count{justify-self:start}
+ .phb-page-dokumente .docs-linked-toolbar{grid-template-columns:1fr}
+ .phb-page-dokumente .docs-linked-group{padding:11px}}
