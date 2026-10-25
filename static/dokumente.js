@@ -121,7 +121,7 @@ $('docEditForm').onsubmit=async e=>{
 };
 $('docDelete').onclick=async()=>{
  const id=$('docEditForm').elements.namedItem('id').value;
- if(!confirm('Originaldokument endgültig löschen? Der Quellenvermerk in der Entscheidungshistorie bleibt erhalten.'))return;
+ if(!await PHBUI.confirm('Originaldokument endgültig löschen? Der Quellenvermerk in der Entscheidungshistorie bleibt erhalten.'))return;
  try{await api('/api/project-documents/'+id,'DELETE');$('docEditDialog').close();
    await reload();report('Dokument gelöscht.',false,'docPageStatus');}
  catch(err){report(err.message,true,'docEditMessage');}
