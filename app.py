@@ -18,6 +18,7 @@ from offer_parser import parse_pdf, pdf_to_pages, parse_offer
 from receipt_parser import parse_receipt, category_for
 from receipt_parser import parse_receipt, extract_text, CATEGORIES
 from scheduler import schedule
+from assignment_suggestions import suggestions as find_contractor_suggestions
 from schedule_assistant import validate_changes
 from project_documents import (CATEGORIES as DOCUMENT_CATEGORIES, AREAS as DOCUMENT_AREAS,
     STATUSES as DOCUMENT_STATUSES, MAX_BYTES as MAX_DOCUMENT_BYTES,
@@ -1261,11 +1262,48 @@ def operations_to_proposal(ops):
 def home():
     return render_template('index.html')
 
+
+def contractor_suggestions():
+    """Suggest firms from accepted quotes and real contracts only."""
+    contacts={c.id:c for c in db.session.scalars(select(Contractor)).all()}
+    lines={x.id:x for x in db.session.scalars(select(BudgetLine)).all()}
+    sources=[]
+    for offer in db.session.scalars(select(Offer).where(Offer.status.in_(('Angenommen','Beauftragt')))).all():
+        contractor=contacts.get(offer.contractor_id)
+        if not contractor:continue
+        line=lines.get(offer.budget_line_id)
+        details=' '.join([offer.category or '',line.category if line else '',
+                          line.title if line else '',
+                          ' '.join(x.name for x in offer.sections),
+                          ' '.join((x.description or '') for x in offer.positions)])
+        sources.append({'contractor_id':contractor.id,'contractor':contractor.name,
+                        'category':offer.category,'trade':contractor.trade,
+                        'details':details[:2500],
+                        'reason':'Angenommenes Angebot '+(offer.number or '#'+str(offer.id))})
+    for cost in db.session.scalars(select(CostItem).where(
+            CostItem.state.in_(('Beauftragt','Abgeschlossen')),
+            CostItem.offer_id.is_(None))).all():
+        if cost.kind=='Eigenleistung':continue
+        contractor=contacts.get(cost.contractor_id)
+        if not contractor:continue
+        line=lines.get(cost.budget_line_id)
+        sources.append({'contractor_id':contractor.id,'contractor':contractor.name,
+                        'category':cost.category,'trade':contractor.trade,
+                        'details':' '.join([cost.title,line.title if line else '',
+                                            line.category if line else '']),
+                        'task_id':cost.task_id,
+                        'reason':'Beauftragte Kostenposition: '+cost.title})
+    return find_contractor_suggestions(
+        [{'id':t.id,'trade':t.trade,'name':t.name,'company':t.company,
+          'contractor_id':t.contractor_id,'execution_type':t.execution_type} for t in all_tasks()],
+        sources)
+
 @app.get('/api/project')
 def project():
     tasks=serialize(all_tasks())
     contractors=db.session.scalars(select(Contractor).order_by(Contractor.name)).all()
     return jsonify({'start':setting('start'), 'tasks':tasks,
+                    'contractor_suggestions':contractor_suggestions(),
                     'trades':[x.name for x in db.session.scalars(select(Trade).order_by(Trade.name))],
                     'contractors':[{'id':x.id,'name':x.name,'trade':x.trade,'phone':x.phone,'email':x.email} for x in contractors]})
 
@@ -1463,6 +1501,65 @@ def update_task(task_id):
         db.session.rollback();return jsonify(error=str(err)),400
     except Exception:
         db.session.rollback();return jsonify(error='ID bereits vergeben oder Eingabe ungültig.'),400
+
+
+@app.post('/api/tasks/<int:task_id>/complete')
+def task_complete(task_id):
+    t=db.session.get(Task,task_id)
+    if not t:return jsonify(error='Arbeitspaket nicht gefunden.'),404
+    previous_status=t.status
+    previous_progress=t.progress
+    previous_end=t.actual_end
+    if t.status!='Erledigt':
+        t.status='Erledigt'
+        t.progress=100
+        t.actual_end=date.today()
+    else:
+        t.progress=100
+        if not t.actual_end:t.actual_end=date.today()
+    if previous_status!=t.status or previous_progress!=t.progress or previous_end!=t.actual_end:
+        _schedule_audit('Manuell','Arbeitspaket '+t.code+' abgeschlossen.',
+                        [{'action':'update','code':t.code,'name':t.name,
+                          'changes':[{'field':'status','before':previous_status,'after':t.status},
+                                     {'field':'progress','before':previous_progress,'after':t.progress},
+                                     {'field':'actual_end',
+                                      'before':previous_end.isoformat() if previous_end else '',
+                                      'after':t.actual_end.isoformat()}]}])
+        db.session.commit()
+    return jsonify(ok=True,actual_end=t.actual_end.isoformat())
+
+@app.post('/api/tasks/assign-contractors')
+def tasks_assign_contractors():
+    body=request.get_json(silent=True) or {}
+    entries=body.get('assignments')
+    if not isinstance(entries,list) or len(entries)>200:
+        return jsonify(error='Ungültige Firmenzuordnungen.'),400
+    allowed=contractor_suggestions()
+    seen=set()
+    updates=[]
+    try:
+        for item in entries:
+            task_id=int(item['task_id']);cid=int(item['contractor_id'])
+            if task_id in seen:raise ValueError('Arbeitspaket mehrfach ausgewählt.')
+            seen.add(task_id)
+            t=db.session.get(Task,task_id)
+            if not t or t.contractor_id or (t.company or '').strip() or t.execution_type=='Eigenleistung':
+                raise ValueError('Arbeitspaket ist nicht mehr frei zuordenbar.')
+            if cid not in [suggestion['contractor_id'] for suggestion in allowed.get(str(task_id),[])]:
+                raise ValueError('Der Firmenvorschlag ist nicht mehr gültig.')
+            updates.append((t,cid))
+        for t,cid in updates:
+            before=t.contractor_id
+            t.contractor_id=cid
+            if t.execution_type=='Noch offen':t.execution_type='Fremdleistung'
+            _schedule_audit('Manuell','Betrieb für '+t.code+' zugeordnet.',
+                            [{'action':'update','code':t.code,'name':t.name,
+                              'changes':[{'field':'contractor_id','before':before,'after':cid}]}])
+        db.session.commit()
+        return jsonify(ok=True,assigned=len(updates))
+    except (ValueError,TypeError,KeyError) as exc:
+        db.session.rollback()
+        return jsonify(error=str(exc)),409
 
 @app.delete('/api/tasks/<int:task_id>')
 def delete_task(task_id):
@@ -2318,6 +2415,14 @@ def offer_update(offer_id):
         return jsonify(error='Nur ein geprüftes, gelistetes Angebot mit Betrag kann angenommen werden.'),409
     try:
         offer.status=target
+        if target=='Angenommen' and offer.contractor_id is None and offer.vendor.strip() and offer.vendor!='Firma nicht erkannt':
+            company=db.session.scalar(select(Contractor).where(db.func.lower(Contractor.name)==offer.vendor.lower()).limit(1))
+            if company is None:
+                company=Contractor(name=offer.vendor,trade=offer.category or 'Sonstiges',
+                                   notes='Aus angenommenem Angebot angelegt.')
+                db.session.add(company)
+                db.session.flush()
+            offer.contractor_id=company.id
         _sync_offer_costs(offer)
         _sync_current_version(offer)
         db.session.commit()
@@ -2325,6 +2430,19 @@ def offer_update(offer_id):
     except ValueError as exc:
         db.session.rollback();return jsonify(error=str(exc)),409
 
+
+
+@app.get('/api/documents/<int:doc_id>/preview')
+def offer_document_preview(doc_id):
+    item=db.session.get(Document,doc_id)
+    if not item:return jsonify(error='Dokument nicht gefunden.'),404
+    path=DOCUMENT_ROOT/item.stored_name
+    if not path.is_file():return jsonify(error='Originaldatei fehlt.'),404
+    if path.suffix.lower()!='.pdf':return jsonify(error='Vorschau nur für PDF möglich.'),415
+    response=send_file(path,as_attachment=False,mimetype='application/pdf',download_name=item.original_name)
+    response.headers['X-Content-Type-Options']='nosniff'
+    response.headers['Cache-Control']='private, no-store'
+    return response
 
 @app.patch('/api/offer-sections/<int:section_id>')
 def offer_section_update(section_id):
@@ -2701,6 +2819,21 @@ def receipt_download(rid):
     path=RECEIPT_ROOT/r.stored_name
     if not path.is_file():return jsonify(error='Originaldatei fehlt.'),404
     return send_file(path,as_attachment=True,download_name=r.original_name)
+
+
+@app.get('/api/receipts/<int:rid>/preview')
+def receipt_preview(rid):
+    entry=db.session.get(Receipt,rid)
+    if not entry:return jsonify(error='Beleg nicht gefunden.'),404
+    path=RECEIPT_ROOT/entry.stored_name
+    if not path.is_file():return jsonify(error='Originaldatei fehlt.'),404
+    ext=path.suffix.lower()
+    media={'.pdf':'application/pdf','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webp':'image/webp'}
+    if ext not in media:return jsonify(error='Vorschau für diesen Dateityp nicht möglich.'),415
+    response=send_file(path,as_attachment=False,mimetype=media[ext],download_name=entry.original_name)
+    response.headers['X-Content-Type-Options']='nosniff'
+    response.headers['Cache-Control']='private, no-store'
+    return response
 
 @app.patch('/api/receipts/<int:rid>')
 def receipt_edit(rid):
