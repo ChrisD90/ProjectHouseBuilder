@@ -184,8 +184,10 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("kind:'documents'",docs)
         self.assertIn('edit(documentId)',docs)
 
-    def test_cost_document_attachment_has_optional_mapping_dialog(self):
-        page=self.render('kosten')
+    def test_cost_document_attachment_moved_to_complete_document_library(self):
+        costs=self.render('kosten')
+        page=self.render('dokumente')
+        self.assertNotIn('id="costDocumentDialog"',costs)
         self.assertIn('id="openCostUpload"',page)
         self.assertIn('id="costDocumentDialog"',page)
         self.assertIn('id="closeCostUpload"',page)
@@ -196,10 +198,11 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('id="uploadForm"',page[start:end])
         self.assertIn('name="contractor_id"',page[start:end])
         self.assertIn('name="budget_line_id"',page[start:end])
-        js=(STATIC/'costs.js').read_text()
-        self.assertIn("costDocumentDialog.showModal()",js)
-        self.assertIn("costDocumentUploading",js)
-        self.assertIn("await reload()",js)
+        js=(STATIC/'dokumente.js').read_text()
+        self.assertIn('costDocumentDialog.showModal()',js)
+        self.assertIn('costDocumentUploading',js)
+        self.assertIn("api('/api/document-library')",js)
+        self.assertIn('await reload()',js)
 
     def test_global_import_progress_and_review_notifications_are_available_everywhere(self):
         for page in ('index','kosten','angebote','belege','finanzierung',
