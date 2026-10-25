@@ -209,6 +209,10 @@ class SynologyWorkflowTest(unittest.TestCase):
                          '/belege?receipt_id='+str(receipt.id))
         self.assertEqual(by_filename['grundriss.pdf']['source'],'Projektdokumente')
         self.assertEqual(by_filename['Vertrag.pdf']['source'],'Weitere Projektunterlagen')
+        self.assertEqual(by_filename['Vertrag.pdf']['module_url'],'/kosten#kosten-unterlagen')
+        self.assertEqual(by_filename['PV_Angebot.pdf']['module_url'],f'/angebote?offer_id={self.oid}')
+        self.assertNotIn('edit_url',by_filename['Vertrag.pdf'])
+        self.assertNotIn('delete_url',by_filename['Vertrag.pdf'])
         self.assertTrue(by_filename['PV_Angebot.pdf']['view_url'].endswith('/preview'))
         self.assertEqual(self.client.get('/api/document-library').headers['Cache-Control'],'no-store')
 
