@@ -349,9 +349,10 @@ $('upload').onsubmit=async e=>{
    $('upload').reset();
    $('receiptAIHint').hidden=true;
    button.textContent='Dateien im Hintergrund analysieren';
-   $('uploadStatus').textContent=jobs.length+' Beleg(e) in der Warteschlange. Nach Abschluss zur Prüfung öffnen.';
+   $('uploadStatus').textContent=jobs.length+' Beleg(e) fertig analysiert. Jetzt zur Prüfung öffnen.';
    receiptDialog.close();
- }catch(error){$('uploadStatus').textContent='Import nicht gestartet: '+error.message;}
+   await reload();
+ }catch(error){$('uploadStatus').textContent='Import/Analyse fehlgeschlagen: '+error.message;}
  finally{uploading=false;button.disabled=false;}
 };
 document.addEventListener('phb-import-updated',event=>{

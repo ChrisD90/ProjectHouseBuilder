@@ -40,3 +40,18 @@
 ## Spätere Synchronisierung
 
 Der Code für Test und NAS liegt im **selben Branch** `feature/synology-nas`. Du testest Änderungen zuerst lokal und startest nach einem Backup später denselben Commit auf der NAS. Die Testdaten bleiben auf dem Mac und werden **nicht** mit GitHub oder der NAS synchronisiert.
+
+
+## Browser-Regressionsprüfung (optional)
+
+`python3 dev/browser_regressions.py` prüft Drag-and-drop, geschützte abgeschlossene
+Aufgaben, beide Abhängigkeitsrichtungen, Uploads bis zum endgültigen Ergebnis,
+Fehlerfreigabe, Wiederaufnahme nach Navigation und die neun Seiten bei
+360/768/1440 Pixeln. Voraussetzung: Playwright im ausführenden Python und ein
+installiertes Chromium (`chromium` im PATH), außerdem die Projektabhängigkeiten
+in `.venv`. Der Testserver bindet einen automatisch vergebenen freien Loopback-Port und
+verwendet ausschließlich temporäre synthetische Daten. Optional speichert
+`PHB_BROWSER_SCREENSHOTS=/tmp/phb-ui-review python3 dev/browser_regressions.py`
+Screenshots für die visuelle Kontrolle.
+ChatGPT- und Importantworten werden für die Verzögerungs-/Fehlerprüfungen simuliert.
+Für echte OCR- und ChatGPT-Ergebnisse weiterhin Originaldateien fachlich prüfen.

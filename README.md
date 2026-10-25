@@ -275,7 +275,7 @@ Unter **Angebote**, **Rechnungen & Belege** und **Projektdokumente** können jet
 
 Angebote und Rechnungen unterstützen die Wahl **lokal / ChatGPT** wie bisher. ChatGPT wird ausschließlich nach expliziter Freigabe der Plannutzung und mit dem gewählten Modell gestartet. Keine API-Schlüssel, kein kostenpflichtiger Fallback, keine automatische Buchung. Die Hintergrundaufträge verwenden dieselben bestehenden geprüften Importfunktionen, sodass PDF-Entwürfe, Einzelpositionen, Lohnkosten und Rechnungszuordnungen nach Abschluss **unverändert manuell geprüft** werden können.
 
-Unten links im App-Layout erscheint eine kleine **Importübersicht** mit Warteschlangen- und Bearbeitungsstatus für jede Datei. Bei ChatGPT werden echte Übergänge sichtbar: Anfrage vorbereiten, Verbindung zu ChatGPT, Prüfung, eintreffende Antwort, Speicherung des Entwurfs. Es wird kein fiktiver Prozentfortschritt behauptet. Die Aufgaben laufen serverseitig weiter, wenn du zwischen Projektseiten wechselst oder einen Upload-Dialog schließt; der lokale Python-Prozess muss aber geöffnet bleiben. Nach Fertigstellung führt die Benachrichtigung mit **„Prüfen und bearbeiten“** direkt in den jeweiligen Prüf- bzw. Metadaten-Dialog. Optional sind Browser-Benachrichtigungen möglich, sofern der Browser die Erlaubnis dafür erhalten hat.
+Unten links im App-Layout erscheint eine kleine **Importübersicht** mit Warteschlangen- und Bearbeitungsstatus für jede Datei. Bei ChatGPT werden echte Übergänge sichtbar: Anfrage vorbereiten, Verbindung zu ChatGPT, Prüfung, eintreffende Antwort, Speicherung des Entwurfs. Es wird kein fiktiver Prozentfortschritt behauptet. Die Aufgaben laufen serverseitig weiter, wenn du zwischen Projektseiten wechselst; der lokale Python-Prozess muss geöffnet bleiben. Die auslösende Uploadfunktion bleibt bis zum tatsächlichen Ergebnis gesperrt, auch wenn die Warteschlange den Upload bereits angenommen hat. Ein laufender Analysedialog lässt sich bis dahin nicht schließen. Nach Fertigstellung führt die Benachrichtigung mit **„Prüfen und bearbeiten“** direkt in den jeweiligen Prüf- bzw. Metadaten-Dialog. Optional sind Browser-Benachrichtigungen möglich, sofern der Browser die Erlaubnis dafür erhalten hat.
 
 Aufträge, Metadaten und die temporären Originaldateien bleiben lokal unter `private/import-queue/` beziehungsweise in der Datenbank gespeichert. Bei einem Anwendungsneustart werden gerade laufende oder wartende Aufträge **als unterbrochen markiert und niemals heimlich wiederholt** (wichtig bei KI-Nutzungsgrenzen und möglichen schon angelegten Entwürfen). Fehler und unterbrochene Aufträge können vom Nutzer bewusst erneut gestartet werden, solange die temporäre Datei vorhanden ist. Ein erfolgreich abgeschlossener Auftrag entfernt diese temporäre Kopie, während das Original in der regulären Dokumentenablage verbleibt. Temporäre und reguläre Originale sind Bestandteil eines vollständigen Projektbackups.
 
@@ -351,3 +351,39 @@ Vorabbackup. Auf NAS/Docker werden die neuen Tabellen beim Initialisieren angele
 für die neue Excel-Abhängigkeit ist ein Image-Neubau erforderlich. Die Caddy-
 Konfiguration erlaubt Originalvorschauen innerhalb derselben Herkunft (`SAMEORIGIN`),
 während Einbettung durch fremde Websites gesperrt bleibt.
+
+
+## Geschützte Arbeitspakete, Gantt-Verschiebung und Uploads
+
+- **Abgeschlossene Arbeitspakete:** Nach Status „Erledigt“ bleiben ausschließlich
+  Notizen, Vorgänger und Nachfolger bearbeitbar. Name, Firma, Ausführungsart,
+  Dauer, Status, Fortschritt und Ist-Daten sind auch bei direkten API-Aufrufen
+  und KI-Vorschlägen geschützt. Abgeschlossene Pakete können nicht gelöscht
+  oder im Gantt verschoben werden.
+- **Abhängigkeitsrichtung:** „Vorgänger – muss vorher fertig sein“ und
+  „Nachfolger – beginnt danach“ sind zwei getrennte Auswahlen. Beide bearbeiten
+  denselben gerichteten Graphen; Selbstbezüge und Zyklen werden abgewiesen.
+- **Einzelne Arbeitspakete löschen:** Vorhandene Nachfolger verhindern das
+  Löschen nicht mehr. Sie werden mit den bisherigen Vorgängern des gelöschten
+  Pakets verbunden; andere Abhängigkeiten bleiben erhalten und doppelte
+  Verbindungen werden vermieden. Verknüpfte Kosten verhindern weiterhin das
+  Löschen. Die Änderung wird protokolliert.
+- **Gantt:** Offene Balken horizontal ziehen und loslassen, um ihren Start
+  tageweise zu verschieben. Dauer und Abhängigkeiten bleiben erhalten,
+  Nachfolger werden neu berechnet. Escape bricht die Geste ab. Alternativ
+  einen Balken fokussieren und Alt + Pfeil links/rechts verwenden
+  (mit Umschalt sieben Tage). Ein Termin vor Projektstart oder vor dem Ende
+  seiner Vorgänger inklusive Abstand wird mit einer Meldung abgewiesen.
+  Zwischenzeitlich veränderte Pläne werden nicht überschrieben.
+- **Upload-/Analysesicherung:** Angebote, Angebotsversionen, Belege,
+  Projektdokumente und Kostenpläne warten auf das endgültige Ergebnis jeder
+  Datei. HTTP 202 bedeutet lediglich „eingereiht“ und hebt die Sperre nicht auf.
+  Fehler geben die Aktion frei und bleiben sichtbar; erfolgreiche Dateien eines
+  teilweise fehlgeschlagenen Durchgangs bleiben zur Prüfung erhalten.
+  Nach einem Seitenwechsel wird die Sperre aus dem Serverstatus wiederhergestellt.
+  Andere Bereiche bleiben erreichbar. Direkte Analysen, z. B. Kreditdokumente,
+  sperren ihre auslösende Aktion bis zum vollständigen Ergebnis oder Fehler.
+
+Die Änderungen benötigen keine zusätzliche Datenbankmigration. Der Service-Worker-
+Cache wurde aktualisiert. Die Datenprüfung erfolgt weiter auf dem Server;
+Oberflächensperren ersetzen keine Fachvalidierung.

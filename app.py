@@ -430,6 +430,7 @@ def serialize(tasks):
                        'actual_start':t.actual_start.isoformat() if t.actual_start else '',
                        'actual_end':t.actual_end.isoformat() if t.actual_end else '',
                        'status':t.status,'progress':t.progress,'notes':t.notes,'position':t.position,
+                       'successors':[x.code for x in tasks if any(d.predecessor_id==t.id for d in x.dependencies)],
                        'predecessors':[by_id[d.predecessor_id].code for d in t.dependencies if d.predecessor_id in by_id],
                        'start':s.isoformat(),'end':e.isoformat()})
     return output
@@ -1398,7 +1399,7 @@ def contractor_suggestions():
                         'reason':'Beauftragte Kostenposition: '+cost.title})
     return find_contractor_suggestions(
         [{'id':t.id,'trade':t.trade,'name':t.name,'company':t.company,
-          'contractor_id':t.contractor_id,'execution_type':t.execution_type} for t in all_tasks()],
+          'contractor_id':t.contractor_id,'execution_type':t.execution_type} for t in all_tasks() if t.status!='Erledigt'],
         sources)
 
 def contracted_companies():
@@ -1445,6 +1446,7 @@ def tasks_assign_by_company():
             if cid not in allowed:raise ValueError('Die Firma hat kein angenommenes Angebot oder keinen beauftragten Auftrag.')
             task=db.session.get(Task,task_id)
             if not task:raise ValueError('Arbeitspaket nicht gefunden.')
+            if task.status=='Erledigt':raise ValueError('Abgeschlossenes Arbeitspaket darf keiner anderen Firma zugeordnet werden.')
             if task.contractor_id or (task.company or '').strip():
                 raise ValueError('Arbeitspaket hat bereits eine Firma.')
             if task.execution_type=='Eigenleistung':
@@ -1467,7 +1469,7 @@ def tasks_assign_by_company():
 def project():
     tasks=serialize(all_tasks())
     contractors=db.session.scalars(select(Contractor).order_by(Contractor.name)).all()
-    return jsonify({'start':setting('start'), 'tasks':tasks,
+    return jsonify({'start':setting('start'), 'tasks':tasks, 'plan_digest':_schedule_fingerprint(tasks),
                     'contractor_suggestions':contractor_suggestions(),
                     'contracted_companies':contracted_companies(),
                     'trades':[x.name for x in db.session.scalars(select(Trade).order_by(Trade.name))],
@@ -1595,6 +1597,8 @@ def update_project():
 FIELDS={'code','phase','trade','execution_type','name','company','contractor_id','duration','lag_days','earliest_start','actual_start','actual_end','status','progress','notes','position'}
 
 def update_task_fields(t,body):
+    if not isinstance(body,dict):raise ValueError('Arbeitspaket muss ein Objekt sein.')
+    completed=t.status=='Erledigt'
     for f in FIELDS:
         if f not in body:continue
         v=body[f]
@@ -1602,7 +1606,10 @@ def update_task_fields(t,body):
         elif f=='contractor_id':v=int(v) if v not in ('',None) else None
         elif f in ('duration','lag_days','progress','position'):v=int(v)
         else:v=str(v or '')
+        if completed and f!='notes' and getattr(t,f)!=v:
+            raise ValueError('Abgeschlossene Arbeitspakete: nur Notizen und Abhängigkeiten dürfen geändert werden.')
         setattr(t,f,v)
+    if len(t.notes or '')>3000:raise ValueError('Notizen dürfen maximal 3000 Zeichen enthalten.')
     if not t.name.strip():raise ValueError('Aufgabenname fehlt.')
     if not t.code.strip():raise ValueError('ID fehlt.')
     if t.duration<1 or t.lag_days<0 or t.progress<0 or t.progress>100:raise ValueError('Ungültige Dauer, Abstand oder Fortschritt.')
@@ -1611,6 +1618,7 @@ def update_task_fields(t,body):
     if t.contractor_id and not db.session.get(Contractor,t.contractor_id):raise ValueError('Firma existiert nicht.')
 
 def set_predecessors(t,codes):
+    if not isinstance(codes,list) or any(not isinstance(c,str) for c in codes):raise ValueError('Ungültige Vorgängerliste.')
     if len(codes)!=len(set(codes)):raise ValueError('Vorgänger doppelt angegeben.')
     by_code={x.code:x for x in all_tasks()}
     db.session.flush()
@@ -1621,15 +1629,33 @@ def set_predecessors(t,codes):
         if by_code[code].id==t.id:raise ValueError('Eine Aufgabe kann nicht von sich selbst abhängen.')
         t.dependencies.append(Dependency(predecessor_id=by_code[code].id))
 
+def set_successors(task,codes):
+    if not isinstance(codes,list) or any(not isinstance(c,str) for c in codes) or len(codes)!=len(set(codes)):
+        raise ValueError('Ungültige oder doppelte Nachfolger.')
+    tasks=all_tasks()
+    by_code={t.code:t for t in tasks}
+    by_id={t.id:t for t in tasks}
+    if any(c not in by_code or by_code[c].id==task.id for c in codes):
+        raise ValueError('Unbekannter Nachfolger oder Selbstverknüpfung.')
+    for candidate in tasks:
+        linked=any(d.predecessor_id==task.id for d in candidate.dependencies)
+        desired=candidate.code in codes
+        if linked!=desired:
+            predecessors=[by_id[relation.predecessor_id].code for relation in candidate.dependencies if relation.predecessor_id!=task.id]
+            if desired:predecessors.append(task.code)
+            set_predecessors(candidate,predecessors)
+
+
 @app.post('/api/tasks')
 def create_task():
     body=request.get_json(force=True)
     try:
-        task=Task(code='',name='',position=len(all_tasks()))
+        task=Task(code='',name='',position=len(all_tasks()),phase='Allgemein',trade='Sonstiges',execution_type='Noch offen',duration=1,lag_days=0,status='Offen',progress=0,notes='',company='')
         db.session.add(task)
         update_task_fields(task,body)
         db.session.flush()
         set_predecessors(task,body.get('predecessors',[]))
+        if 'successors' in body:set_successors(task,body['successors'])
         schedule(all_tasks(),parse_date(setting('start')))
         _schedule_audit('Manuell','Arbeitspaket '+task.code+' erstellt.',
                         [{'action':'add','code':task.code,'name':task.name}])
@@ -1650,11 +1676,12 @@ def update_task(task_id):
         update_task_fields(t,body)
         db.session.flush()
         if 'predecessors' in body:set_predecessors(t,body['predecessors'])
+        if 'successors' in body:set_successors(t,body['successors'])
         schedule(all_tasks(),parse_date(setting('start')))
         current=next(x for x in _schedule_snapshot() if x['id']==task_id)
         differences=[{'field':k,'before':previous[k],'after':current[k]}
                      for k in ('code','name','phase','trade','execution_type','duration',
-                               'lag_days','predecessors','status','progress','notes',
+                               'lag_days','predecessors','successors','status','progress','notes',
                                'earliest_start','actual_start','actual_end')
                      if previous[k]!=current[k]]
         if differences:
@@ -1715,7 +1742,7 @@ def tasks_assign_contractors():
             if task_id in seen:raise ValueError('Arbeitspaket mehrfach ausgewählt.')
             seen.add(task_id)
             t=db.session.get(Task,task_id)
-            if not t or t.contractor_id or (t.company or '').strip() or t.execution_type=='Eigenleistung':
+            if not t or t.status=='Erledigt' or t.contractor_id or (t.company or '').strip() or t.execution_type=='Eigenleistung':
                 raise ValueError('Arbeitspaket ist nicht mehr frei zuordenbar.')
             if cid not in [suggestion['contractor_id'] for suggestion in allowed.get(str(task_id),[])]:
                 raise ValueError('Der Firmenvorschlag ist nicht mehr gültig.')
@@ -1737,12 +1764,65 @@ def tasks_assign_contractors():
 def delete_task(task_id):
     t=db.session.get(Task,task_id)
     if not t:return jsonify(error='Aufgabe nicht gefunden.'),404
-    dependents=db.session.scalars(select(Dependency).where(Dependency.predecessor_id==task_id)).all()
-    if dependents:return jsonify(error='Andere Aufgaben hängen davon ab. Zuerst die Abhängigkeiten entfernen.'),409
-    _schedule_audit('Manuell','Arbeitspaket '+t.code+' entfernt.',
-                    [{'action':'remove','code':t.code,'name':t.name}])
-    db.session.delete(t);db.session.commit()
-    return jsonify({'ok':True})
+    if t.status=='Erledigt':return jsonify(error='Abgeschlossene Arbeitspakete können nicht gelöscht werden.'),409
+    if db.session.scalar(select(CostItem.id).where(CostItem.task_id==task_id).limit(1)):
+        return jsonify(error='Arbeitspaket ist mit Kosten verknüpft. Zuerst die Zuordnung entfernen.'),409
+    try:
+        before=_schedule_snapshot()
+        predecessors=[d.predecessor_id for d in t.dependencies]
+        followers=db.session.scalars(select(Task).join(Dependency,Dependency.task_id==Task.id).where(Dependency.predecessor_id==task_id)).all()
+        for follower in followers:
+            existing={d.predecessor_id for d in follower.dependencies if d.predecessor_id!=task_id}
+            for relation in list(follower.dependencies):
+                if relation.predecessor_id==task_id:follower.dependencies.remove(relation)
+            for pred_id in predecessors:
+                if pred_id not in existing:
+                    follower.dependencies.append(Dependency(predecessor_id=pred_id));existing.add(pred_id)
+        code,name=t.code,t.name
+        db.session.flush();db.session.delete(t);db.session.flush()
+        schedule(all_tasks(),parse_date(setting('start')))
+        changed=[{'action':'remove','code':code,'name':name}]
+        after={r['id']:r for r in _schedule_snapshot()}
+        for old in before:
+            if old['id'] in after and old['predecessors']!=after[old['id']]['predecessors']:
+                changed.append({'action':'update','code':old['code'],'name':old['name'],
+                    'changes':[{'field':'predecessors','before':old['predecessors'],'after':after[old['id']]['predecessors']}]})
+        _schedule_audit('Manuell','Arbeitspaket '+code+' entfernt; Nachfolger mit bisherigen Vorgängern verbunden.',changed)
+        db.session.commit();return jsonify(ok=True,rewired=len(followers))
+    except (ValueError,TypeError) as exc:
+        db.session.rollback();return jsonify(error=str(exc)),409
+
+
+@app.post('/api/tasks/<int:task_id>/move')
+def move_task(task_id):
+    task=db.session.get(Task,task_id)
+    if not task:return jsonify(error='Arbeitspaket nicht gefunden.'),404
+    if task.status=='Erledigt':return jsonify(error='Abgeschlossene Arbeitspakete lassen sich nicht verschieben.'),409
+    body=request.get_json(silent=True) or {}
+    if not isinstance(body,dict):return jsonify(error='Ungültige Verschiebung.'),400
+    try:
+        before=_schedule_snapshot()
+        prior=next(t for t in before if t['id']==task_id)
+        if body.get('plan_digest')!=_schedule_fingerprint(before):
+            return jsonify(error='Bauzeitenplan wurde zwischenzeitlich geändert. Bitte neu laden.'),409
+        target=parse_date(body.get('start'))
+        if not target:raise ValueError('Startdatum fehlt.')
+        task.earliest_start=target
+        db.session.flush()
+        current=_schedule_snapshot()
+        moved=next(t for t in current if t['id']==task_id)
+        if moved['start']!=target.isoformat():
+            raise ValueError('Vorgänger, Abstand oder Projektstart erlauben diesen Termin nicht. Frühester Start: '+moved['start'])
+        old_by_id={t['id']:t for t in before}
+        changes=[]
+        for row in current:
+            old=old_by_id[row['id']]
+            fields=[{'field':k,'before':old[k],'after':row[k]} for k in ('earliest_start','start','end') if old[k]!=row[k]]
+            if fields:changes.append({'action':'update' if row['id']==task_id else 'shift','code':row['code'],'name':row['name'],'changes':fields})
+        if changes:_schedule_audit('Manuell','Arbeitspaket '+prior['code']+' im Gantt verschoben.',changes)
+        db.session.commit();return jsonify(ok=True,start=moved['start'],end=moved['end'])
+    except (ValueError,TypeError) as exc:
+        db.session.rollback();return jsonify(error=str(exc)),409
 
 @app.get('/api/export.csv')
 def export_csv():
@@ -4195,6 +4275,18 @@ def enqueue_import_jobs():
     _start_import_worker()
     for job in jobs:_import_queue.put(job.id)
     return jsonify(jobs=result,batch_id=batch),202
+
+
+@app.get('/api/import-jobs/batches/<batch_id>')
+def import_batch_status(batch_id):
+    _ensure_import_recovery()
+    if len(batch_id)!=32 or any(c not in '0123456789abcdef' for c in batch_id):
+        return jsonify(error='Ungültiger Importdurchgang.'),400
+    jobs=db.session.scalars(select(ImportJob).where(ImportJob.batch_id==batch_id).order_by(ImportJob.id)).all()
+    if not jobs:return jsonify(error='Importdurchgang nicht gefunden.'),404
+    response=jsonify(jobs=[dict(_import_json(j),review_url=_import_result(j)) for j in jobs])
+    response.headers['Cache-Control']='no-store'
+    return response
 
 
 @app.get('/api/import-jobs')

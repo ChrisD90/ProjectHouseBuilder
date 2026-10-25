@@ -179,8 +179,9 @@ $('projectDocumentUpload').onsubmit=async e=>{
      kind:'documents',files:form.elements.namedItem('files').files,
      analysisMode:'local',fields
    });
-   form.reset();report(jobs.length+' Projektunterlage(n) in der Warteschlange.');
+   form.reset();report(jobs.length+' Projektunterlage(n) fertig eingelesen.');
    uploadDialog.close();
+   await reload();
  }catch(err){report(err.message,true);}
  finally{btn.disabled=false;uploadRunning=false;}
 };

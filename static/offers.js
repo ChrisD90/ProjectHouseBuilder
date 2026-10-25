@@ -170,6 +170,7 @@
       isBusy:()=>offerUploading
     });
   const openWorkflow=(review=false)=>{
+    if(offerUploading)return;
     workflow.classList.toggle('is-reviewing',Boolean(review));
     $('anotherOffer').hidden=!review;
     if(!workflow.open)workflowFlow.open({step:review?1:0});
@@ -495,6 +496,7 @@
   async function update(id,payload) {await request(offerUrl(id)+'/draft',{method:'PATCH',data:payload})}
   async function changeStatus(id,status) {await request(offerUrl(id),{method:'PATCH',data:{status}});await reload()}
   function switchMethod(which) {
+    if(offerUploading)return;
     const isPdf=which==='pdf';
     $('offerImportForm').hidden=!isPdf; $('offerManualForm').hidden=isPdf;
     $('offerMethodPdf').classList.toggle('is-selected',isPdf);
@@ -530,19 +532,22 @@
         kind:'offers',files,analysisMode:mode,model
       });
       form.reset();
-      inform('offerImportStatus',jobs.length+' PDF(s) in der Warteschlange. Die Verarbeitung läuft nacheinander im Hintergrund.');
+      inform('offerImportStatus',jobs.length+' PDF(s) fertig analysiert. Über die Importübersicht prüfen und bearbeiten.');
       workflow.close();
+      await reload();
     } catch(err) {inform('offerImportStatus','Fehler: '+err.message,true)}
     finally{offerUploading=false;submit.disabled=false;}
   });
   $('offerManualForm').addEventListener('submit',async event=>{
-    event.preventDefault();const form=event.currentTarget;
+    event.preventDefault();if(offerUploading)return;const form=event.currentTarget;
+    offerUploading=true;const submit=form.querySelector('button[type=submit]');submit.disabled=true;
     inform('offerManualStatus','Angebot wird gespeichert …');
     try {
       await request('/api/offers/manual',{method:'POST',data:readForm(form)});
       form.reset();await reload();
       inform('offerManualStatus','Angebot gespeichert. Du kannst es im Hintergrund vergleichen oder annehmen.');
     } catch(err) {inform('offerManualStatus','Fehler: '+err.message,true)}
+    finally{offerUploading=false;submit.disabled=false;}
   });
   document.addEventListener('click',async e=>{
     const add=e.target.closest('[data-position-add]');
@@ -607,7 +612,7 @@
         model,fields:{offer_id:String(id)}
       });
       form.reset();
-      status.textContent='PDF eingereiht. Du kannst weiterarbeiten; die Prüfung erfolgt nach Abschluss über die Importübersicht.';
+      status.textContent='PDF analysiert. Neue Version über die Importübersicht prüfen.';
     }catch(err){status.textContent='Fehler: '+err.message;}
     finally{button.disabled=false;}
   });

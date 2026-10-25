@@ -9,12 +9,12 @@
 {% set phb_active = 'dokumente' %}{% set phb_title = 'Projektdokumente' %}{% include '_shell_open.html' %}
 <main id="phbMain" class="phb-main">
 <div class="phb-page-intro phb-action-header"><div><span class="phb-page-kicker">Projekt / Dokumentation</span><h1>Projektdokumente</h1>
-<p>Allgemeine Projektunterlagen hier verwalten; Angebote, Auftragsbestätigungen, Rechnungen, Kredite und Kostenanhänge darunter nach Fachbereich geordnet und ausschließlich zur Ansicht.</p></div><div class="phb-header-actions"><button type="button" id="openDocUpload" class="primary">+ Allgemeines Dokument hochladen</button></div></div><p id="docPageStatus" class="docs-feedback" role="status"></p>
+<p>Allgemeine Projektunterlagen hier verwalten; Angebote, Auftragsbestätigungen, Rechnungen, Kredite und Kostenanhänge darunter nach Fachbereich geordnet und ausschließlich zur Ansicht.</p></div><div class="phb-header-actions"><button type="button" id="openDocUpload" data-import-kind="documents" class="primary">+ Allgemeines Dokument hochladen</button></div></div><p id="docPageStatus" class="docs-feedback" role="status"></p>
 <dialog id="docUploadDialog" class="phb-workflow-dialog phb-document-workflow" aria-labelledby="docUploadTitle">
 <div class="phb-workflow-head"><div><span class="phb-page-kicker">Projektdokumente</span><h2 id="docUploadTitle">Allgemeines Projektdokument hochladen</h2><p>Einmal erfassen, anschließend die Details im Dialog prüfen.</p></div><button type="button" id="closeDocUpload" class="subtle">Schließen</button></div>
 <div class="phb-workflow-body">
 <section class="panel docs-upload"><h2>Dokument ablegen</h2>
-<form id="projectDocumentUpload" class="docs-form">
+<form id="projectDocumentUpload" data-import-kind="documents" class="docs-form">
 <label class="docs-wide">Dateien (PDF, DOCX, TXT oder Bild, bis 8 Dateien à 12 MB)<input name="files" type="file" multiple required accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"></label>
 <label class="docs-wide">Titel<input name="title" maxlength="200" placeholder="z. B. Treppenplanung Variante 2"></label>
 <label>Kategorie<select name="category" id="docUploadCategory"></select></label>

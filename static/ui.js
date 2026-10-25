@@ -29,7 +29,14 @@
   let seq=0,shown=false;
   const inflight=new Map();
   let topIndicator,overlay,titleNode,overlayText,screenStatus;
-  const buttonCounts=new WeakMap();
+  const buttonCounts=new WeakMap(),actionLocks=new WeakMap();
+  function lockAction(button){
+    if(!(button instanceof HTMLButtonElement))return ()=>{};
+    const saved=actionLocks.get(button)||{count:0,disabled:button.disabled};
+    saved.count++;actionLocks.set(button,saved);button.disabled=true;button.dataset.phbActionLock='true';
+    return ()=>{saved.count--;if(!saved.count){button.disabled=saved.disabled;delete button.dataset.phbActionLock;actionLocks.delete(button);}};
+  }
+
   const labelFor=(path,method,form)=>{
     if(path.includes('/api/ai/schedule/chat'))return 'ChatGPT prüft deine Bauzeitenplanung …';
     if(path.includes('/api/ai/schedule'))return 'ChatGPT erstellt deinen Bauzeitenplan …';
@@ -51,8 +58,8 @@
   };
   function classify(url,method,form){
     const expensive=/\/api\/contractors\/research|\/api\/ai\/|\/api\/financing\/loans\/ai\/extract|\/api\/backup\/(manual|create)|\/api\/tasks\/initialize|\/api\/tasks\/clear/.test(url);
-    const upload=method==='POST'&&form instanceof FormData&&form.has('file');
-    return {long:expensive||upload,message:labelFor(url,method,form)};
+    const upload=method==='POST'&&form instanceof FormData&&(form.has('file')||form.has('files'));
+    return {long:expensive||upload,lock:method!=='GET'&&method!=='HEAD',message:labelFor(url,method,form)};
   }
   function update(){
     if(!topIndicator)return;
@@ -90,6 +97,7 @@
     const id=++seq;
     const btn=(Date.now()-lastActionAt<1200&&lastAction?.isConnected)?lastAction:null;
     const state={...info,visible:false,button:btn};
+    state.release=info.lock?lockAction(btn):()=>{};
     inflight.set(id,state);active++;
     const delay=info.long?130:320;
     state.timer=setTimeout(()=>{
@@ -103,7 +111,7 @@
   function end(id){
     const state=inflight.get(id);
     if(!state)return;
-    clearTimeout(state.timer);
+    clearTimeout(state.timer);state.release();
     inflight.delete(id);active=Math.max(0,active-1);
     if(state.visible)markButton(state.button,false);
     shown=[...inflight.values()].some(x=>x.visible);
@@ -131,7 +139,10 @@
     const id=start(classify(pathname,method,form));
     try{
       const result=nativeFetch(input,init);
-      return Promise.resolve(result).finally(()=>end(id));
+      return Promise.resolve(result).then(async response=>{
+        if(method!=='GET'&&method!=='HEAD'&&response.headers.get('Content-Type')?.includes('application/json'))await response.clone().text();
+        return response;
+      }).finally(()=>end(id));
     }catch(error){end(id);throw error;}
   };
   function setup(){

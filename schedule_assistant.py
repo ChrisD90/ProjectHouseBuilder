@@ -109,6 +109,9 @@ def validate_changes(existing, proposal):
             code = _text(item.get('code'), 'Arbeitspaket-ID', 30)
             if code not in before or code in seen:
                 raise ValueError('Arbeitspaket nicht vorhanden oder doppelt geändert: ' + code)
+            if future[code].get('status')=='Erledigt':
+                if action=='remove' or any(key not in ('notes','predecessors') and value!=future[code].get(key) for key,value in (item.get('fields') if isinstance(item.get('fields'),dict) else {}).items()):
+                    raise ValueError('Abgeschlossene Arbeitspakete: nur Notizen und Abhängigkeiten ändern.')
             if action == 'remove':
                 old = future.pop(code)
                 canonical.append({'action': 'remove', 'code': code})

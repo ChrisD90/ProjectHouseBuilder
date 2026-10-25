@@ -80,15 +80,15 @@
  $('planUploadForm').onsubmit=async e=>{
   e.preventDefault();if(busy)return;
   const form=e.currentTarget,data=new FormData(form);data.set('kind','costplans');
-  const opts={method:'POST',body:data};
   try{
    if(data.get('analysis_mode')==='ai'){
     const choice=window.PHBAI?.selection();if(!choice)throw Error('Bitte ChatGPT verbinden.');
-    data.set('model',choice.model);data.set('plan_only','true');opts.headers={'X-PHB-AI':'1'};
+    data.set('model',choice.model);data.set('plan_only','true');
    }
    busy=true;form.querySelector('button[type=submit]').disabled=true;$('planUploadMessage').textContent='Dateien werden hochgeladen …';
-   const r=await fetch('/api/import-jobs',opts),d=await r.json();if(!r.ok)throw Error(d.error||'Upload fehlgeschlagen.');
-   form.reset();upload.close();$('planImportNotice').textContent='Analyse läuft in der Importübersicht. Anschließend „Prüfen und bearbeiten“ wählen.';
+   await window.PHBImports.enqueue({kind:'costplans',files:form.elements.namedItem('files').files,
+    analysisMode:data.get('analysis_mode'),model:data.get('model')||''});
+   form.reset();upload.close();await list();$('planImportNotice').textContent='Analyse abgeschlossen. Kostenplanung jetzt prüfen und bearbeiten.';
   }catch(error){$('planUploadMessage').textContent=error.message;}
   finally{busy=false;form.querySelector('button[type=submit]').disabled=false;}
  };

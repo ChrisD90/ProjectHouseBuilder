@@ -415,7 +415,7 @@ body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-status{
 }
 /* The Gantt task editor and responsive navigation have precedence over the floating assistant. */
 body.phb-app.phb-page-zeitplan.phb-nav-open :is(.schedule-chat-fab,.schedule-chat-popover),
-body.phb-app.phb-page-zeitplan:has(#overlay:not(.hidden)) :is(.schedule-chat-fab,.schedule-chat-popover){
+body.phb-app.phb-page-zeitplan:has(#overlay[open]) :is(.schedule-chat-fab,.schedule-chat-popover){
   display:none!important
 }
 /* Heavy API action feedback moves above the floating assistant instead of hiding the composer. */
@@ -599,3 +599,31 @@ body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-head-action
    Several legacy layouts declare display:flex/grid on [hidden] elements, which
    otherwise overrides the HTML hidden attribute and leaks closed dialogs/panels. */
 body.phb-app [hidden]{display:none!important}
+
+/* Shared alignment contract for page actions, panels and editor fields. */
+body.phb-app :is(.phb-action-header,.master-panel-head,.panelbar){gap:16px;min-width:0}
+body.phb-app :is(.phb-header-actions,.master-reference-actions,.toolbar,.filters){align-items:center;gap:10px;min-width:0}
+body.phb-app :is(.phb-action-header,.master-panel-head)>:first-child{min-width:0}
+body.phb-app :is(.phb-workflow-head,.master-dialog-head,.dialog-head,.modalhead){display:flex;align-items:center;justify-content:space-between;gap:16px}
+body.phb-app :is(.phb-workflow-head,.master-dialog-head,.dialog-head,.modalhead) :is(h2,h3){margin:0}
+body.phb-app :is(.formgrid,.dialog-grid,.master-fields) label{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:0}
+body.phb-app :is(.formgrid,.dialog-grid,.master-fields) :is(input:not([type=checkbox]):not([type=radio]),select:not([multiple])){min-height:40px;width:100%;min-width:0}
+body.phb-app :is(.dialog-actions,.master-dialog-actions,.phb-workflow-actions){display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px}
+body.phb-app :is(.dialog-actions,.master-dialog-actions)>.danger{margin-right:auto}
+body.phb-app button[data-import-busy=true],body.phb-app button[data-phb-action-lock=true]{cursor:progress;opacity:.65}
+body.phb-app .phb-task-dialog{width:min(920px,96vw);max-height:92dvh;border:0;padding:0;border-radius:14px;overflow:auto;background:var(--ui-surface);color:var(--ui-ink)}
+body.phb-app .phb-task-dialog>.modal{position:static;display:block;width:100%;max-width:none;max-height:none;overflow:visible;margin:0;border-radius:0}
+body.phb-app #taskLockNotice{padding:0 24px;color:var(--ui-muted)}
+body.phb-app #gantt .bar:not(.done){cursor:grab;touch-action:pan-y}
+body.phb-app #gantt .bar.is-dragging{cursor:grabbing;z-index:4;box-shadow:0 0 0 3px var(--ui-ring);opacity:.85}
+body.phb-app #gantt .bar.done{cursor:pointer}
+body.phb-app #gantt .bar:focus-visible{outline:3px solid var(--ui-accent);outline-offset:3px}
+@media(max-width:650px){
+ body.phb-app :is(.phb-header-actions,.master-reference-actions,.phb-workflow-head,.master-dialog-head,.dialog-head,.modalhead){flex-wrap:wrap}
+ body.phb-app .phb-header-actions{justify-content:flex-start;width:100%}
+ body.phb-app :is(.formgrid,.dialog-grid,.master-fields){grid-template-columns:minmax(0,1fr)}
+ body.phb-app :is(.formgrid,.dialog-grid,.master-fields) .wide{grid-column:1/-1}
+}
+/* A horizontal wrapping header avoids vertical flex-basis gaps on narrow screens. */
+body.phb-app .phb-action-header{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center}
+@media(max-width:650px){body.phb-app .phb-action-header>div:first-child{flex-basis:100%}}

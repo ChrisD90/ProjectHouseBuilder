@@ -10,6 +10,21 @@
    if(Array.isArray(arr))arr.slice(-200).forEach(x=>finished.add(Number(x)));
  }catch(_){}
  let records=[],pending=false,panelOpen=false,activePoll=null;
+ const submitting=new Set(),working=new Set(),disabledStates=new WeakMap();
+ function syncLocks(){
+  const kinds=new Set([...working,...submitting,...records.filter(alive).map(j=>j.kind)]);
+  document.querySelectorAll('[data-import-kind],form[data-version-upload]').forEach(node=>{
+   const kind=node.dataset.importKind||(node.matches('form[data-version-upload]')?'versions':'');
+   const locked=kinds.has(kind);
+   const controls=node.matches('form')?[...node.querySelectorAll('input,select,textarea,button')]:[node];
+   for(const control of controls){
+    if(locked){if(!disabledStates.has(control))disabledStates.set(control,control.disabled);control.disabled=true;control.dataset.importBusy='true';control.setAttribute('aria-busy','true');}
+    else if(disabledStates.has(control)){control.disabled=disabledStates.get(control);disabledStates.delete(control);delete control.dataset.importBusy;control.removeAttribute('aria-busy');}
+   }
+  });
+ }
+ document.addEventListener('click',e=>{syncLocks();if(e.target.closest('[data-import-busy]')){e.preventDefault();e.stopImmediatePropagation();}},true);
+ document.addEventListener('submit',e=>{if(e.target.dataset.importBusy==='true'){e.preventDefault();e.stopImmediatePropagation();}},true);
  const labels={costplans:'Kostenplanung',offers:'Angebot',receipts:'Rechnung',documents:'Projektdokument'};
  const finishedState=j=>['Fertig','Fehler','Unterbrochen'].includes(j.status);
  const alive=j=>j.status==='Wartend'||j.status==='Läuft';
@@ -115,7 +130,7 @@
      const result=await fetch('/api/import-jobs',{cache:'no-store'});
      if(!result.ok)throw Error('Status nicht erreichbar');
      const data=await result.json();
-     records=data.jobs||[];
+     records=data.jobs||[];syncLocks();
      const newlyCompleted=records.filter(j=>finishedState(j)&&!finished.has(j.id));
      // Show at most one new toast per poll. Keep all completed tasks visible in the feed.
      for(const j of newlyCompleted){
@@ -152,7 +167,14 @@
    poll().then(schedule);
    document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll().then(schedule);});
  }
- async function enqueue({kind,files,analysisMode='local',model='',fields={}}){
+ async function enqueue(options){
+  const kind=options.kind;
+  if(submitting.has(kind)||working.has(kind)||records.some(j=>j.kind===kind&&alive(j)))throw Error('Diese Analyse läuft bereits. Bitte Ergebnis oder Fehler abwarten.');
+  submitting.add(kind);
+  try{return await processBatch(options);}
+  finally{submitting.delete(kind);working.delete(kind);await poll();syncLocks();}
+ }
+ async function processBatch({kind,files,analysisMode='local',model='',fields={}}){
    const selected=Array.from(files||[]);
    if(!selected.length)throw Error('Bitte mindestens eine Datei auswählen.');
    if(selected.length>8)throw Error('Maximal acht Dateien pro Durchgang.');
@@ -168,13 +190,30 @@
    if('Notification' in window&&Notification.permission==='default'){
      try{Notification.requestPermission().catch(()=>{});}catch(_){}
    }
+   syncLocks();
    const response=await fetch('/api/import-jobs',{
      method:'POST',headers:analysisMode==='ai'?{'X-PHB-AI':'1'}:{},body:data});
    const result=await response.json();
    if(!response.ok)throw Error(result.error||'Import konnte nicht gestartet werden.');
    panelOpen=true;
    await poll();schedule();
-   return result.jobs;
+   working.add(kind);syncLocks();
+   let failures=0;
+   while(true){
+    let jobs;
+    try{
+     const status=await fetch('/api/import-jobs/batches/'+result.batch_id,{cache:'no-store'});
+     const payload=await status.json();if(!status.ok)throw Error(payload.error||'Importstatus nicht erreichbar.');jobs=payload.jobs;
+     if(!Array.isArray(jobs)||jobs.length!==result.jobs.length||jobs.some(j=>!result.jobs.some(original=>original.id===j.id)||!['Wartend','Läuft','Fertig','Übernommen','Ausgeblendet','Fehler','Unterbrochen'].includes(j.status)))throw Error('Ungültiger Importstatus.');
+     failures=0;
+    }catch(error){if(++failures>=3)throw Error('Verbindung zum Importstatus unterbrochen. Die Importübersicht zeigt den letzten Stand; der Server kann weiterarbeiten.');}
+    if(jobs&&jobs.every(j=>!alive(j))){
+     const failed=jobs.filter(j=>['Fehler','Unterbrochen'].includes(j.status));
+     if(failed.length)throw Error(failed.map(j=>j.filename+': '+(j.error||j.stage)).join(' · ')+' Erfolgreiche Dateien bleiben zur Prüfung erhalten.');
+     return jobs;
+    }
+    await new Promise(resolve=>setTimeout(resolve,1000));
+   }
  }
  window.PHBImports={enqueue,refresh:poll,open:()=>{panelOpen=true;render();}};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});
