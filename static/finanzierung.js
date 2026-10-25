@@ -91,6 +91,7 @@ $('loanAiAnalyze').onclick=async()=>{
  catch(e){$('loanAiStatus').textContent=e.message;return;}
  if(loanAiBusy)return;
  loanAiBusy=true;
+ PHBUI.dialogs.busy($('loanDialog'),true);
  button.disabled=true;
  $('closeLoan').disabled=true;
  $('loanSaveButton').disabled=true;
@@ -132,6 +133,7 @@ $('loanAiAnalyze').onclick=async()=>{
  }catch(e){$('loanAiStatus').textContent=e.message;}
  finally{
   loanAiBusy=false;
+  PHBUI.dialogs.busy($('loanDialog'),false);
   button.disabled=false;
   $('closeLoan').disabled=false;
   $('loanSaveButton').disabled=false;
