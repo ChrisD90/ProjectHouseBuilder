@@ -239,8 +239,99 @@
     if(isMoneyField(e.target)){const n=parseMoney(e.target.value);if(Number.isFinite(n))e.target.value=formatMoney(n);}
   },true);
 
+  // Shared, opt-in dialog controller. Handles consistent closure, dirty forms,
+  // accessible status notices and one pending save per dialog.
+  const dialogs={
+    init(root=document){
+      const managed=[...root.querySelectorAll('dialog[data-phb-dialog]')];
+      for(const dialog of managed){
+        if(dialog.dataset.phbInitialized==='1')continue;
+        dialog.dataset.phbInitialized='1';
+        dialog.classList.add('phb-managed-dialog');
+        const form=dialog.querySelector('form[data-phb-dirty]');
+        let baseline='',busy=false,armed=false,confirming=false;
+        const signature=()=>!form?'':JSON.stringify(
+          [...form.elements].filter(el=>el.name&&!el.disabled).map(el=>{
+            if(el.type==='checkbox'||el.type==='radio')return [el.name,el.checked,el.value];
+            if(el.type==='file')return [el.name,[...el.files].map(f=>[f.name,f.size,f.lastModified])];
+            return [el.name,el.value];
+          }));
+        const arm=()=>{baseline=signature();armed=true;};
+        const observer=new MutationObserver(()=>{
+          if(dialog.open){
+            armed=false;queueMicrotask(arm);
+          }else{
+            armed=false;confirming=false;busy=false;
+            dialog.removeAttribute('aria-busy');
+          }
+        });
+        observer.observe(dialog,{attributes:true,attributeFilter:['open']});
+        dialog.addEventListener('phb-dialog-saved',arm);
+        dialog.addEventListener('phb-dialog-busy',event=>{
+          busy=Boolean(event.detail?.busy);
+          dialog.setAttribute('aria-busy',String(busy));
+        });
+        const dirty=()=>armed&&form&&signature()!==baseline;
+        const requestClose=async()=>{
+          if(busy||confirming)return;
+          if(dirty()){
+            confirming=true;
+            let discard=false;
+            try{discard=await ask('Ungespeicherte Änderungen verwerfen?',{
+              title:'Änderungen verwerfen?',confirm:'Verwerfen'});}
+            finally{confirming=false;}
+            if(!discard)return;
+          }
+          dialog.close();
+        };
+        // Capture close-button clicks before page-specific onClick callbacks
+        // can close a dirty editor without confirmation.
+        dialog.addEventListener('click',event=>{
+          const button=event.target.closest('[data-phb-close]');
+          if(!button||!dialog.contains(button))return;
+          if(busy||dirty()){
+            event.preventDefault();event.stopImmediatePropagation();
+            void requestClose();
+          }
+        },true);
+        dialog.addEventListener('cancel',event=>{
+          if(event.defaultPrevented)return;
+          if(busy||dirty()){
+            event.preventDefault();
+            void requestClose();
+          }
+        });
+        dialog.addEventListener('close',()=>{armed=false;});
+      }
+    },
+    busy(dialog,active){
+      if(dialog)dialog.dispatchEvent(new CustomEvent('phb-dialog-busy',{
+        detail:{busy:Boolean(active)}}));
+    },
+    saved(dialog){
+      if(dialog)dialog.dispatchEvent(new Event('phb-dialog-saved'));
+    },
+    notice(dialog,message,error=false){
+      if(!dialog)return;
+      let slot=dialog.querySelector('[data-phb-dialog-notice]');
+      if(!slot){
+        slot=document.createElement('p');
+        slot.dataset.phbDialogNotice='';
+        slot.className='phb-dialog-notice';
+        slot.setAttribute('role','status');
+        const footer=dialog.querySelector('[data-phb-footer]');
+        (footer?.parentElement||dialog).insertBefore(slot,footer||null);
+      }
+      slot.textContent=String(message);
+      slot.classList.toggle('is-error',Boolean(error));
+    }
+  };
+  if(document.readyState==='loading')
+    document.addEventListener('DOMContentLoaded',()=>dialogs.init(),{once:true});
+  else dialogs.init();
+
   window.PHBUI={
-    setTheme,currentTheme:selectedTheme,
+    setTheme,currentTheme:selectedTheme,dialogs,
     confirm:message=>ask(message),
     alert:message=>ask(message,{title:'Hinweis',confirm:'OK',cancel:false}),
     prompt:(message,initial='')=>ask(message,{title:'Eingabe',confirm:'Übernehmen',initial}),
