@@ -1,5 +1,6 @@
 """Regression tests for mixed scanned PDFs and local OCR tool diagnostics."""
 import io
+import os
 import unittest
 from unittest.mock import patch
 from pypdf import PdfWriter
@@ -45,6 +46,40 @@ class HybridOCRTests(unittest.TestCase):
         self.assertFalse(state['ready'])
         self.assertFalse(state['tools']['tesseract'])
         self.assertFalse(state['tools']['pdftoppm'])
+
+    def test_old_container_image_has_actionable_missing_ocr_diagnostic(self):
+        with patch('shutil.which',return_value=None),patch.dict(os.environ,{'PHB_OCR_IMAGE':''}):
+            diagnostic=ocr_diagnostics()
+        self.assertFalse(diagnostic['ready'])
+        self.assertEqual(diagnostic['image_marker'],'')
+        self.assertIn('reason',diagnostic)
+        self.assertIn('environment',diagnostic)
+        self.assertEqual(diagnostic['tools'],{'tesseract':False,'pdftoppm':False})
+
+    def test_ocr_runtime_checks_both_languages_and_build_marker(self):
+        class Done:
+            def __init__(self,stdout='',stderr=''):
+                self.stdout=stdout
+                self.stderr=stderr
+                self.returncode=0
+        def pretend_run(args,**kwargs):
+            if '--list-langs' in args:
+                return Done(stderr='List of available languages (3):\\neng\\ndeu\\nosd\\n')
+            if '--version' in args:
+                return Done(stderr='tesseract 5.5.0\\n')
+            return Done(stderr='pdftoppm version 25.1.0\\n')
+        with patch('shutil.which',side_effect=lambda name:'/usr/bin/'+name),\\
+             patch('receipt_parser.subprocess.run',side_effect=pretend_run),\\
+             patch.dict(os.environ,{'PHB_OCR_IMAGE':'deu-eng-poppler-test'}):
+            result=ocr_diagnostics()
+        self.assertTrue(result['ready'])
+        self.assertEqual(result['environment'],'container')
+        self.assertEqual(result['image_marker'],'deu-eng-poppler-test')
+        self.assertIn('deu',result['languages'])
+        self.assertIn('eng',result['languages'])
+        self.assertIn('tesseract',result['versions'])
+        self.assertIn('pdftoppm',result['versions'])
+
 
 
 if __name__=='__main__':unittest.main()
