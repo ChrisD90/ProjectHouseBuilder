@@ -371,9 +371,8 @@ $('book').onclick=async()=>{
   const fields=inputs();
   await api('/api/receipts/'+selected,{
    method:'PATCH',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify(fields)
+   body:JSON.stringify({...fields,book_now:true})
   });
-  await api('/api/receipts/'+selected+'/book',{method:'POST'});
  },$('book'),'Rechnung gebucht. Zahlungen kannst du anschließend separat erfassen.');
 };
 $('unbook').onclick=async()=>{
