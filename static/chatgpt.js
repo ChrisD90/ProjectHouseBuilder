@@ -123,7 +123,7 @@
     }catch(e){message(e.message);showDiagnostics('Schritt: Anmeldung starten\nUrsache: '+e.message);connect.disabled=false;}
   };
   disconnect.onclick=async()=>{
-    if(!confirm('ChatGPT-Verbindung lokal trennen und die Sitzung widerrufen?'))return;
+    if(!await PHBUI.confirm('ChatGPT-Verbindung lokal trennen und die Sitzung widerrufen?'))return;
     try{const res=await api('/api/ai/disconnect','POST',{});
       $('phbAINoCredits').checked=false;
       await refresh();message(res.warning||'Verbindung getrennt.');
