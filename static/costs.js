@@ -60,7 +60,7 @@ async function removeEditor(){if(!current||!confirm('Diesen Eintrag wirklich lö
 el('addOwnWork').onclick=()=>openEditor('cost',null,{kind:'Eigenleistung',category:'Eigenleistung',state:'Schätzung'});
 el('budgetSearch').addEventListener('input',render);el('editForm').addEventListener('submit',saveEditor);el('remove').addEventListener('click',removeEditor);el('closeDialog').addEventListener('click',()=>el('editor').close());el('cancelDialog').addEventListener('click',()=>el('editor').close());
 for(const type of ['Budget','Cost','Funding'])el('add'+(type==='Budget'?'Line':type)).addEventListener('click',()=>openEditor(type.toLowerCase()));
-el('editBudget').addEventListener('click',async()=>{let v=prompt('Wie hoch ist das Projektbudget in Euro?',state.summary?.budget??0);if(v===null)return;let num=Number(String(v).replace(/\./g,'').replace(',','.'));if(!Number.isFinite(num)||num<0){alert('Bitte einen gültigen Euro-Betrag eingeben.');return}try{await api('/api/budget/config',{method:'PATCH',body:JSON.stringify({budget:num})});await reload()}catch(e){alert(e.message)}});
+
 reload().catch(e=>alert('Kostenverwaltung kann nicht geladen werden: '+e.message));
 
 const costDocumentDialog=el('costDocumentDialog');
