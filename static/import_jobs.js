@@ -35,6 +35,13 @@
        note.onclick=()=>{window.focus();if(j.review_url)location.assign(j.review_url);};}catch(_){}
    }
  }
+ async function dismissJob(id){
+   const response=await fetch('/api/import-jobs/'+id+'/dismiss',{method:'POST'});
+   const payload=await response.json();
+   if(!response.ok)throw Error(payload.error||'Benachrichtigung konnte nicht entfernt werden.');
+   $('phbImportToast').hidden=true;
+   await poll();schedule();
+ }
  function jobNode(j){
    const card=document.createElement('article');card.className='phb-import-job';
    const row=document.createElement('div');row.className='phb-import-job-head';
@@ -74,6 +81,17 @@
      };
      actions.append(button);
    }
+   if(finishedState(j)){
+     const dismiss=document.createElement('button');
+     dismiss.type='button';dismiss.textContent='Ausblenden';
+     dismiss.title='Nur diese Benachrichtigung entfernen; Dokument und gespeicherte Daten bleiben erhalten.';
+     dismiss.onclick=async()=>{
+       dismiss.disabled=true;
+       try{await dismissJob(j.id);}
+       catch(error){alert(error.message);dismiss.disabled=false;}
+     };
+     actions.append(dismiss);
+   }
    if(actions.childElementCount)card.append(actions);
    return card;
  }
@@ -85,6 +103,7 @@
      failed.length?failed.length+' Hinweis(e)':done.length?done.length+' fertig':'Keine Aufträge';
    $('phbImportToggle').setAttribute('aria-expanded',String(panelOpen));
    $('phbImportFeed').hidden=!panelOpen;
+   $('phbImportDismissAll').hidden=!records.some(finishedState);
    const list=$('phbImportList');list.replaceChildren();
    for(const j of records.slice(0,18))list.append(jobNode(j));
    if(!records.length){const p=document.createElement('p');p.textContent='Keine Importe vorhanden.';list.append(p);}
@@ -118,6 +137,18 @@
  function setup(){
    $('phbImportToggle').onclick=()=>{panelOpen=!panelOpen;render();};
    $('phbImportClose').onclick=()=>{panelOpen=false;render();};
+   $('phbImportDismissAll').onclick=async()=>{
+     if(!confirm('Alle fertig verarbeiteten, fehlgeschlagenen und unterbrochenen Importmeldungen ausblenden? Bereits importierte Dokumente und Daten bleiben erhalten.'))return;
+     const button=$('phbImportDismissAll');button.disabled=true;
+     try{
+       const response=await fetch('/api/import-jobs/dismiss-completed',{method:'POST'});
+       const result=await response.json();
+       if(!response.ok)throw Error(result.error||'Ausblenden fehlgeschlagen');
+       $('phbImportToast').hidden=true;
+       await poll();schedule();
+     }catch(error){alert(error.message);}
+     finally{button.disabled=false;}
+   };
    poll().then(schedule);
    document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll().then(schedule);});
  }
