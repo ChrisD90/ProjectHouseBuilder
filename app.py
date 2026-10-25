@@ -1374,12 +1374,75 @@ def contractor_suggestions():
           'contractor_id':t.contractor_id,'execution_type':t.execution_type} for t in all_tasks()],
         sources)
 
+def contracted_companies():
+    """Available firms from accepted offers or independently commissioned work.
+
+    Deliberately does not guess which task belongs to which trade: the user
+    chooses one or more eligible tasks for a specific contracted company.
+    """
+    result={}
+    contractors={c.id:c for c in db.session.scalars(select(Contractor)).all()}
+    for offer in db.session.scalars(select(Offer).where(
+            Offer.status.in_(('Angenommen','Beauftragt')))).all():
+        c=contractors.get(offer.contractor_id)
+        if not c:continue
+        row=result.setdefault(c.id,{'contractor_id':c.id,'name':c.name,
+                                    'trade':c.trade,'sources':[]})
+        row['sources'].append('Angebot '+(offer.number or '#'+str(offer.id))+
+                              ' · '+(offer.category or c.trade))
+    for cost in db.session.scalars(select(CostItem).where(
+            CostItem.state.in_(('Beauftragt','Abgeschlossen')),
+            CostItem.offer_id.is_(None))).all():
+        c=contractors.get(cost.contractor_id)
+        if not c or cost.kind=='Eigenleistung':continue
+        row=result.setdefault(c.id,{'contractor_id':c.id,'name':c.name,
+                                    'trade':c.trade,'sources':[]})
+        row['sources'].append('Beauftragt: '+cost.title)
+    return sorted(result.values(),key=lambda c:c['name'].casefold())
+
+
+@app.post('/api/tasks/assign-by-company')
+def tasks_assign_by_company():
+    body=request.get_json(silent=True) or {}
+    assignments=body.get('assignments')
+    if not isinstance(assignments,list) or len(assignments)>200:
+        return jsonify(error='Ungültige Aufgabenliste.'),400
+    allowed={c['contractor_id'] for c in contracted_companies()}
+    seen=set();updates=[]
+    try:
+        for entry in assignments:
+            task_id=int(entry['task_id'])
+            cid=int(entry['contractor_id'])
+            if task_id in seen:raise ValueError('Ein Arbeitspaket kann nur einer Firma zugeordnet werden.')
+            seen.add(task_id)
+            if cid not in allowed:raise ValueError('Die Firma hat kein angenommenes Angebot oder keinen beauftragten Auftrag.')
+            task=db.session.get(Task,task_id)
+            if not task:raise ValueError('Arbeitspaket nicht gefunden.')
+            if task.contractor_id or (task.company or '').strip():
+                raise ValueError('Arbeitspaket hat bereits eine Firma.')
+            if task.execution_type=='Eigenleistung':
+                raise ValueError('Eigenleistungen dürfen nicht automatisch fremdvergeben werden.')
+            updates.append((task,cid))
+        for task,cid in updates:
+            task.contractor_id=cid
+            if task.execution_type=='Noch offen':task.execution_type='Fremdleistung'
+            _schedule_audit('Manuell','Betrieb für '+task.code+' ausdrücklich ausgewählt.',
+                [{'action':'update','code':task.code,'name':task.name,
+                  'changes':[{'field':'contractor_id','before':None,'after':cid}]}])
+        db.session.commit()
+        return jsonify(ok=True,assigned=len(updates))
+    except (ValueError,TypeError,KeyError) as exc:
+        db.session.rollback()
+        return jsonify(error=str(exc)),409
+
+
 @app.get('/api/project')
 def project():
     tasks=serialize(all_tasks())
     contractors=db.session.scalars(select(Contractor).order_by(Contractor.name)).all()
     return jsonify({'start':setting('start'), 'tasks':tasks,
                     'contractor_suggestions':contractor_suggestions(),
+                    'contracted_companies':contracted_companies(),
                     'trades':[x.name for x in db.session.scalars(select(Trade).order_by(Trade.name))],
                     'contractors':[{'id':x.id,'name':x.name,'trade':x.trade,'phone':x.phone,'email':x.email} for x in contractors]})
 
