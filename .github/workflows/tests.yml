@@ -34,6 +34,7 @@ jobs:
           node --check static/finanzierung.js
           node --check static/shell.js
           node --check static/daten.js
+          node --check static/chatgpt.js
           node --check static/sw.js
   local-compose:
     runs-on: ubuntu-latest
