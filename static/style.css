@@ -182,3 +182,15 @@ body.phb-app #overlay .modalhead #complete[hidden]{display:none!important}
 .phb-company-proposals .company-task-choice input{flex:none;margin-top:2px;width:17px;height:17px;accent-color:#0e7782}
 .phb-company-proposals .company-task-choice strong,.phb-company-proposals .company-task-choice small{display:block}
 .phb-company-proposals .company-task-choice small{color:var(--ui-muted,#62777f);margin-top:3px}
+
+/* Gantt: full data list and audit log live in spacious, on-demand dialogs. */
+.schedule-overlay-dialog{border:1px solid #d9e5e9;background:var(--ui-surface,#fff);color:var(--ui-ink,#163541);border-radius:16px;width:min(1500px,calc(100vw - 24px));max-width:none;max-height:90dvh;overflow:hidden;padding:0;box-shadow:0 22px 70px #001d354b}
+.schedule-overlay-dialog::backdrop{background:#122f41a6}
+.schedule-overlay-dialog .modalhead{display:flex;justify-content:space-between;gap:14px;align-items:center}
+.schedule-overlay-dialog .modalhead button{font-size:13px;border:1px solid #d9e5e9;padding:9px 13px}
+.schedule-task-list-dialog .tablewrap{max-height:calc(90dvh - 98px);overflow:auto;overscroll-behavior:contain}
+.schedule-task-list-dialog .tablewrap table{min-width:1120px}
+.schedule-task-list-dialog .tablewrap thead th{position:sticky;top:0;z-index:2}
+#scheduleHistoryDialog{width:min(1000px,calc(100vw - 24px));overflow:auto}
+#scheduleHistoryDialog .schedule-history-content{padding:18px 24px;max-height:calc(90dvh - 90px);overflow:auto}
+#scheduleHistoryDialog .schedule-history-entries{max-height:none}
