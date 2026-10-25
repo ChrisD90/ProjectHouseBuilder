@@ -21,7 +21,14 @@ function renderTemplatePreview(){
 let templatePreviewBusy=false;
 function visible(){return project.tasks.filter(t=>(!$('phase').value||t.phase===$('phase').value)&&(!$('workType').value||t.execution_type===$('workType').value)&&[t.code,t.name,t.phase,t.trade,t.company,t.execution_type].some(v=>String(v).toLowerCase().includes($('filter').value.toLowerCase())))}
 function render(){let ts=project.tasks;$('projectStart').value=project.start;$('count').textContent=ts.length;$('end').textContent=fmt(ts.reduce((x,t)=>t.end>x?t.end:x,project.start));$('ongoing').textContent=ts.filter(t=>t.status==='In Arbeit').length;$('selfCount').textContent=ts.filter(t=>t.execution_type==='Eigenleistung').length;$('externalCount').textContent=ts.filter(t=>t.execution_type==='Fremdleistung').length;$('progress').textContent=(ts.length?Math.round(ts.reduce((s,t)=>s+t.progress,0)/ts.length):0)+' %';let phase=$('phase').value;let phases=[...new Set(ts.map(t=>t.phase))];$('phase').innerHTML='<option value="">Alle Bauphasen</option>'+phases.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');$('phase').value=phases.includes(phase)?phase:'';$('suggestionCount').textContent=(project.contracted_companies||[]).length?'('+(project.contracted_companies||[]).length+' Firmen)':'';renderGantt();renderTable();renderTemplatePreview()}
-$('openTaskList').onclick=()=>$('taskListDialog').showModal();
+const taskListFlow=PHBFlow.manage({
+ dialog:'taskListDialog',dismiss:['closeTaskList'],track:false
+});
+const companyAssignmentFlow=PHBFlow.manage({
+ dialog:'companyProposalsDialog',forms:['companyProposalRows'],
+ dismiss:['companyProposalsCancel']
+});
+$('openTaskList').onclick=()=>taskListFlow.open();
 $('closeTaskList').onclick=()=>$('taskListDialog').close();
 function renderTable(){let rows=visible().map(t=>`<tr data-id="${t.id}"><td>${escapeHtml(t.code)}</td><td>${escapeHtml(t.phase)}</td><td>${escapeHtml(t.trade)}</td><td class="tasktitle">${escapeHtml(t.name)}</td><td><span class="work-chip ${t.execution_type==='Eigenleistung'?'self':t.execution_type==='Fremdleistung'?'external':'unknown'}">${escapeHtml(t.execution_type||'Noch offen')}</span></td><td>${escapeHtml(assignedCompany(t)||'–')}</td><td>${escapeHtml(t.predecessors.join(', ')||'–')}</td><td>${fmt(t.start)}</td><td>${fmt(t.end)}</td><td><span class="status ${t.status.replace(' ','-')}">${escapeHtml(t.status)}</span></td><td>${t.progress}%</td></tr>`).join('');$('taskRows').innerHTML=rows||'<tr><td colspan="11">Keine passenden Aufgaben</td></tr>';document.querySelectorAll('#taskRows tr[data-id]').forEach(el=>el.onclick=()=>openTask(Number(el.dataset.id)))}
 function renderGantt(){let list=visible();let isMonth=$('scale').value==='month';let size=isMonth?7:26;let earliest=list.reduce((x,t)=>t.start<x?t.start:x,project.start);let latest=list.reduce((x,t)=>t.end>x?t.end:x,addDays(project.start,365));let origin=firstMonday(earliest);if(isMonth)origin=origin.slice(0,8)+'01';let days=Math.min(2200,Math.max(120,diff(origin,latest)+35));let width=days*size;let step=isMonth?30:7;let axis=[];for(let d=0;d<days;d+=step){let current=addDays(origin,d);let label=isMonth?new Date(current+'T12:00:00Z').toLocaleDateString('de-DE',{month:'short',year:'2-digit',timeZone:'UTC'}):fmt(current).slice(0,5);axis.push(`<span class="axis" style="left:${d*size}px">${label}</span>`)}let timelineStyle=`width:${width}px;background-size:${step*size}px 100%`;let html=`<div class="gantt-header"><div class="gantt-label">Aufgaben / Gewerke</div><div class="gantt-timeline" style="${timelineStyle}">${axis.join('')}</div></div>`;
@@ -107,7 +114,7 @@ $('companySuggestions').onclick=()=>{
       const choices=freeTasks.map(task=>{
         const match=[task.code,task.name,task.phase,task.trade].join(' ').toLocaleLowerCase('de');
         return `<label class="company-task-choice" data-task-text="${escapeHtml(match)}">
-           <input type="checkbox" data-company-id="${company.contractor_id}" data-company-task="${task.id}">
+           <input type="checkbox" name="company_task_${company.contractor_id}" data-company-id="${company.contractor_id}" data-company-task="${task.id}">
            <span><strong>${escapeHtml(task.code)} · ${escapeHtml(task.name)}</strong>
            <small>${escapeHtml(task.phase)} · ${escapeHtml(task.trade)}</small></span>
          </label>`;
@@ -139,7 +146,7 @@ $('companySuggestions').onclick=()=>{
   }
   filterCompanies();
   updateCompanySelectionCounts();
-  $('companyProposalsDialog').showModal();
+  companyAssignmentFlow.open();
 };
 $('companySearch').addEventListener('input',filterCompanies);
 $('companyProposalRows').addEventListener('input',e=>{
