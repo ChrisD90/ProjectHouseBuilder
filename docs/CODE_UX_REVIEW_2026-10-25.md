@@ -40,7 +40,9 @@ Querschnittsprüfung der acht Anwendungsseiten (Bauzeitenplan, Angebote, Belege,
 
 ### CSS-Architektur
 
-Die Oberfläche nutzt gleichzeitig `style.css`, `shell.css`, `ui.css`, `workflow-dialogs.css` sowie seitenspezifische Styles. Darin liegen übergreifende `header`, `.panel`, `.modalhead`, `.actions`, `button` und `[hidden]`-Regeln. Genau diese Überschneidungen erklären wiederholte Darstellungsprobleme. Der aktuelle Fix stärkt den sichtbaren Zustand, ist aber keine vollständige CSS-Neustrukturierung.
+Die Oberfläche nutzt gleichzeitig `style.css`, `shell.css`, `ui.css`, `workflow-dialogs.css` sowie seitenspezifische Styles.
+
+Eine statische CSS-Bestandsaufnahme zeigte ausgeglichene geschweifte Klammern in allen zwölf untersuchten eigenen Stylesheets, aber viele wiederholte Selektoren (beispielsweise 43 in `style.css`, 44 in `angebote.css`, 20 in `ui.css` und 10 in `dokumente.css`). Ein Teil stammt bewusst aus Media Queries; die Wiederholungen sind deshalb kein pauschaler Syntaxfehler, erschweren aber die Prüfung der tatsächlich wirksamen Regeln. Darin liegen übergreifende `header`, `.panel`, `.modalhead`, `.actions`, `button` und `[hidden]`-Regeln. Genau diese Überschneidungen erklären wiederholte Darstellungsprobleme. Der aktuelle Fix stärkt den sichtbaren Zustand, ist aber keine vollständige CSS-Neustrukturierung.
 
 Empfohlene dauerhafte Reihenfolge: **Tokens & Reset → Shell/Navigation → gemeinsame UI-Komponenten → seitenbezogene Komponenten**. Für Dialoge einen einzigen Stilvertrag (`.phb-dialog`, `.phb-dialog__header`, `.phb-dialog__body`, `.phb-dialog__footer`), einheitliche Responsive-Breakpoints, `min-width:0` für verschachtelte Grids und eine kleine Komponentenbibliothek statt immer neuer CSS-Sonderfälle. Langfristig CSS-Duplikate entfernen und visuelle Browser-Regressionstests für Desktop, Tablet, Mobil und Dunkelmodus ergänzen.
 
