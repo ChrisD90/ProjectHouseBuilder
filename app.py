@@ -13,6 +13,7 @@ import shutil
 import ipaddress
 import zipfile
 from datetime import date, datetime
+from json import JSONDecodeError
 from financials import effective_offer, forecast_lines, monetary_totals
 from offer_parser import parse_pdf, pdf_to_pages, parse_offer
 from receipt_parser import parse_receipt, category_for
@@ -3401,30 +3402,229 @@ from financing import register_financing
     root=ROOT, ai_request_required=_ai_request_required,
     chatgpt=chatgpt, extract_json=extract_json)
 
+
+# Backup settings belong to the server; a browser can only select reachable/mounted paths.
+_BACKUP_RESTORE_LOCK=Lock()
+_BACKUP_RESTORE_STATE={'state':'idle','message':'','result':None}
+
+
+def _backup_pg():
+    return not DATABASE_URL.startswith('sqlite:')
+
+
+def _backup_config():
+    if _backup_pg():
+        import server_backups
+        return server_backups.configuration()
+    import backup_manager
+    cfg=backup_manager.load_config()
+    return {'folder':cfg['folder'],'keep':cfg['keep'],'relative_folder':str(cfg['folder'])}
+
+
+def _backup_archive_by_name(name):
+    if _backup_pg():
+        import server_backups
+        return server_backups.selected_archive(name)
+    import backup_manager
+    import re
+    if not isinstance(name,str) or not re.fullmatch(r'ProjectHouseBuilder_Backup_[0-9_\\-]+\\.zip',name):
+        raise ValueError('Ungültiger Backup-Dateiname.')
+    archive=_backup_config()['folder']/name
+    if not archive.is_file() or archive.is_symlink():raise ValueError('Backup nicht gefunden.')
+    return archive
+
+
+def _verify_selected_backup(path):
+    if _backup_pg():
+        import server_backups
+        return server_backups.verify(path)
+    import backup_manager
+    return backup_manager.verify_backup(path)
+
+
+def _backup_create():
+    if _backup_pg():
+        import server_backups
+        return server_backups.create(db.engine.url)
+    import backup_manager
+    return backup_manager.make_backup()
+
+
 @app.get('/api/backup/status')
 def backup_status():
-    import backup_manager
-    if not DATABASE_URL.startswith('sqlite:'):
-        return jsonify(configured=False, error='Manuelle ZIP-Backups sind für die lokale SQLite-Version vorgesehen.')
     try:
-        config=backup_manager.load_config()
-        files=sorted(config['folder'].glob(backup_manager.PREFIX+'*.zip'),reverse=True)
-        return jsonify(configured=True,folder=str(config['folder']),keep=config['keep'],
-                       latest=files[0].name if files else None, count=len(files))
-    except (ValueError, OSError) as e:
-        return jsonify(configured=False,error=str(e))
+        cfg=_backup_config()
+        if _backup_pg():
+            import server_backups
+            entries=server_backups.existing()
+            root=str(server_backups._root())
+        else:
+            import backup_manager
+            entries=[{'filename':p.name,'bytes':p.stat().st_size}
+                     for p in sorted(cfg['folder'].glob(backup_manager.PREFIX+'*.zip'),reverse=True)
+                     if p.is_file()]
+            root=None
+        return jsonify(configured=True,backend='postgres' if _backup_pg() else 'sqlite',
+                       folder=str(cfg['folder']),relative_folder=cfg['relative_folder'],
+                       storage_root=root,keep=cfg['keep'],count=len(entries),
+                       latest=entries[0]['filename'] if entries else None,
+                       backups=entries)
+    except (ValueError,OSError,KeyError,JSONDecodeError) as exc:
+        return jsonify(configured=False,backend='postgres' if _backup_pg() else 'sqlite',
+                       error=str(exc),backups=[])
+
+
+@app.get('/api/backup/folders')
+def backup_folders():
+    if not _backup_pg():
+        return jsonify(error='Auf dem Mac den vollständigen lokalen Ordnerpfad eingeben.'),409
+    import server_backups
+    try:return jsonify(server_backups.browse(request.args.get('folder','')))
+    except (ValueError,OSError) as exc:return jsonify(error=str(exc)),400
+
+
+@app.post('/api/backup/configure')
+def backup_configure():
+    body=request.get_json(silent=True) or {}
+    try:
+        folder=body.get('folder','')
+        keep=int(body.get('keep',30))
+        if _backup_pg():
+            import server_backups
+            target=server_backups.configure(folder,keep)
+        else:
+            import backup_manager
+            target=backup_manager.configure(folder,keep)
+        return jsonify(ok=True,folder=str(target))
+    except (ValueError,OSError,TypeError) as exc:
+        return jsonify(error='Backupziel nicht gespeichert: '+str(exc)),400
+
 
 @app.post('/api/backup/create')
 def create_manual_backup():
-    import backup_manager
-    if not DATABASE_URL.startswith('sqlite:'):
-        return jsonify(error='Für PostgreSQL bitte den separaten PostgreSQL-Backupweg verwenden.'),409
+    if _BACKUP_RESTORE_LOCK.locked():
+        return jsonify(error='Wiederherstellung läuft. Keine Sicherung möglich.'),409
     try:
-        destination=backup_manager.make_backup()
-        return jsonify(ok=True, filename=destination.name, verified=True,
-                       bytes=destination.stat().st_size),201
-    except (ValueError, OSError, sqlite3.DatabaseError, zipfile.BadZipFile) as e:
-        return jsonify(error='Backup nicht erstellt: '+str(e)),409
+        path=_backup_create()
+        return jsonify(ok=True,filename=path.name,verified=True,bytes=path.stat().st_size),201
+    except (ValueError,OSError,sqlite3.DatabaseError,zipfile.BadZipFile) as exc:
+        return jsonify(error='Backup nicht erstellt: '+str(exc)),409
+
+
+# Two-stage restore: first validate archive, then require an explicit typed confirmation.
+_BACKUP_RESTORE_UPLOADS=ROOT/'private'/'.restore-uploads'
+
+
+@app.post('/api/backup/inspect')
+def backup_inspect():
+    try:
+        if 'file' in request.files:
+            upload=request.files['file']
+            if not upload.filename.lower().endswith('.zip'):
+                raise ValueError('Bitte ein ZIP-Backup auswählen.')
+            _BACKUP_RESTORE_UPLOADS.mkdir(mode=0o700,parents=True,exist_ok=True)
+            key=secrets.token_hex(16)
+            archive=_BACKUP_RESTORE_UPLOADS/(key+'.zip')
+            with archive.open('xb') as output:
+                size=0
+                while True:
+                    block=upload.stream.read(1024*1024)
+                    if not block:break
+                    size+=len(block)
+                    if size>1024**3:raise ValueError('Maximal 1 GB Uploadgröße.')
+                    output.write(block)
+            try:
+                manifest=_verify_selected_backup(archive)
+            except Exception:
+                archive.unlink(missing_ok=True)
+                raise
+            return jsonify(ok=True,ref='upload:'+key,created=manifest.get('created'),
+                           files=len(manifest.get('files',{})),verified=True)
+        body=request.get_json(silent=True) or {}
+        archive=_backup_archive_by_name(body.get('filename',''))
+        manifest=_verify_selected_backup(archive)
+        return jsonify(ok=True,ref='stored:'+archive.name,created=manifest.get('created'),
+                       files=len(manifest.get('files',{})),verified=True)
+    except (ValueError,OSError,zipfile.BadZipFile,KeyError) as exc:
+        return jsonify(error='Sicherung nicht bestätigt: '+str(exc)),400
+
+
+def _restore_archive(ref):
+    if isinstance(ref,str) and ref.startswith('stored:'):
+        return _backup_archive_by_name(ref[7:])
+    if isinstance(ref,str) and ref.startswith('upload:'):
+        import re
+        key=ref[7:]
+        if re.fullmatch('[a-f0-9]{32}',key):
+            archive=_BACKUP_RESTORE_UPLOADS/(key+'.zip')
+            if archive.is_file() and not archive.is_symlink():return archive
+    raise ValueError('Bitte zuerst ein Backup prüfen.')
+
+
+def _run_restore(ref):
+    global _BACKUP_RESTORE_STATE
+    try:
+        with app.app_context():
+            archive=_restore_archive(ref)
+            _verify_selected_backup(archive)
+            if _backup_pg():
+                import server_backups
+                outcome=server_backups.restore_postgres(archive,db.engine.url,
+                                                        lambda: (db.session.remove(),db.engine.dispose()))
+                db.engine.dispose()
+            else:
+                import backup_manager
+                safety=backup_manager.make_backup()
+                _verify_selected_backup(safety)
+                db.session.remove();db.engine.dispose()
+                rollback=backup_manager.restore(archive,yes=True)
+                db.engine.dispose()
+                outcome={'restored':True,'safety_backup':safety.name,
+                         'previous_files':str(rollback)}
+        _BACKUP_RESTORE_STATE={'state':'done','message':'Wiederherstellung abgeschlossen. Bitte Anwendung neu laden und Daten prüfen.',
+                               'result':outcome}
+    except Exception:
+        app.logger.exception('Wiederherstellung fehlgeschlagen.')
+        _BACKUP_RESTORE_STATE={'state':'failed',
+            'message':'Wiederherstellung fehlgeschlagen. Projektstand und Sicherheitsbackup prüfen; Serverprotokoll enthält Details.',
+            'result':None}
+    finally:
+        if isinstance(ref,str) and ref.startswith('upload:'):
+            try:_restore_archive(ref).unlink(missing_ok=True)
+            except Exception:pass
+        _BACKUP_RESTORE_LOCK.release()
+
+
+@app.post('/api/backup/restore')
+def backup_restore_start():
+    body=request.get_json(silent=True) or {}
+    if body.get('confirmation')!='BACKUP WIEDERHERSTELLEN':
+        return jsonify(error='Zur Bestätigung BACKUP WIEDERHERSTELLEN eingeben.'),400
+    try:
+        archive=_restore_archive(body.get('ref',''))
+        _verify_selected_backup(archive)
+        _backup_config() # Safety backup destination must be configured and available.
+    except (ValueError,OSError,KeyError,zipfile.BadZipFile) as exc:
+        return jsonify(error='Keine Wiederherstellung gestartet: '+str(exc)),409
+    if not _BACKUP_RESTORE_LOCK.acquire(blocking=False):
+        return jsonify(error='Es läuft bereits eine Wiederherstellung.'),409
+    global _BACKUP_RESTORE_STATE
+    _BACKUP_RESTORE_STATE={'state':'running','message':'Sicherheitsbackup, Prüfung und Wiederherstellung laufen.',
+                           'result':None}
+    Thread(target=_run_restore,args=(body['ref'],),daemon=True,name='phb-restore').start()
+    return jsonify(started=True),202
+
+
+@app.get('/api/backup/restore/status')
+def backup_restore_status():
+    return jsonify(_BACKUP_RESTORE_STATE)
+
+
+@app.before_request
+def prevent_requests_during_restore():
+    if _BACKUP_RESTORE_LOCK.locked() and request.path not in (
+            '/api/backup/restore/status',) and not request.path.startswith('/static/'):
+        return jsonify(error='Wiederherstellung läuft. Bitte keine Änderungen vornehmen.'),503
 
 
 # One daemon worker, shared across invoice, offer and project-document jobs.
