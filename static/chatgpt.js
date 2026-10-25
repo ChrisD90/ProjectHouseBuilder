@@ -13,6 +13,11 @@
   const check=$('phbAINoCredits');
   const warning=check.closest('label');
   let consentSaving=false;
+  const aiFlow=PHBFlow.manage({
+    dialog:'phbAIDialog',
+    dismiss:[dialog.querySelector('.phb-ai-close')],
+    isBusy:()=>consentSaving,track:false
+  });
   const message=msg=>{$('phbAIMessage').textContent=msg;};
   const diagnosticBox=document.createElement('details');
   diagnosticBox.className='phb-ai-diagnostics';
@@ -115,7 +120,7 @@
   }
   function selection(){
     if (!state.sharing)throw Error('Bitte zuerst über den Header mit ChatGPT verbinden und die Plannutzung erlauben.');
-    if(!state.credits_acknowledged){if(!dialog.open)dialog.showModal();throw Error('Bitte die Credit-Warnung einmalig nach der Anmeldung bestätigen.');}
+    if(!state.credits_acknowledged){if(!dialog.open)aiFlow.open();throw Error('Bitte die Credit-Warnung einmalig nach der Anmeldung bestätigen.');}
     if(!model.value)throw Error('Kein ChatGPT-Modell verfügbar. Bitte Verbindung prüfen.');
     return {model:model.value,plan_only:true};
   }
