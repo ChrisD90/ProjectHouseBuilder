@@ -1,6 +1,6 @@
 FROM python:3.12-slim-trixie
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 WEB_CONCURRENCY=1 GUNICORN_THREADS=2
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng poppler-utils postgresql-client-17 && rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 WEB_CONCURRENCY=1 GUNICORN_THREADS=2 PHB_OCR_IMAGE=deu-eng-poppler-2026-10
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng poppler-utils postgresql-client-17 && command -v tesseract && command -v pdftoppm && tesseract --list-langs 2>&1 | grep -qx deu && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt && useradd -u 10001 -m project
