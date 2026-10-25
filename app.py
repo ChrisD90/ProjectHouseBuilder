@@ -1374,12 +1374,75 @@ def contractor_suggestions():
           'contractor_id':t.contractor_id,'execution_type':t.execution_type} for t in all_tasks()],
         sources)
 
+def contracted_companies():
+    """Available firms from accepted offers or independently commissioned work.
+
+    Deliberately does not guess which task belongs to which trade: the user
+    chooses one or more eligible tasks for a specific contracted company.
+    """
+    result={}
+    contractors={c.id:c for c in db.session.scalars(select(Contractor)).all()}
+    for offer in db.session.scalars(select(Offer).where(
+            Offer.status.in_(('Angenommen','Beauftragt')))).all():
+        c=contractors.get(offer.contractor_id)
+        if not c:continue
+        row=result.setdefault(c.id,{'contractor_id':c.id,'name':c.name,
+                                    'trade':c.trade,'sources':[]})
+        row['sources'].append('Angebot '+(offer.number or '#'+str(offer.id))+
+                              ' · '+(offer.category or c.trade))
+    for cost in db.session.scalars(select(CostItem).where(
+            CostItem.state.in_(('Beauftragt','Abgeschlossen')),
+            CostItem.offer_id.is_(None))).all():
+        c=contractors.get(cost.contractor_id)
+        if not c or cost.kind=='Eigenleistung':continue
+        row=result.setdefault(c.id,{'contractor_id':c.id,'name':c.name,
+                                    'trade':c.trade,'sources':[]})
+        row['sources'].append('Beauftragt: '+cost.title)
+    return sorted(result.values(),key=lambda c:c['name'].casefold())
+
+
+@app.post('/api/tasks/assign-by-company')
+def tasks_assign_by_company():
+    body=request.get_json(silent=True) or {}
+    assignments=body.get('assignments')
+    if not isinstance(assignments,list) or len(assignments)>200:
+        return jsonify(error='Ungültige Aufgabenliste.'),400
+    allowed={c['contractor_id'] for c in contracted_companies()}
+    seen=set();updates=[]
+    try:
+        for entry in assignments:
+            task_id=int(entry['task_id'])
+            cid=int(entry['contractor_id'])
+            if task_id in seen:raise ValueError('Ein Arbeitspaket kann nur einer Firma zugeordnet werden.')
+            seen.add(task_id)
+            if cid not in allowed:raise ValueError('Die Firma hat kein angenommenes Angebot oder keinen beauftragten Auftrag.')
+            task=db.session.get(Task,task_id)
+            if not task:raise ValueError('Arbeitspaket nicht gefunden.')
+            if task.contractor_id or (task.company or '').strip():
+                raise ValueError('Arbeitspaket hat bereits eine Firma.')
+            if task.execution_type=='Eigenleistung':
+                raise ValueError('Eigenleistungen dürfen nicht automatisch fremdvergeben werden.')
+            updates.append((task,cid))
+        for task,cid in updates:
+            task.contractor_id=cid
+            if task.execution_type=='Noch offen':task.execution_type='Fremdleistung'
+            _schedule_audit('Manuell','Betrieb für '+task.code+' ausdrücklich ausgewählt.',
+                [{'action':'update','code':task.code,'name':task.name,
+                  'changes':[{'field':'contractor_id','before':None,'after':cid}]}])
+        db.session.commit()
+        return jsonify(ok=True,assigned=len(updates))
+    except (ValueError,TypeError,KeyError) as exc:
+        db.session.rollback()
+        return jsonify(error=str(exc)),409
+
+
 @app.get('/api/project')
 def project():
     tasks=serialize(all_tasks())
     contractors=db.session.scalars(select(Contractor).order_by(Contractor.name)).all()
     return jsonify({'start':setting('start'), 'tasks':tasks,
                     'contractor_suggestions':contractor_suggestions(),
+                    'contracted_companies':contracted_companies(),
                     'trades':[x.name for x in db.session.scalars(select(Trade).order_by(Trade.name))],
                     'contractors':[{'id':x.id,'name':x.name,'trade':x.trade,'phone':x.phone,'email':x.email} for x in contractors]})
 
@@ -3520,6 +3583,12 @@ def _backup_create():
     return backup_manager.make_backup()
 
 
+@app.get('/api/ocr/status')
+def ocr_status():
+    from receipt_parser import ocr_diagnostics
+    return jsonify(ocr_diagnostics())
+
+
 @app.get('/api/backup/status')
 def backup_status():
     try:
@@ -3542,6 +3611,33 @@ def backup_status():
     except (ValueError,OSError,KeyError,JSONDecodeError) as exc:
         return jsonify(configured=False,backend='postgres' if _backup_pg() else 'sqlite',
                        error=str(exc),backups=[])
+
+
+@app.post('/api/backup/native-folder')
+def backup_native_folder():
+    """Use macOS's native Choose Folder panel only on a directly local Mac.
+
+    A web browser cannot reveal a NAS server directory selected on the client.
+    """
+    import sys
+    import subprocess
+    if _backup_pg():
+        return jsonify(error='Auf der Synology ist keine lokale macOS-Ordnerauswahl verfügbar. Bitte den NAS-Ordnerbrowser verwenden.'),409
+    peer=request.environ.get('werkzeug.proxy_fix.orig', {}).get('REMOTE_ADDR',request.remote_addr)
+    if sys.platform!='darwin' or peer not in ('127.0.0.1','::1') or request.host.split(':',1)[0] not in ('127.0.0.1','localhost'):
+        return jsonify(error='Der System-Ordnerdialog ist nur auf dem lokalen Mac verfügbar.'),409
+    script='POSIX path of (choose folder with prompt "Backup-Ziel für ProjectHouseBuilder auswählen")'
+    try:
+        result=subprocess.run(['osascript','-e',script],capture_output=True,text=True,
+                              timeout=90,check=False)
+    except (OSError,subprocess.TimeoutExpired):
+        return jsonify(error='Der System-Ordnerdialog konnte nicht geöffnet werden.'),409
+    if result.returncode:
+        return jsonify(error='Ordnerauswahl abgebrochen oder Systemdialog nicht verfügbar.'),409
+    folder=result.stdout.strip()
+    if not folder or not Path(folder).is_dir():
+        return jsonify(error='Ungültiger Ordner.'),400
+    return jsonify(folder=folder)
 
 
 @app.get('/api/backup/folders')

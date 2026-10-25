@@ -197,6 +197,10 @@ $('docDelete').onclick=async()=>{
  catch(err){report(err.message,true,'docEditMessage');}
 };
 reload().then(()=>{
+ if(location.hash==='#weitere-projektunterlagen'){
+   $('weitere-projektunterlagen')?.scrollIntoView({block:'start'});
+   costDocumentDialog.showModal();
+ }
  const documentId=Number(new URLSearchParams(location.search).get('document_id'));
  if(documentId)edit(documentId);
 }).catch(err=>report(err.message,true,'docPageStatus'));

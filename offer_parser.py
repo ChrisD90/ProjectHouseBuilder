@@ -9,6 +9,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
 import re
 from pypdf import PdfReader
+from receipt_parser import extract_pdf_pages
 
 MONEY = re.compile(r'(?:€\s*([\d.]+,\d{2})|([\d.]+,\d{2})\s*€)')
 REW_POSITION = re.compile(r'^\s*(\d{1,2})\s+(\d[\d.]*,\d{2})\s+(Stk\.?|M2\.?|M\.?|kWp\.?)\s+(.+)$', re.I)
@@ -27,12 +28,14 @@ def amount(value):
 
 
 def pdf_to_pages(data):
-    reader = PdfReader(BytesIO(data))
-    if reader.is_encrypted:
-        raise ValueError('Verschlüsseltes PDF: zuerst lokal entsperren.')
-    pages = [page.extract_text(extraction_mode='layout') or '' for page in reader.pages]
-    if not any(len(page.strip()) > 40 for page in pages):
-        raise ValueError('Keine lesbare Textebene im PDF. Bitte eine durchsuchbare PDF verwenden (OCR erforderlich).')
+    try:
+        pages,_=extract_pdf_pages(data, max_pages=40,layout=True)
+    except ValueError as exc:
+        if 'verschlüsselt' in str(exc).lower():
+            raise ValueError('Verschlüsseltes PDF: zuerst lokal entsperren.') from exc
+        raise
+    if not any(len(page.strip()) > 25 for page in pages):
+        raise ValueError('Keine lesbare Textebene oder lokaler OCR-Text vorhanden.')
     return pages
 
 

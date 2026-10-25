@@ -81,6 +81,7 @@ function openLoan(id=null){
 function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;$('equityDialog').showModal()}
 $('newLoan').onclick=()=>openLoan();$('newEquity').onclick=()=>openEquity();
 
+let loanAiBusy=false;
 $('loanAiAnalyze').onclick=async()=>{
  const file=$('loanAiFile').files[0];
  if(!file){$('loanAiStatus').textContent='Bitte zuerst eine Kreditunterlage auswählen.';return;}
@@ -149,7 +150,13 @@ $('loanDocumentUpload').onsubmit=async event=>{
  finally{btn.disabled=false;}
 };
 
-$('closeLoan').onclick=()=>$('loanDialog').close();$('closeEquity').onclick=()=>$('equityDialog').close();
+$('closeLoan').onclick=()=>{
+  if(loanAiBusy){
+    $('loanAiStatus').textContent='ChatGPT analysiert noch. Damit die Vorschläge nicht verloren gehen, bleibt der Dialog bis zum Abschluss geöffnet.';
+    return;
+  }
+  $('loanDialog').close();
+};$('closeEquity').onclick=()=>$('equityDialog').close();
 async function submitForm(event,form,base,dialog){event.preventDefault();let fields=payload(form),id=fields.id;delete fields.id;try{await api(base+(id?'/'+id:''),id?'PATCH':'POST',fields);dialog.close();await reload();message('Gespeichert.')}catch(err){message(err.message,true)}}
 $('loanForm').onsubmit=async event=>{
  event.preventDefault();
@@ -181,7 +188,7 @@ $('loanForm').onsubmit=async event=>{
 };
 $('equityForm').onsubmit=e=>submitForm(e,$('equityForm'),'/api/financing/equity',$('equityDialog'));
 async function erase(path,id){if(!await PHBUI.confirm('Diese Buchung wirklich entfernen? Die Summen werden entsprechend neu berechnet.'))return;try{await api('/api/financing/'+path+'/'+id,'DELETE');await reload();message('Buchung entfernt.')}catch(e){message(e.message,true)}}
-$('deleteLoan').onclick=async()=>{const id=$('loanForm').elements.namedItem('id').value;if(!await PHBUI.confirm('Kredit ohne verknüpfte Buchungen löschen?'))return;try{await api('/api/financing/loans/'+id,'DELETE');$('loanDialog').close();await reload()}catch(e){message(e.message,true)}};
+$('deleteLoan').onclick=async()=>{if(loanAiBusy)return;const id=$('loanForm').elements.namedItem('id').value;if(!await PHBUI.confirm('Kredit ohne verknüpfte Buchungen löschen?'))return;try{await api('/api/financing/loans/'+id,'DELETE');$('loanDialog').close();await reload()}catch(e){message(e.message,true)}};
 $('deleteEquity').onclick=async()=>{const id=$('equityForm').elements.namedItem('id').value;if(!await PHBUI.confirm('Eigenkapitalkonto ohne Buchungen löschen?'))return;try{await api('/api/financing/equity/'+id,'DELETE');$('equityDialog').close();await reload()}catch(e){message(e.message,true)}};
 $('eventKind').onchange=fillOptions;
 $('eventForm').onsubmit=async e=>{e.preventDefault();const v=payload(e.currentTarget),loan=v.kind.startsWith('loan_');v[loan?'loan_id':'equity_id']=$('eventSource').value;try{await api('/api/financing/events','POST',v);await reload();message('Geldbewegung gespeichert.')}catch(err){message(err.message,true)}};

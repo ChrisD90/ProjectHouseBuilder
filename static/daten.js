@@ -34,38 +34,69 @@
       return null;
     }
   };
+  let browsingFolder='';
   async function browse(folder=''){
     if(config?.backend!=='postgres'){get('backupFolderBrowser').hidden=true;return;}
     const browser=get('backupFolderBrowser');
     try{
       const data=await json('/api/backup/folders?folder='+encodeURIComponent(folder));
+      browsingFolder=data.current;
       browser.hidden=false;
-      get('backupBrowseCurrent').textContent='Backup-Speicher: '+data.root+' · Ordner: '+(data.current||'/');
+      get('backupBrowseCurrent').textContent='NAS-Speicher: '+data.root+' / '+(data.current||'');
       const list=get('backupBrowseList');list.replaceChildren();
-      const make=(label,path)=>{
+      const make=(label,path,action='browse')=>{
         const b=document.createElement('button');b.type='button';b.textContent=label;
-        b.onclick=()=>{get('backupFolder').value=path;browse(path).catch(()=>{});};
+        b.className='phb-folder-entry';
+        b.onclick=()=>{
+          if(action==='select'){
+            get('backupFolder').value=path;
+            get('backupConfigMessage').textContent='Ausgewählt: '+path;
+          }else browse(path).catch(error=>{get('backupConfigMessage').textContent=error.message});
+        };
         list.append(b);
       };
-      if(data.parent!==null)make('↰ Übergeordneter Ordner',data.parent);
+      if(data.current)make('✓ Diesen Ordner als Backup-Ziel auswählen',data.current,'select');
+      if(data.parent!==null)make('↰ Eine Ebene höher',data.parent);
       for(const entry of data.directories)make('📁 '+entry.name,entry.path);
     }catch(error){
-      browser.hidden=false;
-      get('backupBrowseCurrent').textContent='Du kannst den neuen Unterordner auch direkt eingeben: '+error.message;
+      get('backupBrowseCurrent').textContent='Ordner können gerade nicht angezeigt werden: '+error.message;
       get('backupBrowseList').replaceChildren();
     }
   }
+  get('backupNativeFolder').onclick=async()=>{
+    get('backupNativeFolder').disabled=true;
+    try{
+      const data=await post('/api/backup/native-folder',{});
+      get('backupFolder').value=data.folder;
+      get('backupConfigMessage').textContent='Systemordner ausgewählt: '+data.folder;
+    }catch(error){get('backupConfigMessage').textContent=error.message;}
+    finally{get('backupNativeFolder').disabled=false;}
+  };
+  get('backupNewSubfolder').onclick=async()=>{
+    const name=await PHBUI.prompt('Name für einen neuen Unterordner im aktuell geöffneten NAS-Verzeichnis:');
+    if(name===null)return;
+    if(!name || name==='.' || name==='..' || name.includes('/') || name.includes('\\') || name.startsWith('.')){
+      get('backupConfigMessage').textContent='Bitte einen gültigen einfachen Ordnernamen eingeben.';
+      return;
+    }
+    const target=(browsingFolder?browsingFolder+'/':'')+name;
+    get('backupFolder').value=target;
+    get('backupConfigMessage').textContent='Neuer Unterordner „'+target+'“ wird beim Speichern angelegt.';
+  };
   const openConfigure=async(fromBackup=false)=>{
     pendingBackup=fromBackup;
     await status();
     get('backupFolder').value=config?.configured?config.relative_folder:(config?.backend==='postgres'?'': '');
     get('backupKeep').value=config?.keep||30;
+    get('backupFolder').readOnly=true;
+    get('backupNativeFolder').hidden=config?.backend==='postgres';
+    get('backupNewSubfolder').hidden=config?.backend!=='postgres';
     get('backupConfigMessage').textContent='';
     get('backupRootDescription').textContent=config?.backend==='postgres'
       ?'Der Ordner liegt innerhalb des auf der Synology bereitgestellten Backup-Volumes. Unterordner lassen sich auch neu anlegen.'
-      :'Bitte den vollständigen vorhandenen Ordnerpfad auf dem Mac angeben. Der Browser kann Serverordner nicht direkt auswählen.';
+      :'Öffne den macOS-Systemdialog, um einen lokalen Backup-Ordner auszuwählen.';
     get('backupConfigDialog').showModal();
-    await browse(config?.configured?config.relative_folder:'');
+    if(config?.backend==='postgres')await browse(config?.configured?config.relative_folder:'');
   };
   get('backupConfigure').onclick=()=>openConfigure(false);
   get('backupConfigCancel').onclick=()=>{
@@ -185,7 +216,21 @@
     }
   };
 
-  const updateResetButton=()=>{
+  get('checkOCR').onclick=async()=>{
+    const button=get('checkOCR');button.disabled=true;
+    get('ocrStatus').textContent='Prüfe OCR-Werkzeuge auf dem Server …';
+    try{
+      const info=await json('/api/ocr/status');
+      get('ocrStatus').textContent=info.ready
+        ?'✓ OCR bereit: Tesseract + Poppler · Sprachen: '+info.languages.join(', ')
+        :'OCR nicht vollständig verfügbar: Tesseract '+(info.tools.tesseract?'vorhanden':'fehlt')+
+          ', Poppler '+(info.tools.pdftoppm?'vorhanden':'fehlt')+
+          ', deutsche Sprache '+(info.languages.includes('deu')?'vorhanden':'fehlt')+
+          '. Auf der Synology App-Container neu bauen; auf dem Mac Homebrew tesseract, tesseract-lang und poppler installieren.';
+    }catch(error){get('ocrStatus').textContent='Diagnose fehlgeschlagen: '+error.message;}
+    finally{button.disabled=false;}
+  };
+    const updateResetButton=()=>{
     get('resetButton').disabled=!get('resetUnderstand').checked||get('resetText').value!==phrase;
   };
   get('resetUnderstand').addEventListener('change',updateResetButton);

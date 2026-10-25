@@ -64,6 +64,36 @@ class SynologyWorkflowTest(unittest.TestCase):
             {'task_id':self.tid,'contractor_id':self.cid}]})
         self.assertEqual(result.status_code,409)
 
+    def test_explicit_company_first_bulk_assignment_without_keyword_filter(self):
+        # Old matching logic would reject this unrelated but intentionally chosen task.
+        task=Task(code='MISC-DEMO',phase='Abschluss',trade='Malerarbeiten',
+                  name='Innenwände abschließend prüfen',execution_type='Noch offen',position=1000)
+        diy=Task(code='DIY-DEMO',phase='Innenausbau',trade='Eigenleistung',
+                 name='Dielen selbst schleifen',execution_type='Eigenleistung',position=1001)
+        db.session.add_all([task,diy]);db.session.commit()
+        self.client.patch(f'/api/offers/{self.oid}',json={'status':'Angenommen'})
+        companies=self.client.get('/api/project').json['contracted_companies']
+        self.assertTrue(any(c['contractor_id']==self.cid for c in companies))
+        response=self.client.post('/api/tasks/assign-by-company',json={'assignments':[
+            {'task_id':self.tid,'contractor_id':self.cid},
+            {'task_id':task.id,'contractor_id':self.cid}]})
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertEqual(response.json['assigned'],2)
+        self.assertEqual(db.session.get(Task,task.id).contractor_id,self.cid)
+        self.assertEqual(db.session.get(Task,task.id).execution_type,'Fremdleistung')
+        blocked=self.client.post('/api/tasks/assign-by-company',json={'assignments':[
+            {'task_id':diy.id,'contractor_id':self.cid}]})
+        self.assertEqual(blocked.status_code,409)
+        self.assertIsNone(db.session.get(Task,diy.id).contractor_id)
+
+    def test_explicit_company_duplicate_task_rejected_atomically(self):
+        self.client.patch(f'/api/offers/{self.oid}',json={'status':'Angenommen'})
+        duplicate=self.client.post('/api/tasks/assign-by-company',json={'assignments':[
+            {'task_id':self.tid,'contractor_id':self.cid},
+            {'task_id':self.tid,'contractor_id':self.cid}]})
+        self.assertEqual(duplicate.status_code,409)
+        self.assertIsNone(db.session.get(Task,self.tid).contractor_id)
+
     def test_close_task_sets_actual_end(self):
         response=self.client.post(f'/api/tasks/{self.tid}/complete')
         self.assertEqual(response.status_code,200,response.json)
