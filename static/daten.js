@@ -217,18 +217,37 @@
   };
 
   get('checkOCR').onclick=async()=>{
-    const button=get('checkOCR');button.disabled=true;
-    get('ocrStatus').textContent='Prüfe OCR-Werkzeuge auf dem Server …';
+    const button=get('checkOCR');
+    button.disabled=true;
+    get('ocrStatus').textContent='Prüfe die tatsächlich installierten OCR-Werkzeuge im laufenden App-Prozess …';
+    get('ocrStatus').classList.remove('error');
+    get('ocrHelp').hidden=true;
     try{
       const info=await json('/api/ocr/status');
-      get('ocrStatus').textContent=info.ready
-        ?'✓ OCR bereit: Tesseract + Poppler · Sprachen: '+info.languages.join(', ')
-        :'OCR nicht vollständig verfügbar: Tesseract '+(info.tools.tesseract?'vorhanden':'fehlt')+
-          ', Poppler '+(info.tools.pdftoppm?'vorhanden':'fehlt')+
-          ', deutsche Sprache '+(info.languages.includes('deu')?'vorhanden':'fehlt')+
-          '. Auf der Synology App-Container neu bauen; auf dem Mac Homebrew tesseract, tesseract-lang und poppler installieren.';
-    }catch(error){get('ocrStatus').textContent='Diagnose fehlgeschlagen: '+error.message;}
-    finally{button.disabled=false;}
+      const versions=info.versions||{};
+      const runtime=info.environment==='container'?'Synology-/Docker-App-Container':'lokaler App-Server';
+      if(info.ready){
+        get('ocrStatus').textContent='✓ Lokale OCR einsatzbereit ('+runtime+'): Tesseract, Poppler und Sprachpakete '+
+          info.languages.join(', ')+'. '+[versions.tesseract,versions.pdftoppm].filter(Boolean).join(' · ');
+      }else{
+        const reasons=[
+          'Tesseract: '+(info.tools?.tesseract?'vorhanden':'fehlt'),
+          'Poppler: '+(info.tools?.pdftoppm?'vorhanden':'fehlt'),
+          'Deutsch: '+(info.languages?.includes('deu')?'vorhanden':'fehlt'),
+          'Englisch: '+(info.languages?.includes('eng')?'vorhanden':'fehlt')
+        ];
+        get('ocrStatus').textContent='OCR im '+runtime+' nicht verfügbar. '+reasons.join(' · ')+
+          '. '+(info.reason||'Bitte Serverinstallation prüfen.')+
+          (info.environment==='container'&&!info.image_marker?' (Kein OCR-Image-Kennzeichen gefunden.)':'');
+        get('ocrStatus').classList.add('error');
+        get('ocrHelp').hidden=false;
+        get('ocrSynologySteps').hidden=info.environment!=='container';
+        get('ocrMacSteps').hidden=info.environment==='container';
+      }
+    }catch(error){
+      get('ocrStatus').textContent='OCR-Diagnose fehlgeschlagen: '+error.message;
+      get('ocrStatus').classList.add('error');
+    }finally{button.disabled=false;}
   };
     const updateResetButton=()=>{
     get('resetButton').disabled=!get('resetUnderstand').checked||get('resetText').value!==phrase;
