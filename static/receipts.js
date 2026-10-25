@@ -17,13 +17,13 @@ function showReceiptPreview(item){
  $('receiptPdfDownload').href='/api/receipts/'+item.id+'/download';
 }
 
-let uploading=false,receiptBusy=false;
+let uploading=false,receiptBusy=false,paymentBusy=false;
 const receiptFlow=PHBFlow.manage({
  dialog:'receiptWorkflowDialog',
  forms:['upload','review','receiptPaymentForm'],
  dismiss:['closeReceiptWorkflow'],
  steps:['Erfassen','Prüfen & buchen','Bezahlen'],
- isBusy:()=>uploading||receiptBusy
+ isBusy:()=>uploading||receiptBusy||paymentBusy
 });
 function openReceiptDialog(review=false){
   receiptDialog.classList.toggle('is-reviewing',Boolean(review));
@@ -300,7 +300,7 @@ $('closeReceiptPayment').onclick=()=>{
 $('receiptPaymentSource').onchange=paymentAccountOptions;
 paymentForm.onsubmit=async event=>{
  event.preventDefault();
- if(!selected||!paymentState)return;
+ if(!selected||!paymentState||paymentBusy)return;
  const submit=$('submitReceiptPayment');
  PHBUI.currency.normalizeForm(paymentForm);
   const data=Object.fromEntries(new FormData(paymentForm).entries());
@@ -309,6 +309,7 @@ paymentForm.onsubmit=async event=>{
  data.receipt_id=selected;
  data[data.source==='loan'?'loan_id':'equity_id']=account;
  if(!await PHBUI.confirm('Zahlung von '+money(PHBUI.currency.parse(data.amount))+' verbindlich aus '+(data.source==='loan'?'Kredit':'Eigenkapital')+' buchen?'))return;
+ paymentBusy=true;
  submit.disabled=true;$('receiptPaymentMessage').textContent='Zahlung wird geprüft und verbucht …';
  try{
    await api('/api/financing/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
@@ -316,18 +317,19 @@ paymentForm.onsubmit=async event=>{
    await showReceiptPayments();
    $('receiptPaymentMessage').textContent='Zahlung verbucht. Offener Rechnungsbetrag und verfügbare Mittel wurden aktualisiert.';
  }catch(error){$('receiptPaymentMessage').textContent='Zahlung fehlgeschlagen: '+error.message;}
- finally{submit.disabled=false;}
+ finally{paymentBusy=false;submit.disabled=false;}
 };
 $('receiptPaymentHistory').addEventListener('click',async event=>{
  const button=event.target.closest('[data-undo-finance-payment]');
- if(!button)return;
+ if(!button||paymentBusy)return;
  if(!await PHBUI.confirm('Diese Zahlung stornieren? Der offene Rechnungsbetrag und die verfügbaren Mittel werden neu berechnet.'))return;
- button.disabled=true;
+ paymentBusy=true;button.disabled=true;
  try{
    await api('/api/financing/payments/'+button.dataset.undoFinancePayment,{method:'DELETE'});
    await reload(selected);await showReceiptPayments();
    $('receiptPaymentMessage').textContent='Zahlung storniert.';
- }catch(error){notice(error.message,true);button.disabled=false;}
+ }catch(error){notice(error.message,true);}
+ finally{paymentBusy=false;button.disabled=false;}
 });
 
 $('upload').onsubmit=async e=>{
