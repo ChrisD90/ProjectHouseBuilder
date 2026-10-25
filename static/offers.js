@@ -33,6 +33,66 @@
   });
   $('offerDrafts').addEventListener('click',e=>{if(!e.target.closest('[data-preview-doc]'))previewOfferCard(e.target);},true);
 
+  const acceptDialog=$('offerAcceptanceDialog');
+  let acceptingOfferId=null,acceptanceBusy=false;
+  function acceptanceMode(){
+    const confirmed=$('offerAcceptanceForm').elements.namedItem('mode').value==='confirmation';
+    $('offerAcceptanceUpload').hidden=!confirmed;
+    $('offerAcceptanceFile').required=confirmed;
+    $('offerAcceptanceGross').required=confirmed;
+  }
+  $('offerAcceptanceForm').querySelectorAll('[name="mode"]').forEach(input=>
+    input.addEventListener('change',acceptanceMode));
+  function openOfferAcceptance(id){
+    const offer=offers.find(o=>o.id===id);
+    if(!offer||offer.status!=='Angebot')return;
+    acceptingOfferId=id;
+    $('offerAcceptanceForm').reset();
+    $('offerAcceptanceSummary').textContent=offer.vendor+' · Angebot '+(offer.number||'#'+offer.id)+
+      ' · Bruttosumme: '+fmt(offer.gross);
+    $('offerAcceptanceGross').value=PHBUI.currency.format(offer.gross);
+    $('offerAcceptanceError').textContent='';
+    acceptanceMode();
+    acceptDialog.showModal();
+  }
+  const closeOfferAcceptance=()=>{
+    if(acceptanceBusy)return;
+    acceptDialog.close();acceptingOfferId=null;
+  };
+  $('cancelOfferAcceptance').onclick=closeOfferAcceptance;
+  $('offerAcceptanceBack').onclick=closeOfferAcceptance;
+  acceptDialog.addEventListener('cancel',e=>{if(acceptanceBusy)e.preventDefault();});
+  $('offerAcceptanceForm').onsubmit=async e=>{
+    e.preventDefault();if(!acceptingOfferId||acceptanceBusy)return;
+    const id=acceptingOfferId;
+    const form=e.currentTarget;
+    const confirmation=form.elements.namedItem('mode').value==='confirmation';
+    if(confirmation&&!$('offerAcceptanceFile').files.length){
+      $('offerAcceptanceError').textContent='Bitte eine PDF-Auftragsbestätigung auswählen.';return;
+    }
+    if(!await PHBUI.confirm(confirmation?
+      'Auftragsbestätigung und endgültigen Auftragswert verbindlich festschreiben?':
+      'Dieses Angebot mit seiner ursprünglichen Bruttosumme unverändert verbindlich annehmen?'))return;
+    const data=new FormData();
+    data.set('mode',confirmation?'confirmation':'offer');data.set('confirm','true');
+    if(confirmation){
+      const agreed=PHBUI.currency.parse($('offerAcceptanceGross').value);
+      if(!Number.isFinite(agreed)||agreed<=0){
+        $('offerAcceptanceError').textContent='Bitte einen gültigen positiven Bruttowert eingeben.';return;
+      }
+      data.set('agreed_gross',String(agreed));
+      data.set('confirmation',$('offerAcceptanceFile').files[0]);
+    }
+    acceptanceBusy=true;$('offerAcceptanceSubmit').disabled=true;
+    $('offerAcceptanceError').textContent='Auftrag wird festgeschrieben und die Kosten aktualisiert …';
+    try{
+      const response=await request(offerUrl(id)+'/accept',{method:'POST',formData:data});
+      acceptDialog.close();acceptingOfferId=null;
+      await reload();
+      await PHBUI.alert('Auftrag verbindlich übernommen. Finaler Auftragswert: '+fmt(response.offer.agreed_gross));
+    }catch(error){$('offerAcceptanceError').textContent=error.message;}
+    finally{acceptanceBusy=false;$('offerAcceptanceSubmit').disabled=false;}
+  };
   const editDialog=$('offerEditDialog');
   let editingOfferId=null;
   function openOfferEdit(id){
@@ -308,7 +368,7 @@
     const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
     const notes=o.notes?`<p class="offer-notes">${esc(o.notes)}</p>`:'';
     const actions=accepted
-      ? `<span class="offer-accepted-note">✓ Berücksichtigt</span><a class="mini" href="/?firmenvorschlaege=1">Firma im Bauzeitenplan zuordnen</a><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
+      ? `<span class="offer-accepted-note">✓ ${o.acceptance?"Auftrag fixiert":"Berücksichtigt"}</span><a class="mini" href="/?firmenvorschlaege=1">Firma im Bauzeitenplan zuordnen</a><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a>${o.acceptance?"":`<button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`}`
       : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
     return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
       <button type="button" class="offer-tile-toggle" data-offer-expand="${o.id}"
@@ -317,13 +377,13 @@
         <span class="offer-stage ${color}">${label}</span>
         <strong class="offer-tile-vendor">${esc(o.vendor)}</strong>
         <span class="offer-tile-meta">${meta}${o.number?` · Nr. ${esc(o.number)}`:''}</span>
-        <strong class="offer-tile-price">${fmt(o.gross)}</strong>
+        <strong class="offer-tile-price">${fmt(accepted?o.agreed_gross:o.gross)}</strong>
         <span class="offer-tile-chevron" aria-hidden="true">${expanded?'−':'+'}</span>
       </button>
       <div class="offer-actions offer-tile-actions">${actions}</div>
       <div class="offer-tile-details" id="offerDetails${o.id}" ${expanded?'':'hidden'}>
         <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>
-        ${notes}${accepted?billingBlock(o):''}
+        ${notes}${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/download">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}${accepted?billingBlock(o):''}
         ${versionUpload(o)}${versionHistory(o)}
 
         ${notice(o)}${parsedPositions(o)}
@@ -585,8 +645,8 @@
         workflow.close();
       }
       if(key==='offerAccept'){
-        if(!await PHBUI.confirm('Dieses Angebot verbindlich annehmen? Der Bruttogesamtbetrag wird dadurch einmalig in deine Kostenprognose übernommen.'))return;
-        await changeStatus(id,'Angenommen');
+        openOfferAcceptance(Number(id));
+        return;
       }
       if(key==='offerReject') await changeStatus(id,'Abgelehnt');
       if(key==='offerRelist') await changeStatus(id,'Angebot');
