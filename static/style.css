@@ -173,3 +173,12 @@ body.phb-app #overlay .modalhead #complete{
  border-radius:9px;min-height:40px;
 }
 body.phb-app #overlay .modalhead #complete[hidden]{display:none!important}
+
+/* Firm-first multi-task assignment dialog */
+.phb-company-proposals .company-task-group{border:1px solid var(--ui-line,#dde8eb);border-radius:12px;padding:15px;margin:10px 0;background:var(--ui-soft,#f7fafa)}
+.phb-company-proposals .company-task-group h3{font-size:15px;margin:0 0 5px}
+.phb-company-proposals .company-task-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;max-height:280px;overflow:auto}
+.phb-company-proposals .company-task-choice{display:flex;align-items:flex-start;gap:9px;background:var(--ui-surface,#fff);padding:9px;border:1px solid var(--ui-line,#dae6e9);border-radius:9px;font-size:12px;cursor:pointer}
+.phb-company-proposals .company-task-choice input{flex:none;margin-top:2px;width:17px;height:17px;accent-color:#0e7782}
+.phb-company-proposals .company-task-choice strong,.phb-company-proposals .company-task-choice small{display:block}
+.phb-company-proposals .company-task-choice small{color:var(--ui-muted,#62777f);margin-top:3px}
