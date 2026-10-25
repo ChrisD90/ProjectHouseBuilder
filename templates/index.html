@@ -30,21 +30,13 @@
   <button type="button" id="aiScheduleApply" class="primary" hidden>Geprüften KI-Vorschlag in leeren Plan übernehmen</button>
   <p class="template-note">Ein vorhandener Bauzeitenplan wird nie automatisch verändert. Vorschläge ersetzen keine Bauleitung oder Freigaben durch Fachbetriebe.</p>
 </section>
-<button type="button" id="scheduleChatFab" class="schedule-chat-fab" hidden
-  aria-label="ChatGPT-Bauzeitenplan-Chat öffnen"
-  aria-controls="aiScheduleChatPanel" aria-expanded="false" aria-haspopup="dialog"
-  title="Mit ChatGPT über den Bauzeitenplan sprechen">
-  <svg class="schedule-chat-fab-icon schedule-chat-fab-open" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#message-circle"></use></svg>
-  <svg class="schedule-chat-fab-icon schedule-chat-fab-close" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#x"></use></svg>
-  <span class="schedule-chat-fab-status" aria-hidden="true"></span>
-</button>
 <section class="panel schedule-conversation schedule-chat-popover" id="aiScheduleChatPanel" hidden
   role="dialog" aria-modal="false" aria-labelledby="scheduleChatTitle" tabindex="-1">
   <div class="schedule-section-header">
     <div><span class="phb-page-kicker">ChatGPT / Planungsdialog</span>
       <h2 id="scheduleChatTitle">Mit dem Bauzeitenplan sprechen</h2>
       <p>Besprich neue Vorhaben und Entscheidungen. Änderungen erfolgen ausschließlich nach deiner Freigabe.</p></div>
-    <span class="schedule-ai-connected">Verbunden</span>
+    <div class="schedule-chat-head-actions"><span class="schedule-ai-connected">Verbunden</span><button type="button" id="scheduleChatClose" class="subtle" aria-label="ChatGPT-Planungsdialog schließen">Schließen</button></div>
   </div>
   <div class="schedule-conversation-body">
     <div id="scheduleChatMessages" class="schedule-chat-messages" role="log" aria-label="Gespräch zum Bauzeitenplan" aria-live="polite">
@@ -81,7 +73,12 @@
     <div id="scheduleHistoryEntries" class="schedule-history-entries"><p>Historie wird geladen …</p></div>
   </div>
 </dialog>
-<section class="panel"><div class="panelbar"><div><h1>Gantt- und Gewerkesteuerung</h1><p>Blau = offen · Türkis = in Arbeit · Grün = erledigt · Orange = pausiert · E = Eigenleistung · F = Fremdleistung</p></div><div class="filters"><input id="filter" placeholder="Aufgabe, Firma oder Gewerk suchen"><select id="phase"><option value="">Alle Bauphasen</option></select><select id="workType" aria-label="Nach Eigen- oder Fremdleistung filtern"><option value="">Alle Ausführungsarten</option><option value="Eigenleistung">Eigenleistung</option><option value="Fremdleistung">Fremdleistung</option><option value="Noch offen">Noch festzulegen</option></select><select id="scale"><option value="week">Wochen</option><option value="month">Monate</option></select><button id="today" class="subtle">Heute</button><button id="openTaskList" class="subtle" type="button">Alle Arbeitspakete</button><button id="openScheduleHistory" class="subtle" type="button">Historie</button></div></div><div class="ganttwrap"><div id="gantt"></div></div><div class="footnote">Klick auf eine Aufgabe, um Dauer, Vorgänger, Status oder zuständige Firma zu ändern. Nachfolgende Termine werden automatisch berechnet. Alle Termine sind Kalendertage.</div>
+<section class="panel"><div class="panelbar"><div><h1>Gantt- und Gewerkesteuerung</h1><p>Blau = offen · Türkis = in Arbeit · Grün = erledigt · Orange = pausiert · E = Eigenleistung · F = Fremdleistung</p></div><div class="filters"><input id="filter" placeholder="Aufgabe, Firma oder Gewerk suchen"><select id="phase"><option value="">Alle Bauphasen</option></select><select id="workType" aria-label="Nach Eigen- oder Fremdleistung filtern"><option value="">Alle Ausführungsarten</option><option value="Eigenleistung">Eigenleistung</option><option value="Fremdleistung">Fremdleistung</option><option value="Noch offen">Noch festzulegen</option></select><select id="scale"><option value="week">Wochen</option><option value="month">Monate</option></select><button id="today" class="subtle">Heute</button><button id="openTaskList" class="subtle" type="button">Alle Arbeitspakete</button><button id="openScheduleHistory" class="subtle" type="button">Historie</button><button type="button" id="scheduleChatFab" class="schedule-chat-fab subtle" hidden
+aria-label="ChatGPT-Planung zum Bauzeitenplan öffnen"
+aria-controls="aiScheduleChatPanel" aria-expanded="false" aria-haspopup="dialog"
+title="ChatGPT-Planungsdialog bei Bedarf öffnen">
+<svg class="schedule-chat-fab-icon schedule-chat-fab-open" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#message-circle"></use></svg>
+<span>ChatGPT-Planung</span></button></div></div><div class="ganttwrap"><div id="gantt"></div></div><div class="footnote">Klick auf eine Aufgabe, um Dauer, Vorgänger, Status oder zuständige Firma zu ändern. Nachfolgende Termine werden automatisch berechnet. Alle Termine sind Kalendertage.</div>
   <details class="schedule-advanced"><summary>Erweiterte Aktionen für den Bauzeitenplan</summary>
     <p>Wenn du den gesamten Bauzeitenplan neu beginnen möchtest, kann er nur mit ausdrücklicher Bestätigung und vorheriger geprüfter Datensicherung geleert werden.</p>
     <button id="clearSchedule" class="danger" type="button" hidden>Nur Bauzeitplan leeren (mit Backup)</button>

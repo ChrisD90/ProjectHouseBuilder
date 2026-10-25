@@ -36,6 +36,22 @@ docker compose -f compose.synology.yaml cp https:/data/caddy/pki/authorities/loc
 
 Danach `https://NAS-IP:8443` ohne Warnung oeffnen, dann im Browser „Zum Home-Bildschirm“ beziehungsweise „App installieren“ verwenden. Offline werden nur statische App-Dateien gecacht; sensible Inhalte bleiben online-only. Auf der NAS und im Browser bleibt dennoch ein Passwort notwendig.
 
+## Lokale OCR auf dem NAS überprüfen
+
+Der aktuelle `Dockerfile` installiert Tesseract, die deutschen und englischen Sprachdaten sowie Poppler direkt **im App-Image** (nicht in PostgreSQL oder Caddy). Unter **Backup, Export & Daten → Lokale OCR-Diagnose** wird geprüft, welche Programme der tatsächlich laufende App-Prozess verwenden kann.
+
+Wenn sowohl Tesseract als auch Poppler fehlen, ist sehr wahrscheinlich noch ein altes oder ein anders aufgebautes App-Image aktiv. **Nur Container neu starten genügt nicht.** Prüfe, dass das Container-Manager-Projekt wirklich das aktuelle `Dockerfile` und `compose.synology.yaml` aus `feature/synology-nas` verwendet. Im Projektverzeichnis über SSH (mit Docker-Berechtigung):
+
+```sh
+docker compose -f compose.synology.yaml build --no-cache app
+docker compose -f compose.synology.yaml up -d --no-deps app
+docker compose -f compose.synology.yaml exec app sh -c 'command -v tesseract; command -v pdftoppm; tesseract --list-langs'
+```
+
+Danach die OCR-Diagnose erneut ausführen. In der Sprachenliste müssen `deu` und `eng` vorkommen. Die App startet nach einem neuen Build mit dem Kennzeichen `PHB_OCR_IMAGE`, das in der Diagnose zur Unterscheidung alter Images verwendet wird. Der Image-Neubau darf **keine bestehenden Volumes entfernen**. Projekt löschen, bereinigen oder `docker compose down -v` ist dafür nicht nötig und gefährdet Daten.
+
+Der ChatGPT-Bauzeitenplan-Dialog startet **nicht automatisch**: Auf dem Bauzeitenplan ist er bei vorhandenen Aufgaben und verbundener Plannutzung gezielt über den Button „ChatGPT-Planung“ erreichbar.
+
 ## Backups und Wiederherstellung direkt in der App
 
 Nach dem Update unter **Backup, Export & Daten** den Zielordner konfigurieren. Die App speichert vollständige PostgreSQL-Dumps und private Originaldateien zusammen in einem verifizierbaren ZIP. Für eine Wiederherstellung kann ein vorhandenes ZIP ausgewählt oder ein solches ZIP hochgeladen werden. Nach Prüfung der Prüfsummen, doppelter Bestätigung und Erstellung einer Sicherheitssicherung erfolgt der Datenbankwechsel über eine separat wiederhergestellte und geprüfte PostgreSQL-Datenbank. Der alte Datenbankstand bleibt als `phb_before_…` bestehen und frühere private Dateien bleiben in `private/.restore-safety-…`, bis die Wiederherstellung überprüft wurde. **Währenddessen keine anderen Benutzeraktionen ausführen.** Je nach Archivgröße benötigt der Vorgang Zeit; anschließend Anwendung neu laden und Datensatz, Dokumente und Zahlungseinträge prüfen.
