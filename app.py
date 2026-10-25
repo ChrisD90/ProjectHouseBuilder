@@ -3532,11 +3532,50 @@ def list_import_jobs():
     _ensure_import_recovery()
     _sync_import_reviews()
     rows=db.session.scalars(select(ImportJob).where(
-        ImportJob.status!='Übernommen').order_by(ImportJob.id.desc()).limit(40)).all()
+        ImportJob.status.notin_(['Übernommen','Ausgeblendet'])).order_by(ImportJob.id.desc()).limit(40)).all()
     response=jsonify(jobs=[{**_import_json(job),'review_url':_import_result(job)}
                            for job in rows])
     response.headers['Cache-Control']='no-store'
     return response
+
+
+def _dismissable_import(job):
+    return job.status in ('Fertig','Fehler','Unterbrochen','Übernommen','Ausgeblendet')
+
+
+def _hide_imports(jobs):
+    changed=0
+    for job in jobs:
+        if not _dismissable_import(job):
+            raise ValueError('Laufende oder wartende Importe dürfen nicht entfernt werden.')
+    for job in jobs:
+        if job.status not in ('Ausgeblendet','Übernommen'):
+            job.status='Ausgeblendet'
+            job.stage='Benachrichtigung manuell entfernt'
+            job.updated_at=datetime.utcnow()
+            (IMPORT_QUEUE_ROOT/job.stored_name).unlink(missing_ok=True)
+            changed+=1
+    db.session.commit()
+    return changed
+
+
+@app.post('/api/import-jobs/dismiss-completed')
+def dismiss_completed_import_jobs():
+    _ensure_import_recovery()
+    rows=db.session.scalars(select(ImportJob).where(
+        ImportJob.status.in_(['Fertig','Fehler','Unterbrochen']))).all()
+    return jsonify(ok=True,removed=_hide_imports(rows))
+
+
+@app.post('/api/import-jobs/<int:job_id>/dismiss')
+def dismiss_import_job(job_id):
+    _ensure_import_recovery()
+    job=db.session.get(ImportJob,job_id)
+    if not job:return jsonify(error='Importauftrag nicht gefunden.'),404
+    try:
+        return jsonify(ok=True,removed=_hide_imports([job]))
+    except ValueError as exc:
+        return jsonify(error=str(exc)),409
 
 
 @app.post('/api/import-jobs/<int:job_id>/retry')
