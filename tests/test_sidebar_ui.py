@@ -207,7 +207,7 @@ class SidebarUITest(unittest.TestCase):
     def test_review_has_original_inline_and_quote_edit_uses_separate_modal(self):
         offers=self.render('angebote')
         receipts=self.render('belege')
-        plan=self.render('')
+        plan=self.render('index')
         self.assertIn('id="offerPdfFrame"',offers)
         self.assertIn('id="offerEditDialog"',offers)
         self.assertIn('id="offerEditPdfFrame"',offers)
