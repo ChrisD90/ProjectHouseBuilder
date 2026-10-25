@@ -4,6 +4,14 @@
 # Niemals NAS-Ports 5000/5001 (DSM) oder 80/443 ohne Prüfung belegen.
 name: projecthousebuilder
 services:
+  backup-prepare:
+    image: alpine:3.21
+    user: root
+    restart: "no"
+    command: ["sh","-c","mkdir -p /backup/projecthousebuilder && chown 10001:10001 /backup/projecthousebuilder && chmod 700 /backup/projecthousebuilder"]
+    volumes:
+      - ${PHB_BACKUP_DIR:-./backups}:/backup
+    networks: [internal]
   db:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -28,13 +36,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      backup-prepare:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql+psycopg://sanierung:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD in .env setzen}@db:5432/sanierung
       APP_PASSWORD: ${APP_PASSWORD:?APP_PASSWORD in .env setzen}
       APP_SECRET_KEY: ${APP_SECRET_KEY:?APP_SECRET_KEY in .env setzen}
       SECURE_COOKIES: '1'
+      PHB_BACKUP_ROOT: /app/backup-target
     volumes:
       - private_data:/app/private
+      - ${PHB_BACKUP_DIR:-./backups}/projecthousebuilder:/app/backup-target
     expose:
       - '5000'
     networks: [internal]
