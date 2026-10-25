@@ -27,9 +27,55 @@
     if(card)showOfferPreview(offers.find(x=>Number(x.id)===Number(card.dataset.offerCard))?.document_id);
   }
   $('offerDrafts').addEventListener('focusin',e=>previewOfferCard(e.target),true);
-  $('offerDrafts').addEventListener('click',e=>previewOfferCard(e.target),true);
+  $('offerDrafts').addEventListener('click',e=>{
+    const button=e.target.closest('[data-preview-doc]');
+    if(button){e.preventDefault();showOfferPreview(Number(button.dataset.previewDoc));}
+  });
+  $('offerDrafts').addEventListener('click',e=>{if(!e.target.closest('[data-preview-doc]'))previewOfferCard(e.target);},true);
 
-  const workflow=$('offerWorkflowDialog');
+  const editDialog=$('offerEditDialog');
+  let editingOfferId=null;
+  function openOfferEdit(id){
+    const offer=offers.find(o=>o.id===id);
+    if(!offer)return;
+    if(['Angenommen','Beauftragt'].includes(offer.status)){
+      PHBUI.alert('Angenommene Angebote sind gesperrt. Für Nachträge bitte eine neue PDF-Version hochladen.');
+      return;
+    }
+    editingOfferId=id;
+    $('offerEditTitle').textContent='Angebot '+(offer.number||'#'+offer.id)+' bearbeiten';
+    $('offerEditFields').innerHTML=fields(offer);
+    $('offerEditError').textContent='';
+    const pane=$('offerEditPdfPane'),frame=$('offerEditPdfFrame');
+    pane.hidden=!offer.document_id;
+    if(offer.document_id){
+      frame.src='/api/documents/'+offer.document_id+'/preview';
+      $('offerEditPdfDownload').href='/api/documents/'+offer.document_id+'/download';
+    }else frame.removeAttribute('src');
+    editDialog.showModal();
+  }
+  const closeEdit=()=>{
+    editDialog.close();
+    $('offerEditPdfFrame').removeAttribute('src');
+    editingOfferId=null;
+  };
+  $('closeOfferEdit').onclick=closeEdit;
+  $('cancelOfferEdit').onclick=closeEdit;
+  $('offerEditForm').onsubmit=async e=>{
+    e.preventDefault();if(!editingOfferId)return;
+    const submit=e.currentTarget.querySelector('button[type=submit]');
+    submit.disabled=true;
+    try{
+      // Only the reviewed metadata is updated; positions belong to PDF drafts/versions.
+      await update(editingOfferId,readForm(e.currentTarget));
+      closeEdit();
+      await reload();
+      await PHBUI.alert('Angebotsangaben gespeichert.');
+    }catch(error){
+      $('offerEditError').textContent=error.message;
+    }finally{submit.disabled=false;}
+  };
+    const workflow=$('offerWorkflowDialog');
   const openWorkflow=(review=false)=>{
     workflow.classList.toggle('is-reviewing',Boolean(review));
     $('anotherOffer').hidden=!review;
@@ -67,7 +113,7 @@
   const budgetOptions = selected => option('','Keine Zuordnung (zusätzlicher Auftrag)',selected) + budgets.map(b => option(b.id,b.category+' · '+b.title,selected)).join('');
   const offerUrl = id => '/api/offers/'+encodeURIComponent(id);
   const sourceLabel = o => o.document_id
-    ? `<a class="offer-document" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Original-PDF öffnen ↗</a>`
+    ? `<button type="button" class="mini offer-preview-action" data-preview-doc="${o.document_id}">PDF rechts anzeigen</button> <a class="offer-document" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Herunterladen</a>`
     : '<span class="muted">Manuell eingegeben</span>';
   const budgetLabel = o => budgets.find(b => b.id===o.budget_line_id)?.title || 'Keiner Planposition zugeordnet';
   const stage = o => ({Entwurf:['Noch prüfen','stage-draft'],Angebot:['Zum Vergleich','stage-listed'],Angenommen:['Angenommen','stage-accepted'],Beauftragt:['Angenommen','stage-accepted'],Abgelehnt:['Abgelehnt','stage-rejected']}[o.status] || [o.status,'stage-listed']);
@@ -279,7 +325,7 @@
         <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>
         ${notes}${accepted?billingBlock(o):''}
         ${versionUpload(o)}${versionHistory(o)}
-        <div class="offer-inline-edit" id="offerEditor${o.id}" hidden></div>
+
         ${notice(o)}${parsedPositions(o)}
       </div>
     </article>`;
@@ -527,18 +573,7 @@
     const id=dataset[key];
     try {
       if(key==='offerEdit'){
-        const box=$('offerEditor'+id),o=offers.find(item=>String(item.id)===String(id));
-        const tile=$('offerDetails'+id);
-        if(tile){
-          tile.hidden=false;expandedOffers.add(Number(id));
-          const toggle=document.querySelector('[data-offer-expand="'+id+'"]');
-          if(toggle){toggle.setAttribute('aria-expanded','true');
-            toggle.querySelector('.offer-tile-chevron').textContent='−';}
-        }
-        if(!box||!o)return;
-        if(!box.hidden){box.hidden=true;button.textContent='Bearbeiten';return}
-        box.innerHTML=`<h4>Angaben korrigieren</h4><form class="offer-review-form" data-review="${id}">${fields(o)}<div class="offer-form-actions"><button type="submit" class="primary">Änderungen speichern</button><button type="button" class="mini" data-edit-cancel="${id}">Abbrechen</button></div></form>`;
-        box.hidden=false;button.textContent='Bearbeitung schließen';
+        openOfferEdit(Number(id));
         return;
       }
       if(key==='offerPromote'){
@@ -564,11 +599,6 @@
         await request(offerUrl(id),{method:'DELETE'});await reload();
       }
     } catch(err) {await PHBUI.alert(err.message)}
-  });
-  document.addEventListener('click',e=>{
-    const btn=e.target.closest('[data-edit-cancel]');if(!btn)return;
-    const box=$('offerEditor'+btn.dataset.editCancel);
-    if(box){box.hidden=true;box.innerHTML=''}
   });
   $('aiOfferChoices')?.addEventListener('change',()=>{
     $('aiCompareResult').hidden=true;
