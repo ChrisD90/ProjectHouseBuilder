@@ -193,4 +193,7 @@ $('deleteEquity').onclick=async()=>{const id=$('equityForm').elements.namedItem(
 $('eventKind').onchange=fillOptions;
 $('eventForm').onsubmit=async e=>{e.preventDefault();const v=payload(e.currentTarget),loan=v.kind.startsWith('loan_');v[loan?'loan_id':'equity_id']=$('eventSource').value;try{await api('/api/financing/events','POST',v);await reload();message('Geldbewegung gespeichert.')}catch(err){message(err.message,true)}};
 
-reload().catch(err=>message('Finanzierung nicht geladen: '+err.message,true));
+reload().then(()=>{
+   const loanId=Number(new URLSearchParams(location.search).get('loan_id'));
+   if(loanId&&state.loans.some(loan=>loan.id===loanId))openLoan(loanId);
+ }).catch(err=>message('Finanzierung nicht geladen: '+err.message,true));
