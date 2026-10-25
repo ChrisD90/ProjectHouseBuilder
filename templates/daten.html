@@ -64,7 +64,12 @@
     <p class="phb-data-footnote">Das bisherige Terminalverfahren bleibt erhalten: auf dem Mac <code>python3 backup_manager.py restore "DATEI.zip" --yes</code>; auf der Synology weiterhin <code>pg_restore</code> und die Dokumentwiederherstellung wie in <code>synology/README.md</code>. Bei produktiven Daten vorab eine externe Kopie prüfen.</p>
     <p id="restoreResult" role="status"></p>
   </section>
-  <dialog id="backupConfigDialog" class="phb-data-dialog">
+  <section class="panel phb-data-help"><h2>Lokale OCR-Diagnose</h2>
+  <p>Prüft, ob auf dem Anwendungsserver Tesseract, Poppler und das deutsche Sprachpaket verfügbar sind. Angebote und Belege werden jetzt seitenweise gelesen; Bilder und gescannte PDF-Seiten nutzen OCR.</p>
+  <button id="checkOCR" type="button" class="subtle">OCR-Verfügbarkeit prüfen</button>
+  <p id="ocrStatus" role="status"></p>
+</section>
+<dialog id="backupConfigDialog" class="phb-data-dialog">
     <form id="backupConfigForm">
       <h2>Backup-Zielordner festlegen</h2>
       <p id="backupRootDescription">Wähle einen für die Anwendung erreichbaren Ordner. Auf der Synology werden nur Verzeichnisse innerhalb des eingebundenen Backup-Speichers angeboten.</p>
