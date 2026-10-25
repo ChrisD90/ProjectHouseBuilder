@@ -262,7 +262,7 @@
     const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
     const notes=o.notes?`<p class="offer-notes">${esc(o.notes)}</p>`:'';
     const actions=accepted
-      ? `<span class="offer-accepted-note">✓ Berücksichtigt</span><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
+      ? `<span class="offer-accepted-note">✓ Berücksichtigt</span><a class="mini" href="/?firmenvorschlaege=1">Firma im Bauzeitenplan zuordnen</a><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a><button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`
       : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
     return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
       <button type="button" class="offer-tile-toggle" data-offer-expand="${o.id}"
