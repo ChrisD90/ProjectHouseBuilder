@@ -83,7 +83,7 @@
       data.set('agreed_gross',String(agreed));
       data.set('confirmation',$('offerAcceptanceFile').files[0]);
     }
-    acceptanceBusy=true;$('offerAcceptanceSubmit').disabled=true;
+    acceptanceBusy=true;PHBUI.dialogs.busy(acceptDialog,true);$('offerAcceptanceSubmit').disabled=true;
     $('offerAcceptanceError').textContent='Auftrag wird festgeschrieben und die Kosten aktualisiert …';
     try{
       const response=await request(offerUrl(id)+'/accept',{method:'POST',formData:data});
@@ -91,7 +91,7 @@
       await reload();
       await PHBUI.alert('Auftrag verbindlich übernommen. Finaler Auftragswert: '+fmt(response.offer.agreed_gross));
     }catch(error){$('offerAcceptanceError').textContent=error.message;}
-    finally{acceptanceBusy=false;$('offerAcceptanceSubmit').disabled=false;}
+    finally{acceptanceBusy=false;PHBUI.dialogs.busy(acceptDialog,false);$('offerAcceptanceSubmit').disabled=false;}
   };
   const editDialog=$('offerEditDialog');
   let editingOfferId=null,offerEditBusy=false;
@@ -127,6 +127,7 @@
     e.preventDefault();if(!editingOfferId||offerEditBusy)return;
     const submit=e.currentTarget.querySelector('button[type=submit]');
     offerEditBusy=true;
+    PHBUI.dialogs.busy(editDialog,true);
     submit.disabled=true;
     $('closeOfferEdit').disabled=true;
     $('cancelOfferEdit').disabled=true;
@@ -134,6 +135,7 @@
       // Only the reviewed metadata is updated; positions belong to PDF drafts/versions.
       await update(editingOfferId,readForm(e.currentTarget));
       await reload();
+      PHBUI.dialogs.saved(editDialog);
       editDialog.close();
       $('offerEditPdfFrame').removeAttribute('src');
       editingOfferId=null;
@@ -142,6 +144,7 @@
       $('offerEditError').textContent=error.message;
     }finally{
       offerEditBusy=false;
+      PHBUI.dialogs.busy(editDialog,false);
       submit.disabled=false;
       $('closeOfferEdit').disabled=false;
       $('cancelOfferEdit').disabled=false;
