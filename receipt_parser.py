@@ -48,9 +48,8 @@ def ocr_diagnostics():
         try:
             result=subprocess.run(['tesseract','--list-langs'],capture_output=True,
                                   text=True,timeout=8,check=False)
-            languages=[line.strip() for line in result.stdout.splitlines()[1:] if line.strip()]
-            if not languages:languages=[line.strip() for line in result.stderr.splitlines()
-                                         if line.strip() in ('deu','eng','osd')]
+            languages=[line.strip() for line in (result.stdout+'\n'+result.stderr).splitlines()
+                       if re.fullmatch(r'[a-z]{3}(?:_[A-Za-z0-9]+)?',line.strip())]
         except (OSError,subprocess.TimeoutExpired):
             pass
     return {'tools':tools,'languages':languages,
