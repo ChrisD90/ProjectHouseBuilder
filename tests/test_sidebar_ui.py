@@ -160,7 +160,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('fab.hidden=true;',js)
         self.assertIn("scheduleChatClose').addEventListener('click'",js)
         self.assertNotIn("scheduleHistoryDetails').addEventListener",js)
-        self.assertIn("scheduleHistoryDialog').showModal()",js)
+        self.assertIn('historyFlow.open()',js)
 
     def test_ocr_diagnostics_distinguish_runtime_and_offer_recovery(self):
         page=self.render('daten')
@@ -246,7 +246,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertNotIn('data-delete-doc',js)
         self.assertNotIn("api('/api/documents/'+",js)
         cost_js=(STATIC/'costs.js').read_text()
-        self.assertIn('costDocumentDialog.showModal()',cost_js)
+        self.assertIn('attachmentFlow.open()',cost_js)
         self.assertIn('data-delete-cost-document',cost_js)
         self.assertIn("api('/api/document-library')",cost_js)
 
@@ -394,9 +394,9 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('id="scheduleHistoryDialog"',page)
         self.assertNotIn('<section class="panel tablepanel">',page)
         js=(STATIC/'app.js').read_text()
-        self.assertIn("taskListDialog').showModal()",js)
+        self.assertIn('taskListFlow.open()',js)
         history=(STATIC/'schedule_chat.js').read_text()
-        self.assertIn("scheduleHistoryDialog').showModal()",history)
+        self.assertIn('historyFlow.open()',history)
 
     def test_order_acceptance_dialog_and_separate_payment_steps(self):
         offers=self.render('angebote')

@@ -17,11 +17,19 @@ function showReceiptPreview(item){
  $('receiptPdfDownload').href='/api/receipts/'+item.id+'/download';
 }
 
-let uploading=false,receiptBusy=false;
+let uploading=false,receiptBusy=false,paymentBusy=false;
+const receiptFlow=PHBFlow.manage({
+ dialog:'receiptWorkflowDialog',
+ forms:['upload','review','receiptPaymentForm'],
+ dismiss:['closeReceiptWorkflow'],
+ steps:['Erfassen','Prüfen & buchen','Bezahlen'],
+ isBusy:()=>uploading||receiptBusy||paymentBusy
+});
 function openReceiptDialog(review=false){
   receiptDialog.classList.toggle('is-reviewing',Boolean(review));
   $('receiptUploadAgain').hidden=!review;
-  if(!receiptDialog.open)receiptDialog.showModal();
+  if(!receiptDialog.open)receiptFlow.open({step:review?1:0});
+  else receiptFlow.stage(review?1:0);
   if(review){
     requestAnimationFrame(()=>$('review').querySelector('input:not(:disabled)')?.focus({preventScroll:true}));
   } else {
@@ -228,6 +236,7 @@ async function open(id){
  }
  updateInvoiceControls();
  $('original').href='/api/receipts/'+id+'/download';$('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
+ receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
  $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Gebucht'?'Gebucht: Für Betragsänderungen zuerst Buchung zurücknehmen.':'Bitte Daten prüfen, dann speichern und buchen.');
  }catch(e){notice(e.message,true)}
 }
@@ -257,6 +266,7 @@ async function showReceiptPayments(){
  if(!receipt)throw Error('Gebuchte Rechnung wurde nicht in der Finanzierungsübersicht gefunden.');
  const allocations=paymentState.payments.filter(x=>x.receipt_id===selected);
  $('receiptPaymentsPanel').hidden=false;
+  receiptFlow.stage(2);
  $('receiptReviewLayout').hidden=true;
  $('receiptReviewStage').hidden=true;
  $('receiptPaymentTotals').innerHTML='<span>Rechnungsbetrag: <b>'+money(receipt.gross)+'</b></span>'+
@@ -274,6 +284,7 @@ async function showReceiptPayments(){
    $('receiptPaymentMessage').textContent='Für diesen Beleg existiert bereits eine manuell erfasste Zahlung ohne Finanzierungsquelle. Bitte den bisherigen Zahlbetrag im Beleg berichtigen, bevor du die Finanzierungsquelle zuordnest.';
  paymentForm.elements.namedItem('payment_date').value=new Date().toLocaleDateString('sv-SE');
  paymentAccountOptions();
+ receiptFlow.snapshot(); // Auto-filled payment values are not user edits.
  requestAnimationFrame(()=>$('receiptPaymentsPanel').scrollIntoView({block:'nearest'}));
 }
 $('payReceipt').onclick=async()=>{
@@ -282,13 +293,14 @@ $('payReceipt').onclick=async()=>{
 };
 $('closeReceiptPayment').onclick=()=>{
   $('receiptPaymentsPanel').hidden=true;
+  receiptFlow.stage(1);
   $('receiptReviewLayout').hidden=false;
   $('receiptReviewStage').hidden=false;
 };
 $('receiptPaymentSource').onchange=paymentAccountOptions;
 paymentForm.onsubmit=async event=>{
  event.preventDefault();
- if(!selected||!paymentState)return;
+ if(!selected||!paymentState||paymentBusy)return;
  const submit=$('submitReceiptPayment');
  PHBUI.currency.normalizeForm(paymentForm);
   const data=Object.fromEntries(new FormData(paymentForm).entries());
@@ -297,6 +309,7 @@ paymentForm.onsubmit=async event=>{
  data.receipt_id=selected;
  data[data.source==='loan'?'loan_id':'equity_id']=account;
  if(!await PHBUI.confirm('Zahlung von '+money(PHBUI.currency.parse(data.amount))+' verbindlich aus '+(data.source==='loan'?'Kredit':'Eigenkapital')+' buchen?'))return;
+ paymentBusy=true;
  submit.disabled=true;$('receiptPaymentMessage').textContent='Zahlung wird geprüft und verbucht …';
  try{
    await api('/api/financing/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
@@ -304,18 +317,19 @@ paymentForm.onsubmit=async event=>{
    await showReceiptPayments();
    $('receiptPaymentMessage').textContent='Zahlung verbucht. Offener Rechnungsbetrag und verfügbare Mittel wurden aktualisiert.';
  }catch(error){$('receiptPaymentMessage').textContent='Zahlung fehlgeschlagen: '+error.message;}
- finally{submit.disabled=false;}
+ finally{paymentBusy=false;submit.disabled=false;}
 };
 $('receiptPaymentHistory').addEventListener('click',async event=>{
  const button=event.target.closest('[data-undo-finance-payment]');
- if(!button)return;
+ if(!button||paymentBusy)return;
  if(!await PHBUI.confirm('Diese Zahlung stornieren? Der offene Rechnungsbetrag und die verfügbaren Mittel werden neu berechnet.'))return;
- button.disabled=true;
+ paymentBusy=true;button.disabled=true;
  try{
    await api('/api/financing/payments/'+button.dataset.undoFinancePayment,{method:'DELETE'});
    await reload(selected);await showReceiptPayments();
    $('receiptPaymentMessage').textContent='Zahlung storniert.';
- }catch(error){notice(error.message,true);button.disabled=false;}
+ }catch(error){notice(error.message,true);}
+ finally{paymentBusy=false;button.disabled=false;}
 });
 
 $('upload').onsubmit=async e=>{

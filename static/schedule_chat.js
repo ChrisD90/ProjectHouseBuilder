@@ -16,8 +16,11 @@
   const selectedDocuments = new Set();
   let pendingId = null;
   let busy = false;
-  $('openScheduleHistory').onclick=()=>{
-    $('scheduleHistoryDialog').showModal();
+  const historyFlow=PHBFlow.manage({
+ dialog:'scheduleHistoryDialog',dismiss:['closeScheduleHistory'],track:false
+});
+$('openScheduleHistory').onclick=()=>{
+    historyFlow.open();
     loadHistory().catch(error=>{
       $('scheduleHistoryEntries').textContent='Historie nicht verfügbar: '+error.message;
     });
