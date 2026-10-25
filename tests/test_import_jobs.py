@@ -53,6 +53,31 @@ class ImportJobsTest(unittest.TestCase):
         self.assertTrue(all(j['review_url'].startswith('/angebote?offer_draft=') for j in jobs))
         self.assertFalse((IMPORT_QUEUE_ROOT/db.session.get(ImportJob,ids[0]).stored_name).exists())
 
+    def test_dismiss_single_and_all_completed_import_notifications_only(self):
+        from flask import jsonify
+        result=self.enqueue(kind='offers',names=('a.pdf','b.pdf','c.pdf'))
+        ids=[j['id'] for j in result.json['jobs']]
+        # No waiting/running job may be dismissed.
+        blocked=self.client.post('/api/import-jobs/'+str(ids[1])+'/dismiss')
+        self.assertEqual(blocked.status_code,409,blocked.json)
+        with patch('app.offers_import',return_value=(jsonify(id=123),201)):
+            _run_import_job(ids[0])
+            _run_import_job(ids[2])
+        self.assertEqual(self.client.get('/api/import-jobs').status_code,200)
+        single=self.client.post('/api/import-jobs/'+str(ids[0])+'/dismiss')
+        self.assertEqual(single.status_code,200,single.json)
+        self.assertEqual(single.json['removed'],1)
+        self.assertEqual(db.session.get(ImportJob,ids[0]).status,'Ausgeblendet')
+        self.assertEqual([x['id'] for x in self.client.get('/api/import-jobs').json['jobs']],
+                         [ids[2],ids[1]])
+        all_=self.client.post('/api/import-jobs/dismiss-completed')
+        self.assertEqual(all_.status_code,200,all_.json)
+        self.assertEqual(all_.json['removed'],1)
+        self.assertEqual([x['id'] for x in self.client.get('/api/import-jobs').json['jobs']],
+                         [ids[1]])
+        self.assertEqual(db.session.get(ImportJob,ids[2]).result_id,123)
+        self.assertEqual(self.client.post('/api/import-jobs/999999/dismiss').status_code,404)
+
     def test_real_receipt_parser_runs_after_request_has_returned(self):
         r=self.enqueue(names=('bill.pdf',))
         self.assertEqual(r.status_code,202,r.json)
