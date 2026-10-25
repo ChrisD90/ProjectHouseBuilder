@@ -43,7 +43,7 @@
   get('resetForm').addEventListener('submit', async event => {
     event.preventDefault();
     if (get('resetButton').disabled) return;
-    if (!window.confirm('Wirklich alle Projektdaten und Uploads löschen? Es wird unmittelbar vorher ein vollständiges Backup verlangt.')) return;
+    if (!await PHBUI.confirm('Wirklich alle Projektdaten und Uploads löschen? Es wird unmittelbar vorher ein vollständiges Backup verlangt.')) return;
     const button = get('resetButton'); button.disabled = true;
     try {
       const result = await json('/api/data/reset', {
