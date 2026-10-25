@@ -135,7 +135,7 @@ def create(engine_url):
         if private.is_dir():
             for file in sorted(private.rglob('*')):
                 if file.is_symlink():raise ValueError('Symbolischer Link in privaten Daten: '+str(file))
-                if file.is_file() and not file.name.startswith('.restore-'):
+                if file.is_file() and not any(part.startswith('.restore-') for part in file.relative_to(private).parts):
                     sources.append((file,file.relative_to(ROOT).as_posix()))
         try:
             manifest={'format':FORMAT,'version':VERSION,
@@ -185,7 +185,9 @@ def verify(path):
                     h.update(part);size+=len(part)
             if size!=props.get('bytes') or h.hexdigest()!=props.get('sha256'):
                 raise ValueError('Prüfsumme falsch: '+name)
-        if archive.read('database.dump',pwd=None)[:5]!=b'PGDMP':
+        with archive.open('database.dump') as dump_file:
+            signature=dump_file.read(5)
+        if signature!=b'PGDMP':
             raise ValueError('PostgreSQL-Dump ist nicht im Custom-Format.')
         return manifest
 
