@@ -9,6 +9,7 @@ import re
 import zipfile
 from xml.etree import ElementTree
 from pypdf import PdfReader
+from receipt_parser import extract_pdf_pages
 
 CATEGORIES = ('Bauplan', 'Technische Zeichnung', 'Technisches Datenblatt',
               'Genehmigung', 'Versicherung', 'Vertrag', 'Protokoll', 'Sonstiges')
