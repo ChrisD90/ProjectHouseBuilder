@@ -4,9 +4,10 @@
   const phrase='ALLE DATEN LÖSCHEN';
   const restorePhrase='BACKUP WIEDERHERSTELLEN';
   let config=null, pendingBackup=false, verifiedRef=null, restoring=false;
+  let configuringBackup=false;
   const backupFlow=PHBFlow.manage({
     dialog:'backupConfigDialog',forms:['backupConfigForm'],
-    dismiss:['backupConfigCancel'],
+    dismiss:['backupConfigCancel'],isBusy:()=>configuringBackup,
     onClose:()=>{pendingBackup=false;}
   });
   const restoreFlow=PHBFlow.manage({
@@ -114,6 +115,8 @@
   };
   get('backupConfigForm').onsubmit=async event=>{
     event.preventDefault();
+    if(configuringBackup)return;
+    configuringBackup=true;
     const button=event.submitter;button.disabled=true;
     try{
       await post('/api/backup/configure',{folder:get('backupFolder').value,keep:Number(get('backupKeep').value)});
@@ -124,7 +127,7 @@
       notice('Backupziel gespeichert.');
       if(createAfterConfiguration)await createBackup();
     }catch(err){get('backupConfigMessage').textContent=err.message;}
-    finally{button.disabled=false;}
+    finally{configuringBackup=false;button.disabled=false;}
   };
   async function createBackup(){
     const btn=get('backupNow');btn.disabled=true;
