@@ -1,12 +1,14 @@
 'use strict';
 const $=id=>document.getElementById(id);
+let loanSaving=false,equityBusy=false;
 const loanFlow=PHBFlow.manage({
  dialog:'loanDialog',forms:['loanForm'],dismiss:['closeLoan'],
- isBusy:()=>loanAiBusy,
+ isBusy:()=>loanAiBusy||loanSaving,
  busyMessage:'Die Vertragsanalyse läuft noch. Bitte das Ergebnis abwarten.'
 });
 const equityFlow=PHBFlow.manage({
- dialog:'equityDialog',forms:['equityForm'],dismiss:['closeEquity']
+ dialog:'equityDialog',forms:['equityForm'],dismiss:['closeEquity'],
+ isBusy:()=>equityBusy
 });
 
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -183,13 +185,25 @@ $('closeLoan').onclick=()=>{
   }
   $('loanDialog').close();
 };$('closeEquity').onclick=()=>$('equityDialog').close();
-async function submitForm(event,form,base,dialog){event.preventDefault();let fields=payload(form),id=fields.id;delete fields.id;try{await api(base+(id?'/'+id:''),id?'PATCH':'POST',fields);dialog.close();await reload();message('Gespeichert.')}catch(err){message(err.message,true)}}
+async function submitForm(event,form,base,dialog){
+ event.preventDefault();
+ if(equityBusy)return;
+ const button=event.submitter||form.querySelector('button[type=submit]');
+ equityBusy=true;button.disabled=true;
+ try{
+  const fields=payload(form),id=fields.id;delete fields.id;
+  await api(base+(id?'/'+id:''),id?'PATCH':'POST',fields);
+  dialog.close();await reload();message('Gespeichert.');
+ }catch(err){message(err.message,true);}
+ finally{equityBusy=false;button.disabled=false;}
+}
 $('loanForm').onsubmit=async event=>{
  event.preventDefault();
  if(loanAiBusy)return;
  const form=$('loanForm'),button=$('loanSaveButton'),status=$('loanSaveStatus');
  const fields=payload(form),id=fields.id;
  delete fields.id;
+ loanSaving=true;
  button.disabled=true;
  status.textContent='Vertragsangaben werden gespeichert …';
  status.classList.remove('error');
@@ -211,6 +225,7 @@ $('loanForm').onsubmit=async event=>{
    status.textContent='Speichern fehlgeschlagen: '+err.message;
    status.classList.add('error');
  }finally{
+   loanSaving=false;
    button.disabled=false;
  }
 };
