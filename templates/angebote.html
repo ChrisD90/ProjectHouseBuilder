@@ -41,7 +41,23 @@
   </section>
   <section class="panel budget-panel offer-review-section" id="angebote-pruefen"><div class="panelbar"><div><h2>Angebotsentwürfe und neue Versionen prüfen <span id="offersDraftBadge" class="offers-counter"></span></h2><p>Prüfe eingelesene Angebote und neue Versionsentwürfe, bevor sie sichtbar aktuell werden.</p></div><a class="mini" href="/belege">Kategorien verwalten ↗</a></div><div class="offer-review-layout"><div id="offerDrafts" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div><aside id="offerPdfPane" class="phb-inline-pdf" hidden><header><strong>Angebots-PDF parallel prüfen</strong><a id="offerPdfDownload" class="mini" target="_blank" rel="noopener">Original herunterladen</a></header><iframe id="offerPdfFrame" title="Vorschau des zu prüfenden Angebots" loading="lazy"></iframe></aside></div></section>
    </div></dialog>
-  <div class="phb-workflow-inline-trigger"><button type="button" id="openOfferDrafts" class="subtle">Offene Entwürfe prüfen <span id="offerDraftTriggerCount"></span></button></div>
+  <dialog id="offerEditDialog" class="phb-workflow-dialog phb-offer-edit-dialog" aria-labelledby="offerEditTitle">
+  <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebote / Bearbeitung</span><h2 id="offerEditTitle">Angebot bearbeiten</h2><p>Werte mit dem Original-PDF prüfen und anschließend speichern.</p></div><button id="closeOfferEdit" type="button" class="subtle">Abbrechen</button></div>
+  <div class="phb-workflow-body">
+    <div class="phb-offer-edit-layout">
+      <form id="offerEditForm" class="offer-review-form">
+        <div id="offerEditFields" class="offer-edit-fields"></div>
+        <p id="offerEditError" role="alert" class="offer-wide"></p>
+        <div class="offer-form-actions offer-wide"><button type="submit" class="primary">Änderungen speichern</button><button id="cancelOfferEdit" type="button" class="subtle">Abbrechen</button></div>
+      </form>
+      <aside id="offerEditPdfPane" class="phb-inline-pdf" hidden>
+        <header><strong>Originalangebot parallel prüfen</strong><a id="offerEditPdfDownload" class="mini" target="_blank" rel="noopener">Original-PDF</a></header>
+        <iframe id="offerEditPdfFrame" title="PDF des bearbeiteten Angebots"></iframe>
+      </aside>
+    </div>
+  </div>
+</dialog>
+<div class="phb-workflow-inline-trigger"><button type="button" id="openOfferDrafts" class="subtle">Offene Entwürfe prüfen <span id="offerDraftTriggerCount"></span></button></div>
   <section class="panel budget-panel offer-compare-section" id="angebotsliste"><div class="panelbar"><div><h2>Deine Angebote</h2><p>Nur die jeweils aktuelle Version wird angezeigt. Frühere PDFs, Summen und Positionen findest du über „Versionshistorie“.</p></div><label class="offers-filter">Gewerk <select id="offerCategoryFilter"><option value="">Alle Kategorien</option></select></label></div>
    <div id="offerList" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div>
    <p class="section-note">Bei angenommener Leistung wird der Bruttogesamtbetrag genau einmal übernommen. Wenn du eine Kostenplanposition zuordnest, ersetzt der angenommene Preis deren Schätzung. Zu jedem <strong>angenommenen Angebot</strong> siehst du hier die Teilrechnungen, den bereits bezahlten Betrag und mögliche Überziehungen. Rechnungen werden unter <a href="/belege">Rechnungen & Belege</a> erfasst.</p>

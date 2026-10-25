@@ -28,9 +28,6 @@ function render(){const s=state.summary;
  el('ownworkrows').innerHTML=ownRows+extraRows||'<tr><td colspan="7">Noch keine Eigenleistungen angelegt.</td></tr>';
  document.querySelectorAll('[data-own]').forEach(btn=>btn.onclick=()=>openEditor('cost',null,{budget_line_id:Number(btn.dataset.own),kind:'Eigenleistung',category:state.budget_lines.find(x=>x.id===Number(btn.dataset.own))?.category||'Eigenleistung',title:state.budget_lines.find(x=>x.id===Number(btn.dataset.own))?.title||'Eigenleistung',state:'Schätzung'}));
  document.querySelectorAll('[data-ownedit]').forEach(btn=>btn.onclick=()=>openEditor('cost',Number(btn.dataset.ownedit)));
- el('documents').innerHTML=state.documents.map(d=>`<tr><td><a href="/api/documents/${d.id}/download">${esc(d.name)}</a></td><td>${esc(d.kind)}</td><td>${esc(contractors.get(d.contractor_id)||'–')}</td><td>${esc(budget.get(d.budget_line_id)||state.items.find(i=>i.id===d.cost_item_id)?.title||'–')}</td><td>${esc(d.notes)}</td><td>${esc((d.uploaded_at||'').substring(0,10))}</td><td><button class="mini" data-delete-doc="${d.id}">Löschen</button></td></tr>`).join('')||'<tr><td colspan="7">Noch keine Dokumente abgelegt</td></tr>';
- for(const [node,values,title] of [['fileContractor',state.contractors,'name'],['fileBudget',state.budget_lines.filter(x=>!x.is_group),'title'],['fileCost',state.items,'title']]){const selection=el(node).value;el(node).innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${esc(x[title])}</option>`).join('');el(node).value=selection}
- document.querySelectorAll('[data-delete-doc]').forEach(btn=>btn.onclick=async()=>{if(!await PHBUI.confirm('Dieses Dokument dauerhaft von diesem Rechner löschen?'))return;try{await api('/api/documents/'+btn.dataset.deleteDoc,{method:'DELETE'});await reload()}catch(e){PHBUI.alert(e.message)}});
  el('fundingrows').innerHTML=state.funding.map(f=>`<tr><td>${esc(f.name)}</td>${fmtcell(f.expected)}${fmtcell(f.confirmed)}${fmtcell(f.received)}<td>${esc(f.notes)}</td><td><button class="mini" data-funding="${f.id}">Bearbeiten</button></td></tr>`).join('');
  el('fundingExpected').textContent=euro(s.funding_expected);el('fundingConfirmed').textContent=euro(s.funding_confirmed);el('net').textContent=euro(s.net_after_confirmed);
 
@@ -63,26 +60,3 @@ for(const type of ['Budget','Cost','Funding'])el('add'+(type==='Budget'?'Line':t
 
 reload().catch(e=>PHBUI.alert('Kostenverwaltung kann nicht geladen werden: '+e.message));
 
-const costDocumentDialog=el('costDocumentDialog');
-let costDocumentUploading=false;
-el('openCostUpload').onclick=()=>costDocumentDialog.showModal();
-el('closeCostUpload').onclick=()=>{if(!costDocumentUploading)costDocumentDialog.close();};
-costDocumentDialog.addEventListener('cancel',e=>{if(costDocumentUploading)e.preventDefault();});
-costDocumentDialog.addEventListener('click',e=>{
- if(e.target===costDocumentDialog&&!costDocumentUploading)costDocumentDialog.close();
-});
-el('uploadForm').addEventListener('submit',async e=>{
- e.preventDefault();
- if(costDocumentUploading)return;
- costDocumentUploading=true;
- const button=e.target.querySelector('button[type=submit]');button.disabled=true;
- el('uploadMessage').textContent='Datei wird gespeichert …';
- try{
-   const response=await fetch('/api/documents',{method:'POST',body:new FormData(e.target)});
-   const data=await response.json();
-   if(!response.ok)throw Error(data.error||'Fehler beim Hochladen');
-   e.target.reset();await reload();
-   el('uploadMessage').textContent='Datei gespeichert und in der Tabelle ergänzt. Du kannst weitere Dateien zuordnen oder den Dialog schließen.';
- }catch(err){el('uploadMessage').textContent='Fehler: '+err.message;}
- finally{costDocumentUploading=false;button.disabled=false;}
-});

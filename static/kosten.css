@@ -49,3 +49,39 @@
 .offer-list-card .offer-facts{gap:8px 25px}
 .offer-list-card .offer-card-head>div:last-child{text-align:right}
 @media(max-width:760px){.offer-workflow-section{padding:14px 12px}.offer-review-form{grid-template-columns:1fr}.offer-list-card .offer-card-head>div:last-child{text-align:left}}
+
+/* Kostenübersicht: spaltenspezifische Breiten statt globalem td:nth-child(2).
+   Lange Bezeichnungen umbrechen, Geldspalten bleiben rechtsbündig. */
+body.phb-app.phb-page-kosten .budget-panel{min-width:0;max-width:100%}
+body.phb-app.phb-page-kosten .budget-panel .tablewrap{
+  overflow-x:auto;overflow-y:auto;max-width:100%;min-width:0;
+  scrollbar-gutter:stable;
+}
+body.phb-app.phb-page-kosten .budget-panel table{
+  width:100%;min-width:760px;table-layout:auto;
+  border-collapse:separate;border-spacing:0;
+}
+body.phb-app.phb-page-kosten .budget-panel th,
+body.phb-app.phb-page-kosten .budget-panel td{
+  min-width:0;max-width:none;
+  padding:11px 12px;vertical-align:middle;
+  white-space:normal;line-height:1.5;
+}
+body.phb-app.phb-page-kosten .budget-panel td:first-child{
+  min-width:150px;max-width:320px;overflow-wrap:anywhere;
+}
+body.phb-app.phb-page-kosten .budget-panel td:nth-child(2){
+  min-width:0;max-width:320px;overflow-wrap:anywhere;
+}
+body.phb-app.phb-page-kosten .budget-panel td.amount,
+body.phb-app.phb-page-kosten .budget-panel th.amount{
+  min-width:110px;white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;
+}
+body.phb-app.phb-page-kosten #categories~*{max-width:100%}
+body.phb-app.phb-page-kosten .budget-panel th:last-child,
+body.phb-app.phb-page-kosten .budget-panel td:last-child{white-space:nowrap}
+body.phb-app.phb-page-kosten .budget-panel td .hint-pill{white-space:normal;text-align:left}
+@media(max-width:800px){
+ body.phb-app.phb-page-kosten .budget-panel .tablewrap{max-height:540px}
+ body.phb-app.phb-page-kosten .budget-panel table{min-width:800px}
+}

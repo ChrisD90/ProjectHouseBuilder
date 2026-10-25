@@ -122,3 +122,23 @@
 .receipt-review-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.9fr);gap:14px;align-items:start;min-width:0;}
 .receipt-review-layout #review{min-width:0;}
 @media(max-width:1050px){.receipt-review-layout{grid-template-columns:1fr;}.phb-inline-pdf{position:static;}.phb-inline-pdf iframe,.phb-inline-pdf img{height:480px;}}
+
+/* Ensure the review dialog has a visible original pane next to the form. */
+body.phb-app .phb-receipt-workflow.is-reviewing .receipt-review-layout{
+ display:grid;grid-template-columns:minmax(0,1.15fr) minmax(335px,.85fr);
+ gap:16px;align-items:start;min-width:0;
+}
+body.phb-app .phb-receipt-workflow .receipt-review-layout form{min-width:0;}
+body.phb-app .phb-receipt-workflow .receipt-review-layout .phb-inline-pdf{
+ display:block;min-width:0;position:sticky;top:0;
+}
+body.phb-app .phb-receipt-workflow .phb-inline-pdf[hidden]{display:none!important}
+body.phb-app .phb-receipt-workflow .phb-inline-pdf iframe,
+body.phb-app .phb-receipt-workflow .phb-inline-pdf img{
+ min-height:450px;height:min(72dvh,900px);width:100%;background:white;
+}
+@media(max-width:800px){
+ body.phb-app .phb-receipt-workflow.is-reviewing .receipt-review-layout{grid-template-columns:1fr}
+ body.phb-app .phb-receipt-workflow .receipt-review-layout .phb-inline-pdf{position:static}
+ body.phb-app .phb-receipt-workflow .phb-inline-pdf iframe{min-height:380px;height:480px}
+}

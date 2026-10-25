@@ -166,3 +166,10 @@ body.phb-page-zeitplan .panel[hidden],body.phb-page-zeitplan .schedule-advanced 
 .task-suggestion{grid-column:1/-1;background:#f0f9f9;border:1px solid #d9e9ed;border-radius:9px;padding:12px;font-size:12px;}
 .task-suggestion select{max-width:100%;margin:8px;}
 @media(max-width:650px){.company-proposal-row{grid-template-columns:1fr;}.gantt-label .task-name{max-width:190px;}}
+
+/* Work-package completion belongs in the modal headline. */
+body.phb-app #overlay .modalhead #complete{
+ font-size:13px;font-weight:700;padding:10px 14px;
+ border-radius:9px;min-height:40px;
+}
+body.phb-app #overlay .modalhead #complete[hidden]{display:none!important}

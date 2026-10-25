@@ -241,3 +241,34 @@
 .offer-review-layout #offerDrafts{padding:0;min-width:0;}
 .offer-review-layout #offerPdfPane{min-width:0;}
 @media(max-width:1050px){.offer-review-layout{grid-template-columns:1fr;}.offer-review-layout #offerPdfPane{position:static;}.offer-review-layout iframe{height:480px;}}
+
+/* Offer review and edit dialogs keep the original to the right on desktop. */
+body.phb-app .phb-offer-edit-dialog{width:min(1460px,calc(100vw - 28px));max-height:92dvh;}
+body.phb-app .phb-offer-edit-dialog .phb-offer-edit-layout{
+ display:grid;grid-template-columns:minmax(0,1.1fr) minmax(340px,.9fr);gap:18px;align-items:start;
+}
+body.phb-app .phb-offer-edit-dialog .offer-edit-fields{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;grid-column:1/-1;
+}
+body.phb-app .phb-offer-edit-dialog .offer-review-form{
+ min-width:0;margin:0;grid-template-columns:1fr;
+}
+body.phb-app .phb-offer-edit-dialog .offer-edit-fields .offer-wide{grid-column:1/-1}
+body.phb-app .phb-offer-edit-dialog .phb-inline-pdf,
+body.phb-app .phb-offer-workflow .phb-inline-pdf{
+ display:block;min-width:0;position:sticky;top:0;
+}
+body.phb-app .phb-offer-edit-dialog .phb-inline-pdf[hidden],
+body.phb-app .phb-offer-workflow .phb-inline-pdf[hidden]{display:none!important}
+body.phb-app .phb-offer-edit-dialog iframe,
+body.phb-app .phb-offer-workflow .phb-inline-pdf iframe{width:100%;height:min(72dvh,900px);min-height:460px;border:1px solid var(--ui-line,#d3e2e5);background:white;}
+body.phb-app .phb-offer-workflow .offer-review-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(340px,.9fr);}
+body.phb-app .phb-offer-workflow .offer-review-layout>.offer-cards{padding:0;margin:0;}
+@media(max-width:800px){
+ body.phb-app .phb-offer-edit-dialog .phb-offer-edit-layout,
+ body.phb-app .phb-offer-workflow .offer-review-layout{grid-template-columns:1fr;}
+ body.phb-app .phb-offer-edit-dialog .phb-inline-pdf,
+ body.phb-app .phb-offer-workflow .phb-inline-pdf{position:static}
+ body.phb-app .phb-offer-edit-dialog iframe,
+ body.phb-app .phb-offer-workflow .phb-inline-pdf iframe{min-height:360px;height:480px}
+}
