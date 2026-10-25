@@ -53,3 +53,19 @@
  .phb-page-daten .phb-data-more summary{padding:16px}
  .phb-page-daten .phb-data-more .phb-danger-content{padding:0 16px 16px}
 }
+
+
+/* Backup-Ziel und Wiederherstellung als modale App-Dialoge */
+.phb-backup-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.phb-data-dialog{width:min(650px,calc(100vw - 25px));max-height:90dvh;overflow:auto;border:1px solid var(--ui-line,#dbe5e9);border-radius:15px;background:var(--ui-surface,#fff);color:var(--ui-ink,#1a3943);padding:24px;box-shadow:0 24px 85px #001e365c}
+.phb-data-dialog::backdrop{background:#091e3299}
+.phb-data-dialog h2{font-size:19px;margin:0 0 12px}
+.phb-data-dialog p{font-size:13px;line-height:1.55}
+.phb-data-dialog form{display:flex;flex-direction:column;gap:10px}
+.phb-data-dialog label{display:block;font-size:13px;font-weight:650}
+.phb-data-dialog input:not([type=file]),.phb-data-dialog select{width:100%;min-height:40px;padding:9px;border:1px solid var(--ui-line,#cddce1);border-radius:8px;background:var(--ui-surface,#fff);color:inherit}
+.phb-data-dialog-actions{display:flex;flex-wrap:wrap;gap:9px;justify-content:flex-end;margin-top:14px}
+.phb-folder-list{display:flex;flex-wrap:wrap;gap:7px;max-height:170px;overflow:auto}
+.phb-folder-list button{font-size:12px;border:1px solid #d4e4e9;background:#f5fafb;padding:7px 10px;border-radius:8px}
+#backupConfigMessage,#restoreProgress,#restoreVerifyInfo{white-space:pre-line;line-height:1.5}
+.phb-data-dialog .phb-data-footnote{word-break:break-word}

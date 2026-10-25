@@ -88,7 +88,7 @@ class ProjectDocumentTests(unittest.TestCase):
                 json={'plan_only':True,'model':'m1','message':'Treppe prüfen',
                       'document_ids':ids},headers={'X-PHB-AI':'1'},
                 base_url='http://127.0.0.1:5055')
-        with patch.object(chatgpt,'status',return_value={'sharing':True}),\
+        with patch.object(chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}),\
              patch.object(chatgpt,'run',return_value=response) as mock:
             none=ask([])
             self.assertEqual(none.status_code,200,none.json)
@@ -114,7 +114,7 @@ class ProjectDocumentTests(unittest.TestCase):
             return self.client.post('/api/ai/schedule/chat',json={
               'model':'m1','plan_only':True,'message':'Was nun?','document_ids':ids},
               headers={'X-PHB-AI':'1'},base_url='http://127.0.0.1:5055')
-        with patch.object(chatgpt,'status',return_value={'sharing':True}),\
+        with patch.object(chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}),\
              patch.object(chatgpt,'run') as mocked:
             self.assertEqual(call([did,did]).status_code,400)
             self.assertEqual(call([123456]).status_code,400)

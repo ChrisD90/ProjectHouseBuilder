@@ -257,7 +257,7 @@ class FinanceWorkflowTest(unittest.TestCase):
                     'model':'m1',**(extra or {})},
               headers=headers or {},content_type='multipart/form-data',
               base_url='http://127.0.0.1:5055')
-        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+        with patch.object(chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}), \
              patch.object(chatgpt,'run',return_value=proposed) as run:
             self.assertEqual(submit({'plan_only':'true'}).status_code,403)
             self.assertEqual(submit(headers={'X-PHB-AI':'1'}).status_code,403)
@@ -280,7 +280,7 @@ class FinanceWorkflowTest(unittest.TestCase):
 
     def test_loan_ai_rejects_bad_file_and_conflicting_values(self):
         from chatgpt_local import chatgpt
-        with patch.object(chatgpt,'status',return_value={'sharing':True}), \
+        with patch.object(chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}), \
              patch.object(chatgpt,'run',return_value=json.dumps({
                  'principal':'not-an-amount','interest_rate':'999',
                  'fixed_until':'2030-99-77','bank':'Bank X',

@@ -21,8 +21,11 @@
       <h2 id="backupHeading">Vollständiges Backup</h2>
       <p>Alle Einträge aus Bauzeitenplan, Kosten, Angeboten, Rechnungen, Finanzierung und sämtliche hochgeladenen Dateien gemeinsam sichern.</p>
       <div class="phb-data-status" id="backupInfo" role="status">Backup-Konfiguration wird geladen …</div>
-      <button id="backupNow" type="button" class="primary">Jetzt vollständiges Backup erstellen</button>
-      <p class="phb-data-footnote">Den Zielordner richtest du einmalig im VS-Code-Terminal mit <code>sh mac/backup-setup.sh</code> ein. Er kann in deinem Proton Drive liegen.</p>
+      <div class="phb-backup-actions">
+        <button id="backupNow" type="button" class="primary">Jetzt vollständiges Backup erstellen</button>
+        <button id="backupConfigure" type="button" class="subtle">Zielordner ändern</button>
+      </div>
+      <p class="phb-data-footnote" id="backupFolderHint">Der Backup-Ordner ist ein Pfad auf dem App-Server. NAS-Freigaben müssen vorher als Docker-Volume eingebunden sein. Die bisherigen Terminalbefehle funktionieren weiterhin.</p>
     </section>
 
   </div>
@@ -54,12 +57,44 @@
     </div>
   </details>
   <div id="dataNotice" role="status" aria-live="polite" class="phb-data-notice" hidden></div>
-  <section class="panel phb-data-help">
+  <section class="panel phb-data-help" id="restorePanel">
     <h2>Wiederherstellen</h2>
-    <p>Auf einem neuen Mac oder nach einem Reset kannst du das gesicherte ZIP zurückspielen. ProjectHouseBuilder muss dafür beendet sein:</p>
-    <code>python3 backup_manager.py restore "/Pfad/zum/Backup.zip" --yes</code>
-    <p>Danach startest du das Programm erneut. Die automatische Sicherung und die Migrationsverwaltung bleiben erhalten.</p>
+    <p>Wähle ein geprüftes Backup aus dem eingerichteten Speicher oder lade ein Backup-ZIP hoch. Die App prüft zunächst dessen Integrität, bevor du die Wiederherstellung ausdrücklich bestätigst.</p>
+    <button id="openRestore" type="button" class="subtle">Backup wiederherstellen …</button>
+    <p class="phb-data-footnote">Das bisherige Terminalverfahren bleibt erhalten: auf dem Mac <code>python3 backup_manager.py restore "DATEI.zip" --yes</code>; auf der Synology weiterhin <code>pg_restore</code> und die Dokumentwiederherstellung wie in <code>synology/README.md</code>. Bei produktiven Daten vorab eine externe Kopie prüfen.</p>
+    <p id="restoreResult" role="status"></p>
   </section>
+  <dialog id="backupConfigDialog" class="phb-data-dialog">
+    <form id="backupConfigForm">
+      <h2>Backup-Zielordner festlegen</h2>
+      <p id="backupRootDescription">Wähle einen für die Anwendung erreichbaren Ordner. Auf der Synology werden nur Verzeichnisse innerhalb des eingebundenen Backup-Speichers angeboten.</p>
+      <label for="backupFolder">Zielordner / Unterordner</label>
+      <input id="backupFolder" name="folder" required placeholder="z. B. Sanierung/2026">
+      <div id="backupFolderBrowser" hidden>
+        <p id="backupBrowseCurrent" class="phb-data-footnote"></p>
+        <div id="backupBrowseList" class="phb-folder-list"></div>
+      </div>
+      <label for="backupKeep">Anzahl aufzubewahrender Sicherungen</label>
+      <input id="backupKeep" name="keep" type="number" min="2" max="1000" value="30" required>
+      <p class="phb-data-footnote">Existierende Backups werden beim Wechsel nicht verschoben. Neue Sicherungen landen ausschließlich im neuen Zielordner.</p>
+      <p id="backupConfigMessage" role="status"></p>
+      <div class="phb-data-dialog-actions"><button type="button" id="backupConfigCancel" class="subtle">Abbrechen</button><button type="submit" class="primary">Ziel speichern</button></div>
+    </form>
+  </dialog>
+  <dialog id="backupRestoreDialog" class="phb-data-dialog phb-restore-dialog">
+    <h2>Projekt aus Backup wiederherstellen</h2>
+    <p><strong>Achtung:</strong> Der aktuelle Projektstand wird ersetzt. Die Anwendung legt vor der Wiederherstellung zusätzlich eine Sicherheitssicherung an und behält die alten Daten zur Rückkehr vor.</p>
+    <label for="restoreBackupSelect">Vorhandenes Backup</label>
+    <select id="restoreBackupSelect"><option value="">Bitte auswählen</option></select>
+    <p class="phb-data-footnote">Oder ein externes, von ProjectHouseBuilder erzeugtes ZIP auswählen:</p>
+    <input id="restoreBackupUpload" type="file" accept=".zip,application/zip">
+    <button type="button" id="verifyRestore" class="subtle">Backup zuerst prüfen</button>
+    <p id="restoreVerifyInfo" role="status"></p>
+    <label for="restorePhrase">Zur endgültigen Bestätigung exakt <strong>BACKUP WIEDERHERSTELLEN</strong> eingeben:</label>
+    <input id="restorePhrase" type="text" autocomplete="off" spellcheck="false" placeholder="BACKUP WIEDERHERSTELLEN">
+    <p id="restoreProgress" role="status" aria-live="polite"></p>
+    <div class="phb-data-dialog-actions"><button id="cancelRestore" type="button" class="subtle">Schließen</button><button id="performRestore" type="button" class="danger" disabled>Geprüftes Backup wiederherstellen</button></div>
+  </dialog>
 </main>
 </div></div>
 <script src="/static/daten.js"></script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">

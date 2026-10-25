@@ -163,10 +163,22 @@ class ChatGPTLocal:
         scopes = set(record.get('scopes', [])) if record else set()
         return {'connected': bool(record and record.get('refresh_token')),
                 'sharing': bool(record and record.get('refresh_token') and REQUIRED_SCOPES <= scopes),
+                'credits_acknowledged': bool(record and record.get('credits_acknowledged')),
                 'email': record.get('email', '') if record else '',
                 'usage_url': USAGE_URL,
                 'local_only': True, 'api_keys_supported': False,
                 'credits_warning': 'Credits in ChatGPT Einstellungen → Nutzung für Apps deaktivieren. Die App kann dies nicht auslesen.'}
+
+    def acknowledge_credits(self):
+        """Store acknowledgement alongside this locally verified ChatGPT identity."""
+        with self._lock:
+            record=self._profile()
+            if not record or not record.get('refresh_token') or not REQUIRED_SCOPES <= set(record.get('scopes', [])):
+                raise AIError('Bitte zuerst erfolgreich bei ChatGPT anmelden.')
+            if not record.get('credits_acknowledged'):
+                record['credits_acknowledged']=True
+                _write_secret('profile.json', record)
+            return self.status()
 
     def begin(self, redirect_uri, browser_nonce):
         # Exact 127.0.0.1 loopback redirect is required by dynamic registration.
@@ -217,7 +229,8 @@ class ChatGPTLocal:
             raise AIError('Die Anmeldung gehört nicht zum zuvor verbundenen ChatGPT-Konto.')
         if not token.get('access_token') or not token.get('refresh_token'):
             raise AIError('ChatGPT hat keine erneuerbaren Zugangsdaten geliefert.')
-        stored = {'client_id': issued, 'host_id': _host_id(), 'subject': claims['sub'],
+        stored = {'credits_acknowledged': bool(old and old.get('subject')==claims['sub'] and old.get('credits_acknowledged')),
+                   'client_id': issued, 'host_id': _host_id(), 'subject': claims['sub'],
                   'email': claims.get('email', ''), 'id_token': token['id_token'],
                   'access_token': token['access_token'], 'refresh_token': token['refresh_token'],
                   'scopes': token.get('scope', '').split(),

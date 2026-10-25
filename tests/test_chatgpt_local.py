@@ -31,7 +31,7 @@ class ChatGPTLocalTests(unittest.TestCase):
     def profile(self,sharing=True):
         _write_secret('profile.json',{'client_id':'oaiapp_test','subject':'subject-id','email':'local@example.test',
               'access_token':'very-secret-token','refresh_token':'never-in-browser',
-              'id_token':'id-only-token','scopes':['openid','resource.invoke']+(['chatgpt.tokens.use.direct'] if sharing else []),
+              'id_token':'id-only-token','credits_acknowledged':True,'scopes':['openid','resource.invoke']+(['chatgpt.tokens.use.direct'] if sharing else []),
               'expires_at':9999999999})
 
     @staticmethod

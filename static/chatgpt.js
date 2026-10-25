@@ -10,6 +10,9 @@
   const connect=$('phbAIConnect');
   const disconnect=$('phbAIDisconnect');
   const model=$('phbAIModel');
+  const check=$('phbAINoCredits');
+  const warning=check.closest('label');
+  let consentSaving=false;
   const message=msg=>{$('phbAIMessage').textContent=msg;};
   const diagnosticBox=document.createElement('details');
   diagnosticBox.className='phb-ai-diagnostics';
@@ -92,6 +95,9 @@
       $('phbAIConnection').textContent=state.connected
         ? 'Verbunden: '+(state.email||'ChatGPT-Konto')+(state.sharing?' · Plannutzung erlaubt':' · Plannutzung nicht erlaubt')
         : 'Nicht verbunden. Die lokale PDF-Analyse funktioniert weiterhin.';
+      check.checked=!!state.credits_acknowledged;
+      check.disabled=!!state.credits_acknowledged || !state.sharing;
+      warning.hidden=!!state.credits_acknowledged;
       connect.textContent=state.connected?'Erneut bei ChatGPT anmelden':'Mit ChatGPT anmelden';
       disconnect.hidden=!state.connected;
       $('phbAIModelWrap').hidden=!state.sharing;
@@ -109,11 +115,21 @@
   }
   function selection(){
     if (!state.sharing)throw Error('Bitte zuerst über den Header mit ChatGPT verbinden und die Plannutzung erlauben.');
-    if(!$('phbAINoCredits').checked){dialog.showModal();throw Error('Bitte im ChatGPT-Menü erst die Credit-Warnung bestätigen.');}
+    if(!state.credits_acknowledged){if(!dialog.open)dialog.showModal();throw Error('Bitte die Credit-Warnung einmalig nach der Anmeldung bestätigen.');}
     if(!model.value)throw Error('Kein ChatGPT-Modell verfügbar. Bitte Verbindung prüfen.');
     return {model:model.value,plan_only:true};
   }
-  function show(){dialog.showModal();}
+  check.addEventListener('change',async()=>{
+    if(!check.checked||state.credits_acknowledged||consentSaving)return;
+    consentSaving=true;check.disabled=true;
+    try{
+      await api('/api/ai/acknowledge-credits','POST',{acknowledged:true});
+      await refresh();
+      message('Einmalige Bestätigung sicher gespeichert. Bei der nächsten Nutzung ist kein erneutes Häkchen nötig.');
+    }catch(error){check.checked=false;check.disabled=false;message(error.message);}
+    finally{consentSaving=false;}
+  });
+  function show(){if(!dialog.open)dialog.showModal();}
   $('phbChatGPTButton').onclick=show;
   connect.onclick=async()=>{
     connect.disabled=true;
@@ -125,11 +141,19 @@
   disconnect.onclick=async()=>{
     if(!await PHBUI.confirm('ChatGPT-Verbindung lokal trennen und die Sitzung widerrufen?'))return;
     try{const res=await api('/api/ai/disconnect','POST',{});
-      $('phbAINoCredits').checked=false;
+      check.checked=false;
       await refresh();message(res.warning||'Verbindung getrennt.');
     }catch(e){message(e.message);}
   };
-  if(new URLSearchParams(location.search).get('ai')==='permission'){
+  if(new URLSearchParams(location.search).get('ai')==='connected'){
+    setTimeout(async()=>{
+      await refresh();
+      if(!state.credits_acknowledged){
+        show();
+        message('ChatGPT ist verbunden. Bitte die Credit-Warnung jetzt einmalig für dieses Konto bestätigen.');
+      }
+    },200);
+  }else if(new URLSearchParams(location.search).get('ai')==='permission'){
     setTimeout(()=>{show();message('ChatGPT angemeldet, aber Plannutzung noch nicht erlaubt.');},200);
   }else if(new URLSearchParams(location.search).get('ai')==='error'){
     setTimeout(()=>{show();message('ChatGPT-Anmeldung fehlgeschlagen. Die technischen Details kannst du bei Bedarf aufklappen.');showDiagnostics('callback');},200);
