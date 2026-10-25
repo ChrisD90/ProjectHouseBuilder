@@ -216,7 +216,7 @@ function paymentAccountOptions(){
  if(!paymentState)return;
  const source=$('receiptPaymentSource').value;
  const accounts=source==='loan'?paymentState.loans:paymentState.equity;
- const available=a=>Number(source==='loan'?a.balance.unallocated_drawn:a.balance.available)||0;
+ const available=a=>Number(source==='loan'?a.balance?.unallocated_drawn:a.balance?.available)||0;
  const usable=accounts.filter(x=>available(x)>0.005);
  $('receiptPaymentAccount').innerHTML=usable.map(a=>
    '<option value="'+a.id+'">'+safe(a.name)+' · frei '+money(available(a))+'</option>').join('');
