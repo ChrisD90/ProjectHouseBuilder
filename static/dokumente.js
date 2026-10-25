@@ -5,7 +5,14 @@ const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'
 let records=[],library=[],options=null;
 const uploadDialog=$('docUploadDialog');
 let uploadRunning=false;
-$('openDocUpload').onclick=()=>uploadDialog.showModal();
+const uploadFlow=PHBFlow.manage({
+ dialog:'docUploadDialog',forms:['projectDocumentUpload'],
+ dismiss:['closeDocUpload'],isBusy:()=>uploadRunning
+});
+const editFlow=PHBFlow.manage({
+ dialog:'docEditDialog',forms:['docEditForm'],dismiss:['docClose']
+});
+$('openDocUpload').onclick=()=>uploadFlow.open();
 $('closeDocUpload').onclick=()=>{if(!uploadRunning)uploadDialog.close();};
 uploadDialog.addEventListener('cancel',e=>{if(uploadRunning)e.preventDefault();});
 uploadDialog.addEventListener('click',e=>{
@@ -146,7 +153,7 @@ function edit(id){
  const form=$('docEditForm');form.reset();
  for(const key of ['id','title','category','area','status','tags','description'])
    form.elements.namedItem(key).value=doc[key]??'';
- report('',false,'docEditMessage');$('docEditDialog').showModal();
+ report('',false,'docEditMessage');editFlow.open();
 }
 $('docSearch').addEventListener('input',refresh);
 $('docFilterArea').addEventListener('change',refresh);
