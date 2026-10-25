@@ -593,3 +593,9 @@ body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-head-action
     max-height:calc(100dvh - 100px);
   }
 }
+
+
+/* Global visibility invariant.
+   Several legacy layouts declare display:flex/grid on [hidden] elements, which
+   otherwise overrides the HTML hidden attribute and leaks closed dialogs/panels. */
+body.phb-app [hidden]{display:none!important}
