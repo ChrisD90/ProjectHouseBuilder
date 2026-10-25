@@ -184,7 +184,8 @@ $('docEditForm').onsubmit=async e=>{
  e.preventDefault();const data=Object.fromEntries(new FormData($('docEditForm')));
  const id=data.id;delete data.id;
  try{await api('/api/project-documents/'+id,'PATCH',data);
-   $('docEditDialog').close();await reload();report('Dokumentdetails gespeichert.',false,'docPageStatus');}
+   PHBUI.dialogs.saved($('docEditDialog'));
+    $('docEditDialog').close();await reload();report('Dokumentdetails gespeichert.',false,'docPageStatus');}
  catch(err){report(err.message,true,'docEditMessage');}
 };
 $('docDelete').onclick=async()=>{
