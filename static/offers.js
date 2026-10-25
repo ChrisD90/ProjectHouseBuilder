@@ -235,7 +235,7 @@
     return `<article class="offer-card offer-draft-card offer-version-draft" data-version-card="${id}:${v}">
       <div class="offer-card-head"><div><span class="offer-stage stage-draft">Neue Version ${v} – prüfen</span>
       <h3>${esc(o.current_vendor)} · ${esc(o.filename)}</h3>
-      <p>Bestehendes Angebot #${id} · <a class="offer-document" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Neue PDF ansehen ↗</a></p></div></div>
+      <p>Bestehendes Angebot #${id} · <button type="button" class="mini" data-preview-doc="${o.document_id}">Neue PDF rechts anzeigen</button> <a class="offer-document" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Herunterladen</a></p></div></div>
       <p class="offer-version-note">Die bisherige Version bleibt sichtbar und unverändert, bis du diese Version freigibst.</p>
       ${notice(o)}<form class="offer-review-form" data-version-review="${id}:${v}">${fields(o)}${positionEditor(o)}
       <div class="offer-form-actions"><button type="button" class="primary" data-version-activate="${id}:${v}">Version ${v} als aktuell übernehmen</button>
