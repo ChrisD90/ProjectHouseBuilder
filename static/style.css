@@ -194,3 +194,153 @@ body.phb-app #overlay .modalhead #complete[hidden]{display:none!important}
 #scheduleHistoryDialog{width:min(1000px,calc(100vw - 24px));overflow:auto}
 #scheduleHistoryDialog .schedule-history-content{padding:18px 24px;max-height:calc(90dvh - 90px);overflow:auto}
 #scheduleHistoryDialog .schedule-history-entries{max-height:none}
+
+/* Firm-first assignment: searchable, collapsible company list with per-firm task filters. */
+body.phb-app .phb-company-proposals{
+  width:min(970px,calc(100vw - 24px));max-width:970px;
+  max-height:90dvh;padding:0;overflow:hidden;border:1px solid var(--ui-line);
+  border-radius:16px;background:var(--ui-surface);color:var(--ui-ink);
+}
+body.phb-app .phb-company-proposals[open]{
+  display:flex;flex-direction:column;
+}
+body.phb-app .phb-company-proposals>.modalhead{
+  flex:0 0 auto;padding:19px 24px 14px;background:var(--ui-surface);
+}
+body.phb-app .phb-company-proposals>.modalhead h2{
+  font-size:19px;margin:0 0 4px;color:var(--ui-ink);
+}
+body.phb-app .phb-company-proposals>.modalhead p{
+  font-size:12px;line-height:1.5;margin:0;color:var(--ui-muted);
+}
+body.phb-app .phb-company-proposals .company-dialog-toolbar{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
+  gap:5px 16px;padding:13px 24px;
+  background:var(--ui-soft);border-bottom:1px solid var(--ui-line);
+}
+body.phb-app .phb-company-proposals .company-dialog-toolbar label,
+body.phb-app .phb-company-proposals .company-task-search-label{
+  display:flex;flex-direction:column;gap:6px;font-size:12px;
+  font-weight:650;color:var(--ui-ink-soft);min-width:0;
+}
+body.phb-app .phb-company-proposals :is(#companySearch,[data-task-search]){
+  width:100%;max-width:100%;min-width:0;margin:0;
+}
+body.phb-app .phb-company-proposals #companySearchCount{
+  font-size:12px;font-weight:650;color:var(--ui-ink-soft);
+  text-align:right;white-space:nowrap;
+}
+body.phb-app .phb-company-proposals .company-dialog-toolbar p{
+  grid-column:1/-1;font-size:12px;line-height:1.45;
+  margin:2px 0 0;color:var(--ui-muted);
+}
+body.phb-app .phb-company-proposals .company-proposal-rows{
+  display:block;flex:1 1 auto;min-height:0;max-height:none;
+  overflow-y:auto;overscroll-behavior:contain;
+  padding:14px 23px 18px;background:var(--ui-surface);
+}
+body.phb-app .phb-company-proposals .company-task-group{
+  display:block;margin:0 0 10px;padding:0;min-width:0;
+  background:var(--ui-surface);border:1px solid var(--ui-line);
+  border-radius:12px;overflow:hidden;
+}
+body.phb-app .phb-company-proposals .company-task-group[hidden],
+body.phb-app .phb-company-proposals .company-task-choice[hidden],
+body.phb-app .phb-company-proposals .company-empty[hidden]{
+  display:none!important;
+}
+body.phb-app .phb-company-proposals .company-task-summary{
+  display:flex;align-items:center;gap:12px;
+  min-height:68px;list-style:none;cursor:pointer;
+  margin:0;padding:12px 15px;background:var(--ui-surface);color:var(--ui-ink);
+}
+body.phb-app .phb-company-proposals .company-task-summary::-webkit-details-marker{display:none}
+body.phb-app .phb-company-proposals .company-task-summary:hover,
+body.phb-app .phb-company-proposals .company-task-summary:focus-visible{
+  background:var(--ui-soft);
+}
+body.phb-app .phb-company-proposals .company-task-summary:focus-visible{
+  outline:2px solid var(--ui-accent);outline-offset:-2px;
+}
+body.phb-app .phb-company-proposals .company-fold-icon{
+  flex:0 0 9px;width:9px;height:9px;transform:rotate(-45deg);
+  border-right:2px solid var(--ui-accent);border-bottom:2px solid var(--ui-accent);
+  transition:transform .16s;
+}
+body.phb-app .phb-company-proposals details[open] .company-fold-icon{
+  transform:rotate(45deg);
+}
+body.phb-app .phb-company-proposals .company-summary-main{flex:1;min-width:0}
+body.phb-app .phb-company-proposals .company-summary-main strong{
+  display:block;font-size:14px;overflow-wrap:anywhere;line-height:1.45;
+}
+body.phb-app .phb-company-proposals .company-summary-main small{
+  display:block;font-size:11px;color:var(--ui-muted);line-height:1.4;margin-top:3px;
+}
+body.phb-app .phb-company-proposals .company-selected-badge{
+  flex:0 0 auto;font-size:11px;line-height:1.45;font-weight:650;
+  border-radius:99px;padding:6px 10px;background:var(--ui-soft);
+  color:var(--ui-ink-soft);border:1px solid var(--ui-line);
+}
+body.phb-app .phb-company-proposals .company-task-body{
+  padding:14px 16px 16px;display:grid;gap:10px;
+  background:var(--ui-soft);border-top:1px solid var(--ui-line);
+}
+body.phb-app .phb-company-proposals .company-task-body .company-help{
+  margin:0;padding:0;color:var(--ui-muted);font-size:12px;overflow-wrap:anywhere;
+}
+body.phb-app .phb-company-proposals .company-result-count{
+  font-size:11px;color:var(--ui-muted);
+}
+body.phb-app .phb-company-proposals .company-task-choices{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:stretch;gap:9px;max-height:310px;
+  overflow:auto;min-width:0;padding:0 2px 3px 0;
+}
+body.phb-app .phb-company-proposals .company-task-choice{
+  display:flex;align-items:flex-start;gap:9px;min-width:0;margin:0;
+  padding:11px;border:1px solid var(--ui-line);
+  border-radius:9px;color:var(--ui-ink);background:var(--ui-surface);
+  font-size:12px;cursor:pointer;overflow-wrap:anywhere;
+}
+body.phb-app .phb-company-proposals .company-task-choice:has(input:checked){
+  border-color:var(--ui-accent);background:var(--ui-accent-soft,var(--ui-soft));
+}
+body.phb-app .phb-company-proposals .company-task-choice input{
+  width:17px;height:17px;flex:none;margin:1px 0 0;accent-color:var(--ui-accent);
+}
+body.phb-app .phb-company-proposals .company-task-choice span{min-width:0}
+body.phb-app .phb-company-proposals .company-task-choice strong{
+  display:block;font-size:12px;line-height:1.45;
+}
+body.phb-app .phb-company-proposals .company-task-choice small{
+  display:block;color:var(--ui-muted);font-size:11px;margin-top:4px;line-height:1.45;
+}
+body.phb-app .phb-company-proposals .company-empty{
+  margin:0;padding:13px 10px;text-align:center;
+  color:var(--ui-muted);font-size:12px;
+}
+body.phb-app .phb-company-proposals>.actions{
+  flex:0 0 auto;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:13px 24px;background:var(--ui-surface);border-top:1px solid var(--ui-line);
+}
+body.phb-app .phb-company-proposals .company-selection-count{
+  font-size:12px;color:var(--ui-muted);font-weight:650;
+}
+@media(max-width:720px){
+  body.phb-app .phb-company-proposals>.modalhead{padding:14px 15px}
+  body.phb-app .phb-company-proposals .company-dialog-toolbar{
+    grid-template-columns:1fr;padding:11px 15px;
+  }
+  body.phb-app .phb-company-proposals #companySearchCount{text-align:left}
+  body.phb-app .phb-company-proposals .company-proposal-rows{padding:11px 13px}
+  body.phb-app .phb-company-proposals .company-task-choices{grid-template-columns:1fr}
+  body.phb-app .phb-company-proposals .company-task-summary{
+    flex-wrap:wrap;padding:11px;gap:8px;
+  }
+  body.phb-app .phb-company-proposals .company-selected-badge{
+    margin-left:20px;
+  }
+  body.phb-app .phb-company-proposals>.actions{padding:12px 14px}
+  body.phb-app .phb-company-proposals .company-task-body{padding:12px}
+}
