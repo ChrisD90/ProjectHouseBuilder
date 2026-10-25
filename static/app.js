@@ -53,36 +53,109 @@ $('complete').onclick=async()=>{
   try{const result=await api('/api/tasks/'+editing+'/complete',{method:'POST'});closeModal();await reload();message('Abgeschlossen · Ist-Ende: '+fmt(result.actual_end));}
   catch(error){$('error').textContent=error.message;}
 };
+function updateCompanySelectionCounts(){
+  const host=$('companyProposalRows');
+  const selected=host.querySelectorAll('[data-company-task]:checked');
+  const n=selected.length;
+  $('companySelectionCount').textContent=n+' Arbeitspaket'+(n===1?'':'e')+' ausgewählt';
+  $('companyProposalsApply').disabled=n===0;
+  host.querySelectorAll('[data-company-group]').forEach(group=>{
+    const count=group.querySelectorAll('[data-company-task]:checked').length;
+    group.querySelector('[data-company-selected]').textContent=count
+      ?count+' ausgewählt':'Noch keine Auswahl';
+  });
+}
+function filterCompanies(){
+  const host=$('companyProposalRows');
+  const q=$('companySearch').value.trim().toLocaleLowerCase('de');
+  let matched=0;
+  host.querySelectorAll('[data-company-group]').forEach(group=>{
+    const found=group.dataset.companySearch.includes(q);
+    group.hidden=!found;
+    if(found)matched++;
+  });
+  $('companySearchCount').textContent=matched+' von '+host.querySelectorAll('[data-company-group]').length+' Firmen';
+  $('companyNoMatches').hidden=matched!==0;
+}
+function filterCompanyTasks(group){
+  const input=group.querySelector('[data-task-search]');
+  const q=input.value.trim().toLocaleLowerCase('de');
+  let matched=0;
+  group.querySelectorAll('[data-company-task]').forEach(check=>{
+    const row=check.closest('.company-task-choice');
+    const found=row.dataset.taskText.includes(q);
+    row.hidden=!found;
+    if(found)matched++;
+  });
+  group.querySelector('[data-task-no-matches]').hidden=matched!==0;
+  group.querySelector('[data-task-result-count]').textContent=
+    matched+' von '+group.querySelectorAll('[data-company-task]').length+' Arbeitspaketen';
+}
 $('companySuggestions').onclick=()=>{
   const companies=project.contracted_companies||[];
-  const freeTasks=project.tasks.filter(t=>t.execution_type!=='Eigenleistung'&&!t.contractor_id&&!(t.company||'').trim());
+  const freeTasks=project.tasks.filter(t=>
+    t.execution_type!=='Eigenleistung'&&!t.contractor_id&&!(t.company||'').trim());
   const host=$('companyProposalRows');
+  $('companySearch').value='';
   if(!companies.length){
-    host.innerHTML='<p>Es sind noch keine Firmen aus angenommenen Angeboten oder beauftragten Leistungen vorhanden.</p>';
+    host.innerHTML='<p class="company-empty">Noch keine Firma mit angenommenem Angebot oder beauftragter Leistung vorhanden.</p>';
   }else if(!freeTasks.length){
-    host.innerHTML='<p>Alle Arbeitspakete sind bereits Firmen zugeordnet oder Eigenleistungen.</p>';
+    host.innerHTML='<p class="company-empty">Keine freien Arbeitspakete vorhanden: alle Aufgaben sind bereits zugeordnet oder Eigenleistungen.</p>';
   }else{
     host.innerHTML=companies.map(company=>{
       const source=(company.sources||[]).map(escapeHtml).join(' · ');
       const choices=freeTasks.map(task=>{
-        // Recommendation is only a visual hint: all unassigned tasks are selectable.
-        return `<label class="company-task-choice"><input type="checkbox" data-company-id="${company.contractor_id}" data-company-task="${task.id}"><span><strong>${escapeHtml(task.code)} · ${escapeHtml(task.name)}</strong><small>${escapeHtml(task.phase)} · ${escapeHtml(task.trade)}</small></span></label>`;
+        const match=[task.code,task.name,task.phase,task.trade].join(' ').toLocaleLowerCase('de');
+        return `<label class="company-task-choice" data-task-text="${escapeHtml(match)}">
+           <input type="checkbox" data-company-id="${company.contractor_id}" data-company-task="${task.id}">
+           <span><strong>${escapeHtml(task.code)} · ${escapeHtml(task.name)}</strong>
+           <small>${escapeHtml(task.phase)} · ${escapeHtml(task.trade)}</small></span>
+         </label>`;
       }).join('');
-      return `<section class="company-task-group"><h3>${escapeHtml(company.name)}</h3><p class="company-help">${escapeHtml(company.trade)} · ${source}</p><div class="company-task-choices">${choices}</div></section>`;
+      const search=[company.name,company.trade,...(company.sources||[])].join(' ').toLocaleLowerCase('de');
+      return `<details class="company-task-group" data-company-group data-company-search="${escapeHtml(search)}">
+         <summary class="company-task-summary"><span class="company-fold-icon" aria-hidden="true"></span>
+           <span class="company-summary-main"><strong>${escapeHtml(company.name)}</strong>
+             <small>${escapeHtml(company.trade||'Gewerk nicht angegeben')} · ${escapeHtml((company.sources||[]).length+' Auftragsgrundlage(n)')}</small></span>
+           <span class="company-selected-badge" data-company-selected>Noch keine Auswahl</span>
+         </summary>
+         <div class="company-task-body">
+           <p class="company-help">${source||'Aus bestätigten Aufträgen'}</p>
+           <label class="company-task-search-label">Arbeitspakete dieser Firma durchsuchen
+             <input type="search" data-task-search autocomplete="off" placeholder="ID, Tätigkeit, Gewerk oder Bauphase …">
+           </label>
+           <span class="company-result-count" data-task-result-count>${freeTasks.length} von ${freeTasks.length} Arbeitspaketen</span>
+           <div class="company-task-choices">${choices}</div>
+           <p class="company-empty" data-task-no-matches hidden>Keine passenden Arbeitspakete. Suche anpassen.</p>
+         </div>
+       </details>`;
     }).join('');
   }
-  host.querySelectorAll('[data-company-task]').forEach(check=>{
-    check.addEventListener('change',()=>{
-      if(!check.checked)return;
-      // One task must never be assigned to several companies in the same save.
-      host.querySelectorAll('[data-company-task="'+check.dataset.companyTask+'"]').forEach(other=>{
-        if(other!==check)other.checked=false;
-      });
-    });
-  });
+  if(!host.querySelector('#companyNoMatches')){
+    const empty=document.createElement('p');
+    empty.id='companyNoMatches';empty.className='company-empty';empty.hidden=true;
+    empty.textContent='Keine passende Firma gefunden.';
+    host.append(empty);
+  }
+  filterCompanies();
+  updateCompanySelectionCounts();
   $('companyProposalsDialog').showModal();
 };
-$('companyProposalsClose').onclick=()=>$('companyProposalsDialog').close();
+$('companySearch').addEventListener('input',filterCompanies);
+$('companyProposalRows').addEventListener('input',e=>{
+  const group=e.target.closest('[data-company-group]');
+  if(group&&e.target.matches('[data-task-search]'))filterCompanyTasks(group);
+});
+$('companyProposalRows').addEventListener('change',e=>{
+  const check=e.target.closest('[data-company-task]');
+  if(!check)return;
+  if(check.checked){
+    $('companyProposalRows').querySelectorAll('[data-company-task="'+check.dataset.companyTask+'"]').forEach(other=>{
+      if(other!==check)other.checked=false;
+    });
+  }
+  updateCompanySelectionCounts();
+});
 $('companyProposalsCancel').onclick=()=>$('companyProposalsDialog').close();
 $('companyProposalsApply').onclick=async()=>{
   const assignments=[...document.querySelectorAll('#companyProposalRows [data-company-task]:checked')]
