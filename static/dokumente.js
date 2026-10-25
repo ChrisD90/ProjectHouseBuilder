@@ -10,7 +10,8 @@ const uploadFlow=PHBFlow.manage({
  dismiss:['closeDocUpload'],isBusy:()=>uploadRunning
 });
 const editFlow=PHBFlow.manage({
- dialog:'docEditDialog',forms:['docEditForm'],dismiss:['docClose']
+ dialog:'docEditDialog',forms:['docEditForm'],dismiss:['docClose'],
+ onError:error=>report(error.message||String(error),true,'docEditMessage')
 });
 $('openDocUpload').onclick=()=>uploadFlow.open();
 $('closeDocUpload').onclick=()=>{if(!uploadRunning)uploadDialog.close();};
@@ -188,19 +189,28 @@ document.addEventListener('phb-import-updated',event=>{
 
 $('docClose').onclick=()=>$('docEditDialog').close();
 $('docEditForm').onsubmit=async e=>{
- e.preventDefault();const data=Object.fromEntries(new FormData($('docEditForm')));
- const id=data.id;delete data.id;
- try{await api('/api/project-documents/'+id,'PATCH',data);
-   $('docEditDialog').close();await reload();report('Dokumentdetails gespeichert.',false,'docPageStatus');}
- catch(err){report(err.message,true,'docEditMessage');}
+ e.preventDefault();
+ await editFlow.run(async()=>{
+  const data=Object.fromEntries(new FormData(e.currentTarget));
+  const id=data.id;delete data.id;
+  await api('/api/project-documents/'+id,'PATCH',data);
+  $('docEditDialog').close();
+  await reload();
+  report('Dokumentdetails gespeichert.',false,'docPageStatus');
+ },{button:e.submitter});
 };
 $('docDelete').onclick=async()=>{
  const id=$('docEditForm').elements.namedItem('id').value;
- if(!await PHBUI.confirm('Originaldokument endgültig löschen? Der Quellenvermerk in der Entscheidungshistorie bleibt erhalten.'))return;
- try{await api('/api/project-documents/'+id,'DELETE');$('docEditDialog').close();
-   await reload();report('Dokument gelöscht.',false,'docPageStatus');}
- catch(err){report(err.message,true,'docEditMessage');}
+ if(editFlow.isBusy()||!await PHBUI.confirm(
+  'Originaldokument endgültig löschen? Der Quellenvermerk in der Entscheidungshistorie bleibt erhalten.'))return;
+ await editFlow.run(async()=>{
+  await api('/api/project-documents/'+id,'DELETE');
+  $('docEditDialog').close();
+  await reload();
+  report('Dokument gelöscht.',false,'docPageStatus');
+ },{button:$('docDelete')});
 };
+
 reload().then(()=>{
  const documentId=Number(new URLSearchParams(location.search).get('document_id'));
  if(documentId)edit(documentId);
