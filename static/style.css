@@ -150,3 +150,19 @@ body.phb-page-zeitplan .panel[hidden],body.phb-page-zeitplan .schedule-advanced 
  body.phb-page-zeitplan .schedule-history-content{padding:0 16px 18px}
  body.phb-page-zeitplan .schedule-advanced{padding:14px 17px 18px}
 }
+
+
+/* Firmenvorschläge und Schnellabschluss */
+.phb-company-proposals{border:0;border-radius:14px;padding:0;width:min(740px,96vw);max-height:90vh;background:var(--ui-surface,#fff);color:var(--ui-ink,#193e48);}
+.phb-company-proposals::backdrop{background:#001a2c99;}
+.company-help{padding:0 22px;color:#688089;font-size:13px;line-height:1.5;}
+.company-proposal-rows{padding:0 22px 20px;max-height:55vh;overflow:auto;}
+.company-proposal-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #deeaee;}
+.company-proposal-row small,.task-company-hint,.task-firm{display:block;color:#557d86;font-size:11px;font-weight:400;white-space:normal;margin-top:3px;}
+.company-proposal-row label{display:flex;flex-direction:column;gap:4px;}
+.company-proposal-row select{width:100%;}
+.gantt-label .task-name{display:inline-flex;flex-direction:column;max-width:260px;gap:1px;}
+.gantt-label .task-firm{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.task-suggestion{grid-column:1/-1;background:#f0f9f9;border:1px solid #d9e9ed;border-radius:9px;padding:12px;font-size:12px;}
+.task-suggestion select{max-width:100%;margin:8px;}
+@media(max-width:650px){.company-proposal-row{grid-template-columns:1fr;}.gantt-label .task-name{max-width:190px;}}
