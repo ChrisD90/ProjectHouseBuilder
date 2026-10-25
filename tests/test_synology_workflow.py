@@ -7,7 +7,7 @@ from pathlib import Path
 
 os.environ['DATABASE_URL']='sqlite:///:memory:'
 import app as backend
-from app import app, db, initialize, Contractor, Task, Offer, OfferSection, Document, Receipt
+from app import app, db, initialize, Contractor, Task, Offer, OfferSection, Document, Receipt, ProjectDocument
 from assignment_suggestions import suggestions
 
 
@@ -73,6 +73,59 @@ class SynologyWorkflowTest(unittest.TestCase):
         self.assertEqual(t.progress,100)
         self.assertEqual(t.actual_end,date.today())
         self.assertEqual(self.client.post(f'/api/tasks/{self.tid}/complete').status_code,200)
+
+    def test_task_completion_preserves_original_date(self):
+        task=db.session.get(Task,self.tid)
+        previous=date(2026,3,5)
+        task.status='Erledigt'
+        task.progress=60
+        task.actual_end=previous
+        db.session.commit()
+        response=self.client.post(f'/api/tasks/{self.tid}/complete',json={})
+        self.assertEqual(response.status_code,200,response.get_json())
+        self.assertEqual(response.json['actual_end'],previous.isoformat())
+        self.assertEqual(db.session.get(Task,self.tid).progress,100)
+
+    def test_document_library_includes_originals_from_each_module(self):
+        project=ProjectDocument(title='Bauplan',
+            original_name='grundriss.pdf',stored_name='project-plan.pdf',
+            extension='.pdf',digest='e'*64,size_bytes=13,category='Bauplan',
+            area='Erdgeschoss',status='Aktuell',tags='',description='Raumaufteilung',
+            extracted_text='',extraction_note='')
+        offer_doc=Document(original_name='PV_Angebot.pdf',stored_name='solar.pdf',kind='Angebot')
+        other_doc=Document(original_name='Vertrag.pdf',stored_name='vertrag.pdf',kind='Vertrag')
+        receipt=Receipt(digest='1'*64,original_name='Rechnung.pdf',stored_name='rechnung.pdf',
+                        supplier='Solar Beispiel',kind='Rechnung',status='Entwurf')
+        db.session.add_all([project,offer_doc,other_doc,receipt]);db.session.flush()
+        db.session.get(Offer,self.oid).document_id=offer_doc.id
+        db.session.commit()
+        response=self.client.get('/api/document-library')
+        self.assertEqual(response.status_code,200,response.get_json())
+        items=response.json['documents']
+        self.assertEqual(len(items),4)
+        by_filename={item['filename']:item for item in items}
+        self.assertEqual(by_filename['PV_Angebot.pdf']['source'],'Angebote')
+        self.assertEqual(by_filename['Rechnung.pdf']['module_url'],
+                         '/belege?receipt_id='+str(receipt.id))
+        self.assertEqual(by_filename['grundriss.pdf']['source'],'Projektdokumente')
+        self.assertEqual(by_filename['Vertrag.pdf']['source'],'Weitere Projektunterlagen')
+        self.assertTrue(by_filename['PV_Angebot.pdf']['view_url'].endswith('/preview'))
+        self.assertEqual(self.client.get('/api/document-library').headers['Cache-Control'],'no-store')
+
+    def test_pdf_preview_for_receipt_stays_inline(self):
+        old=backend.RECEIPT_ROOT
+        with tempfile.TemporaryDirectory() as tmp:
+            backend.RECEIPT_ROOT=Path(tmp)
+            try:
+                (Path(tmp)/'receipt.pdf').write_bytes(b'%PDF-1.4\\n%%EOF')
+                item=Receipt(digest='2'*64,original_name='Kassenbon.pdf',
+                             stored_name='receipt.pdf',supplier='Testladen',kind='Rechnung')
+                db.session.add(item);db.session.commit()
+                response=self.client.get(f'/api/receipts/{item.id}/preview')
+                self.assertEqual(response.status_code,200,response.get_json() if response.is_json else response.mimetype)
+                self.assertEqual(response.mimetype,'application/pdf')
+                self.assertIn('inline',response.headers.get('Content-Disposition',''))
+            finally:backend.RECEIPT_ROOT=old
 
     def test_pdf_preview_stays_inline(self):
         root=backend.DOCUMENT_ROOT
