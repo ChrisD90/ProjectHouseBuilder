@@ -247,7 +247,8 @@ def home():
 # Kostenpositionen liefern Quellen. Bereits eingetragene Firmen bleiben unangetastet.
 _MATCH_FACETS = {
     'pv': ('photovoltaik', 'solarmodul', 'solaranlage', 'wechselrichter', 'pv'),
-    'waermepumpe': ('waermepump', 'heizung', 'heiztechnik', 'hydraulik'),
+    'waermepumpe': ('waermepump', 'hydraulik'),
+    'heizung': ('heizung', 'fussbodenheiz', 'heizkoerper', 'heiztechnik'),
     'sanitaer': ('sanitaer', 'installation wasser', 'abwasser', 'steigleitung', 'badinstallation'),
     'elektro': ('elektro', 'elektrik', 'stromkreis', 'schaltschrank', 'verkabelung'),
     'fenster': ('fenster', 'aussentuer', 'haustuer', 'verglasung'),
@@ -264,7 +265,7 @@ _COMMON_WORDS = {'und', 'oder', 'der', 'die', 'das', 'von', 'mit', 'fuer', 'bei'
                  'inklusive', 'sowie', 'material', 'technik', 'haus', 'projekt'}
 
 def _fold(text):
-    value=unicodedata.normalize('NFKD',str(text or '').replace('ß','ss').lower())
+    value=unicodedata.normalize('NFKD',str(text or '').lower().replace('ß','ss').replace('ä','ae').replace('ö','oe').replace('ü','ue'))
     return ''.join(c for c in value if not unicodedata.combining(c))
 
 def _facets(value):
@@ -311,6 +312,8 @@ def task_company_suggestions(tasks=None):
                 reason='Direkt mit dem Arbeitspaket verknüpft'
             else:
                 matched=task_facets & _facets(descriptor)
+                if name_facets and _facets(detail) and not (name_facets & _facets(detail)):
+                    continue
                 # Eine konkrete Aufgabenbeschreibung hat Vorrang vor breiten Gewerken.
                 if name_facets and not (matched & name_facets):continue
                 if matched:
