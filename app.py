@@ -3544,6 +3544,33 @@ def backup_status():
                        error=str(exc),backups=[])
 
 
+@app.post('/api/backup/native-folder')
+def backup_native_folder():
+    """Use macOS's native Choose Folder panel only on a directly local Mac.
+
+    A web browser cannot reveal a NAS server directory selected on the client.
+    """
+    import sys
+    import subprocess
+    if _backup_pg():
+        return jsonify(error='Auf der Synology ist keine lokale macOS-Ordnerauswahl verfügbar. Bitte den NAS-Ordnerbrowser verwenden.'),409
+    peer=request.environ.get('werkzeug.proxy_fix.orig', {}).get('REMOTE_ADDR',request.remote_addr)
+    if sys.platform!='darwin' or peer not in ('127.0.0.1','::1') or request.host.split(':',1)[0] not in ('127.0.0.1','localhost'):
+        return jsonify(error='Der System-Ordnerdialog ist nur auf dem lokalen Mac verfügbar.'),409
+    script='POSIX path of (choose folder with prompt "Backup-Ziel für ProjectHouseBuilder auswählen")'
+    try:
+        result=subprocess.run(['osascript','-e',script],capture_output=True,text=True,
+                              timeout=90,check=False)
+    except (OSError,subprocess.TimeoutExpired):
+        return jsonify(error='Der System-Ordnerdialog konnte nicht geöffnet werden.'),409
+    if result.returncode:
+        return jsonify(error='Ordnerauswahl abgebrochen oder Systemdialog nicht verfügbar.'),409
+    folder=result.stdout.strip()
+    if not folder or not Path(folder).is_dir():
+        return jsonify(error='Ungültiger Ordner.'),400
+    return jsonify(folder=folder)
+
+
 @app.get('/api/backup/folders')
 def backup_folders():
     if not _backup_pg():
