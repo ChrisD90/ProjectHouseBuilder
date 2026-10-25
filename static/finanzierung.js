@@ -7,7 +7,7 @@ const TODAY=new Date().toLocaleDateString('sv-SE');
 $('eventForm').elements.namedItem('event_date').value=TODAY;
 async function api(url,method='GET',payload=null){const o={method};if(payload!==null){o.headers={'Content-Type':'application/json'};o.body=JSON.stringify(payload)}let r=await fetch(url,o),j=await r.json();if(!r.ok)throw Error(j.error||'Aktion fehlgeschlagen');return j}
 function message(text,error=false){const n=$('notice');n.hidden=false;n.textContent=text;n.classList.toggle('error',error);n.scrollIntoView({block:'nearest',behavior:'smooth'});}
-function payload(form){return Object.fromEntries(new FormData(form).entries());}
+function payload(form){PHBUI.currency.normalizeForm(form);return Object.fromEntries(new FormData(form).entries());}
 function option(id,text){return `<option value="${esc(id)}">${esc(text)}</option>`}
 function sourceTitle(s,x){const row=(s==='loan'?state.loans:state.equity).find(a=>a.id===x);return row?.name||'Unbekannte Quelle'}
 function fillOptions(){
@@ -31,7 +31,7 @@ function render(){
  document.querySelectorAll('[data-delete-payment]').forEach(el=>el.onclick=()=>erase('payments',Number(el.dataset.deletePayment)));
 }
 async function reload(){state=await api('/api/financing');render()}
-function fill(form,obj){for(const [k,v] of Object.entries(obj||{})){const f=form.elements.namedItem(k);if(f&&f.tagName!=='BUTTON')f.value=v??''}}
+function fill(form,obj){for(const [k,v] of Object.entries(obj||{})){const f=form.elements.namedItem(k);if(f&&f.tagName!=='BUTTON'){f.value=v??'';if(f instanceof HTMLInputElement)PHBUI.currency.prepare(f);}}}
 function documentRows(loan){
  $('loanDocumentList').innerHTML=(loan.documents||[]).map(d=>`<div class="loan-doc-row">
    <div><a href="/api/financing/loans/${loan.id}/documents/${d.id}/download">${esc(d.filename)}</a>
@@ -39,7 +39,7 @@ function documentRows(loan){
    <button type="button" class="danger" data-delete-loan-document="${d.id}" aria-label="Dokument ${esc(d.filename)} entfernen">Löschen</button>
  </div>`).join('')||'<p class="hint">Noch keine Dokumente hinterlegt.</p>';
  $('loanDocumentList').querySelectorAll('[data-delete-loan-document]').forEach(b=>b.onclick=async()=>{
-   if(!confirm('Dieses Kreditdokument endgültig löschen?'))return;
+   if(!await PHBUI.confirm('Dieses Kreditdokument endgültig löschen?'))return;
    try{await api('/api/financing/loans/'+loan.id+'/documents/'+b.dataset.deleteLoanDocument,'DELETE');
      await reload();const updated=state.loans.find(x=>x.id===loan.id);
      if(updated)documentRows(updated);
@@ -112,7 +112,7 @@ $('loanAiAnalyze').onclick=async()=>{
      const current=String(field.value||'').trim();
      const empty=current===''||(!existing&&field.type==='number'&&Number(current)===0);
      if(!allowOverwrite&&!empty){skipped++;continue;}
-     field.value=value;applied++;
+     field.value=value;PHBUI.currency.prepare(field);applied++;
    }
    if((data.warnings||[]).length){
      $('loanAiWarnings').replaceChildren(...data.warnings.map(w=>{
@@ -180,9 +180,9 @@ $('loanForm').onsubmit=async event=>{
  }
 };
 $('equityForm').onsubmit=e=>submitForm(e,$('equityForm'),'/api/financing/equity',$('equityDialog'));
-async function erase(path,id){if(!confirm('Diese Buchung wirklich entfernen? Die Summen werden entsprechend neu berechnet.'))return;try{await api('/api/financing/'+path+'/'+id,'DELETE');await reload();message('Buchung entfernt.')}catch(e){message(e.message,true)}}
-$('deleteLoan').onclick=async()=>{const id=$('loanForm').elements.namedItem('id').value;if(!confirm('Kredit ohne verknüpfte Buchungen löschen?'))return;try{await api('/api/financing/loans/'+id,'DELETE');$('loanDialog').close();await reload()}catch(e){message(e.message,true)}};
-$('deleteEquity').onclick=async()=>{const id=$('equityForm').elements.namedItem('id').value;if(!confirm('Eigenkapitalkonto ohne Buchungen löschen?'))return;try{await api('/api/financing/equity/'+id,'DELETE');$('equityDialog').close();await reload()}catch(e){message(e.message,true)}};
+async function erase(path,id){if(!await PHBUI.confirm('Diese Buchung wirklich entfernen? Die Summen werden entsprechend neu berechnet.'))return;try{await api('/api/financing/'+path+'/'+id,'DELETE');await reload();message('Buchung entfernt.')}catch(e){message(e.message,true)}}
+$('deleteLoan').onclick=async()=>{const id=$('loanForm').elements.namedItem('id').value;if(!await PHBUI.confirm('Kredit ohne verknüpfte Buchungen löschen?'))return;try{await api('/api/financing/loans/'+id,'DELETE');$('loanDialog').close();await reload()}catch(e){message(e.message,true)}};
+$('deleteEquity').onclick=async()=>{const id=$('equityForm').elements.namedItem('id').value;if(!await PHBUI.confirm('Eigenkapitalkonto ohne Buchungen löschen?'))return;try{await api('/api/financing/equity/'+id,'DELETE');$('equityDialog').close();await reload()}catch(e){message(e.message,true)}};
 $('eventKind').onchange=fillOptions;
 $('eventForm').onsubmit=async e=>{e.preventDefault();const v=payload(e.currentTarget),loan=v.kind.startsWith('loan_');v[loan?'loan_id':'equity_id']=$('eventSource').value;try{await api('/api/financing/events','POST',v);await reload();message('Geldbewegung gespeichert.')}catch(err){message(err.message,true)}};
 
