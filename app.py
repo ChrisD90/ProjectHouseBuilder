@@ -3116,6 +3116,8 @@ def receipt_edit(rid):
     data=request.get_json(silent=True) or {}
     if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','contractor_id','assignment_type','category','supplier','invoice_number','document_date','kind','billing_type','advance_deduction','labor_amount')):
         return jsonify(error='Zum Ändern der Zuordnung oder Belegsumme zunächst Buchung zurücknehmen.'),409
+    if data.get('book_now') is True and r.status!='Entwurf':
+        return jsonify(error='Nur ein noch nicht gebuchter Entwurf kann verbindlich gebucht werden.'),409
     try:
         for f in ('supplier','invoice_number','document_date','due_date','category','kind','billing_type','notes'):
             if f in data:
@@ -3162,6 +3164,18 @@ def receipt_edit(rid):
             # installments are checked when the invoice is booked.
             _validate_invoice_advance(r,_accepted_receipt_offer(r))
         if r.status=='Gebucht':_validate_receipt_booking(r)
+        if data.get('book_now') is True:
+            # Validate and commit the reviewed fields and the booking together.
+            # Any failure below rolls back all draft edits in this request.
+            _validate_receipt_booking(r)
+            if r.invoice_number:
+                already=db.session.scalar(select(Receipt.id).where(
+                    Receipt.id!=r.id,Receipt.status=='Gebucht',
+                    Receipt.invoice_number==r.invoice_number,
+                    Receipt.supplier==r.supplier).limit(1))
+                if already:
+                    raise ValueError('Mögliche Doppelbuchung: Lieferant und Rechnungsnummer bereits gebucht (#'+str(already)+').')
+            r.status='Gebucht'
         if data.get('reviewed') is True:
             _mark_import_reviewed('receipts',rid)
         db.session.commit();return jsonify(_receipt_json(r))
