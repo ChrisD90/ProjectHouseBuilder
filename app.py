@@ -3512,7 +3512,7 @@ def create_manual_backup():
 
 
 # Two-stage restore: first validate archive, then require an explicit typed confirmation.
-_BACKUP_RESTORE_UPLOADS=ROOT/'private'/'.restore-uploads'
+_BACKUP_RESTORE_UPLOADS=Path(tempfile.gettempdir())/('phb-restore-uploads-'+str(os.getuid()))
 
 
 @app.post('/api/backup/inspect')
