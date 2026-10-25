@@ -12,8 +12,8 @@
   </div>
   <p class="offers-clarity">Erst wenn du <strong>„Annehmen“</strong> auswählst, wird die Bruttosumme in <a href="/kosten">Kosten & Budget</a> übernommen. Hochladen, Speichern oder Vergleichen kostet noch nichts.</p>
   <div class="offers-stats" aria-live="polite"><div><span>Zu prüfen</span><strong id="offersCountDraft">–</strong></div><div><span>Im Vergleich</span><strong id="offersCountListed">–</strong></div><div><span>Angenommen</span><strong id="offersCountAccepted">–</strong></div></div>
-  <dialog id="offerWorkflowDialog" class="phb-workflow-dialog phb-offer-workflow" aria-labelledby="offerWorkflowTitle">
-   <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebotsverwaltung</span><h2 id="offerWorkflowTitle">Angebot erfassen und prüfen</h2><p>PDF analysieren, erkannte Positionen direkt prüfen und erst danach übernehmen.</p></div><div class="phb-workflow-head-actions"><button id="anotherOffer" type="button" class="subtle" hidden>+ Weiteres Angebot</button><button id="closeOfferWorkflow" type="button" class="subtle">Schließen</button></div></div>
+  <dialog id="offerWorkflowDialog" class="phb-workflow-dialog phb-offer-workflow" aria-labelledby="offerWorkflowTitle" data-phb-dialog>
+   <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebotsverwaltung</span><h2 id="offerWorkflowTitle">Angebot erfassen und prüfen</h2><p>PDF analysieren, erkannte Positionen direkt prüfen und erst danach übernehmen.</p></div><div class="phb-workflow-head-actions"><button id="anotherOffer" type="button" class="subtle" hidden>+ Weiteres Angebot</button><button id="closeOfferWorkflow" type="button" class="subtle" data-phb-close>Schließen</button></div></div>
    <div class="phb-workflow-body">
   <section class="panel budget-panel offers-create" id="angebot-erfassen"><div class="panelbar"><div><h2>Neues Angebot erfassen</h2><p>Wähle den für dich einfachsten Weg. Beide landen in derselben Angebotsliste.</p></div></div>
    <div class="offer-entry-switch" role="group" aria-label="Art der Angebotserfassung">
@@ -41,14 +41,14 @@
   </section>
   <section class="panel budget-panel offer-review-section" id="angebote-pruefen"><div class="panelbar"><div><h2>Angebotsentwürfe und neue Versionen prüfen <span id="offersDraftBadge" class="offers-counter"></span></h2><p>Prüfe eingelesene Angebote und neue Versionsentwürfe, bevor sie sichtbar aktuell werden.</p></div><a class="mini" href="/belege">Kategorien verwalten ↗</a></div><div class="offer-review-layout"><div id="offerDrafts" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div><aside id="offerPdfPane" class="phb-inline-pdf" hidden><header><strong>Angebots-PDF parallel prüfen</strong><a id="offerPdfDownload" class="mini" target="_blank" rel="noopener">Original herunterladen</a></header><iframe id="offerPdfFrame" title="Vorschau des zu prüfenden Angebots" loading="lazy"></iframe></aside></div></section>
    </div></dialog>
-  <dialog id="offerEditDialog" class="phb-workflow-dialog phb-offer-edit-dialog" aria-labelledby="offerEditTitle">
-  <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebote / Bearbeitung</span><h2 id="offerEditTitle">Angebot bearbeiten</h2><p>Werte mit dem Original-PDF prüfen und anschließend speichern.</p></div><button id="closeOfferEdit" type="button" class="subtle">Abbrechen</button></div>
+  <dialog id="offerEditDialog" class="phb-workflow-dialog phb-offer-edit-dialog" aria-labelledby="offerEditTitle" data-phb-dialog>
+  <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebote / Bearbeitung</span><h2 id="offerEditTitle">Angebot bearbeiten</h2><p>Werte mit dem Original-PDF prüfen und anschließend speichern.</p></div><button id="closeOfferEdit" type="button" class="subtle" data-phb-close>Abbrechen</button></div>
   <div class="phb-workflow-body">
     <div class="phb-offer-edit-layout">
-      <form id="offerEditForm" class="offer-review-form">
+      <form id="offerEditForm" class="offer-review-form" data-phb-dirty>
         <div id="offerEditFields" class="offer-edit-fields"></div>
         <p id="offerEditError" role="alert" class="offer-wide"></p>
-        <div class="offer-form-actions offer-wide"><button type="submit" class="primary">Änderungen speichern</button><button id="cancelOfferEdit" type="button" class="subtle">Abbrechen</button></div>
+        <div class="offer-form-actions offer-wide"><button type="submit" class="primary">Änderungen speichern</button><button id="cancelOfferEdit" type="button" class="subtle" data-phb-close>Abbrechen</button></div>
       </form>
       <aside id="offerEditPdfPane" class="phb-inline-pdf" hidden>
         <header><strong>Originalangebot parallel prüfen</strong><a id="offerEditPdfDownload" class="mini" target="_blank" rel="noopener">Original-PDF</a></header>
@@ -57,9 +57,9 @@
     </div>
   </div>
 </dialog>
-<dialog id="offerAcceptanceDialog" class="phb-workflow-dialog phb-offer-acceptance-dialog" aria-labelledby="offerAcceptanceTitle">
-    <div class="phb-workflow-head"><div><span class="phb-page-kicker">Auftrag verbindlich übernehmen</span><h2 id="offerAcceptanceTitle">Angebot annehmen</h2><p>Das Originalangebot bleibt unverändert. Der bestätigte Auftragswert wird für Kostenplanung und Rechnungsabgleich fixiert.</p></div><button id="cancelOfferAcceptance" type="button" class="subtle">Abbrechen</button></div>
-    <form id="offerAcceptanceForm" class="offer-acceptance-form">
+<dialog id="offerAcceptanceDialog" class="phb-workflow-dialog phb-offer-acceptance-dialog" aria-labelledby="offerAcceptanceTitle" data-phb-dialog>
+    <div class="phb-workflow-head"><div><span class="phb-page-kicker">Auftrag verbindlich übernehmen</span><h2 id="offerAcceptanceTitle">Angebot annehmen</h2><p>Das Originalangebot bleibt unverändert. Der bestätigte Auftragswert wird für Kostenplanung und Rechnungsabgleich fixiert.</p></div><button id="cancelOfferAcceptance" type="button" class="subtle" data-phb-close>Abbrechen</button></div>
+    <form id="offerAcceptanceForm" class="offer-acceptance-form" data-phb-dirty>
       <p id="offerAcceptanceSummary" class="offer-acceptance-summary"></p>
       <fieldset class="offer-acceptance-choices"><legend>Wie wurde der Auftrag bestätigt?</legend>
         <label><input type="radio" name="mode" value="offer" checked> <span><strong>Angebot unverändert übernehmen</strong><small>Keine Auftragsbestätigung vorhanden. Angebotssumme 1:1 als verbindlichen Auftragswert übernehmen.</small></span></label>
@@ -71,7 +71,7 @@
         <p class="muted">Bitte den Betrag mit der Auftragsbestätigung vergleichen. Der Angebotspreis bleibt im Original erhalten.</p>
       </div>
       <p id="offerAcceptanceError" role="alert"></p>
-      <div class="offer-form-actions"><button type="button" id="offerAcceptanceBack" class="subtle">Abbrechen</button><button id="offerAcceptanceSubmit" type="submit" class="primary">Auftrag verbindlich annehmen</button></div>
+      <div class="offer-form-actions"><button type="button" id="offerAcceptanceBack" class="subtle" data-phb-close>Abbrechen</button><button id="offerAcceptanceSubmit" type="submit" class="primary">Auftrag verbindlich annehmen</button></div>
     </form>
   </dialog>
 <div class="phb-workflow-inline-trigger"><button type="button" id="openOfferDrafts" class="subtle">Offene Entwürfe prüfen <span id="offerDraftTriggerCount"></span></button></div>
