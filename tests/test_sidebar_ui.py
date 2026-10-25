@@ -78,7 +78,7 @@ class SidebarUITest(unittest.TestCase):
             'belege': ('upload', 'review'),
             'stammdaten': ('companyForm', 'tradeCreate', 'categoryCreate', 'companyRows'),
             'dokumente': ('projectDocumentUpload', 'docList', 'docEditForm', 'docFilterArea'),
-            'finanzierung': ('loanForm', 'paymentForm', 'eventForm'),
+            'finanzierung': ('loanForm', 'equityForm', 'eventForm'),
             'daten': ('backupNow', 'resetForm', 'resetButton', 'resetUnderstand', 'resetText')
         }.items():
             html = self.render(page)
