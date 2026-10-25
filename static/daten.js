@@ -216,7 +216,21 @@
     }
   };
 
-  const updateResetButton=()=>{
+  get('checkOCR').onclick=async()=>{
+    const button=get('checkOCR');button.disabled=true;
+    get('ocrStatus').textContent='Prüfe OCR-Werkzeuge auf dem Server …';
+    try{
+      const info=await json('/api/ocr/status');
+      get('ocrStatus').textContent=info.ready
+        ?'✓ OCR bereit: Tesseract + Poppler · Sprachen: '+info.languages.join(', ')
+        :'OCR nicht vollständig verfügbar: Tesseract '+(info.tools.tesseract?'vorhanden':'fehlt')+
+          ', Poppler '+(info.tools.pdftoppm?'vorhanden':'fehlt')+
+          ', deutsche Sprache '+(info.languages.includes('deu')?'vorhanden':'fehlt')+
+          '. Auf der Synology App-Container neu bauen; auf dem Mac Homebrew tesseract, tesseract-lang und poppler installieren.';
+    }catch(error){get('ocrStatus').textContent='Diagnose fehlgeschlagen: '+error.message;}
+    finally{button.disabled=false;}
+  };
+    const updateResetButton=()=>{
     get('resetButton').disabled=!get('resetUnderstand').checked||get('resetText').value!==phrase;
   };
   get('resetUnderstand').addEventListener('change',updateResetButton);
