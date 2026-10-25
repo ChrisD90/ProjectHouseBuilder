@@ -7,6 +7,8 @@ from uuid import uuid4
 from hashlib import sha256
 from shutil import copyfile
 import math
+import re
+import unicodedata
 import sqlite3
 import tempfile
 import zipfile
@@ -240,11 +242,100 @@ def initialize():
 def home():
     return render_template('index.html')
 
+
+# Vorschläge sind bewusst unverbindlich: nur angenommene Angebote bzw. beauftragte
+# Kostenpositionen liefern Quellen. Bereits eingetragene Firmen bleiben unangetastet.
+_MATCH_FACETS = {
+    'pv': ('photovoltaik', 'solarmodul', 'solaranlage', 'wechselrichter', 'pv'),
+    'waermepumpe': ('waermepump', 'hydraulik'),
+    'heizung': ('heizung', 'fussbodenheiz', 'heizkoerper', 'heiztechnik'),
+    'sanitaer': ('sanitaer', 'installation wasser', 'abwasser', 'steigleitung', 'badinstallation'),
+    'elektro': ('elektro', 'elektrik', 'stromkreis', 'schaltschrank', 'verkabelung'),
+    'fenster': ('fenster', 'aussentuer', 'haustuer', 'verglasung'),
+    'dach': ('dach', 'zimmerer', 'gaube', 'kniestock', 'dachstuhl'),
+    'fassade': ('fassade', 'aussendaemmung', 'wdvs'),
+    'klima': ('klima', 'splitgeraet', 'kaeltetechnik'),
+    'putz': ('putz', 'verputz', 'stuckateur'),
+    'maler': ('maler', 'anstrich', 'lackierung'),
+    'estrich': ('estrich',),
+    'boden': ('parkett', 'laminat', 'bodenbelag', 'fliesen'),
+}
+_COMMON_WORDS = {'und', 'oder', 'der', 'die', 'das', 'von', 'mit', 'fuer', 'bei', 'zum', 'zur',
+                 'montage', 'arbeiten', 'leistung', 'leistungen', 'installation', 'bau', 'neu',
+                 'inklusive', 'sowie', 'material', 'technik', 'haus', 'projekt'}
+
+def _fold(text):
+    value=unicodedata.normalize('NFKD',str(text or '').lower().replace('ß','ss').replace('ä','ae').replace('ö','oe').replace('ü','ue'))
+    return ''.join(c for c in value if not unicodedata.combining(c))
+
+def _facets(value):
+    plain=_fold(value)
+    return {key for key,terms in _MATCH_FACETS.items()
+            if any(re.search(r'(?<![a-z])'+re.escape(term),plain) for term in terms)}
+
+def _terms(value):
+    return {x for x in re.findall(r'[a-z0-9]{4,}',_fold(value)) if x not in _COMMON_WORDS}
+
+def task_company_suggestions(tasks=None):
+    """Readable, source-backed firm suggestions without overwriting assignments."""
+    tasks=all_tasks() if tasks is None else tasks
+    contractors={x.id:x for x in db.session.scalars(select(Contractor)).all()}
+    budget={x.id:x for x in all_budget_lines()}
+    evidence=[]
+    for o in db.session.scalars(select(Offer).where(Offer.status.in_(('Angenommen','Beauftragt')))).all():
+        contractor=contractors.get(o.contractor_id)
+        if not contractor:continue
+        for section in o.sections:
+            line=budget.get(section.budget_line_id)
+            descriptor=' '.join([section.name, line.category if line else '',
+                                 line.title if line else '',contractor.trade or ''])
+            evidence.append((contractor,descriptor,section.name,
+                             'Angenommenes Angebot '+(o.number or '#'+str(o.id)),None))
+    for item in db.session.scalars(select(CostItem).where(CostItem.state.in_(('Beauftragt','Abgeschlossen')),
+                                                            CostItem.offer_id.is_(None))).all():
+        contractor=contractors.get(item.contractor_id)
+        if not contractor or item.kind=='Eigenleistung':continue
+        line=budget.get(item.budget_line_id)
+        descriptor=' '.join([item.category,item.title,
+                             line.category if line else '',line.title if line else '',contractor.trade or ''])
+        evidence.append((contractor,descriptor,item.title,'Beauftragte Kostenposition',item.task_id))
+    results={}
+    for task in tasks:
+        if task.contractor_id or (task.company or '').strip():continue
+        suggested={}
+        task_facets=_facets(task.trade+' '+task.name)
+        name_facets=_facets(task.name)
+        name_terms=_terms(task.name)
+        for contractor,descriptor,detail,source,linked_id in evidence:
+            if linked_id==task.id:
+                score=120
+                reason='Direkt mit dem Arbeitspaket verknüpft'
+            else:
+                matched=task_facets & _facets(descriptor)
+                if name_facets and _facets(detail) and not (name_facets & _facets(detail)):
+                    continue
+                # Eine konkrete Aufgabenbeschreibung hat Vorrang vor breiten Gewerken.
+                if name_facets and not (matched & name_facets):continue
+                if matched:
+                    score=75+(15 if matched & name_facets else 0)
+                else:
+                    overlap=name_terms & _terms(detail)
+                    if len(overlap)<2:continue
+                    score=55
+                reason=source+' · '+detail
+            old=suggested.get(contractor.id)
+            if not old or score>old['score']:
+                suggested[contractor.id]={'contractor_id':contractor.id,'name':contractor.name,
+                                          'score':score,'reason':reason}
+        if suggested:
+            results[task.id]=sorted(suggested.values(),key=lambda x:(-x['score'],x['name'].lower()))
+    return results
+
 @app.get('/api/project')
 def project():
     tasks=serialize(all_tasks())
     contractors=db.session.scalars(select(Contractor).order_by(Contractor.name)).all()
-    return jsonify({'start':setting('start'), 'tasks':tasks,'contractors':[{'id':x.id,'name':x.name,'trade':x.trade,'phone':x.phone,'email':x.email} for x in contractors]})
+    return jsonify({'start':setting('start'), 'tasks':tasks,'suggestions':task_company_suggestions(), 'contractors':[{'id':x.id,'name':x.name,'trade':x.trade,'phone':x.phone,'email':x.email} for x in contractors]})
 
 @app.patch('/api/project')
 def update_project():
@@ -329,6 +420,51 @@ def delete_task(task_id):
     if dependents:return jsonify(error='Andere Aufgaben hängen davon ab. Zuerst die Abhängigkeiten entfernen.'),409
     db.session.delete(t);db.session.commit()
     return jsonify({'ok':True})
+
+
+@app.post('/api/tasks/<int:task_id>/complete')
+def complete_task(task_id):
+    task=db.session.get(Task,task_id)
+    if not task:return jsonify(error='Arbeitspaket nicht gefunden.'),404
+    if task.status!='Erledigt':
+        task.status='Erledigt'
+        task.progress=100
+        task.actual_end=date.today()
+    else:
+        task.progress=100
+        if task.actual_end is None:task.actual_end=date.today()
+    db.session.commit()
+    return jsonify(ok=True,actual_end=task.actual_end.isoformat())
+
+@app.post('/api/tasks/assign-suggestions')
+def apply_task_company_suggestions():
+    data=request.get_json(silent=True) or {}
+    entries=data.get('assignments')
+    if not isinstance(entries,list) or len(entries)>200:
+        return jsonify(error='Bitte eine gültige Zuordnungsliste angeben.'),400
+    proposals=task_company_suggestions()
+    chosen=set()
+    try:
+        assignments=[]
+        for entry in entries:
+            task_id=int(entry['task_id']); contractor_id=int(entry['contractor_id'])
+            if task_id in chosen:raise ValueError('Arbeitspaket doppelt angegeben.')
+            chosen.add(task_id)
+            task=db.session.get(Task,task_id)
+            if not task:raise ValueError('Arbeitspaket existiert nicht.')
+            if task.contractor_id or (task.company or '').strip():
+                raise ValueError('Arbeitspaket hat bereits eine feste Firmenzuordnung.')
+            if contractor_id not in [c['contractor_id'] for c in proposals.get(task_id,[])]:
+                raise ValueError('Für diese Zuordnung liegt kein bestätigter Angebotsvorschlag vor.')
+            assignments.append((task,contractor_id))
+        for task,contractor_id in assignments:
+            task.contractor_id=contractor_id
+            task.company=''  # Keine konkurrierende Freitextzuordnung
+        db.session.commit()
+        return jsonify(ok=True,assigned=len(assignments))
+    except (KeyError,TypeError,ValueError) as exc:
+        db.session.rollback()
+        return jsonify(error=str(exc)),409
 
 @app.get('/api/export.csv')
 def export_csv():
@@ -817,6 +953,19 @@ def download_document(doc_id):
     p=DOCUMENT_ROOT/row.stored_name
     if not p.is_file():return jsonify(error='Datei fehlt auf diesem Rechner.'),404
     return send_file(p,as_attachment=True,download_name=row.original_name)
+
+
+@app.get('/api/documents/<int:doc_id>/view')
+def view_document(doc_id):
+    row=db.session.get(Document,doc_id)
+    if not row:return jsonify(error='Dokument nicht gefunden.'),404
+    if Path(row.stored_name).suffix.lower()!='.pdf':
+        return jsonify(error='Die integrierte Vorschau unterstützt nur PDF-Dateien.'),415
+    path=DOCUMENT_ROOT/row.stored_name
+    if not path.is_file():return jsonify(error='Datei fehlt auf diesem Rechner.'),404
+    response=send_file(path,mimetype='application/pdf',as_attachment=False,download_name=row.original_name)
+    response.headers['X-Content-Type-Options']='nosniff'
+    return response
 
 @app.delete('/api/documents/<int:doc_id>')
 def delete_document(doc_id):
