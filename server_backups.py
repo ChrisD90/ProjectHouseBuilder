@@ -231,7 +231,7 @@ def restore_postgres(path,engine_url,dispose):
             swapped=False
             try:
                 environment=dict(env,PGDATABASE=staging)
-                _run(['pg_restore','--no-owner','--no-acl','--exit-on-error',
+                _run(['pg_restore','--no-owner','--no-acl','--clean','--if-exists','--exit-on-error',
                       '--dbname',staging,str(unpack/'database.dump')],environment,timeout=1200)
                 with psycopg.connect(**{**admin,'dbname':staging}) as restored:
                     with restored.cursor() as cur:
