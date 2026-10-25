@@ -236,6 +236,7 @@ async function open(id){
  }
  updateInvoiceControls();
  $('original').href='/api/receipts/'+id+'/download';$('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
+ receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
  $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Gebucht'?'Gebucht: Für Betragsänderungen zuerst Buchung zurücknehmen.':'Bitte Daten prüfen, dann speichern und buchen.');
  }catch(e){notice(e.message,true)}
 }
@@ -283,6 +284,7 @@ async function showReceiptPayments(){
    $('receiptPaymentMessage').textContent='Für diesen Beleg existiert bereits eine manuell erfasste Zahlung ohne Finanzierungsquelle. Bitte den bisherigen Zahlbetrag im Beleg berichtigen, bevor du die Finanzierungsquelle zuordnest.';
  paymentForm.elements.namedItem('payment_date').value=new Date().toLocaleDateString('sv-SE');
  paymentAccountOptions();
+ receiptFlow.snapshot(); // Auto-filled payment values are not user edits.
  requestAnimationFrame(()=>$('receiptPaymentsPanel').scrollIntoView({block:'nearest'}));
 }
 $('payReceipt').onclick=async()=>{
