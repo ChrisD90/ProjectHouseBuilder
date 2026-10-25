@@ -18,7 +18,12 @@
    }else if(field.tagName==='SELECT'&&field.multiple){
     data.push([field.name,[...field.selectedOptions].map(o=>o.value)]);
    }else{
-    data.push([field.name,field.value]);
+    const euro=field.dataset.euro==='true'||field.dataset.phbCurrency==='true'
+      ||new Set(['amount','gross','net','vat','gross_amount','net_amount','vat_amount',
+        'unit_price','labor_amount','paid_amount','estimate','offer','committed',
+        'principal','monthly_payment','opening_balance','reserve','agreed_gross']).has(field.name);
+    const value=euro?window.PHBUI?.currency?.parse?.(field.value):undefined;
+    data.push([field.name,euro&&value!==undefined&&Number.isFinite(value)?value:field.value]);
    }
   }
   return JSON.stringify(data);
@@ -33,6 +38,7 @@
   const dismiss=(config.dismiss||[]).map($).filter(Boolean);
   const titles=(config.steps||[]).map(String);
   let baseline='',busy=false,closing=false,stageIndex=0;
+  let opener=null;
   const current=()=>JSON.stringify(forms.map(signature));
   const isBusy=()=>busy||Boolean(config.isBusy?.());
   const dirty=()=>Boolean(config.track!==false&&forms.length&&baseline!==current());
@@ -70,7 +76,10 @@
    for(const btn of dismiss)btn.disabled=busy;
   }
   function open({step=0}={}){
-   if(!dialog.open)dialog.showModal();
+   if(!dialog.open){
+    opener=document.activeElement;
+    dialog.showModal();
+   }
    stage(step);
    snapshot();
    return dialog;
@@ -130,11 +139,22 @@
   dialog.addEventListener('close',()=>{
    setBusy(false);
    config.onClose?.();
+   if(opener instanceof HTMLElement&&opener.isConnected&&!dialog.contains(opener)){
+    opener.focus({preventScroll:true});
+   }
+   opener=null;
   });
   stage(0);
   const controller={dialog,open,finish,cancel,stage,run,setBusy,snapshot,dirty,isBusy};
   registry.set(dialog.id,controller);
   return controller;
  }
+ window.addEventListener('beforeunload',event=>{
+  if(![...registry.values()].some(flow=>flow.dialog.open&&flow.dirty())){
+   return;
+  }
+  event.preventDefault();
+  event.returnValue='';
+ });
  window.PHBFlow={manage,get:id=>registry.get($(id)?.id)};
 })();
