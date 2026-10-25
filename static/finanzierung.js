@@ -197,7 +197,8 @@ $('loanForm').onsubmit=async event=>{
      documentRows(loan);
    }
    updateLoanEditorMode(saved.id);
-   status.textContent='Änderungen gespeichert. Der Kredit kann hier weiter ergänzt werden.';
+   PHBUI.dialogs.saved($('loanDialog'));
+    status.textContent='Änderungen gespeichert. Der Kredit kann hier weiter ergänzt werden.';
    status.classList.remove('error');
  }catch(err){
    status.textContent='Speichern fehlgeschlagen: '+err.message;
