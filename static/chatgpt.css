@@ -60,3 +60,5 @@
   .phb-ai-dialog .phb-ai-controls{align-items:stretch}
   .phb-ai-dialog .phb-ai-controls button{flex:1 1 auto}
 }
+
+.phb-ai-confirm[hidden]{display:none!important}
