@@ -4,6 +4,16 @@
   const phrase='ALLE DATEN LÖSCHEN';
   const restorePhrase='BACKUP WIEDERHERSTELLEN';
   let config=null, pendingBackup=false, verifiedRef=null, restoring=false;
+  const backupFlow=PHBFlow.manage({
+    dialog:'backupConfigDialog',forms:['backupConfigForm'],
+    dismiss:['backupConfigCancel'],
+    onClose:()=>{pendingBackup=false;}
+  });
+  const restoreFlow=PHBFlow.manage({
+    dialog:'backupRestoreDialog',dismiss:['cancelRestore'],
+    isBusy:()=>restoring,
+    busyMessage:'Die Wiederherstellung läuft noch. Bitte den Abschluss prüfen.'
+  });
   const notice=(message,error=false)=>{
     const box=get('dataNotice');box.hidden=false;box.classList.toggle('is-error',error);
     box.textContent=message;
@@ -95,7 +105,7 @@
     get('backupRootDescription').textContent=config?.backend==='postgres'
       ?'Der Ordner liegt innerhalb des auf der Synology bereitgestellten Backup-Volumes. Unterordner lassen sich auch neu anlegen.'
       :'Öffne den macOS-Systemdialog, um einen lokalen Backup-Ordner auszuwählen.';
-    get('backupConfigDialog').showModal();
+    backupFlow.open();
     if(config?.backend==='postgres')await browse(config?.configured?config.relative_folder:'');
   };
   get('backupConfigure').onclick=()=>openConfigure(false);
@@ -148,7 +158,7 @@
     for(const file of config?.backups||[])list.add(new Option(file.filename,file.filename));
     get('restoreBackupUpload').value='';
     get('restoreProgress').textContent='';
-    invalidateRestore();get('backupRestoreDialog').showModal();
+    invalidateRestore();restoreFlow.open();
   };
   get('cancelRestore').onclick=()=>{if(!restoring)get('backupRestoreDialog').close();};
   get('backupRestoreDialog').addEventListener('cancel',e=>{if(restoring)e.preventDefault();});
