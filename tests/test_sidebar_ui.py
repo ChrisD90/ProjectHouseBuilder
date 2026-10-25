@@ -231,7 +231,6 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("library.filter(doc=>!doc.project_document_id)",js)
         self.assertIn("for(const doc of files)list.append(documentRow(doc,false))",js)
         self.assertIn("for(const doc of filtered)list.append(documentRow(doc,true))",js)
-        self.assertIn("const back=document.createElement('a')",js) if False else None
         self.assertIn("moduleLink.textContent=group.label",js)
         self.assertIn("button.onclick=()=>edit(doc.project_document_id)",js)
 
