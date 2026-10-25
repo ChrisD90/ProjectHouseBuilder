@@ -60,10 +60,10 @@
       <div id="categoryRows" class="master-tag-list"></div>
     </section>
   </div>
-  <dialog id="companyDialog" class="master-dialog" aria-labelledby="companyTitle">
-    <form id="companyForm" class="master-dialog-inner">
+  <dialog id="companyDialog" class="master-dialog" aria-labelledby="companyTitle" data-phb-dialog>
+    <form id="companyForm" class="master-dialog-inner" data-phb-dirty>
       <div class="master-dialog-head"><h2 id="companyTitle">Firma erfassen</h2>
-        <button id="closeCompany" type="button">Schließen</button></div>
+        <button id="closeCompany" type="button" data-phb-close>Schließen</button></div>
       <p class="master-description">Firmenstammdaten ändern weder Rechnungsbeträge noch bestehende Beauftragungen.</p>
       <input name="id" type="hidden">
       <div class="master-fields">
