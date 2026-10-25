@@ -89,7 +89,12 @@ $('loanAiAnalyze').onclick=async()=>{
  let permission;
  try{permission=window.PHBAI?.selection();if(!permission)throw Error('Bitte zuerst ChatGPT verbinden.');}
  catch(e){$('loanAiStatus').textContent=e.message;return;}
+ if(loanAiBusy)return;
+ loanAiBusy=true;
  button.disabled=true;
+ $('closeLoan').disabled=true;
+ $('loanSaveButton').disabled=true;
+ $('deleteLoan').disabled=true;
  $('loanAiStatus').textContent='ChatGPT liest die Kreditunterlage. Die Daten werden noch nicht gespeichert …';
  $('loanAiWarnings').hidden=true;
  $('loanAiWarnings').replaceChildren();
@@ -125,7 +130,13 @@ $('loanAiAnalyze').onclick=async()=>{
      ' Vertragsfelder ergänzt'+(skipped?', '+skipped+' bestehende Angaben beibehalten':'')+
      '. Bitte alle Werte mit dem Original prüfen und danach die Änderungen speichern.';
  }catch(e){$('loanAiStatus').textContent=e.message;}
- finally{button.disabled=false;}
+ finally{
+  loanAiBusy=false;
+  button.disabled=false;
+  $('closeLoan').disabled=false;
+  $('loanSaveButton').disabled=false;
+  $('deleteLoan').disabled=false;
+ }
 };
 
 $('loanDocumentUpload').onsubmit=async event=>{
@@ -150,6 +161,12 @@ $('loanDocumentUpload').onsubmit=async event=>{
  finally{btn.disabled=false;}
 };
 
+$('loanDialog').addEventListener('cancel',event=>{
+ if(loanAiBusy){
+  event.preventDefault();
+  $('loanAiStatus').textContent='Die ChatGPT-Analyse läuft. Der Dialog bleibt bis zum Ergebnis geöffnet.';
+ }
+});
 $('closeLoan').onclick=()=>{
   if(loanAiBusy){
     $('loanAiStatus').textContent='ChatGPT analysiert noch. Damit die Vorschläge nicht verloren gehen, bleibt der Dialog bis zum Abschluss geöffnet.';
@@ -160,6 +177,7 @@ $('closeLoan').onclick=()=>{
 async function submitForm(event,form,base,dialog){event.preventDefault();let fields=payload(form),id=fields.id;delete fields.id;try{await api(base+(id?'/'+id:''),id?'PATCH':'POST',fields);dialog.close();await reload();message('Gespeichert.')}catch(err){message(err.message,true)}}
 $('loanForm').onsubmit=async event=>{
  event.preventDefault();
+ if(loanAiBusy)return;
  const form=$('loanForm'),button=$('loanSaveButton'),status=$('loanSaveStatus');
  const fields=payload(form),id=fields.id;
  delete fields.id;
