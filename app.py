@@ -1573,6 +1573,21 @@ def offer_billing_dict(offer):
                 for r in receipts]}
 
 
+def financing_budget_total():
+    """Financing capacity, not today's cash balance: loan commitments + own funds.
+
+    Deposits and withdrawals change committed own funds. Drawdowns and invoice
+    payments merely move/spend existing funds and never change the budget cap.
+    """
+    from decimal import Decimal
+    amount=sum((Decimal(x.principal or 0) for x in db.session.scalars(select(Loan))),Decimal('0'))
+    amount+=sum((Decimal(x.opening_balance or 0) for x in db.session.scalars(select(EquityAccount))),Decimal('0'))
+    for event in db.session.scalars(select(FinancingEvent)):
+        if event.kind=='equity_deposit':amount+=Decimal(event.amount or 0)
+        elif event.kind=='equity_withdrawal':amount-=Decimal(event.amount or 0)
+    return round(float(amount),2)
+
+
 def budget_summary(items):
     lines=all_budget_lines()
     active=[x for x in lines if x.active and not x.is_group]
@@ -1612,7 +1627,7 @@ def budget_summary(items):
     funds=db.session.scalars(select(Funding)).all()
     funding_confirmed=sum(f.confirmed for f in funds)
     funding_expected=sum(f.expected for f in funds)
-    budget=float(setting('initial_budget','0'))
+    budget=financing_budget_total()
     grouped={}
     for line in active:
         group=grouped.setdefault(line.category,{'category':line.category,'estimate':0,'planned':0,'paid':0})
@@ -3000,16 +3015,7 @@ def costs_csv():
 
 @app.patch('/api/budget/config')
 def budget_config():
-    body=request.get_json(force=True)
-    try:
-        amount=float(body.get('budget',0))
-        if not math.isfinite(amount) or amount<0 or amount>100000000:raise ValueError('Ungültiges Gesamtbudget.')
-        key=db.session.get(Setting,'initial_budget')
-        if key:key.value=str(amount)
-        else:db.session.add(Setting(key='initial_budget',value=str(amount)))
-        db.session.commit()
-        return jsonify(ok=True)
-    except (ValueError,TypeError) as e:return jsonify(error=str(e)),400
+    return jsonify(error='Das Projektbudget wird automatisch aus Kreditrahmen und Eigenkapital berechnet. Bitte die Quellen unter Finanzierung bearbeiten.'),409
 
 @app.route('/api/budget/lines/<int:line_id>', methods=['PUT','DELETE'])
 @app.post('/api/budget/lines')
