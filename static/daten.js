@@ -117,10 +117,12 @@
     const button=event.submitter;button.disabled=true;
     try{
       await post('/api/backup/configure',{folder:get('backupFolder').value,keep:Number(get('backupKeep').value)});
+      const createAfterConfiguration=pendingBackup;
+      pendingBackup=false;
       get('backupConfigDialog').close();
       await status();
       notice('Backupziel gespeichert.');
-      if(pendingBackup){pendingBackup=false;await createBackup();}
+      if(createAfterConfiguration)await createBackup();
     }catch(err){get('backupConfigMessage').textContent=err.message;}
     finally{button.disabled=false;}
   };
