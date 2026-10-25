@@ -860,6 +860,70 @@ def project_documents_list():
     return response
 
 
+@app.get('/api/document-library')
+def document_library():
+    """Read-only index of originals already stored across all functional areas.
+
+    The index does not duplicate, move, or mutate files. Each entry links back to
+    its owning module; permissions for the original downloads remain unchanged.
+    """
+    entries=[]
+    for d in db.session.scalars(select(ProjectDocument)).all():
+        entries.append({'source':'Projektdokumente','id':'project-'+str(d.id),
+                        'title':d.title,'filename':d.original_name,'type':d.category,
+                        'status':d.status,'description':d.description or d.tags,
+                        'date':d.uploaded_at.isoformat() if d.uploaded_at else '',
+                        'download_url':f'/api/project-documents/{d.id}/download',
+                        'view_url':f'/api/project-documents/{d.id}/preview'
+                            if d.extension.lower() in ('.pdf','.jpg','.jpeg','.png','.webp','.txt') else None,
+                        'module_url':f'/dokumente?document_id={d.id}',
+                        'project_document_id':d.id})
+    offers=db.session.scalars(select(Offer)).all()
+    by_document={}
+    for o in offers:
+        if o.document_id:
+            by_document.setdefault(o.document_id,o)
+        for v in o.versions:
+            if v.document_id:
+                by_document.setdefault(v.document_id,o)
+    for d in db.session.scalars(select(Document)).all():
+        offer=by_document.get(d.id)
+        entries.append({'source':'Angebote' if offer else 'Weitere Projektunterlagen',
+                        'id':'file-'+str(d.id),'title':d.original_name,
+                        'filename':d.original_name,'type':d.kind or 'Dokument',
+                        'status':offer.status if offer else 'Abgelegt',
+                        'description':offer.vendor if offer else d.notes or '',
+                        'date':d.uploaded_at.isoformat() if d.uploaded_at else '',
+                        'download_url':f'/api/documents/{d.id}/download',
+                        'view_url':f'/api/documents/{d.id}/preview'
+                            if Path(d.original_name).suffix.lower()=='.pdf' else None,
+                        'module_url':'/angebote' if offer else None,
+                        'legacy_document_id':d.id if not offer else None})
+    for r in db.session.scalars(select(Receipt)).all():
+        kind='Rechnungen & Belege'
+        entries.append({'source':kind,'id':'receipt-'+str(r.id),
+                        'title':r.supplier+' · '+r.original_name if r.supplier else r.original_name,
+                        'filename':r.original_name,'type':r.kind,'status':r.status,
+                        'description':r.category or '',
+                        'date':r.created_at.isoformat() if r.created_at else '',
+                        'download_url':f'/api/receipts/{r.id}/download',
+                        'view_url':f'/api/receipts/{r.id}/preview'
+                            if Path(r.original_name).suffix.lower() in ('.pdf','.jpg','.jpeg','.png','.webp') else None,
+                        'module_url':f'/belege?receipt_id={r.id}'})
+    for ld in db.session.scalars(select(LoanDocument)).all():
+        entries.append({'source':'Finanzierung','id':'loan-'+str(ld.id),
+                        'title':ld.original_name,'filename':ld.original_name,
+                        'type':'Kreditunterlage','status':'Abgelegt',
+                        'description':ld.notes or '',
+                        'date':ld.uploaded_at.isoformat() if ld.uploaded_at else '',
+                        'download_url':f'/api/financing/loans/{ld.loan_id}/documents/{ld.id}/download',
+                        'view_url':None,'module_url':'/finanzierung'})
+    entries.sort(key=lambda entry:(entry['date'],entry['id']),reverse=True)
+    response=jsonify(documents=entries,total=len(entries))
+    response.headers['Cache-Control']='no-store'
+    return response
+
+
 @app.post('/api/project-documents')
 def project_document_upload():
     upload=request.files.get('file')
