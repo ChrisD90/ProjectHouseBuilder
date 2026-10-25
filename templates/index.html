@@ -66,8 +66,8 @@
     <p id="scheduleChatStatus" class="schedule-chat-status" role="status"></p>
   </div>
 </section>
-<dialog id="scheduleHistoryDialog" class="schedule-overlay-dialog" aria-labelledby="scheduleHistoryTitle">
-  <div class="modalhead"><h2 id="scheduleHistoryTitle">Entscheidungen &amp; Änderungen <small id="scheduleHistoryCount"></small></h2><button id="closeScheduleHistory" class="subtle" type="button">Schließen</button></div>
+<dialog id="scheduleHistoryDialog" class="schedule-overlay-dialog" aria-labelledby="scheduleHistoryTitle" data-phb-dialog>
+  <div class="modalhead"><h2 id="scheduleHistoryTitle">Entscheidungen &amp; Änderungen <small id="scheduleHistoryCount"></small></h2><button id="closeScheduleHistory" class="subtle" type="button" data-phb-close>Schließen</button></div>
   <div class="schedule-history-content">
     <p>Hier findest du besprochene, bestätigte und verworfene Entscheidungen sowie manuelle Änderungen am Bauzeitenplan.</p>
     <div id="scheduleHistoryEntries" class="schedule-history-entries"><p>Historie wird geladen …</p></div>
@@ -84,14 +84,14 @@ title="ChatGPT-Planungsdialog bei Bedarf öffnen">
     <button id="clearSchedule" class="danger" type="button" hidden>Nur Bauzeitplan leeren (mit Backup)</button>
   </details>
 </section>
-<dialog id="taskListDialog" class="schedule-overlay-dialog schedule-task-list-dialog" aria-labelledby="taskListTitle">
-  <div class="modalhead"><div><h2 id="taskListTitle">Alle Arbeitspakete</h2><small>Nach den gewählten Gantt-Filtern · Zum Bearbeiten Zeile anklicken</small></div><button id="closeTaskList" class="subtle" type="button">Schließen</button></div>
+<dialog id="taskListDialog" class="schedule-overlay-dialog schedule-task-list-dialog" aria-labelledby="taskListTitle" data-phb-dialog>
+  <div class="modalhead"><div><h2 id="taskListTitle">Alle Arbeitspakete</h2><small>Nach den gewählten Gantt-Filtern · Zum Bearbeiten Zeile anklicken</small></div><button id="closeTaskList" class="subtle" type="button" data-phb-close>Schließen</button></div>
   <div class="tablewrap"><table><thead><tr><th>ID</th><th>Phase</th><th>Gewerk</th><th>Arbeitspaket</th><th>Ausführung</th><th>Firma</th><th>Vorgänger</th><th>Start</th><th>Ende</th><th>Status</th><th>Fortschritt</th></tr></thead><tbody id="taskRows"></tbody></table></div>
 </dialog></main>
   </div>
 </div>
 <div class="overlay hidden" id="overlay"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modalhead"><h2 id="modalTitle">Arbeitspaket</h2><button id="complete" class="primary" type="button" hidden>✓ Abschließen</button></div><form id="taskForm"><div class="formgrid"><label>ID<input name="code" required></label><label>Bauphase<input name="phase" required></label><label>Gewerk / Verantwortlichkeit<select name="trade" required><option value="Sonstiges">Sonstiges</option></select><small><a href="/stammdaten#gewerke">Gewerke verwalten</a></small></label><label>Ausführung<select name="execution_type" required><option value="Noch offen">Noch festzulegen</option><option value="Eigenleistung">Eigenleistung</option><option value="Fremdleistung">Fremdleistung</option></select></label><label>Firma (Freitext)<input name="company"></label><label>Zugeordneter Betrieb<select name="contractor_id"><option value="">Keine Zuordnung</option></select><small><a href="/stammdaten#firmen">Firmen & Kontakte verwalten</a></small></label><div class="wide task-suggestion" id="taskSuggestion" hidden></div><label class="wide">Tätigkeit / Arbeitspaket<input name="name" required></label><label>Dauer (Kalendertage)<input name="duration" type="number" min="1" required></label><label>Abstand nach Vorgängern (Tage)<input name="lag_days" type="number" min="0" required></label><label>Frühester Start (optional)<input name="earliest_start" type="date"></label><label>Status<select name="status"><option>Offen</option><option>In Arbeit</option><option>Erledigt</option><option>Pausiert</option></select></label><label>Fortschritt (%)<input name="progress" type="number" min="0" max="100" required></label><label>Ist-Start<input name="actual_start" type="date"></label><label>Ist-Ende<input name="actual_end" type="date"></label><label class="wide">Vorgänger (Mehrfachauswahl mit Strg/Cmd)<select name="predecessors" multiple size="6"></select></label><label class="wide">Notizen / Freigaben<textarea name="notes" rows="3"></textarea></label></div><div id="error" role="alert"></div><div class="actions"><button id="delete" class="danger" type="button">Löschen</button><div class="push"></div><button id="cancel" class="subtle" type="button">Abbrechen</button><button class="primary" type="submit">Speichern</button></div></form></div></div>
-<dialog id="companyProposalsDialog" class="phb-company-proposals" aria-labelledby="companyProposalsTitle">
+<dialog id="companyProposalsDialog" class="phb-company-proposals" aria-labelledby="companyProposalsTitle" data-phb-dialog>
   <div class="modalhead"><div><h2 id="companyProposalsTitle">Arbeitspakete den Firmen zuordnen</h2><p>Firmen durchsuchen, aufklappen und innerhalb jeder Firma passende Arbeitspakete auswählen.</p></div></div>
   <div class="company-dialog-toolbar"><label for="companySearch">Firma suchen
       <input type="search" id="companySearch" autocomplete="off" placeholder="Firmenname, Gewerk oder Angebotsnummer …"></label>
@@ -100,7 +100,7 @@ title="ChatGPT-Planungsdialog bei Bedarf öffnen">
   </div>
   <div id="companyProposalRows" class="company-proposal-rows"></div>
   <div class="actions"><span id="companySelectionCount" class="company-selection-count" aria-live="polite">0 Arbeitspakete ausgewählt</span><span class="push"></span>
-    <button type="button" id="companyProposalsCancel" class="subtle">Abbrechen</button>
+    <button type="button" id="companyProposalsCancel" class="subtle" data-phb-close>Abbrechen</button>
     <button type="button" id="companyProposalsApply" class="primary">Auswahl übernehmen</button>
   </div>
 </dialog><div id="toast" role="status"></div><script src="/static/app.js"></script><script src="/static/schedule_chat.js"></script><script>if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js").catch(console.warn);</script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
