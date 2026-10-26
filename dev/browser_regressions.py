@@ -36,6 +36,8 @@ with backend.app.app_context():
  writer=PdfWriter();writer.add_blank_page(width=595,height=842)
  with (backend.RECEIPT_ROOT/"invoice.pdf").open("wb") as file:writer.write(file)
  backend.db.session.add(backend.Receipt(digest="browser-invoice",original_name="Testrechnung.pdf",stored_name="invoice.pdf",supplier="Browser-Testbetrieb",invoice_number="B-1",document_date="2026-10-26",gross_amount=100,paid_amount=0,status="Gebucht",assignment_type="Eigenleistung"))
+ backend.db.session.add(backend.Receipt(digest="draft-invoice",original_name="Entwurf.pdf",stored_name="draft.pdf",supplier="",document_date="",gross_amount=None,paid_amount=0,status="Entwurf"))
+ (backend.RECEIPT_ROOT/"draft.pdf").write_bytes((backend.RECEIPT_ROOT/"invoice.pdf").read_bytes())
  backend.db.session.commit()
 from werkzeug.serving import make_server
 server=make_server("127.0.0.1",0,backend.app,threaded=True)
@@ -172,10 +174,10 @@ server.serve_forever()
                     page.locator('#closeLoan').click()
                     if page.locator('.phb-messagebox').is_visible():page.locator('.phb-messagebox button',has_text='Bestätigen').click()
                     print('PASS: direct loan scan blocks duplicate actions, save, close and Escape until error response')
-                    page.goto(BASE+'/belege');page.locator('#list .entry').first.click()
+                    page.goto(BASE+'/belege');page.locator('#list .entry',has_text='Browser-Testbetrieb').click()
                     page.locator('#markReceiptPaid').click();page.locator('.phb-messagebox button',has_text='Bestätigen').click()
-                    expect(page.locator('#list .entry').first).to_contain_text('Nicht zugewiesen')
-                    rid=page.request.get(BASE+'/api/receipts').json()['receipts'][0]['id']
+                    expect(page.locator('#list .entry',has_text='Browser-Testbetrieb')).to_contain_text('Nicht zugewiesen')
+                    rid=next(r['id'] for r in page.request.get(BASE+'/api/receipts').json()['receipts'] if r['supplier']=='Browser-Testbetrieb')
                     assert page.request.get(BASE+'/api/receipts/'+str(rid)).json()['paid_amount']==100
                     account=page.request.post(BASE+'/api/financing/equity',data={'name':'Späteres Konto','opening_balance':200,'reserve':0})
                     assert account.status==201,account.text()
@@ -191,7 +193,7 @@ server.serve_forever()
                     expect(page.locator('#receiptCancelDialog')).to_be_visible()
                     page.locator('#receiptCancelReason').fill('Durch neue Rechnung ersetzt')
                     page.locator('#receiptCancelForm button[type=submit]').click();expect(page.locator('#receiptCancelDialog')).not_to_be_visible()
-                    expect(page.locator('#list .entry').first).to_contain_text('Storniert')
+                    expect(page.locator('#list .entry',has_text='Browser-Testbetrieb')).to_contain_text('Storniert')
                     cancelled=page.request.get(BASE+'/api/receipts/'+str(rid)).json();assert cancelled['paid_amount']==0 and cancelled['cancellation']['reason']=='Durch neue Rechnung ersetzt'
                     assert page.request.get(BASE+'/api/receipts/'+str(rid)+'/download').status==200
                     page.locator('#closeReceiptWorkflow').click()
@@ -204,6 +206,51 @@ server.serve_forever()
                     context.route('**/api/ai/status',lambda request:request.fulfill(json={'connected':False,'sharing':False,'credits_acknowledged':False}))
                     page.reload();expect(page.locator('#scheduleChatFab')).not_to_be_visible()
                     print('PASS: source-free payment, later assignment without double payment, retained invoice cancellation, connection-gated floating button')
+                    page.set_viewport_size({'width':1440,'height':950})
+                    draft=next(r for r in page.request.get(BASE+'/api/receipts').json()['receipts'] if r['status']=='Entwurf')
+                    draft_id=draft['id']
+                    page.goto(BASE+'/belege?receipt_id='+str(draft_id));expect(page.locator('#review')).to_be_visible()
+                    page.locator('#review [name=notes]').fill('Erster unvollständiger Zwischenstand')
+                    page.locator('#receiptAssignmentType').select_option('Betrieb')
+                    page.locator('#saveReceiptDraftTop').click();expect(page.locator('#receiptSaveStatus')).to_contain_text('Entwurf gespeichert')
+                    saved=page.request.get(BASE+'/api/receipts/'+str(draft_id)).json()
+                    assert saved['notes']=='Erster unvollständiger Zwischenstand' and saved['gross_amount'] is None and saved['status']=='Entwurf'
+                    page.reload();expect(page.locator('#review [name=notes]')).to_have_value('Erster unvollständiger Zwischenstand')
+                    page.locator('#review [name=notes]').fill('Vor dem Firmenwechsel gesichert')
+                    page.locator('#receiptCreateCompany').click();expect(page.locator('#companyDialog')).to_be_visible()
+                    page.locator('#companyName').fill('Neu angelegter Rechnungsbetrieb')
+                    page.locator('#saveCompany').click();expect(page.locator('#companyDialog')).not_to_be_visible()
+                    page.locator('#receiptReturnLink').click();expect(page.locator('#review [name=notes]')).to_have_value('Vor dem Firmenwechsel gesichert')
+                    company=next(c for c in page.request.get(BASE+'/api/costs').json()['contractors'] if c['name']=='Neu angelegter Rechnungsbetrieb')
+                    page.locator('#receiptContractor').select_option(str(company['id']))
+                    page.locator('#review [name=supplier]').fill(company['name']);page.locator('#review [name=document_date]').fill('2026-10-26')
+                    page.locator('#receiptGross').fill('120')
+                    expect(page.locator('#advanceDeductionWrap')).not_to_be_visible()
+                    page.locator('#billingType').select_option('Schlussrechnung');expect(page.locator('#advanceDeductionWrap')).to_be_visible()
+                    expect(page.locator('#billingTypeHint')).to_contain_text('doppelte Kosten')
+                    page.locator('#billingType').select_option('Normal')
+                    assert page.locator('#billingType').bounding_box()['y']<page.locator('#receiptGross').bounding_box()['y']
+                    page.locator('#book').click();page.locator('.phb-messagebox button',has_text='Bestätigen').click()
+                    expect(page.locator('#receiptSaveStatus')).to_contain_text('Rechnung gebucht')
+                    booked=page.request.get(BASE+'/api/receipts/'+str(draft_id)).json();assert booked['status']=='Gebucht' and booked['due_date']==''
+                    page.locator('#review [name=notes]').fill('Gebuchte Notiz ergänzt');page.locator('#saveReceiptDraftTop').click()
+                    expect(page.locator('#receiptSaveStatus')).to_contain_text('Änderungen gespeichert')
+                    for width in (360,768,1440):
+                        page.set_viewport_size({'width':width,'height':950})
+                        assert page.locator('#review').evaluate('e=>e.scrollWidth<=e.clientWidth+1'),('invoice form overflow',width)
+                        if os.environ.get('PHB_BROWSER_SCREENSHOTS'):
+                            output=Path(os.environ['PHB_BROWSER_SCREENSHOTS']);output.mkdir(parents=True,exist_ok=True)
+                            page.screenshot(path=str(output/('invoice-review-'+str(width)+'.png')))
+                    print('PASS: incomplete drafts survive reload/company creation, optional due date, billing guidance, booked notes and responsive invoice review')
+                    quote=page.request.post(BASE+'/api/offers/manual',data={'vendor':'Löschbarer Betrieb','gross':150,'category':'Elektro'}).json()['id']
+                    page.goto(BASE+'/angebote');page.locator('[data-offer-delete="'+str(quote)+'"]').click()
+                    page.locator('.phb-messagebox button',has_text='Bestätigen').click();expect(page.locator('[data-offer-card="'+str(quote)+'"]')).to_have_count(0)
+                    protected=page.request.post(BASE+'/api/offers/manual',data={'vendor':'Entschiedener Betrieb','gross':150,'category':'Elektro'}).json()['id']
+                    for status in ('Abgelehnt','Angebot'):assert page.request.patch(BASE+'/api/offers/'+str(protected),data={'status':status}).status==200
+                    page.reload();expect(page.locator('[data-offer-card="'+str(protected)+'"]')).to_be_visible()
+                    expect(page.locator('[data-offer-delete="'+str(protected)+'"]')).to_have_count(0)
+                    assert page.request.delete(BASE+'/api/offers/'+str(protected)).status==409
+                    print('PASS: complete offer deletion is available only before decisions and invoice links')
                     for width in (360,768,1440):
                         page.set_viewport_size({'width':width,'height':950})
                         for path in ['/','/kosten','/angebote','/belege','/finanzierung','/dokumente','/energieplanung','/stammdaten','/daten']:

@@ -7,9 +7,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
-from app import (app, db, initialize, Offer, CostItem, BudgetLine, Category,
+from app import (app, db, initialize, Offer, OfferVersion, OfferPosition, CostItem, BudgetLine, Category,
                  Document, Receipt, _analyse_pdf_offer)
-from sqlalchemy import select
+from sqlalchemy import select,text
 
 
 def parsed_offer(*, gross=119.0, vendor='Beispiel Elektro GmbH'):
@@ -133,11 +133,74 @@ class OfferReviewWorkflowTest(unittest.TestCase):
         self.assertEqual(self.client.patch(f'/api/offers/{id_}/draft',json={'gross':'0.00'}).status_code,200)
         self.assertEqual(self.client.patch(f'/api/offers/{id_}',json={'status':'Angebot'}).status_code,409)
 
-    def test_offer_deleted_but_pdf_remains_archived(self):
+    def test_offer_and_original_are_completely_deleted(self):
         result=self.upload(b'%PDF-archived-17');self.assertEqual(result.status_code,201)
         oid=result.json['id'];docid=result.json['offer']['document_id']
         self.assertEqual(self.client.delete('/api/offers/'+str(oid)).status_code,200)
+        self.assertIsNone(db.session.get(Document,docid))
+        self.assertEqual(len(list(self.files.iterdir())),0)
+
+    def test_listed_undecided_offer_can_be_deleted_with_positions_and_versions(self):
+        result=self.upload(b'%PDF-delete-full');oid=result.json['id']
+        self.assertEqual(self.client.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)
+        offer=db.session.get(Offer,oid)
+        second=Document(original_name='revision.pdf',stored_name='revision.pdf',kind='Angebot')
+        db.session.add(second);db.session.flush();(self.files/'revision.pdf').write_bytes(b'PDF revision')
+        db.session.add(OfferVersion(offer_id=oid,version_number=2,state='draft',document_id=second.id,snapshot='{}'))
+        db.session.add(OfferPosition(offer_id=oid,number='1',section='Test',description='Test'))
+        db.session.commit()
+        self.assertTrue(self.client.get('/api/offers').json['offers'][0]['can_delete'])
+        self.assertEqual(self.client.delete(f'/api/offers/{oid}').status_code,200)
+        self.assertIsNone(db.session.get(Offer,oid))
+        self.assertEqual(db.session.query(OfferVersion).count(),0)
+        self.assertEqual(db.session.query(OfferPosition).count(),0)
+        self.assertEqual(db.session.query(Document).count(),0)
+        self.assertEqual(list(self.files.iterdir()),[])
+
+    def test_database_default_keeps_new_raw_insert_undecided(self):
+        db.session.execute(text("INSERT INTO offer (digest,vendor,filename,status,category,notes,reconciled,warnings) VALUES ('raw','Raw quote','manual','Angebot','Elektro','',FALSE,'[]')"))
+        db.session.commit()
+        offer=db.session.scalar(select(Offer).where(Offer.digest=='raw'))
+        self.assertFalse(offer.deletion_locked)
+        self.assertEqual(self.client.delete(f'/api/offers/{offer.id}').status_code,200)
+
+    def test_rejected_then_relisted_offer_stays_protected(self):
+        oid=self.upload(b'%PDF-relisted-protected').json['id']
+        for status in ('Angebot','Abgelehnt','Angebot'):
+            self.assertEqual(self.client.patch(f'/api/offers/{oid}',json={'status':status}).status_code,200)
+        self.client.patch(f'/api/offers/{oid}/draft',json={'deletion_locked':False})
+        self.assertTrue(db.session.get(Offer,oid).deletion_locked)
+        self.assertFalse(self.client.get('/api/offers').json['offers'][0]['can_delete'])
+        self.assertEqual(self.client.delete(f'/api/offers/{oid}').status_code,409)
+        self.assertEqual(len(list(self.files.iterdir())),1)
+
+    def test_accepted_then_reversed_offer_stays_protected(self):
+        oid=self.upload(b'%PDF-accepted-reversed').json['id']
+        for status in ('Angebot','Angenommen','Angebot'):
+            self.assertEqual(self.client.patch(f'/api/offers/{oid}',json={'status':status}).status_code,200)
+        self.assertEqual(self.client.delete(f'/api/offers/{oid}').status_code,409)
+
+    def test_any_linked_invoice_even_draft_prevents_deletion(self):
+        oid=self.upload(b'%PDF-linked-draft').json['id']
+        item=CostItem(offer_id=oid,title='Legacy link',committed=0,paid=0)
+        db.session.add(item);db.session.flush()
+        db.session.add(Receipt(digest='linked-draft',stored_name='draft.pdf',original_name='draft.pdf',cost_item_id=item.id,status='Entwurf'))
+        db.session.commit()
+        self.assertEqual(self.client.delete(f'/api/offers/{oid}').status_code,409)
+
+    def test_delete_failure_restores_original_and_database(self):
+        result=self.upload(b'%PDF-rollback-delete');oid=result.json['id'];docid=result.json['offer']['document_id']
+        with patch.object(db.session,'commit',side_effect=RuntimeError('DB unavailable')):
+            self.assertEqual(self.client.delete(f'/api/offers/{oid}').status_code,409)
+        self.assertIsNotNone(db.session.get(Offer,oid))
         self.assertIsNotNone(db.session.get(Document,docid))
+        self.assertEqual(len(list(self.files.iterdir())),1)
+
+    def test_shared_original_protects_both_offers(self):
+        result=self.upload(b'%PDF-shared');oid=result.json['id']
+        other=Offer(digest='shared-original',vendor='Another',filename='same.pdf',status='Angebot',document_id=result.json['offer']['document_id'])
+        db.session.add(other);db.session.commit()
+        self.assertEqual(self.client.delete(f'/api/offers/{oid}').status_code,409)
         self.assertEqual(len(list(self.files.iterdir())),1)
 
     def test_parser_failure_results_in_manual_draft(self):

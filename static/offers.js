@@ -375,7 +375,7 @@
     const [label,color] = stage(o);
     return `<article class="offer-card offer-draft-card" data-offer-card="${o.id}"><div class="offer-card-head"><div><span class="offer-stage ${color}">${label}</span><h3>${esc(o.filename)}</h3><p>${sourceLabel(o)} · Werte bitte vor der Übernahme prüfen.</p></div></div>
       ${notice(o)}<form class="offer-review-form" data-review="${o.id}">${fields(o)}${positionEditor(o)}
-      <div class="offer-form-actions"><button type="button" class="primary" data-offer-promote="${o.id}">Geprüft – in Liste übernehmen</button><button type="submit" class="mini">Entwurf zwischenspeichern</button><button type="button" class="offer-text-danger" data-offer-delete="${o.id}">Entwurf löschen</button></div></form></article>`;
+      <div class="offer-form-actions"><button type="button" class="primary" data-offer-promote="${o.id}">Geprüft – in Liste übernehmen</button><button type="submit" class="mini">Entwurf zwischenspeichern</button>${o.can_delete?`<button type="button" class="offer-text-danger" data-offer-delete="${o.id}">Entwurf löschen</button>`:''}</div></form></article>`;
   }
 
   function billingBlock(o) {
@@ -415,13 +415,13 @@
         <strong class="offer-tile-price">${fmt(accepted?o.agreed_gross:o.gross)}</strong>
         <span class="offer-tile-chevron" aria-hidden="true">${expanded?'−':'+'}</span>
       </button>
-      <div class="offer-actions offer-tile-actions">${actions}</div>
+      <div class="offer-actions offer-tile-actions">${actions}${o.can_delete?`<button class="mini danger" type="button" data-offer-delete="${o.id}">Angebot löschen</button>`:''}</div>
       <div class="offer-tile-details" id="offerDetails${o.id}" ${expanded?'':'hidden'}>
         <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>
         ${notes}${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/download">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}${accepted?billingBlock(o):''}
         ${versionUpload(o)}${versionHistory(o)}
 
-        ${notice(o)}${parsedPositions(o)}
+        ${o.deletion_reason?`<p class="offer-mapping">${esc(o.deletion_reason)}</p>`:''}${notice(o)}${parsedPositions(o)}
       </div>
     </article>`;
   }
@@ -694,8 +694,12 @@
         await changeStatus(id,'Angebot');
       }
       if(key==='offerDelete'){
-        if(!await PHBUI.confirm('Entwurf entfernen? Ein bereits hochgeladenes Originaldokument bleibt im Archiv.'))return;
-        await request(offerUrl(id),{method:'DELETE'});await reload();
+        if(button.disabled)return;
+        button.disabled=true;
+        try{
+          if(!await PHBUI.confirm('Angebot einschließlich Originaldateien, Versionen und Einzelpositionen dauerhaft löschen? Diese Aktion kann nicht rückgängig gemacht werden.'))return;
+          await request(offerUrl(id),{method:'DELETE'});await reload();
+        }finally{button.disabled=false;}
       }
     } catch(err) {await PHBUI.alert(err.message)}
   });

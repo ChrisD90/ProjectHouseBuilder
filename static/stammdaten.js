@@ -226,5 +226,13 @@
       finally{target.disabled=false;}
     };
   }
-  reload().catch(error=>note('Stammdaten konnten nicht geladen werden: '+error.message,true));
+  const navigation=new URLSearchParams(location.search);
+  const receiptId=Number(navigation.get('receipt_id'));
+  if(Number.isSafeInteger(receiptId)&&receiptId>0){
+    $('receiptReturn').hidden=false;
+    $('receiptReturnLink').href='/belege?receipt_id='+receiptId;
+  }
+  reload().then(()=>{
+    if(receiptId>0&&navigation.get('new_company')==='1')$('addCompany').click();
+  }).catch(error=>note('Stammdaten konnten nicht geladen werden: '+error.message,true));
 })();

@@ -347,6 +347,7 @@ class Offer(db.Model):
     filename=db.Column(db.String(260),nullable=False)
     created_at=db.Column(db.DateTime,default=datetime.utcnow)
     current_version=db.Column(db.Integer,nullable=False,default=1,server_default='1')
+    deletion_locked=db.Column(db.Boolean,nullable=False,default=False,server_default=text('FALSE'))
     versions=db.relationship('OfferVersion',cascade='all,delete-orphan',lazy='select',order_by='OfferVersion.version_number')
     sections=db.relationship('OfferSection',cascade='all,delete-orphan',lazy='select')
     positions=db.relationship('OfferPosition',cascade='all,delete-orphan',lazy='select')
@@ -441,6 +442,8 @@ def all_tasks():
 def initialize():
     # Additive migration for existing SQLite/PostgreSQL user databases (never drop old entries).
     db.create_all()
+    from offer_lifecycle import ensure_offer_deletion_guard
+    ensure_offer_deletion_guard(db.session.connection())
     receipt_columns={col['name'] for col in sa_inspect(db.engine).get_columns('receipt')}
     if 'due_date' not in receipt_columns:
         db.session.execute(text("ALTER TABLE receipt ADD COLUMN due_date VARCHAR(10) NOT NULL DEFAULT ''"))
@@ -2352,6 +2355,7 @@ def activate_offer_version(offer_id,number):
         # A new quote revives an old rejection, but an existing contract remains active.
         o.status=old_status if accepted else 'Angebot'
         o.current_version=v.version_number
+        o.deletion_locked=True
         if accepted:_sync_revised_contract(o,old_budget)
         else:_sync_offer_costs(o)
         v.state='current'
@@ -2369,6 +2373,7 @@ def discard_offer_version(offer_id,number):
     if not v:return jsonify(error='Version nicht gefunden.'),404
     if v.state!='draft':return jsonify(error='Nur offene Versionsentwürfe können verworfen werden.'),409
     v.state='discarded'
+    db.session.get(Offer,offer_id).deletion_locked=True
     db.session.commit()
     return jsonify(ok=True)
 
@@ -2390,7 +2395,9 @@ def offer_dict(o):
         'document_id':acceptance.confirmation_document_id,
         'created_at':acceptance.created_at.isoformat() if acceptance.created_at else ''}
         if acceptance else None)
+    deletion_reason=_offer_deletion_reason(o)
     return {'acceptance':acceptance_json,'agreed_gross':_contract_gross(o),
+            'can_delete':not deletion_reason,'deletion_reason':deletion_reason,
             'id':o.id,'number':o.number,'vendor':o.vendor,'filename':o.filename,
             'issued':o.issued,'expires':o.expires,'net':o.net,'vat':o.vat,'gross':o.gross,
             'category':o.category,'budget_line_id':o.budget_line_id,'notes':o.notes,
@@ -2747,6 +2754,7 @@ def offer_accept_with_confirmation(offer_id):
             agreed_gross=amount))
         db.session.flush()
         offer.status='Angenommen'
+        offer.deletion_locked=True
         if offer.contractor_id is None:
             company=db.session.scalar(select(Contractor).where(
                 db.func.lower(Contractor.name)==offer.vendor.lower()).limit(1))
@@ -2792,6 +2800,8 @@ def offer_update(offer_id):
           or offer.gross is None or offer.gross<=0):
         return jsonify(error='Nur ein geprüftes, gelistetes Angebot mit Betrag kann angenommen werden.'),409
     try:
+        if offer.status!=target and not (offer.status=='Entwurf' and target=='Angebot'):
+            offer.deletion_locked=True
         offer.status=target
         if target=='Angenommen' and offer.contractor_id is None and offer.vendor.strip() and offer.vendor!='Firma nicht erkannt':
             company=db.session.scalar(select(Contractor).where(db.func.lower(Contractor.name)==offer.vendor.lower()).limit(1))
@@ -2847,27 +2857,64 @@ def offer_cost_payment(item_id):
 
 @app.delete('/api/offers/<int:offer_id>')
 def offer_delete(offer_id):
-    if db.session.scalar(select(FundingDetail.funding_id).where(FundingDetail.offer_id==offer_id).limit(1)):
-        return jsonify(error='Förderung verknüpft. Zuerst die Zuordnung in Energetische Planung entfernen.'),409
     offer=db.session.get(Offer,offer_id)
     if not offer:return jsonify(error='Angebot nicht gefunden.'),404
+    reason=_offer_deletion_reason(offer)
+    if reason:return jsonify(error=reason),409
     linked=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer_id)).all()
-    if any(x.committed or _offer_has_dependencies(x) for x in linked):
-        return jsonify(error='Angenommene Angebote mit Aufträgen oder Zahlungen dürfen nicht gelöscht werden.'),409
-    doc=db.session.get(Document,offer.document_id) if offer.document_id else None
+    documents=db.session.scalars(select(Document).where(Document.id.in_(_offer_document_ids(offer)))).all()
+    moved=[];quarantine=None
     try:
+        paths=[DOCUMENT_ROOT/doc.stored_name for doc in documents if (DOCUMENT_ROOT/doc.stored_name).is_file()]
+        if paths:
+            quarantine=tempfile.TemporaryDirectory(prefix='.offer-delete-',dir=DOCUMENT_ROOT)
+            for path in paths:
+                destination=Path(quarantine.name)/path.name
+                path.replace(destination);moved.append((path,destination))
         for item in linked:db.session.delete(item)
+        db.session.flush()
         db.session.delete(offer)
-        # Uploaded PDF stays as a private document for traceability.
-        db.session.commit();return jsonify(ok=True,document_id=doc.id if doc else None)
+        db.session.flush()
+        for doc in documents:db.session.delete(doc)
+        for job in db.session.scalars(select(ImportJob).where(ImportJob.kind.in_(['offers','versions']),ImportJob.result_id==offer_id)):
+            job.result_id=None;job.status='Übernommen';job.stage='Angebot gelöscht'
+        db.session.commit()
     except Exception:
-        db.session.rollback();return jsonify(error='Angebot konnte nicht entfernt werden.'),409
+        db.session.rollback()
+        for path,destination in moved:
+            if destination.exists():destination.replace(path)
+        return jsonify(error='Angebot konnte nicht entfernt werden. Daten und Originale bleiben erhalten.'),409
+    finally:
+        if quarantine:quarantine.cleanup()
+    return jsonify(ok=True)
+
+
+def _offer_document_ids(offer):
+    return {identifier for identifier in [offer.document_id,*[v.document_id for v in offer.versions]] if identifier is not None}
+
+
+def _offer_deletion_reason(offer):
+    if offer.deletion_locked or offer.status not in ('Entwurf','Angebot') or _order_acceptance(offer):
+        return 'Dieses Angebot wurde bereits angenommen, abgelehnt oder anderweitig entschieden und bleibt als Nachweis erhalten.'
+    linked=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id)).all()
+    if any(x.committed or x.selected or x.state in ('Beauftragt','Abgelehnt') or _offer_has_dependencies(x) for x in linked):
+        return 'Rechnungen, Aufträge, Zahlungen oder weitere Belege sind mit diesem Angebot verknüpft.'
+    if db.session.scalar(select(FundingDetail.funding_id).where(FundingDetail.offer_id==offer.id).limit(1)):
+        return 'Eine Förderung ist mit diesem Angebot verknüpft. Zuerst die Zuordnung in Energetische Planung entfernen.'
+    documents=_offer_document_ids(offer)
+    if documents and (
+        db.session.scalar(select(Offer.id).where(Offer.document_id.in_(documents),Offer.id!=offer.id).limit(1))
+        or db.session.scalar(select(OfferVersion.id).where(OfferVersion.document_id.in_(documents),OfferVersion.offer_id!=offer.id).limit(1))
+        or db.session.scalar(select(CostPlanImport.id).where(CostPlanImport.document_id.in_(documents)).limit(1))
+        or db.session.scalar(select(OrderAcceptance.id).where(OrderAcceptance.confirmation_document_id.in_(documents)).limit(1))):
+        return 'Ein Originaldokument wird noch an anderer Stelle verwendet und kann nicht vollständig gelöscht werden.'
+    return ''
 
 # Receipts are a separate, reviewed ledger; OCR guesses never change financial totals.
 RECEIPT_ROOT=ROOT/'private'/'receipts'
 RECEIPT_EXTENSIONS={'.pdf','.jpg','.jpeg','.png','.webp'}
 
-def _validate_receipt_assignment(r):
+def _validate_receipt_assignment(r,allow_incomplete=False):
     """Offer, contractor and own-work attribution are mutually exclusive.
 
     'Kostenposition' is retained only for historical standalone cost links.
@@ -2877,12 +2924,14 @@ def _validate_receipt_assignment(r):
     if mode not in ('', 'Angebot', 'Betrieb', 'Eigenleistung', 'Kostenposition'):
         raise ValueError('Unbekannte Rechnungszuordnung.')
     if mode=='Angebot':
+        if allow_incomplete and not r.cost_item_id and not r.contractor_id:return
         if not r.cost_item_id or r.contractor_id:
             raise ValueError('Für eine Angebotsrechnung ausschließlich ein angenommenes Angebot auswählen.')
         item=db.session.get(CostItem,r.cost_item_id)
         if not item or not item.offer_id:
             raise ValueError('Bitte ein angenommenes Angebot auswählen.')
     elif mode=='Betrieb':
+        if allow_incomplete and not r.contractor_id and not r.cost_item_id:return
         if not r.contractor_id or r.cost_item_id:
             raise ValueError('Für eine Betriebsrechnung ausschließlich einen Betrieb auswählen.')
         if not db.session.get(Contractor,r.contractor_id):
@@ -2900,12 +2949,12 @@ def _validate_receipt_assignment(r):
         raise ValueError('Bitte genau eine Art der Rechnungszuordnung angeben.')
 
 
-def _validate_accepted_invoice_link(r):
+def _validate_accepted_invoice_link(r,allow_incomplete=False):
     """Reject *any* receipt linkage to an unaccepted offer, even via API calls.
 
     Standalone cost positions remain available independently of offers.
     """
-    _validate_receipt_assignment(r)
+    _validate_receipt_assignment(r,allow_incomplete=allow_incomplete)
     if not r.cost_item_id:
         return None
     item=db.session.get(CostItem,r.cost_item_id)
@@ -3268,14 +3317,17 @@ def receipt_edit(rid):
             r.assignment_type=('Angebot' if item and item.offer_id else 'Kostenposition' if item else '')
         elif 'contractor_id' in data and 'cost_item_id' not in data and not r.cost_item_id:
             r.assignment_type='Betrieb' if r.contractor_id else ''
-        _validate_receipt_assignment(r)
+        incomplete_draft=r.status=='Entwurf' and data.get('book_now') is not True
+        _validate_receipt_assignment(r,allow_incomplete=incomplete_draft)
         if 'billing_type' in data and r.billing_type!='Schlussrechnung' and 'advance_deduction' not in data:
             r.advance_deduction=0
-        _validate_accepted_invoice_link(r)
+        linked_offer=_validate_accepted_invoice_link(r,allow_incomplete=incomplete_draft)
         if r.billing_type!='Normal' or r.advance_deduction:
-            # Draft inputs are validated even before posting; amounts of previous
-            # installments are checked when the invoice is booked.
-            _validate_invoice_advance(r,_accepted_receipt_offer(r))
+            # Incomplete drafts may wait for company/offer selection or amounts.
+            # Fully specified offsets and every booking still get full validation.
+            assignment_pending=not r.assignment_type or r.assignment_type=='Betrieb' and not r.contractor_id or r.assignment_type=='Angebot' and not r.cost_item_id
+            if not incomplete_draft or r.gross_amount is not None and not assignment_pending:
+                _validate_invoice_advance(r,linked_offer)
         if r.status=='Gebucht':_validate_receipt_booking(r)
         if data.get('book_now') is True:
             # Validate and commit the reviewed fields and the booking together.

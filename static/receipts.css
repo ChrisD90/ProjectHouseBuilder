@@ -148,3 +148,20 @@ body.phb-app .phb-receipt-workflow .phb-inline-pdf img{
 .receipt-stage-label p{margin:0;font-size:12px;color:var(--ui-muted,#637983)}
 #receiptReviewLayout[hidden],#receiptReviewStage[hidden],#receiptPaymentsPanel[hidden],.receipt-legacy-paid[hidden]{display:none!important}
 .receipt-payment-panel{margin-top:8px}
+
+/* Review essentials first; draft saving stays available before booking validation. */
+body.phb-app.phb-page-belege .receipt-draft-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px;margin:0 0 20px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-soft)}
+body.phb-app.phb-page-belege .receipt-draft-toolbar>div{flex:1 1 240px;min-width:0}
+body.phb-app.phb-page-belege .receipt-draft-toolbar strong{font-size:14px}
+body.phb-app.phb-page-belege .receipt-draft-toolbar p{font-size:12px;line-height:1.6;margin:5px 0 0;color:var(--ui-muted)}
+body.phb-app.phb-page-belege #receiptSaveStatus.error{color:var(--ui-danger)}
+body.phb-app.phb-page-belege .receipt-form-heading{font-size:15px;margin:8px 0 0;padding-bottom:9px;border-bottom:1px solid var(--ui-line);color:var(--ui-ink)}
+body.phb-app.phb-page-belege .receipt-billing{padding:16px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-soft);min-width:0}
+body.phb-app.phb-page-belege .receipt-billing h3{font-size:15px;margin:0 0 12px}
+body.phb-app.phb-page-belege .receipt-billing .note{font-size:12px;margin:10px 0 0;line-height:1.6}
+body.phb-app.phb-page-belege #advanceDeductionWrap{margin-top:16px;padding-top:14px;border-top:1px solid var(--ui-line)}
+body.phb-app.phb-page-belege #review>.actions{border-top:1px solid var(--ui-line);padding-top:16px;gap:10px}
+@media(max-width:650px){body.phb-app.phb-page-belege .receipt-draft-toolbar button{width:100%}}
+
+body.phb-app.phb-page-belege .receipt-billing-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media(max-width:650px){body.phb-app.phb-page-belege .receipt-billing-grid{grid-template-columns:minmax(0,1fr)}}

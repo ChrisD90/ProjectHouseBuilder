@@ -62,6 +62,9 @@ verwendet ausschließlich temporäre synthetische Daten. Optional speichert
 `PHB_BROWSER_SCREENSHOTS=/tmp/phb-ui-review python3 dev/browser_regressions.py`
 Screenshots für die visuelle Kontrolle.
 ChatGPT- und Importantworten werden für die Verzögerungs-/Fehlerprüfungen simuliert.
+Die Browserprüfung deckt außerdem unvollständiges Zwischenspeichern, Neuladen,
+Firmenanlage mit Rücksprung, Buchung ohne Zahlungsziel und die Löschsperre nach
+Angebotsentscheidungen ab. Screenshots `invoice-review-*` zeigen den Rechnungsdialog.
 Für echte OCR- und ChatGPT-Ergebnisse weiterhin Originaldateien fachlich prüfen.
 
 `python3 dev/css_regressions.py` kontrolliert zusätzlich die gemeinsamen Buttons,

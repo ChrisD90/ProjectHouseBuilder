@@ -49,6 +49,39 @@ class ReceiptWebappTest(unittest.TestCase):
         second=self.client.patch(f'/api/receipts/{rid}',json={'book_now':True})
         self.assertEqual(second.status_code,409)
 
+    def test_incomplete_draft_can_be_saved_before_creating_company(self):
+        rid=self.upload().json['id']
+        result=self.client.patch(f'/api/receipts/{rid}',json={
+            'supplier':'','document_date':'','due_date':'','gross_amount':None,
+            'assignment_type':'Betrieb','contractor_id':None,'cost_item_id':None,
+            'billing_type':'Abschlagsrechnung','notes':'Vor dem Firmenwechsel gespeichert'})
+        self.assertEqual(result.status_code,200,result.json)
+        reloaded=self.client.get(f'/api/receipts/{rid}').json
+        self.assertEqual(reloaded['notes'],'Vor dem Firmenwechsel gespeichert')
+        self.assertEqual(reloaded['assignment_type'],'Betrieb')
+        self.assertEqual(reloaded['status'],'Entwurf')
+        self.assertEqual(self.client.post(f'/api/receipts/{rid}/book').status_code,409)
+        company=Contractor(name='Später angelegter Betrieb',trade='Elektro');db.session.add(company);db.session.commit()
+        booked=self.client.patch(f'/api/receipts/{rid}',json={
+            'supplier':company.name,'document_date':'2026-10-26','gross_amount':'120.00',
+            'contractor_id':company.id,'due_date':'','book_now':True})
+        self.assertEqual(booked.status_code,200,booked.json)
+        self.assertEqual(booked.json['status'],'Gebucht')
+        self.assertEqual(booked.json['due_date'],'')
+
+    def test_optional_due_date_can_be_cleared_after_booking(self):
+        rid=self.upload().json['id']
+        self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={'due_date':'2026-11-30','book_now':True}).status_code,200)
+        result=self.client.patch(f'/api/receipts/{rid}',json={'due_date':''})
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(result.json['due_date'],'')
+
+    def test_pending_offer_selection_can_be_saved_but_not_booked(self):
+        rid=self.upload().json['id']
+        self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={
+            'assignment_type':'Angebot','cost_item_id':None,'contractor_id':None}).status_code,200)
+        self.assertEqual(self.client.post(f'/api/receipts/{rid}/book').status_code,409)
+
     def test_atomic_book_rolls_back_all_edits_on_validation_failure(self):
         response=self.upload()
         rid=response.json['id']

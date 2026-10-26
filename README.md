@@ -100,6 +100,27 @@ Die Anwendung ist als lokale Einzelplatzsoftware konzipiert und wird **nicht** p
 
 ## Angebotsverwaltung: Einfacher Ablauf
 
+Unentschiedene Angebote und PDF-Entwürfe können vollständig gelöscht werden,
+einschließlich ihrer eigenen Originaldateien, Versionsentwürfe und Einzelpositionen.
+Das geht nur ohne Rechnungen, Aufträge, Zahlungen, Förderverknüpfungen oder geteilte
+Originale. Nach Annahme, Ablehnung oder einer Versionsentscheidung bleibt das Angebot
+als Nachweis erhalten – auch nach Wiederaufnahme oder Rücknahme der Annahme.
+Migration `0017` ergänzt dafür eine dauerhafte Löschsperre und übernimmt erkennbare
+Entscheidungen aus dem Altbestand. Der normale Start führt die Migration aus;
+bei bestehenden SQLite-Datenbanken bleibt das geprüfte Pflichtbackup Voraussetzung.
+
+Im Rechnungsdialog ist das **Zahlungsziel optional**. **Entwurf zwischenspeichern**
+funktioniert auch ohne Firma, Datum, Betrag oder abgeschlossene Zuordnung und verändert
+keine Kosten. **Entwurf speichern und Firma anlegen** sichert zuerst die Eingaben und
+öffnet die Stammdaten mit Rücksprung zur Rechnung. Erst **Verbindlich buchen** prüft die
+Vollständigkeit und übernimmt die Rechnung in die Abrechnung. Zahlung bleibt separat.
+
+Die oben angeordnete **Abrechnungsart** unterscheidet normale Rechnungen,
+Abschlags-/Teilrechnungen und Schlussrechnungen. Nur bei Schlussrechnungen erscheint
+die Verrechnung bereits gebuchter Abschläge: Enthält die Schlussrechnung 20.000 €
+Gesamtbetrag und 15.000 € bereits abgerechnete Abschläge, zählen nur 5.000 € neu.
+Stehen bereits nur 5.000 € Restbetrag auf dem Beleg, bleibt die Verrechnung bei 0 €.
+
 1. In der **linken Sidebar → Angebote** öffnen (`http://127.0.0.1:5055/angebote`).
 2. **PDF hochladen** → die App liest lokal aus und legt einen prüfbaren Entwurf an. Vor der Übernahme kannst du **jede erkannte Einzelposition aufklappen, ändern oder löschen** und **weitere Positionen etwa aus gesonderten Beiblättern hinzufügen**. Mengen, Einzelpreise, Netto-Positionsbeträge, Leistungsgruppen, optionale Positionen und PDF-Seiten lassen sich korrigieren. „Aus Menge × Einzelpreis berechnen“ schlägt auf Wunsch einen Betrag vor. Eine leere Positionsliste ist bei nicht lesbaren Scans erlaubt. Die Summe der nicht-optionalen Positionen wird mit dem geprüften Angebotsnetto verglichen; Differenzen und fehlende Beträge werden angezeigt, der **Bruttogesamtbetrag nie automatisch überschrieben**. Den Entwurf bei Bedarf zwischenspeichern und erst dann „Geprüft – in Liste übernehmen“ wählen. **Oder:** **Manuell erfassen** → Anbieter, Bruttosumme und Kategorie eintragen; direkt „Angebot speichern“ drücken.
 3. Alle Angebote in einer Liste nach Gewerk und Gesamtbetrag vergleichen. **Annehmen** überträgt den Preis als beauftragten Wert in die Kostenprognose; Ablehnen behält das Angebot zum Vergleich ohne Kostenwirkung.
@@ -316,7 +337,7 @@ Migration `0014` ergänzt ausschließlich die lokale Import-Warteschlangentabell
 
 ## Abgeschlossene Importe, Angebotskacheln und Standard-Stammdaten (Oktober 2026)
 
-Die Importübersicht zeigt nur noch offene, laufende, fehlerhafte und **noch nicht fachlich geprüfte** Dateien. Nach der bewussten Übernahme eines Angebots in „Deine Angebote“ (oder nach Ablehnung), nach Freigabe/Verwerfen einer neuen Angebotsversion, nach explizitem Speichern eines geprüften Belegs beziehungsweise dessen Buchung sowie nach Speichern der Metadaten eines Projektdokuments wird der Importauftrag auf **„Übernommen“** gesetzt und aus der **aktiven** Warteschlange ausgeblendet. Der Datensatz des Importauftrags und der Originalbeleg bleiben zu Nachweiszwecken bestehen; es werden keine Projektunterlagen gelöscht. Falls ein Import noch nicht entschieden wurde, bleibt die Prüfen-Schaltfläche erhalten.
+Die Importübersicht zeigt nur noch offene, laufende, fehlerhafte und **noch nicht fachlich geprüfte** Dateien. Nach der bewussten Übernahme eines Angebots in „Deine Angebote“ (oder nach Ablehnung), nach Freigabe/Verwerfen einer neuen Angebotsversion, nach verbindlicher Buchung eines Belegs sowie nach Speichern der Metadaten eines Projektdokuments wird der Importauftrag auf **„Übernommen“** gesetzt und aus der **aktiven** Warteschlange ausgeblendet. Der Datensatz des Importauftrags und der Originalbeleg bleiben zu Nachweiszwecken bestehen; es werden keine Projektunterlagen gelöscht. Falls ein Import noch nicht entschieden wurde, bleibt die Prüfen-Schaltfläche erhalten.
 
 „Deine Angebote“ zeigt kompakte, responsive Kacheln mit Anbieter, Gewerk, Status und Bruttosumme. Annehmen, Ablehnen und Bearbeiten bleiben direkte Schnellaktionen, sofern der fachliche Status dies erlaubt. Ein Klick auf den Kachelkopf öffnet zusätzliche Angaben, Positionsübersicht, Versionshistorie und – bei beauftragten Angeboten – den Rechnungsfortschritt. Bestehende Regeln zum Schutz angenommener Angebote gelten unverändert.
 

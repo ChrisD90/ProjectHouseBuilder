@@ -27,6 +27,7 @@ const receiptFlow=PHBFlow.manage({
 });
 function openReceiptDialog(review=false){
   receiptDialog.classList.toggle('is-reviewing',Boolean(review));
+  if(!review)$('receiptWorkflowTitle').textContent='Beleg hochladen und prüfen';
   $('receiptUploadAgain').hidden=!review;
   if(!receiptDialog.open)receiptFlow.open({step:review?1:0});
   else receiptFlow.stage(review?1:0);
@@ -148,7 +149,13 @@ function updateInvoiceControls(){
  }
  $('budgetLines').disabled=isAccepted||frozen;
  $('advanceDeduction').disabled=frozen||$('billingType').value!=='Schlussrechnung'||!isAccepted;
+ $('advanceDeductionWrap').hidden=$('billingType').value!=='Schlussrechnung';
  $('deductionHint').hidden=$('billingType').value!=='Schlussrechnung';
+ $('billingTypeHint').textContent=$('billingType').value==='Schlussrechnung'
+   ? 'Die letzte Rechnung zu einem Auftrag. Bereits gebuchte Abschläge werden nur verrechnet, wenn sie im Gesamtbetrag dieser Rechnung enthalten sind. Das verhindert doppelte Kosten.'
+   : $('billingType').value==='Abschlagsrechnung'
+   ? 'Eine Teilrechnung während des laufenden Auftrags. Sie zählt zunächst vollständig und kann später in einer Schlussrechnung verrechnet werden.'
+   : 'Eine einzelne Lieferung oder Leistung ohne Verrechnung früherer Teilrechnungen. Für die meisten Rechnungen und Kassenbons passend.';
  const hint=$('billableHint');
  hint.textContent=isAccepted
    ? `Mit dem angenommenen Angebot „${offer.vendor}“ verknüpft. Abschläge und Schlussrechnung werden zum Vertragsbetrag von ${money(offer.agreed_gross??offer.gross)} addiert, ohne verrechnete Abschläge doppelt zu zählen.`
@@ -158,7 +165,7 @@ function updateInvoiceControls(){
    : 'Wähle Angebot, Betrieb oder Eigenleistung. Nur angenommene Angebote erscheinen in der Angebotsauswahl.';
 }
 $('receiptAssignmentType').addEventListener('change',()=>{
-  if($('receiptAssignmentType').value!=='Angebot'&&$('receiptAssignmentType').value!=='Kostenposition')$('costItems').value='';
+  if($('receiptAssignmentType').value!=='Angebot'&&$('receiptAssignmentType').value!=='Kostenposition'){$('costItems').value='';$('advanceDeduction').value='0';}
   if($('receiptAssignmentType').value!=='Betrieb')$('receiptContractor').value='';
   updateInvoiceControls();
 });
@@ -171,20 +178,22 @@ $('receiptAnalysisMode').addEventListener('change',()=>{
 });
 
 async function api(path,opts={}){const res=await fetch(path,opts);let data=await res.json();if(!res.ok)throw new Error(data.error||'Anfrage fehlgeschlagen');return data}
-function notice(msg,err=false){$('message').textContent=msg;$('message').classList.toggle('error',err)}
-function inputs(){
+function notice(msg,err=false){for(const id of ['message','receiptSaveStatus']){$(id).textContent=msg;$(id).classList.toggle('error',err)}}
+function inputs({booking=false}={}){
  PHBUI.currency.normalizeForm($('review'));
   const result=Object.fromEntries(new FormData($('review')));
-  // Payment is always recorded separately, with a financing source, after booking.
+  // Payment is always recorded separately after booking.
   delete result.paid_amount;
+ if($('book').hidden)return result;
  const mode=$('receiptAssignmentType').value;
- if(!mode)throw Error('Bitte die Rechnung einem Angebot, Betrieb oder der Eigenleistung zuordnen.');
- if(mode==='Angebot'&&!$('costItems').value)throw Error('Bitte ein angenommenes Angebot auswählen.');
- if(mode==='Betrieb'&&!$('receiptContractor').value)throw Error('Bitte einen Betrieb auswählen.');
+ if(booking&&!mode)throw Error('Bitte die Rechnung einem Angebot, Betrieb oder der Eigenleistung zuordnen.');
+ if(booking&&mode==='Angebot'&&!$('costItems').value)throw Error('Bitte ein angenommenes Angebot auswählen.');
+ if(booking&&mode==='Betrieb'&&!$('receiptContractor').value)throw Error('Bitte einen Betrieb auswählen.');
  result.assignment_type=mode;
  result.cost_item_id=(mode==='Angebot'||mode==='Kostenposition')?$('costItems').value:null;
  result.contractor_id=mode==='Betrieb'?$('receiptContractor').value:null;
- result.reviewed=true; // Explicitly saved and confirmed in the editor.
+ result.advance_deduction=$('billingType').value==='Schlussrechnung'?$('advanceDeduction').value:'0';
+ result.reviewed=booking;
  return result;
 }
 function fillSelect(node,values,getTitle){node.innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${safe(getTitle(x))}</option>`).join('')}
@@ -223,7 +232,16 @@ async function open(id){
  updateLaborHint(x.labor_source,x.labor_amount);
  $('book').hidden=x.status!=='Entwurf';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status!=='Entwurf';
  $('cancelReceipt').hidden=x.status!=='Gebucht';$('markReceiptPaid').hidden=x.status!=='Gebucht'||x.paid_amount>=x.counted_amount;
- $('review').querySelector('button[type=submit]').hidden=x.status==='Storniert';
+ for(const button of $('review').querySelectorAll('button[type=submit]')){
+   button.hidden=x.status==='Storniert';
+   button.textContent=x.status==='Entwurf'?'Entwurf zwischenspeichern':'Änderungen speichern';
+ }
+ $('receiptCreateCompany').hidden=x.status!=='Entwurf';
+ $('review').querySelector('.receipt-draft-toolbar').hidden=x.status==='Storniert';
+ $('receiptReviewState').textContent=x.status;
+ $('receiptReviewTitle').textContent=x.status==='Entwurf'?'Rechnungsdaten prüfen':x.status==='Gebucht'?'Gebuchte Rechnung':'Stornierte Rechnung';
+ $('receiptReviewHelp').textContent=x.status==='Entwurf'?'Unvollständige Daten kannst du jederzeit zwischenspeichern. Erst „Verbindlich buchen“ übernimmt die Rechnung in Kosten und Abrechnung; die Zahlung erfasst du danach separat.':x.status==='Gebucht'?'Notizen und das optionale Zahlungsziel kannst du weiterhin ergänzen. Für andere Änderungen zuerst die Buchung zurücknehmen. Zahlungen erfasst du separat.':'Der stornierte Beleg bleibt mit Original und Stornogrund als Nachweis erhalten.';
+ $('receiptWorkflowTitle').textContent=x.status==='Entwurf'?'Rechnung prüfen':x.status==='Gebucht'?'Gebuchte Rechnung':'Stornierte Rechnung';
  $('payReceipt').hidden=x.status!=='Gebucht';
  $('receiptCancellationInfo').hidden=!x.cancellation;
  $('receiptCancellationInfo').textContent=x.cancellation?'Storniert am '+new Date(x.cancellation.date).toLocaleDateString('de-DE')+' · zurückgenommene Zahlungsvermerke: '+money(x.cancellation.previous_paid)+(x.cancellation.reason?' · Grund: '+x.cancellation.reason:''):'';
@@ -239,9 +257,10 @@ async function open(id){
    $('costItems').value=String(linkedCostItem);
  }
  updateInvoiceControls();
+ const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);
  $('original').href='/api/receipts/'+id+'/download';$('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
- $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Original bleibt erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Für Betragsänderungen zuerst Buchung zurücknehmen.':'Bitte Daten prüfen, dann speichern und buchen.');
+ $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Original bleibt erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Für Betragsänderungen zuerst Buchung zurücknehmen.':'Entwurf: Du kannst jederzeit zwischenspeichern, auch ohne Firma, Betrag oder Zahlungsziel.');
  }catch(e){notice(e.message,true)}
 }
 let paymentState=null,assigningPayment=null;
@@ -385,30 +404,53 @@ document.addEventListener('phb-import-updated',event=>{
 });
 
 async function receiptAction(action,button,success){
- if(!selected||receiptBusy)return;
+ if(!selected||receiptBusy)return false;
+ const states=[...$('review').querySelectorAll('input,select,textarea,button')].map(node=>[node,node.disabled]);
  receiptBusy=true;button.disabled=true;
+ for(const [node] of states)node.disabled=true;
+ let ok=false;
  try{
   await action();
   await reload(selected);
+  ok=true;
   if(success)notice(success);
  }catch(error){notice(error.message,true);}
- finally{receiptBusy=false;button.disabled=false;}
+ finally{
+  receiptBusy=false;
+  for(const [node,disabled] of states)if(!ok||node.tagName==='BUTTON')node.disabled=disabled;
+  button.disabled=false;
+ }
+ return ok;
 }
 $('review').onsubmit=async e=>{
  e.preventDefault();
+ if(receiptBusy)return;
+ let fields;try{fields=inputs();}catch(error){notice(error.message,true);return;}
+ const draft=$('book').hidden===false;
  await receiptAction(async()=>{
   await api('/api/receipts/'+selected,{
    method:'PATCH',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify(inputs())
+   body:JSON.stringify(fields)
   });
- },$('review').querySelector('button[type=submit]'),'Änderungen gespeichert. Die Rechnung ist noch nicht gebucht.');
+ },e.submitter||$('saveReceiptDraft'),draft?'Entwurf gespeichert. Du kannst später weiterprüfen oder eine Firma anlegen.':'Änderungen gespeichert.');
+};
+$('receiptCreateCompany').onclick=async event=>{
+ event.preventDefault();
+ if(!selected||receiptBusy)return;
+ let fields;try{fields=inputs();}catch(error){notice(error.message,true);return;}
+ const id=selected;
+ const saved=await receiptAction(()=>api('/api/receipts/'+id,{
+  method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(fields)
+ }),$('saveReceiptDraftTop'),'Entwurf gespeichert.');
+ if(saved)location.assign('/stammdaten?receipt_id='+id+'&new_company=1#firmen');
 };
 $('book').onclick=async()=>{
  if(!selected||receiptBusy)return;
+ if(!$('review').reportValidity())return;
+ let fields;try{fields=inputs({booking:true});}catch(error){notice(error.message,true);return;}
  // A cancelled confirmation must never mutate the draft.
  if(!await PHBUI.confirm('Rechnungsdaten speichern und den Beleg verbindlich buchen? Unbezahlte Rechnungen bleiben offen.'))return;
  await receiptAction(async()=>{
-  const fields=inputs();
   await api('/api/receipts/'+selected,{
    method:'PATCH',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({...fields,book_now:true})
