@@ -80,10 +80,10 @@ docker compose -f compose.synology.yaml exec app sh -c 'command -v tesseract; co
       <p>Danach die OCR-Diagnose erneut starten. PostgreSQL- und private Daten-Volumes ausdrücklich beibehalten.</p>
     </div>
     <div id="ocrMacSteps" hidden>
-      <p>Die App beenden, den aktuellen Repository-Stand laden und im Projektordner neu starten. Der Start richtet fehlende OCR-Pakete über Homebrew automatisch ein und prüft sie vor dem Serverstart:</p>
+      <p>Die App beenden, den aktuellen Repository-Stand laden und im Projektordner neu starten. Der Start richtet fehlende OCR-Pakete passend zum Prozessor ein und prüft sie vor dem Serverstart:</p>
       <pre>sh start_mac_linux.sh</pre>
-      <p>Fehlt Homebrew, wird dessen offizielles Installationsprogramm gestartet. macOS kann dafür Administratorrechte und Command Line Tools anfordern. Bei der ersten Einrichtung ist Internet nötig. Danach die OCR-Diagnose erneut prüfen.</p>
-      <p>Nur die OCR-Einrichtung wiederholen: <code>sh scripts/ensure_ocr.sh</code>. Falls ein eigener <code>TESSDATA_PREFIX</code> gesetzt ist, muss er die Sprachdaten für Deutsch und Englisch enthalten.</p>
+      <p>Intel-Macs ab macOS 11 erhalten eine projektlokale Installation ohne Homebrew und ohne Administratorrechte. Auf Apple Silicon wird Homebrew verwendet; macOS kann dafür Administratorrechte und Command Line Tools anfordern. Bei der ersten Einrichtung ist Internet nötig. Danach die OCR-Diagnose erneut prüfen.</p>
+      <p>Nur die OCR-Einrichtung wiederholen: <code>sh scripts/ensure_ocr.sh</code>. Bei systemweiter OCR muss ein eigener <code>TESSDATA_PREFIX</code> die Sprachdaten für Deutsch und Englisch enthalten.</p>
     </div>
   </details>
 </section>

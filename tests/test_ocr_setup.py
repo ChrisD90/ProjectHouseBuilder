@@ -1,5 +1,6 @@
 """OCR startup contracts: GUI paths, broken tools, and idempotent native installation."""
 import contextlib
+import hashlib
 import io
 import os
 from pathlib import Path
@@ -10,6 +11,7 @@ from unittest.mock import patch
 
 import ocr_runtime
 import receipt_parser
+from scripts import setup_intel_ocr
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -17,14 +19,14 @@ ROOT=Path(__file__).resolve().parents[1]
 class OCRRuntimeTests(unittest.TestCase):
     def test_mac_gui_path_discovers_both_homebrew_locations(self):
         def which(name,path=None):
-            return '/opt/homebrew/bin/'+name if path else None
+            return '/opt/homebrew/bin/'+name if path=='/opt/homebrew/bin:/usr/local/bin' else None
         with patch('ocr_runtime.sys.platform','darwin'),patch('ocr_runtime.shutil.which',side_effect=which) as finder:
             self.assertEqual(ocr_runtime.find_ocr_tool('tesseract'),'/opt/homebrew/bin/tesseract')
         self.assertEqual(finder.call_args.kwargs['path'],'/opt/homebrew/bin:/usr/local/bin')
 
     def test_image_extraction_uses_discovered_executable(self):
         result=subprocess.CompletedProcess([],0,stdout='Rechnung mit mindestens 45 Zeichen und 123,45 EUR',stderr='')
-        with patch('receipt_parser.find_ocr_tool',return_value='/opt/homebrew/bin/tesseract'),patch('receipt_parser.subprocess.run',return_value=result) as run:
+        with patch('ocr_runtime.find_ocr_tool',return_value='/opt/homebrew/bin/tesseract'),patch('receipt_parser.subprocess.run',return_value=result) as run:
             receipt_parser._ocr('/tmp/synthetic.png')
         self.assertEqual(run.call_args.args[0][0],'/opt/homebrew/bin/tesseract')
         self.assertIn('deu+eng',run.call_args.args[0])
@@ -55,17 +57,64 @@ class OCRRuntimeTests(unittest.TestCase):
         self.assertIn('deu',stderr.getvalue())
         self.assertIn('TESSDATA_PREFIX',stderr.getvalue())
 
+    def test_local_intel_ocr_takes_precedence_over_broken_system_install(self):
+        def which(name,path=None):
+            return str(ocr_runtime.LOCAL_OCR/'bin'/name) if path==str(ocr_runtime.LOCAL_OCR/'bin') else '/usr/local/bin/'+name
+        with patch('ocr_runtime.sys.platform','darwin'),patch('ocr_runtime.shutil.which',side_effect=which):
+            command=ocr_runtime.ocr_command('tesseract')
+        self.assertEqual(command,[str(ocr_runtime.LOCAL_OCR/'bin'/'tesseract'),'--tessdata-dir',str(ocr_runtime.LOCAL_OCR/'share'/'tessdata')])
+
+
+class IntelOCRSetupTests(unittest.TestCase):
+    def test_download_is_verified_and_reused_without_network(self):
+        data=b'synthetic executable';digest=hashlib.sha256(data).hexdigest()
+        with tempfile.TemporaryDirectory() as tmp:
+            binary=Path(tmp)/'bin'/'micromamba'
+            with patch('urllib.request.urlopen',return_value=io.BytesIO(data)):
+                setup_intel_ocr.download_verified('https://example.test/binary',binary,digest)
+            self.assertEqual(binary.read_bytes(),data)
+            self.assertTrue(os.access(binary,os.X_OK))
+            with patch('urllib.request.urlopen',side_effect=AssertionError('cached binary must not download')):
+                setup_intel_ocr.download_verified('https://example.test/binary',binary,digest)
+
+    def test_corrupt_download_never_replaces_or_executes_binary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary=Path(tmp)/'micromamba';binary.write_bytes(b'previous')
+            with patch('urllib.request.urlopen',return_value=io.BytesIO(b'corrupt')):
+                with self.assertRaisesRegex(RuntimeError,'Prüfsumme'):
+                    setup_intel_ocr.download_verified('https://example.test/binary',binary,'0'*64)
+            self.assertEqual(binary.read_bytes(),b'previous')
+
+    def test_installer_uses_intel_packages_in_dedicated_prefix(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime=Path(tmp)/'runtime with spaces'
+            for existing in (False,True):
+                if existing:
+                    history=runtime/'ocr'/'conda-meta'/'history';history.parent.mkdir(parents=True);history.touch()
+                with patch.object(setup_intel_ocr,'download_verified'),patch('subprocess.run') as run:
+                    setup_intel_ocr.install(runtime)
+                command=run.call_args.args[0]
+                self.assertIn('install' if existing else 'create',command)
+                self.assertEqual(command[command.index('--platform')+1],'osx-64')
+                self.assertEqual(command[command.index('--prefix')+1],str(runtime/'ocr'))
+                self.assertIn('--no-rc',command)
+                self.assertIn('conda-forge',command)
+                self.assertTrue(run.call_args.kwargs['check'])
+                self.assertEqual(run.call_args.kwargs['env']['CONDA_PKGS_DIRS'],str(runtime/'mamba'/'pkgs'))
+                self.assertEqual(run.call_args.kwargs['env']['XDG_CACHE_HOME'],str(runtime/'cache'))
+
 
 @unittest.skipIf(os.name=='nt','POSIX native launcher')
 class NativeOCRBootstrapTests(unittest.TestCase):
-    def bootstrap(self,ready=False,repair=True,platform='Darwin'):
+    def bootstrap(self,ready=False,repair=True,platform='Darwin',architecture='arm64'):
         with tempfile.TemporaryDirectory(prefix='phb-ocr-bootstrap-') as tmp:
             root=Path(tmp);bin_dir=root/'bin';bin_dir.mkdir()
             def executable(name,body):
                 path=bin_dir/name;path.write_text('#!/bin/sh\nset -eu\n'+body);path.chmod(0o755)
                 return str(path)
-            python=executable('test-python','echo "check $*" >> "$PHB_TEST_LOG"\n[ -f "$PHB_TEST_READY" ]\n')
-            executable('uname','echo '+platform+'\n')
+            repair_intel='touch "$PHB_TEST_READY"' if repair else ':'
+            python=executable('test-python','echo "check $*" >> "$PHB_TEST_LOG"\nif [ "$1" = scripts/setup_intel_ocr.py ]; then '+repair_intel+'; fi\n[ -f "$PHB_TEST_READY" ]\n')
+            executable('uname','if [ "$1" = -m ]; then echo '+architecture+'; else echo '+platform+'; fi\n')
             executable('id','echo 0\n')
             executable('brew','echo "brew $*" >> "$PHB_TEST_LOG"\n'+('touch "$PHB_TEST_READY"\n' if repair else 'exit 0\n'))
             executable('apt-get','echo "apt $*" >> "$PHB_TEST_LOG"\n'+('touch "$PHB_TEST_READY"\n' if repair else 'exit 0\n'))
@@ -90,6 +139,14 @@ class NativeOCRBootstrapTests(unittest.TestCase):
         result,log=self.bootstrap(repair=False)
         self.assertEqual(result.returncode,1,result.stderr)
         self.assertIn('brew bundle install',log)
+
+    def test_intel_mac_never_runs_homebrew_or_its_installer(self):
+        result,log=self.bootstrap(architecture='x86_64')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('scripts/setup_intel_ocr.py',log)
+        self.assertNotIn('brew',log)
+        self.assertNotIn('apt',log)
+        self.assertTrue(log.endswith('check ocr_runtime.py --check\n'),log)
 
     def test_linux_installs_both_languages_and_renderer(self):
         result,log=self.bootstrap(platform='Linux')

@@ -49,6 +49,8 @@ Containerstart geprüft. `python ocr_runtime.py --check` prüft eine native Inst
 `sh scripts/ensure_ocr.sh` richtet fehlende Systempakete ein. Nach Installation der
 Python-Abhängigkeiten testet `python dev/ocr_smoke.py` echte Foto- und PDF-OCR mit
 synthetischen Daten. GitHub Actions prüft dies auch auf macOS und Linux.
+Intel-Macs ab macOS 11 verwenden `.runtime/ocr` mit Micromamba/conda-forge;
+Apple Silicon verwendet Homebrew. Beide Architekturen besitzen einen eigenen CI-Lauf.
 
 `python3 dev/browser_regressions.py` prüft Drag-and-drop, geschützte abgeschlossene
 Aufgaben, beide Abhängigkeitsrichtungen, Uploads bis zum endgültigen Ergebnis,

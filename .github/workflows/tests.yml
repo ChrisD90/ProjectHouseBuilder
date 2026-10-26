@@ -48,12 +48,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-15-intel, macos-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Provision project-local OCR on Intel macOS
+        if: matrix.os == 'macos-15-intel'
+        run: python scripts/setup_intel_ocr.py
       - name: Set up native OCR (same bootstrap as app start)
         run: sh scripts/ensure_ocr.sh
       - name: Python dependencies

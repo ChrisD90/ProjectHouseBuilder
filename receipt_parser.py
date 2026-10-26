@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from pypdf import PdfReader
-from ocr_runtime import ocr_diagnostics, find_ocr_tool
+from ocr_runtime import ocr_diagnostics, ocr_command
 
 CATEGORY_RULES = {
     'Elektro': ['elektro', 'kabel', 'leitung', 'steckdose', 'shelly', 'schalter', 'sicherung', 'voltus'],
@@ -43,7 +43,7 @@ def _ocr(path):
     try:
         results=[]
         for mode in ('3','6'):
-            p=subprocess.run([find_ocr_tool('tesseract') or 'tesseract',str(path),'stdout','-l','deu+eng',
+            p=subprocess.run(ocr_command('tesseract')+[str(path),'stdout','-l','deu+eng',
                               '--psm',mode],timeout=55,check=True,capture_output=True,text=True)
             text=p.stdout.strip()
             results.append(text)
@@ -82,7 +82,7 @@ def extract_pdf_pages(data,max_pages=15,layout=False):
         for i in scanned:
             target=Path(temp)/('scan-'+str(i+1))
             try:
-                subprocess.run([find_ocr_tool('pdftoppm') or 'pdftoppm','-f',str(i+1),'-l',str(i+1),'-singlefile',
+                subprocess.run(ocr_command('pdftoppm')+['-f',str(i+1),'-l',str(i+1),'-singlefile',
                                 '-r','230','-gray','-png',str(source),str(target)],
                                timeout=60,check=True,stdout=subprocess.DEVNULL,
                                stderr=subprocess.PIPE)

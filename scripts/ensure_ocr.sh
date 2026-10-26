@@ -10,6 +10,11 @@ fi
 
 case "$(uname -s)" in
   Darwin)
+    if [ "$(uname -m)" = x86_64 ]; then
+      # The current Homebrew installer no longer supports Intel macOS.
+      "$PHB_PYTHON" scripts/setup_intel_ocr.py
+      exec "$PHB_PYTHON" ocr_runtime.py --check
+    fi
     # Terminal, Finder and VS Code can inherit different PATHs on Apple Silicon/Intel.
     PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
     export PATH

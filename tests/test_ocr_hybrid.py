@@ -68,7 +68,7 @@ class HybridOCRTests(unittest.TestCase):
             if '--version' in args:
                 return Done(stderr='tesseract 5.5.0')
             return Done(stderr='pdftoppm version 25.1.0')
-        with (patch('shutil.which',side_effect=lambda name:'/usr/bin/'+name),
+        with (patch('shutil.which',side_effect=lambda name,path=None:'/usr/bin/'+name),
               patch('receipt_parser.subprocess.run',side_effect=pretend_run),
               patch.dict(os.environ,{'PHB_OCR_IMAGE':'deu-eng-poppler-test'})):
             result=ocr_diagnostics()

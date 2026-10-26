@@ -7,15 +7,29 @@ import shutil
 import subprocess
 import sys
 
+LOCAL_OCR=Path(__file__).resolve().parent/'.runtime'/'ocr'
+
 
 def find_ocr_tool(name):
     """Use the same executable in diagnostics and extraction, including macOS GUI PATHs."""
     if name not in ('tesseract','pdftoppm'):
         raise ValueError('Unbekanntes OCR-Werkzeug')
+    if sys.platform=='darwin':
+        local=shutil.which(name,path=str(LOCAL_OCR/'bin'))
+        if local:return local
     found=shutil.which(name)
     if not found and sys.platform=='darwin':
         found=shutil.which(name,path='/opt/homebrew/bin:/usr/local/bin')
     return found
+
+
+def ocr_command(name):
+    executable=find_ocr_tool(name) or name
+    command=[executable]
+    if name=='tesseract' and Path(executable)==LOCAL_OCR/'bin'/'tesseract':
+        # conda's TESSDATA_PREFIX activation hook is not run by GUI/Python launches.
+        command.extend(['--tessdata-dir',str(LOCAL_OCR/'share'/'tessdata')])
+    return command
 
 
 def ocr_diagnostics():
@@ -31,7 +45,7 @@ def ocr_diagnostics():
     versions={}
     if tools['tesseract']:
         try:
-            langs=subprocess.run([locations['tesseract'],'--list-langs'],capture_output=True,
+            langs=subprocess.run(ocr_command('tesseract')+['--list-langs'],capture_output=True,
                                  text=True,timeout=8,check=False)
             languages=[line.strip() for line in (langs.stdout+'\n'+langs.stderr).splitlines()
                        if langs.returncode==0 and re.fullmatch(r'[a-z]{3}(?:_[A-Za-z0-9]+)?',line.strip())]
