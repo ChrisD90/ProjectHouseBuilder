@@ -86,21 +86,7 @@ body.phb-app :is(input,select,textarea):focus-visible:not([type=checkbox]):not([
 body.phb-app :is(label,small,.note,.hint,.muted,.section-note,.meta,.footnote){line-height:1.55}
 body.phb-app label{color:var(--ui-ink-soft)}
 body.phb-app :is(.note,.hint,.muted,.section-note,.meta,.footnote){color:var(--ui-muted)}
-body.phb-app :is(button,.mini,a.subtle):not(.phb-icon-button):not(.phb-nav-link){
-  border-radius:var(--ui-radius-sm);min-height:36px;
-  transition:background-color .15s,border-color .15s,box-shadow .15s;
-}
 body.phb-app button:disabled{opacity:.57;cursor:not-allowed}
-body.phb-app .primary,body.phb-app button.primary{
-  background:var(--ui-accent);border-color:var(--ui-accent);color:#fff;
-}
-:root[data-phb-theme=dark] body.phb-app .primary,
-:root[data-phb-theme=dark] body.phb-app button.primary{background:#178f92;border-color:#178f92;color:#fff}
-body.phb-app button.primary:hover:not(:disabled){background:var(--ui-accent-hover);border-color:var(--ui-accent-hover)}
-body.phb-app :is(button.neutral,.subtle,button.subtle,button.mini,.mini):not(.primary){
-  background:var(--ui-soft);border:1px solid var(--ui-line-strong);color:var(--ui-ink-soft);
-}
-body.phb-app :is(.danger,button.danger){color:var(--ui-danger);border-color:var(--ui-line-strong);background:var(--ui-surface)}
 body.phb-app :is(.tablewrap,.master-table-scroll){scrollbar-color:var(--ui-line-strong) transparent}
 body.phb-app :is(table,.master-table){color:var(--ui-ink);border-collapse:collapse}
 body.phb-app :is(th,.master-table th){
@@ -257,13 +243,6 @@ body.phb-app [hidden]{display:none!important}
 /* Cross-page harmonization for older bare buttons and global label rules. */
 body.phb-app .phb-theme-control{flex-direction:row;white-space:nowrap}
 body.phb-app .phb-theme-control select{flex:none}
-body.phb-app main.phb-main button:not(.primary):not(.danger):not(.offer-method):not(.phb-icon-button):not(.phb-ai-primary):not(.phb-ai-topbar):not(.phb-nav-link):not(.schedule-chat-fab):not([data-phb-busy]){
-  background:var(--ui-soft);color:var(--ui-ink-soft);border:1px solid var(--ui-line-strong);
-}
-body.phb-app main.phb-main button:not(.primary):not(.danger):not(.offer-method):not(.phb-icon-button):not(.schedule-chat-fab):hover:not(:disabled){
-  background:var(--ui-soft-accent);border-color:var(--ui-accent);
-}
-body.phb-app main.phb-main button:is(.primary,.danger){font-weight:700}
 body.phb-app .phb-topbar-right :is(label,button){margin:0}
 body.phb-app main.phb-main :is(.offer-entry-form,.offer-review-form,.fields,.formgrid,.offer-manual-form,.receipt-assignment-fields,.master-fields) >label{min-width:0}
 body.phb-app main.phb-main :is(.offer-entry-form,.offer-review-form,.fields,.formgrid,.offer-manual-form,.receipt-assignment-fields,.master-fields) :is(input,select,textarea){max-width:100%}
@@ -298,7 +277,6 @@ body.login-screen .login-panel input{
  border-radius:10px;min-height:44px
 }
 body.login-screen .login-panel input:focus{outline:0;border-color:var(--ui-accent);box-shadow:0 0 0 3px var(--ui-ring)}
-body.login-screen .login-panel button.primary{background:var(--ui-accent);color:white;border:1px solid var(--ui-accent);border-radius:10px;min-height:44px}
 
 /* Very narrow devices: keep navigation, theme and connection on one row. */
 @media(max-width:450px){
@@ -310,151 +288,10 @@ body.login-screen .login-panel button.primary{background:var(--ui-accent);color:
  body.phb-app main.phb-main :is(.panelbar,.panel-title){gap:10px}
  body.phb-app main.phb-main .offer-actions{align-items:stretch}
 }
-
-/* Floating Gantt ChatGPT assistant: compact, non-modal and accessible. */
-body.phb-app.phb-page-zeitplan .schedule-chat-fab{
-  position:fixed;right:clamp(16px,2.5vw,28px);bottom:clamp(17px,2.5vw,28px);
-  z-index:1202;display:grid;place-items:center;width:60px;height:60px;
-  min-width:60px;min-height:60px;padding:0;border:1px solid rgba(255,255,255,.25);
-  border-radius:50%;background:linear-gradient(145deg,#0e9a93,#087782);
-  color:#fff;cursor:pointer;box-shadow:0 10px 27px rgba(10,77,85,.28);
-  transition:transform .17s,box-shadow .17s,background .17s;
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-fab:hover{
-  transform:translateY(-2px);background:linear-gradient(145deg,#0fafa4,#07828a);
-  box-shadow:0 14px 31px rgba(10,77,85,.34);
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-fab:active{transform:translateY(0)}
-body.phb-app.phb-page-zeitplan .schedule-chat-fab:focus-visible{outline:3px solid var(--ui-accent);outline-offset:4px}
-body.phb-app.phb-page-zeitplan .schedule-chat-fab-icon{height:29px;width:29px;stroke:currentColor;fill:none}
-body.phb-app.phb-page-zeitplan .schedule-chat-fab-close{display:none}
-body.phb-app.phb-page-zeitplan .schedule-chat-fab[aria-expanded="true"] .schedule-chat-fab-open{display:none}
-body.phb-app.phb-page-zeitplan .schedule-chat-fab[aria-expanded="true"] .schedule-chat-fab-close{display:block}
-body.phb-app.phb-page-zeitplan .schedule-chat-fab-status{
-  position:absolute;top:5px;right:5px;height:12px;width:12px;
-  border:2px solid white;border-radius:50%;background:#60db99
-}
-body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{
-  position:fixed;right:clamp(16px,2.5vw,28px);
-  bottom:calc(clamp(17px,2.5vw,28px) + 73px);
-  z-index:1201;display:flex;flex-direction:column;
-  width:min(460px,calc(100vw - 28px));
-  height:min(660px,calc(100dvh - 188px));max-height:calc(100dvh - 188px);
-  margin:0;border:1px solid var(--ui-line);border-radius:19px;
-  overflow:hidden;background:var(--ui-surface);
-  box-shadow:0 18px 65px rgba(12,41,54,.22),0 4px 18px rgba(12,41,54,.09);
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header{
-  flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
-  gap:12px;flex-wrap:nowrap;padding:17px 18px 14px;
-  background:var(--ui-surface);border-bottom:1px solid var(--ui-line)
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header h2{
-  font-size:17px;line-height:1.35;margin:2px 0 4px
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header .phb-page-kicker{
-  font-size:10px;margin:0 0 6px
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header p{
-  font-size:11.5px;line-height:1.5;margin:0;color:var(--ui-muted)
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-ai-connected{
-  white-space:nowrap;flex:none;font-size:10px;padding:5px 9px;
-  background:var(--ui-soft-accent);color:var(--ui-success);border-color:var(--ui-line)
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-conversation-body{
-  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
-  gap:11px;padding:13px 15px 15px;overflow:hidden
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-messages{
-  flex:1 1 auto;min-height:65px;max-height:none;
-  overflow:auto;padding:12px;background:var(--ui-soft);border-color:var(--ui-line)
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-preview{
-  flex:0 1 auto;min-height:0;max-height:min(250px,31dvh);
-  overflow:auto;padding:13px 14px;background:var(--ui-soft-accent);
-  border-color:var(--ui-line-strong)
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-preview h3{
-  font-size:14px;margin-bottom:5px
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-preview>p{
-  font-size:11px;line-height:1.45;margin-bottom:9px
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-diff-item{
-  padding:10px 12px;background:var(--ui-surface);border-color:var(--ui-line)
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-approval{
-  display:flex;gap:8px;flex-wrap:wrap;margin-top:11px
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-approval button{
-  min-height:38px;flex:1 1 auto;font-size:12px;padding:8px 10px
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-form{
-  display:grid;gap:7px;flex:0 0 auto;min-height:0;
-  padding-top:11px;border-top:1px solid var(--ui-line)
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-form label{
-  font-size:12px;color:var(--ui-ink-soft)
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-form textarea{
-  resize:vertical;min-height:67px;max-height:145px;
-  padding:9px 11px;border-color:var(--ui-line-strong)
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-compose-actions{
-  gap:8px;align-items:center
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-compose-actions small{
-  font-size:10px;line-height:1.4;max-width:230px;color:var(--ui-muted)
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-compose-actions button{
-  flex:0 0 auto;min-height:38px;padding:8px 12px;font-size:12px
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-status{
-  flex:0 0 auto;font-size:11px;line-height:1.45;min-height:0
-}
-/* The Gantt task editor and responsive navigation have precedence over the floating assistant. */
-body.phb-app.phb-page-zeitplan.phb-nav-open :is(.schedule-chat-fab,.schedule-chat-popover),
-body.phb-app.phb-page-zeitplan:has(#overlay[open]) :is(.schedule-chat-fab,.schedule-chat-popover){
-  display:none!important
-}
 /* Heavy API action feedback moves above the floating assistant instead of hiding the composer. */
 body.phb-app.phb-page-zeitplan #phbBusyOverlay{bottom:auto;top:82px;right:18px}
 @media(max-width:600px){
-  body.phb-app.phb-page-zeitplan .schedule-chat-fab{
-    width:56px;height:56px;min-width:56px;min-height:56px;
-    right:16px;bottom:max(16px,env(safe-area-inset-bottom));z-index:1202
-  }
-  body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{
-    right:12px;width:calc(100vw - 24px);
-    bottom:calc(max(16px,env(safe-area-inset-bottom)) + 68px);
-    height:min(650px,calc(100dvh - 160px));
-    max-height:calc(100dvh - 160px);border-radius:17px
-  }
-  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header{
-    padding:14px 15px 12px
-  }
-  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-conversation-body{
-    padding:11px 12px 13px;gap:9px
-  }
-  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-compose-actions{
-    flex-direction:row;align-items:center
-  }
-  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-compose-actions button{
-    width:auto
-  }
   body.phb-app.phb-page-zeitplan #phbBusyOverlay{top:72px;right:12px;width:min(360px,calc(100vw - 24px))}
-}
-@media(max-height:530px){
-  body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{
-    height:calc(100dvh - 158px);max-height:calc(100dvh - 158px);
-    bottom:76px
-  }
-  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header p{display:none}
-  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-form textarea{min-height:47px}
-}
-@media(prefers-reduced-motion:reduce){
-  body.phb-app.phb-page-zeitplan .schedule-chat-fab{transition:none}
 }
 
 /* Project confirmation toasts remain legible next to the floating launcher. */
@@ -487,7 +324,7 @@ body.phb-app .phb-import-toggle small{display:block;font-size:11px;color:var(--u
 body.phb-app .phb-import-feed{pointer-events:auto;max-height:min(525px,65dvh);overflow-y:auto;width:100%;background:var(--ui-raised);border:1px solid var(--ui-line);border-radius:17px;box-shadow:var(--ui-shadow-raised);padding:17px}
 body.phb-app .phb-import-feed-head{display:flex;gap:12px;justify-content:space-between;align-items:center}
 body.phb-app .phb-import-feed-head h2{font-size:15px;margin:0;color:var(--ui-ink)}
-body.phb-app .phb-import-feed-head button{font-size:11px;padding:6px 9px;border-radius:9px}
+
 body.phb-app .phb-import-feed>p{color:var(--ui-muted);font-size:11px;line-height:1.55;margin:8px 0 14px}
 body.phb-app .phb-import-list{display:grid;gap:8px}
 body.phb-app .phb-import-job{background:var(--ui-soft);border:1px solid var(--ui-line);border-radius:12px;padding:11px 12px;overflow-wrap:anywhere}
@@ -501,13 +338,13 @@ body.phb-app .phb-import-dot.is-error{background:var(--ui-danger);border-color:v
 body.phb-app .phb-import-job>p{font-size:11px;color:var(--ui-muted);line-height:1.55;margin:6px 0 0}
 body.phb-app .phb-import-job>.phb-import-error{color:var(--ui-danger)}
 body.phb-app .phb-import-job-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
-body.phb-app .phb-import-job-actions button{padding:7px 11px;border:1px solid var(--ui-line-strong);border-radius:9px;background:var(--ui-surface);color:var(--ui-ink);font-size:11px}
+
 body.phb-app .phb-import-toast{position:fixed;right:20px;top:84px;z-index:1390;width:min(360px,calc(100vw - 40px));padding:16px 19px;background:var(--ui-raised);border:1px solid var(--ui-line-strong);border-radius:15px;box-shadow:var(--ui-shadow-raised)}
 body.phb-app .phb-import-toast strong{display:block;color:var(--ui-ink);font-size:13px}
 body.phb-app .phb-import-toast p{color:var(--ui-muted);font-size:12px;line-height:1.55;margin:7px 0 11px}
 body.phb-app .phb-import-toast-actions{display:flex;flex-wrap:wrap;gap:9px}
-body.phb-app .phb-import-toast-actions button{padding:8px 12px;border:1px solid var(--ui-line-strong);border-radius:10px;background:var(--ui-soft);color:var(--ui-ink);font-size:12px}
-body.phb-app .phb-import-toast-actions button:first-child{background:var(--ui-accent);color:white;border-color:var(--ui-accent)}
+
+
 @media(max-width:640px){body.phb-app .phb-import-center{left:10px;bottom:10px;width:min(380px,calc(100vw - 78px))}body.phb-app .phb-import-toast{top:74px;right:10px;width:calc(100vw - 20px)}body.phb-app .phb-import-feed{max-height:60dvh}}
 @media(prefers-reduced-motion:reduce){body.phb-app .phb-import-dot.is-working{animation-duration:3s}}
 
@@ -521,13 +358,9 @@ body.phb-app .phb-action-header .phb-header-actions{
   display:flex;align-items:center;justify-content:flex-end;gap:10px;
   flex:0 0 auto;flex-wrap:wrap;margin-left:auto
 }
-body.phb-app .phb-action-header .phb-header-actions button.primary{
-  min-height:42px;padding:10px 17px;font-size:13px;white-space:nowrap
-}
 body.phb-app.phb-page-belege #stats{margin:14px 0 17px}
 body.phb-app.phb-page-stammdaten #restoreTrades,
 body.phb-app.phb-page-stammdaten #restoreCategories{
-  font-size:11px;line-height:1.35;padding:8px 11px;
   white-space:normal;max-width:190px;flex:0 0 auto
 }
 body.phb-app.phb-page-stammdaten .master-panel-head{align-items:flex-start;gap:11px;flex-wrap:wrap}
@@ -543,56 +376,6 @@ body.phb-app.phb-page-stammdaten .master-panel-head{align-items:flex-start;gap:1
 .phb-messagebox p{line-height:1.5;font-size:14px;white-space:pre-line;}
 .phb-messagebox input{width:100%;padding:10px;margin:6px 0;border:1px solid #ccdce1;border-radius:8px;}
 .phb-messagebox-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
-
-/* Gantt AI assistant: on-demand toolbar action instead of a floating page overlay.
-   Important: explicit [hidden] wins over legacy display:grid/flex declarations. */
-body.phb-app.phb-page-zeitplan .schedule-chat-fab[hidden],
-body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover[hidden]{
-  display:none!important;
-}
-body.phb-app.phb-page-zeitplan .filters .schedule-chat-fab{
-  position:static;inset:auto;display:inline-flex;align-items:center;justify-content:center;
-  width:auto;height:auto;min-width:0;min-height:40px;padding:8px 13px;gap:8px;
-  border-radius:10px;border:1px solid var(--ui-line-strong);
-  background:var(--ui-surface);color:var(--ui-ink);
-  font-size:12px;font-weight:700;white-space:nowrap;
-  transform:none;box-shadow:none;
-}
-body.phb-app.phb-page-zeitplan .filters .schedule-chat-fab:hover{
-  background:var(--ui-soft);border-color:var(--ui-accent);
-  color:var(--ui-ink);transform:none;box-shadow:none;
-}
-body.phb-app.phb-page-zeitplan .filters .schedule-chat-fab[aria-expanded="true"]{
-  background:var(--ui-soft);border-color:var(--ui-accent);
-}
-body.phb-app.phb-page-zeitplan .filters .schedule-chat-fab .schedule-chat-fab-icon{
-  width:17px;height:17px;flex:0 0 17px;
-}
-body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{
-  top:clamp(85px,10vh,120px);bottom:auto;
-  right:clamp(12px,2.5vw,32px);
-  width:min(480px,calc(100vw - 24px));
-  height:min(660px,calc(100dvh - 135px));
-  max-height:calc(100dvh - 135px);
-  z-index:1201;
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-head-actions{
-  display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex:0 0 auto;
-}
-body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-head-actions button{
-  font-size:12px;padding:8px 11px;min-height:35px;
-}
-@media(max-width:600px){
-  body.phb-app.phb-page-zeitplan .filters .schedule-chat-fab{
-    position:static;width:auto;height:auto;min-width:0;min-height:40px;
-    right:auto;bottom:auto;
-  }
-  body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{
-    top:75px;bottom:auto;right:12px;
-    height:min(650px,calc(100dvh - 100px));
-    max-height:calc(100dvh - 100px);
-  }
-}
 
 
 /* Global visibility invariant.
@@ -627,25 +410,15 @@ body.phb-app #gantt .bar:focus-visible{outline:3px solid var(--ui-accent);outlin
 /* A horizontal wrapping header avoids vertical flex-basis gaps on narrow screens. */
 body.phb-app .phb-action-header{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center}
 @media(max-width:650px){body.phb-app .phb-action-header>div:first-child{flex-basis:100%}}
-
-/* Optional planning entry point, outside the toolbar and above the document feed. */
-body.phb-app.phb-page-zeitplan>.schedule-chat-fab{
- position:fixed;right:24px;bottom:24px;top:auto;left:auto;z-index:45;
- display:inline-flex;align-items:center;gap:9px;min-height:48px;padding:12px 18px;
- border-radius:24px;background:var(--ui-accent);color:var(--ui-surface);border:1px solid var(--ui-accent);box-shadow:var(--ui-shadow-raised)
-}
-body.phb-app.phb-page-zeitplan>.schedule-chat-fab .schedule-chat-fab-icon{width:22px;height:22px;flex:none}
-body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{top:auto;bottom:88px;right:24px;max-height:calc(100dvh - 110px)}
 body.phb-app #taskAutosaveStatus{padding:0 24px;color:var(--ui-muted);font-size:13px}
 body.phb-app .receipt-payment-badge{display:inline-block;margin:4px 0;padding:4px 8px;border:1px solid var(--ui-line);border-radius:8px;color:var(--ui-warning);font-size:12px}
 body.phb-app #receiptCancelForm{display:grid;gap:14px}
 body.phb-app #receiptCancelForm label{display:grid;gap:6px}
 body.phb-app .receipt-payment-history-row>div{display:flex;gap:8px;flex-wrap:wrap}
-@media(max-width:600px){
- body.phb-app.phb-page-zeitplan>.schedule-chat-fab{right:16px;bottom:16px}
- body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{top:auto;bottom:80px;right:12px;max-height:calc(100dvh - 100px);width:calc(100vw - 24px)}
-}
-@media(max-width:600px){
- body.phb-app.phb-page-zeitplan>.schedule-chat-fab{width:48px;height:48px;min-width:48px;padding:0;justify-content:center}
- body.phb-app.phb-page-zeitplan>.schedule-chat-fab>span{display:none}
-}
+
+/* Shared metrics: geometry belongs here; finance/cost pages only arrange sections. */
+body.phb-app .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:14px;margin:20px 0}
+body.phb-app .kpi-grid .kpi{padding:20px;min-width:0}
+body.phb-app .kpi-grid .kpi>span{display:block;min-height:2.8em;font-size:12px;line-height:1.4}
+body.phb-app .kpi-grid .kpi>strong{display:block;font-size:clamp(21px,2vw,27px);line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+body.phb-app .kpi-grid .kpi>small{display:block;margin-top:8px;font-size:12px;line-height:1.5}

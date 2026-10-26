@@ -1,0 +1,26 @@
+:root{--ui-button-accent:var(--ui-accent);--ui-button-accent-hover:var(--ui-accent-hover)}
+:root[data-phb-theme=dark]{--ui-button-accent:#147e82;--ui-button-accent-hover:#116a70}
+/* Action buttons share one contract. Navigation, cards and floating controls own their geometry. */
+body:is(.phb-app,.login-screen) button.phb-button,body:is(.phb-app,.login-screen) a.phb-button{
+ display:inline-flex;align-items:center;justify-content:center;gap:8px;vertical-align:middle;
+ box-sizing:border-box;min-height:40px;padding:9px 14px;margin:0;
+ border:1px solid var(--ui-line-strong);border-radius:8px;
+ background:var(--ui-surface);color:var(--ui-ink-soft);
+ font-family:inherit;font-size:13px;font-weight:650;line-height:20px;letter-spacing:0;
+ text-decoration:none;text-align:center;text-transform:none;white-space:normal;
+ cursor:pointer;box-shadow:none;filter:none;transition:background .15s,border-color .15s,color .15s;
+}
+body:is(.phb-app,.login-screen) .phb-button:hover:not(:disabled){background:var(--ui-soft);border-color:var(--ui-accent);color:var(--ui-ink)}
+body:is(.phb-app,.login-screen) .phb-button:is(.primary,.phb-ai-primary){background:var(--ui-button-accent);border-color:var(--ui-button-accent);color:#fff}
+body:is(.phb-app,.login-screen) .phb-button:is(.primary,.phb-ai-primary):hover:not(:disabled){background:var(--ui-button-accent-hover);border-color:var(--ui-button-accent-hover);color:#fff}
+body:is(.phb-app,.login-screen) .phb-button:is(.danger,.offer-text-danger){background:var(--ui-surface);border-color:var(--ui-line-strong);color:var(--ui-danger)}
+body:is(.phb-app,.login-screen) .phb-button:is(.danger,.offer-text-danger):hover:not(:disabled){border-color:var(--ui-danger);background:var(--ui-soft);color:var(--ui-danger)}
+body:is(.phb-app,.login-screen) .phb-button:is(.mini,.phb-button--compact){min-height:32px;padding:5px 10px;font-size:12px;line-height:20px}
+body:is(.phb-app,.login-screen) .phb-button:is(:disabled,[aria-disabled=true]){opacity:.55;cursor:not-allowed;filter:none}
+body:is(.phb-app,.login-screen) .phb-button:focus-visible{outline:3px solid var(--ui-ring);outline-offset:2px}
+body:is(.phb-app,.login-screen) .phb-button :is(svg,img){width:18px;height:18px;flex:0 0 18px}
+body:is(.phb-app,.login-screen) .phb-button[data-phb-busy=true]{position:relative;padding-right:36px;cursor:progress}
+body:is(.phb-app,.login-screen) .phb-button.phb-ai-close{min-width:32px;min-height:32px;width:32px;height:32px;padding:0;font-size:22px;background:transparent;border-color:transparent}
+@media(prefers-reduced-motion:reduce){body:is(.phb-app,.login-screen) .phb-button{transition:none}}
+
+@media(max-width:600px){body:is(.phb-app,.login-screen) .phb-button:is(.mini,.phb-button--compact){min-height:40px}}

@@ -74,16 +74,8 @@ body.phb-app.phb-page-dokumente .docs-item-actions{
   display:flex;align-items:center;justify-content:flex-end;
   flex-wrap:wrap;gap:8px;min-width:0;max-width:min(100%,390px);
 }
-body.phb-app.phb-page-dokumente .docs-item-actions :is(a,button){
-  display:inline-flex;justify-content:center;align-items:center;
-  font-size:12px;line-height:1.35;text-align:center;min-height:35px;
-  padding:8px 11px;border:1px solid var(--ui-line-strong);
-  border-radius:8px;color:var(--ui-accent);background:var(--ui-surface);
-  text-decoration:none;white-space:normal;overflow-wrap:anywhere;
-}
-body.phb-app.phb-page-dokumente .docs-item-actions :is(a,button):hover{
-  background:var(--ui-soft);text-decoration:underline;
-}
+body.phb-app.phb-page-dokumente .docs-item-actions :is(a,button){display:inline-flex;justify-content:center;align-items:center;text-align:center;text-decoration:none;white-space:normal;overflow-wrap:anywhere}
+body.phb-app.phb-page-dokumente .docs-item-actions :is(a,button):hover{text-decoration:underline}
 body.phb-app.phb-page-dokumente .docs-linked-groups{
   display:grid;gap:16px;min-width:0;
 }

@@ -11,7 +11,7 @@
 .phb-ai-dialog p{margin:8px 0 14px;line-height:1.5}
 .phb-ai-close{position:absolute;top:10px;right:12px;border:0;background:transparent;font-size:26px;cursor:pointer}
 .phb-ai-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:18px 0}
-.phb-ai-controls button,.phb-ai-controls select,.phb-ai-schedule button{border-radius:8px;padding:9px 12px}
+
 .phb-ai-primary{background:#0f5366;color:white;border:1px solid #0f5366}
 .phb-ai-warning{background:#f5f8fb;border:1px solid #e0e7eb;border-radius:10px;padding:14px}
 .phb-ai-warning p{font-size:13px}
@@ -40,7 +40,7 @@
 .phb-ai-dialog .phb-ai-controls{margin:0 0 20px;gap:12px}
 .phb-ai-dialog .phb-ai-controls label{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px}
 .phb-ai-dialog .phb-ai-controls select{max-width:100%}
-.phb-ai-dialog .phb-ai-controls button{min-height:40px}
+
 .phb-ai-dialog .phb-ai-warning{padding:18px 20px}
 .phb-ai-dialog .phb-ai-warning>strong{display:block;line-height:1.5}
 .phb-ai-dialog .phb-ai-warning p{margin:10px 0 12px;line-height:1.6}

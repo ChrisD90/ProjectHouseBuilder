@@ -254,6 +254,27 @@
     if(isMoneyField(e.target)){const n=parseMoney(e.target.value);if(Number.isFinite(n))e.target.value=formatMoney(n);}
   },true);
 
+  // Action controls share a stable class, including asynchronously created dialogs.
+  // Cards, navigation and notification toggles retain their purpose-specific geometry.
+  const structuralButtons='.phb-nav-link,.phb-icon-button,.phb-ai-topbar,.schedule-chat-fab,.phb-import-toggle,.entry,.offer-tile-toggle,.offer-method';
+  function prepareButtons(root){
+    const nodes=[];
+    if(root.matches?.('button,a.mini,a.subtle,a.primary,.docs-item-actions a'))nodes.push(root);
+    nodes.push(...(root.querySelectorAll?.('button,a.mini,a.subtle,a.primary,.docs-item-actions a')||[]));
+    for(const button of nodes){
+      if(!button.matches(structuralButtons)&&!button.closest('.phb-sidebar')){
+        button.classList.add('phb-button');
+        if(button.matches('.mini')||button.closest('table,.phb-import-center,.docs-item-actions'))button.classList.add('phb-button--compact');
+      }
+    }
+  }
+  function bindButtons(){
+    prepareButtons(document);
+    new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1)prepareButtons(node);})
+      .observe(document.body,{childList:true,subtree:true});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bindButtons,{once:true});else bindButtons();
+
   window.PHBUI={
     setTheme,currentTheme:selectedTheme,
     confirm:message=>ask(message),

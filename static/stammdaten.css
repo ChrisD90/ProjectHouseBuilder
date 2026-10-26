@@ -34,7 +34,7 @@
 .phb-page-stammdaten .master-tag-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #e8eeef;padding:11px 0}
 .phb-page-stammdaten .master-tag-row strong{font-size:13px;color:#35545c;overflow-wrap:anywhere}
 .phb-page-stammdaten .master-tag-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
-.phb-page-stammdaten .master-tag-actions button{font-size:12px;padding:7px 10px}
+
 .master-reference-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
 .master-reference-actions .subtle{border-left:1px solid var(--ui-line,#cad9de);padding-left:16px;margin-left:4px}
 .master-research{margin-top:20px;padding:16px;border:1px solid var(--ui-line,#cad9de);border-radius:10px;background:var(--ui-surface,#fff)}

@@ -4,7 +4,7 @@
 .phb-data-card p{line-height:1.65;color:#54717d;margin:0;font-size:14px}
 .phb-data-symbol{display:grid;place-items:center;background:#e7f2f3;color:#056b72;width:44px;height:44px;border-radius:12px;font-size:24px}
 .phb-data-status{width:100%;padding:14px;border-radius:9px;background:#edf5f6;color:#294b53;white-space:pre-wrap;font-size:13px;min-height:62px}
-.phb-data-card button{padding:12px 17px;border-radius:9px;cursor:pointer}
+.phb-data-card button{cursor:pointer}
 .phb-data-card button:disabled{opacity:.45;cursor:not-allowed}
 .phb-danger{border-color:#ebc9c9}
 .phb-danger .phb-data-symbol{background:#fbeaea;color:#a3363c}
@@ -13,8 +13,8 @@
 .phb-data-card form{width:100%;display:flex;flex-direction:column;gap:12px}
 .phb-data-card .phb-reset-label{font-size:14px;color:#425b64}
 .phb-data-card input[type=text]{width:100%;min-width:0;padding:12px 13px;border:1px solid #ccdfe2;border-radius:8px;font-size:14px}
-.phb-data-card button.danger{border:0;background:#a32d38;color:#fff;font-weight:650}
-.phb-data-card button.danger:not(:disabled):hover{background:#85222e}
+
+
 .phb-data-footnote{font-size:12px!important;color:#718891!important}
 .phb-data-notice{border-left:4px solid #0c8d8b;background:#eef9f9;border-radius:9px;color:#25545b;padding:15px 20px;margin-bottom:20px;white-space:pre-wrap;overflow-wrap:anywhere}
 .phb-data-notice.is-error{background:#fff1f1;border-left-color:#a32d38;color:#8b2b37}
@@ -66,7 +66,7 @@
 .phb-data-dialog input:not([type=file]),.phb-data-dialog select{width:100%;min-height:40px;padding:9px;border:1px solid var(--ui-line,#cddce1);border-radius:8px;background:var(--ui-surface,#fff);color:inherit}
 .phb-data-dialog-actions{display:flex;flex-wrap:wrap;gap:9px;justify-content:flex-end;margin-top:14px}
 .phb-folder-list{display:flex;flex-wrap:wrap;gap:7px;max-height:170px;overflow:auto}
-.phb-folder-list button{font-size:12px;border:1px solid #d4e4e9;background:#f5fafb;padding:7px 10px;border-radius:8px}
+
 #backupConfigMessage,#restoreProgress,#restoreVerifyInfo{white-space:pre-line;line-height:1.5}
 .phb-data-dialog .phb-data-footnote{word-break:break-word}
 

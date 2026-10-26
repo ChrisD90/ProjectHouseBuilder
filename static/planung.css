@@ -16,7 +16,6 @@
 #energyFundingForm .wide{grid-column:1/-1}
 @media(max-width:650px){.energy-sources,#energyFundingForm .dialog-grid{grid-template-columns:minmax(0,1fr)}.phb-page-energieplanung .panel{padding:14px}}
 @media(max-width:760px){
- .phb-page-kosten .kpi-grid,.phb-page-energieplanung .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
- .phb-page-kosten .budget-panel .toolbar{flex-wrap:wrap}
+ .phb-page-energieplanung .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
-@media(max-width:480px){.phb-page-kosten .kpi-grid,.phb-page-energieplanung .kpi-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:480px){.phb-page-energieplanung .kpi-grid{grid-template-columns:minmax(0,1fr)}}

@@ -10,7 +10,7 @@
  }
  async function list(){
   const data=await api('/api/cost-plan-imports');
-  $('planImportList').innerHTML=data.imports.map(x=>`<p><strong>${esc(x.filename)}</strong> · ${esc(x.status)} <button type="button" data-plan="${x.id}">${x.status==='Entwurf'?'Prüfen und bearbeiten':'Ansehen'}</button></p>`).join('')||'<p>Noch keine Kostenplanung hochgeladen. Einzelpositionen kannst du weiterhin manuell anlegen.</p>';
+  $('planImportList').innerHTML=data.imports.map(x=>`<p class="plan-import-row"><strong>${esc(x.filename)}</strong><span class="hint-pill">${esc(x.status)}</span><button type="button" class="mini" data-plan="${x.id}">${x.status==='Entwurf'?'Prüfen und bearbeiten':'Ansehen'}</button></p>`).join('')||'<p>Noch keine Kostenplanung hochgeladen. Einzelpositionen kannst du weiterhin manuell anlegen.</p>';
   $('planImportList').querySelectorAll('[data-plan]').forEach(b=>b.onclick=()=>open(Number(b.dataset.plan)).catch(report));
  }
  function report(e){$('planImportNotice').textContent=e.message;}

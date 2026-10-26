@@ -1,0 +1,121 @@
+/* Composer styling and one authoritative floating assistant layout. */
+
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:nowrap;padding:17px 18px 14px;
+  background:var(--ui-surface);border-bottom:1px solid var(--ui-line)
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header h2{
+  font-size:17px;line-height:1.35;margin:2px 0 4px
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header .phb-page-kicker{
+  font-size:10px;margin:0 0 6px
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header p{
+  font-size:11.5px;line-height:1.5;margin:0;color:var(--ui-muted)
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-ai-connected{
+  white-space:nowrap;flex:none;font-size:10px;padding:5px 9px;
+  background:var(--ui-soft-accent);color:var(--ui-success);border-color:var(--ui-line)
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-conversation-body{
+  flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  gap:11px;padding:13px 15px 15px;overflow-y:auto;overscroll-behavior:contain
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-messages{
+  flex:1 1 auto;min-height:65px;max-height:none;
+  overflow:auto;padding:12px;background:var(--ui-soft);border-color:var(--ui-line)
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-preview{
+  flex:0 1 auto;min-height:0;max-height:min(250px,31dvh);
+  overflow:auto;padding:13px 14px;background:var(--ui-soft-accent);
+  border-color:var(--ui-line-strong)
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-preview h3{
+  font-size:14px;margin-bottom:5px
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-preview>p{
+  font-size:11px;line-height:1.45;margin-bottom:9px
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-diff-item{
+  padding:10px 12px;background:var(--ui-surface);border-color:var(--ui-line)
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-approval{
+  display:flex;gap:8px;flex-wrap:wrap;margin-top:11px
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-approval button{flex:1 1 auto}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-form{
+  display:grid;gap:7px;flex:0 0 auto;min-height:0;
+  padding-top:11px;border-top:1px solid var(--ui-line)
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-form label{
+  font-size:12px;color:var(--ui-ink-soft)
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-form textarea{
+  resize:vertical;min-height:67px;max-height:145px;
+  padding:9px 11px;border-color:var(--ui-line-strong)
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-compose-actions{
+  gap:8px;align-items:center
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-compose-actions small{
+  font-size:10px;line-height:1.4;max-width:230px;color:var(--ui-muted)
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-compose-actions button{flex:0 0 auto}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-status{
+  flex:0 0 auto;font-size:11px;line-height:1.45;min-height:0
+}
+@media(max-width:600px){
+  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header{
+    padding:14px 15px 12px
+  }
+  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-conversation-body{
+    padding:11px 12px 13px;gap:9px
+  }
+  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-compose-actions{
+    flex-direction:row;align-items:center
+  }
+  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-compose-actions button{width:auto}
+  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header p{display:none}
+  body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-form textarea{min-height:47px}
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-chat-head-actions{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex:0 0 auto;
+}
+
+
+body.phb-app.phb-page-zeitplan .schedule-chat-fab{
+ position:fixed;inset:auto 24px 24px auto;z-index:1202;display:inline-flex;
+ align-items:center;justify-content:center;gap:10px;width:auto;height:48px;
+ min-width:48px;min-height:48px;max-width:calc(100vw - 32px);padding:0 18px;
+ border:1px solid var(--ui-button-accent);border-radius:999px;background:var(--ui-button-accent);
+ color:#fff;box-shadow:var(--ui-shadow-raised);font-family:inherit;font-size:13px;font-weight:650;line-height:20px;
+ white-space:nowrap;cursor:pointer;transition:background .15s,box-shadow .15s;
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-fab:hover{background:var(--ui-button-accent-hover);border-color:var(--ui-button-accent-hover)}
+body.phb-app.phb-page-zeitplan .schedule-chat-fab:focus-visible{outline:3px solid var(--ui-accent);outline-offset:4px}
+body.phb-app.phb-page-zeitplan .schedule-chat-fab-icon{display:block;width:22px;height:22px;flex:0 0 22px;fill:none;stroke:currentColor}
+body.phb-app.phb-page-zeitplan .schedule-chat-fab .schedule-chat-fab-close{display:none}
+body.phb-app.phb-page-zeitplan .schedule-chat-fab[aria-expanded=true] .schedule-chat-fab-open{display:none}
+body.phb-app.phb-page-zeitplan .schedule-chat-fab[aria-expanded=true] .schedule-chat-fab-close{display:block}
+body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{
+ position:fixed;inset:auto 24px 84px auto;z-index:1201;display:flex;flex-direction:column;
+ width:min(460px,calc(100vw - 32px));height:min(660px,calc(100dvh - 112px));
+ max-height:calc(100dvh - 112px);margin:0;border:1px solid var(--ui-line);
+ border-radius:16px;background:var(--ui-surface);color:var(--ui-ink);overflow:hidden;
+ box-shadow:var(--ui-shadow-raised);
+}
+body.phb-app.phb-page-zeitplan .schedule-chat-fab[hidden],
+body.phb-app.phb-page-zeitplan .schedule-chat-popover[hidden]{display:none!important}
+body.phb-app.phb-page-zeitplan.phb-nav-open :is(.schedule-chat-fab,.schedule-chat-popover),
+body.phb-app.phb-page-zeitplan:has(dialog[open]) :is(.schedule-chat-fab,.schedule-chat-popover){visibility:hidden;pointer-events:none}
+@media(max-width:600px){
+ body.phb-app.phb-page-zeitplan .schedule-chat-fab{right:16px;bottom:16px;width:48px;padding:0}
+ body.phb-app.phb-page-zeitplan .schedule-chat-fab>span{display:none}
+ body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{right:12px;bottom:76px;width:calc(100vw - 24px);height:min(620px,calc(100dvh - 96px));max-height:calc(100dvh - 96px)}
+}
+
+@media(max-width:420px){
+ body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-ai-connected{display:none}
+ body.phb-app.phb-page-zeitplan .schedule-chat-popover .schedule-section-header>div:first-child{min-width:0;flex:1}
+}

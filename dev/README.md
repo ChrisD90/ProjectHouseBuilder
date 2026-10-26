@@ -55,3 +55,25 @@ verwendet ausschließlich temporäre synthetische Daten. Optional speichert
 Screenshots für die visuelle Kontrolle.
 ChatGPT- und Importantworten werden für die Verzögerungs-/Fehlerprüfungen simuliert.
 Für echte OCR- und ChatGPT-Ergebnisse weiterhin Originaldateien fachlich prüfen.
+
+`python3 dev/css_regressions.py` kontrolliert zusätzlich die gemeinsamen Buttons,
+gefüllte Budgettabellen und Kostenformulare sowie den geöffneten/geschlossenen
+Chat bei 360/768/1024/1440 Pixeln in beiden Farbschemata. Kurze Browserfenster
+und mobiles Querformat prüfen die Erreichbarkeit des Chat-Eingabebereichs.
+Voraussetzungen und Datenisolation entsprechen dem Browser-Test oben. Screenshots
+liegen standardmäßig unter `/tmp/phb-css-review`; `PHB_CSS_SCREENSHOTS` ändert den Zielordner.
+
+## Gemeinsame Button- und Layoutregeln
+
+`static/buttons.css` definiert normale Aktionsbuttons (40 px Mindesthöhe),
+kompakte Tabellen-/Listenaktionen (32 px, mobil 40 px), Primär-/Löschaktionen
+sowie Hover-, Fokus-, Lade- und deaktivierte Zustände. `ui.js` ergänzt die
+Klasse `phb-button` auch in dynamisch erzeugten Inhalten. Navigations-, Karten-,
+Symbol- und Floating-Controls behalten ihre eigene Geometrie. Seiten-CSS regelt
+die Anordnung der Aktionen; Buttonfarben, Schrift und Innenabstände gehören in
+die gemeinsame Datei.
+
+`kosten.css` gilt ausschließlich für Kosten & Budget. `gantt.css` ordnet
+Planaktionen und Filter an. `schedule_chat.css` besitzt die Floating-Button- und
+Chatfenster-Regeln; frühere Toolbar- und Kreis-Varianten nicht wieder in `ui.css`
+ergänzen. Diese Komponenten-CSS-Dateien werden vor `buttons.css` geladen.

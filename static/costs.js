@@ -52,10 +52,10 @@ function openEditor(type,id=null,defaults={}){mode=type;current=id;const record=
    control=`<select name="${key}" required>${names.map(o=>`<option value="${esc(o)}" ${o===selected?'selected':''}>${esc(o)}</option>`).join('')}</select><small><a href="/stammdaten#kategorien">Kategorien in Stammdaten pflegen</a></small>`;
  }
  else if(['budget','contractor','task','parent'].includes(kind))control=`<select name="${key}">${selector(key,value)}</select>`;
- else if(kind==='bool')control=`<input name="${key}" type="checkbox" value="true" ${value?'checked':''} style="width:20px;height:20px">`;
+ else if(kind==='bool')control=`<input name="${key}" type="checkbox" value="true" ${value?'checked':''}>`;
  else if(kind==='textarea')control=`<textarea name="${key}" rows="3">${esc(value)}</textarea>`;
  else control=`<input name="${key}" type="${kind==='number'?'number':'text'}" ${kind==='number'?'min="0" step="0.01"':kind==='money'?'inputmode="decimal" data-euro="true"':''} ${['title','name'].includes(key)?'required':''} value="${esc(value)}">`;
- return `<label class="${kind==='textarea'?'wide':''}">${esc(label)}${control}</label>`}).join('');editorFlow.open()}
+ return `<label class="${kind==='textarea'?'wide':''}"><span class="budget-field-label">${esc(label)}</span>${control}</label>`}).join('');editorFlow.open()}
 async function saveEditor(e){
  e.preventDefault();
  if(editorBusy)return;
