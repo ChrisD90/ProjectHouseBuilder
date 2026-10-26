@@ -64,7 +64,10 @@ Screenshots für die visuelle Kontrolle.
 ChatGPT- und Importantworten werden für die Verzögerungs-/Fehlerprüfungen simuliert.
 Die Browserprüfung deckt außerdem unvollständiges Zwischenspeichern, Neuladen,
 Firmenanlage mit Rücksprung, Buchung ohne Zahlungsziel und die Löschsperre nach
-Angebotsentscheidungen ab. Screenshots `invoice-review-*` zeigen den Rechnungsdialog.
+Angebotsentscheidungen ab. Screenshots `invoice-review-*` zeigen den Rechnungsdialog. Beide Verarbeitungsmodi
+werden in allen sechs Analysebereichen geprüft, einschließlich automatischem Rücksprung
+zur Prüfung, Hintergrundarbeit ohne Seitenwechsel, wieder freigegebenen Buttons und
+PDF-Anhängen bei manuellen Angeboten. `upload-busy-*` zeigt den globalen Busy-Zustand.
 Für echte OCR- und ChatGPT-Ergebnisse weiterhin Originaldateien fachlich prüfen.
 
 `python3 dev/css_regressions.py` kontrolliert zusätzlich die gemeinsamen Buttons,

@@ -30,7 +30,8 @@
       <label>Kreditunterlage (PDF oder Foto, maximal 15 MB)
         <input id="loanAiFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
       </label>
-      <button id="loanAiAnalyze" type="button">Mit ChatGPT vorausfüllen</button>
+      <label class="phb-processing-control">Verarbeitung<select id="loanProcessingMode"><option value="foreground">Im Vordergrund – direkt prüfen</option><option value="background">Im Hintergrund – später prüfen</option></select></label>
+      <button id="loanAiAnalyze" data-import-kind="loans" type="button">Mit ChatGPT vorausfüllen</button>
       <label class="loan-ai-overwrite"><input id="loanAiOverwrite" type="checkbox"> Bereits ausgefüllte Vertragsdaten durch ChatGPT-Vorschläge ersetzen</label>
     </div>
     <p class="hint">Die ausgewählte Unterlage wird nur beim Klick auf „Mit ChatGPT vorausfüllen“ übertragen. Standardmäßig werden bestehende Vertragsdaten nicht überschrieben. Ohne deine Prüfung wird nichts gespeichert.</p>

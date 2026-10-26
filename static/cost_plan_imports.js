@@ -86,11 +86,13 @@
     data.set('model',choice.model);data.set('plan_only','true');
    }
    busy=true;form.querySelector('button[type=submit]').disabled=true;$('planUploadMessage').textContent='Dateien werden hochgeladen …';
-   await window.PHBImports.enqueue({kind:'costplans',files:form.elements.namedItem('files').files,
+   const result=await window.PHBImports.run({form,kind:'costplans',files:form.elements.namedItem('files').files,
     analysisMode:data.get('analysis_mode'),model:data.get('model')||''});
-   form.reset();upload.close();await list();$('planImportNotice').textContent='Analyse abgeschlossen. Kostenplanung jetzt prüfen und bearbeiten.';
+   form.reset();upload.close();
+   if(result.background){await list();$('planImportNotice').textContent='Die Kostenplanung wird in der Warteschlange verarbeitet.';}
+   else window.PHBImports.review(result.jobs);
   }catch(error){$('planUploadMessage').textContent=error.message;}
-  finally{busy=false;form.querySelector('button[type=submit]').disabled=false;}
+  finally{busy=false;window.PHBImports.release(form.querySelector('button[type=submit]'));}
  };
  $('refreshPlanImports').onclick=()=>list().catch(report);
  list().then(()=>{const id=Number(new URLSearchParams(location.search).get('cost_plan_import'));if(id>0)return open(id);}).catch(report);

@@ -1,10 +1,14 @@
 """Regression: two simple entry methods and one single offer list / forecast source."""
 import os
+import io
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
 import unittest
 from sqlalchemy import select
 
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import app, db, initialize, Offer, CostItem, BudgetLine, Category
+from app import app, db, initialize, Offer, CostItem, BudgetLine, Category,Document
 
 
 class ManualOfferTests(unittest.TestCase):
@@ -20,6 +24,46 @@ class ManualOfferTests(unittest.TestCase):
         data={'vendor':'Sanitär Muster GmbH','gross':'8.500,00', 'category':'Sanitär'}
         data.update(changes)
         return self.client.post('/api/offers/manual',json=data)
+
+    @staticmethod
+    def pdf():
+        from pypdf import PdfWriter
+        writer=PdfWriter();writer.add_blank_page(width=595,height=842)
+        output=io.BytesIO();writer.write(output);return output.getvalue()
+
+    def test_manual_pdf_is_attached_without_ocr_or_changing_entered_amounts(self):
+        with tempfile.TemporaryDirectory() as tmp,patch('app.DOCUMENT_ROOT',Path(tmp)),patch('app.extract_text',side_effect=AssertionError('manual attachment must not run OCR')),patch('app._analyse_offer_with_mode',side_effect=AssertionError('manual attachment must not run AI')):
+            result=self.client.post('/api/offers/manual',data={'vendor':'Manuelle Firma','gross':'1234,56','category':'Elektro','file':(io.BytesIO(self.pdf()),'angebot.pdf')})
+            self.assertEqual(result.status_code,201,result.json)
+            offer=result.json['offer'];self.assertEqual(offer['gross'],1234.56)
+            self.assertEqual(offer['status'],'Angebot')
+            doc=db.session.get(Document,offer['document_id'])
+            self.assertEqual((Path(tmp)/doc.stored_name).read_bytes(),self.pdf())
+            download=self.client.get(f'/api/documents/{doc.id}/download');self.assertEqual(download.status_code,200);download.close()
+            self.assertEqual(self.client.delete(f"/api/offers/{offer['id']}").status_code,200)
+            self.assertEqual(list(Path(tmp).iterdir()),[])
+
+    def test_invalid_or_duplicate_manual_pdf_is_atomic(self):
+        with tempfile.TemporaryDirectory() as tmp,patch('app.DOCUMENT_ROOT',Path(tmp)):
+            for name,data in [('wrong.txt',b'%PDF-1.4'),('broken.pdf',b'%PDF-broken'),('oversized.pdf',b'%PDF-'+b'x'*(15*1024*1024))]:
+                result=self.client.post('/api/offers/manual',data={'vendor':'Bad','gross':500,'category':'Elektro','file':(io.BytesIO(data),name)})
+                self.assertEqual(result.status_code,400,result.json)
+                self.assertEqual(db.session.query(Offer).count(),0)
+                self.assertEqual(db.session.query(Document).count(),0)
+                self.assertEqual(list(Path(tmp).iterdir()),[])
+            for expected in (201,400):
+                result=self.client.post('/api/offers/manual',data={'vendor':'Valid','gross':500,'category':'Elektro','file':(io.BytesIO(self.pdf()),'valid.pdf')})
+                self.assertEqual(result.status_code,expected,result.json)
+            self.assertEqual(db.session.query(Offer).count(),1)
+            self.assertEqual(len(list(Path(tmp).iterdir())),1)
+
+    def test_attachment_is_removed_when_offer_transaction_fails(self):
+        with tempfile.TemporaryDirectory() as tmp,patch('app.DOCUMENT_ROOT',Path(tmp)),patch.object(db.session,'commit',side_effect=RuntimeError('DB unavailable')):
+            result=self.client.post('/api/offers/manual',data={'vendor':'Unstored','gross':500,'category':'Elektro','file':(io.BytesIO(self.pdf()),'original.pdf')})
+            self.assertEqual(result.status_code,500)
+            self.assertEqual(list(Path(tmp).iterdir()),[])
+        self.assertEqual(db.session.query(Offer).count(),0)
+        self.assertEqual(db.session.query(Document).count(),0)
 
     def test_manual_offer_can_be_compared_and_accepted_exactly_once(self):
         initial=self.client.get('/api/costs').json['summary']

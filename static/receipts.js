@@ -382,22 +382,21 @@ $('upload').onsubmit=async e=>{
  const ai=$('receiptAnalysisMode').value==='ai';
  const button=$('receiptUploadButton');
  uploading=true;button.disabled=true;
- $('uploadStatus').textContent='Dateien werden für die Hintergrundverarbeitung vorbereitet …';
+ $('uploadStatus').textContent='Dateien werden für die Analyse hochgeladen …';
  try{
    let model='';
    if(ai)model=window.PHBAI?.selection()?.model||'';
-   const jobs=await window.PHBImports.enqueue({
-     kind:'receipts',files:$('upload').elements.namedItem('files').files,
+   const result=await window.PHBImports.run({
+     form:$('upload'),kind:'receipts',files:$('upload').elements.namedItem('files').files,
      analysisMode:ai?'ai':'local',model
    });
    $('upload').reset();
    $('receiptAIHint').hidden=true;
-   button.textContent='Dateien im Hintergrund analysieren';
-   $('uploadStatus').textContent=jobs.length+' Beleg(e) fertig analysiert. Jetzt zur Prüfung öffnen.';
-   receiptDialog.close();
-   await reload();
+   button.textContent='Dateien analysieren';
+   receiptFlow.finish();
+   if(result.background)notice('Die Belege werden in der Warteschlange analysiert.');else window.PHBImports.review(result.jobs);
  }catch(error){$('uploadStatus').textContent='Import/Analyse fehlgeschlagen: '+error.message;}
- finally{uploading=false;button.disabled=false;}
+ finally{uploading=false;window.PHBImports.release(button);}
 };
 document.addEventListener('phb-import-updated',event=>{
  if(event.detail.kind==='receipts'&&!receiptDialog.open)reload().catch(()=>{});

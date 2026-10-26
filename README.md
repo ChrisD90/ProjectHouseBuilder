@@ -328,9 +328,36 @@ Unter **Angebote**, **Rechnungen & Belege** und **Projektdokumente** können jet
 
 Angebote und Rechnungen unterstützen die Wahl **lokal / ChatGPT** wie bisher. ChatGPT wird ausschließlich nach expliziter Freigabe der Plannutzung und mit dem gewählten Modell gestartet. Keine API-Schlüssel, kein kostenpflichtiger Fallback, keine automatische Buchung. Die Hintergrundaufträge verwenden dieselben bestehenden geprüften Importfunktionen, sodass PDF-Entwürfe, Einzelpositionen, Lohnkosten und Rechnungszuordnungen nach Abschluss **unverändert manuell geprüft** werden können.
 
-Unten links im App-Layout erscheint eine kleine **Importübersicht** mit Warteschlangen- und Bearbeitungsstatus für jede Datei. Bei ChatGPT werden echte Übergänge sichtbar: Anfrage vorbereiten, Verbindung zu ChatGPT, Prüfung, eintreffende Antwort, Speicherung des Entwurfs. Es wird kein fiktiver Prozentfortschritt behauptet. Die Aufgaben laufen serverseitig weiter, wenn du zwischen Projektseiten wechselst; der lokale Python-Prozess muss geöffnet bleiben. Die auslösende Uploadfunktion bleibt bis zum tatsächlichen Ergebnis gesperrt, auch wenn die Warteschlange den Upload bereits angenommen hat. Ein laufender Analysedialog lässt sich bis dahin nicht schließen. Nach Fertigstellung führt die Benachrichtigung mit **„Prüfen und bearbeiten“** direkt in den jeweiligen Prüf- bzw. Metadaten-Dialog. Optional sind Browser-Benachrichtigungen möglich, sofern der Browser die Erlaubnis dafür erhalten hat.
+In allen Bereichen mit automatischer Analyse – Angebote, Angebotsversionen, Rechnungen,
+Kostenplanung, Projektdokumente und Kreditanalyse – wählst du **Verarbeitung**:
 
-Aufträge, Metadaten und die temporären Originaldateien bleiben lokal unter `private/import-queue/` beziehungsweise in der Datenbank gespeichert. Bei einem Anwendungsneustart werden gerade laufende oder wartende Aufträge **als unterbrochen markiert und niemals heimlich wiederholt** (wichtig bei KI-Nutzungsgrenzen und möglichen schon angelegten Entwürfen). Fehler und unterbrochene Aufträge können vom Nutzer bewusst erneut gestartet werden, solange die temporäre Datei vorhanden ist. Ein erfolgreich abgeschlossener Auftrag entfernt diese temporäre Kopie, während das Original in der regulären Dokumentenablage verbleibt. Temporäre und reguläre Originale sind Bestandteil eines vollständigen Projektbackups.
+- **Im Vordergrund – direkt prüfen** (Voreinstellung): Ein modaler Busy-Zustand sperrt
+  Seite und Dialog bis zum endgültigen Ergebnis. Danach öffnet sich die Prüfung automatisch.
+  Bei mehreren Dateien öffnet sich der erste fertige Entwurf; die weiteren bleiben in der Warteschlange.
+- **Im Hintergrund – später prüfen**: Nach dem erfolgreichen Upload schließt sich der
+  Dialog. Die Analyse läuft serverseitig weiter, auch bei einem Seitenwechsel. Die
+  **Warteschlange unten rechts** zeigt Fortschritt, Fehler und „Prüfen und bearbeiten“.
+  Es gibt keinen automatischen Seitenwechsel. Ein weiterer Analyse-Start desselben Typs
+  bleibt bis zum Ergebnis oder Fehler gesperrt.
+
+Beide Modi verwenden dieselbe serielle Verarbeitung und dieselben Prüfregeln. Echte
+Verarbeitungsschritte ersetzen fiktive Prozentangaben. Fehler geben den Busy-Zustand
+frei; erfolgreich verarbeitete Dateien eines teilweise fehlgeschlagenen Durchgangs
+bleiben zur Prüfung erhalten. Browser-Benachrichtigungen sind optional für Hintergrundaufträge.
+Der lokale Python-Prozess muss während der Verarbeitung geöffnet bleiben.
+
+Kreditanalysen speichern nur Vorschläge, Warnungen und die noch ungespeicherte
+Formularvorbelegung im Importauftrag. Erst der geprüfte Klick auf „Kredit speichern“
+legt den Kredit an oder aktualisiert ihn; dabei wird der Import als übernommen markiert.
+Ein erneutes Öffnen eines schon übernommenen Scan-Links öffnet den vorhandenen Kredit.
+Kreditunterlagen können weiterhin separat als Original an einen gespeicherten Kredit angehängt werden.
+
+Bei **manuell erfassten Angeboten** kann ein optionales Angebots-PDF bis 15 MB angehängt
+werden. Es wird als herunterladbares Original abgelegt, ohne OCR oder ChatGPT; die
+manuell eingegebenen Beträge bleiben unverändert. Ungültige Dateien oder Speicherfehler
+hinterlassen weder ein halbes Angebot noch eine verwaiste Datei.
+
+Aufträge, Metadaten und die temporären Originaldateien bleiben lokal unter `private/import-queue/` beziehungsweise in der Datenbank gespeichert. Bei einem Anwendungsneustart werden gerade laufende oder wartende Aufträge **als unterbrochen markiert und niemals heimlich wiederholt** (wichtig bei KI-Nutzungsgrenzen und möglichen schon angelegten Entwürfen). Fehler und unterbrochene Aufträge können vom Nutzer bewusst erneut gestartet werden, solange die temporäre Datei vorhanden ist. Ein erfolgreich abgeschlossener Auftrag entfernt diese temporäre Kopie, während das Original bei Dokumentimporten in der regulären Dokumentenablage verbleibt; Kreditanalysen behalten ihre ausgelesenen Vorschläge im Importauftrag. Temporäre und reguläre Originale sind Bestandteil eines vollständigen Projektbackups.
 
 Migration `0014` ergänzt ausschließlich die lokale Import-Warteschlangentabelle. Die verpflichtende Vorab-Sicherung wird weiterhin durch `schema_manager.py` durchgeführt. Kein externer Dienst oder separater Queue-Server ist notwendig; in der vorgesehenen lokalen Einprozess-Ausführung genügt der Daemon-Worker.
 

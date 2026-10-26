@@ -22,12 +22,13 @@
    </div>
    <form id="offerImportForm" data-import-kind="offers" class="offer-entry-form"><label class="offer-file-label">Angebots-PDFs auswählen (bis zu 8) <input type="file" name="files" accept=".pdf,application/pdf" multiple required></label>
      <label>Analyseart<select name="analysis_mode" id="offerAnalysisMode"><option value="local">Lokal analysieren (keine Datenübertragung)</option><option value="ai">Mit ChatGPT analysieren (nach Freigabe)</option></select></label>
-     <button type="submit" class="primary">Dateien im Hintergrund analysieren</button><p class="offer-import-status" id="offerImportStatus" role="status">Die Dateien werden nacheinander analysiert. Du kannst währenddessen weiterarbeiten und jeden fertigen Entwurf anschließend im Prüf-Dialog bearbeiten.</p></form>
+     <button type="submit" class="primary">Dateien analysieren</button><p class="offer-import-status" id="offerImportStatus" role="status">Die Dateien werden nacheinander analysiert. Im Vordergrund öffnet sich danach die Prüfung automatisch. Im Hintergrund kannst du weiterarbeiten und später über die Warteschlange prüfen.</p></form>
    <form id="offerManualForm" class="offer-entry-form offer-manual-form" hidden>
     <label>Firma / Anbieter <input name="vendor" maxlength="200" required placeholder="z. B. Elektro Mustermann"></label>
     <label>Bruttogesamtsumme (€) <input name="gross" inputmode="decimal" required placeholder="z. B. 8.500,00"></label>
     <label>Gewerk / Kategorie <select name="category" id="offerManualCategory" required></select></label>
     <label>Kostenplanposition (optional) <select name="budget_line_id" id="offerManualBudget"></select></label>
+    <label class="offer-wide">Angebots-PDF anhängen (optional, max. 15 MB)<input name="file" type="file" accept=".pdf,application/pdf"><small>Wird als Original gespeichert. Deine manuell eingetragenen Werte bleiben maßgeblich; es erfolgt keine automatische Analyse.</small></label>
     <details class="offer-manual-more"><summary>Weitere Angaben (optional)</summary><div class="offer-optional-fields">
       <label>Angebotsnummer <input name="number" maxlength="100"></label>
       <label>Datum <input name="issued" maxlength="20" placeholder="TT.MM.JJJJ"></label>

@@ -314,7 +314,7 @@ body.phb-app.phb-page-zeitplan .schedule-doc-choice small{display:block;font-siz
 body.phb-app.phb-page-zeitplan .schedule-history-sources{border-top:1px solid var(--ui-line);padding-top:7px;font-size:11px}
 
 /* Global, actionable progress for queued OCR/PDF/ChatGPT jobs. */
-body.phb-app .phb-import-center{position:fixed;left:clamp(12px,2vw,24px);bottom:clamp(12px,2vw,24px);width:min(405px,calc(100vw - 24px));z-index:1305;display:flex;flex-direction:column-reverse;align-items:flex-start;gap:10px;pointer-events:none}
+body.phb-app .phb-import-center{position:fixed;right:clamp(12px,2vw,24px);bottom:clamp(12px,2vw,24px);width:min(405px,calc(100vw - 24px));z-index:1305;display:flex;flex-direction:column-reverse;align-items:flex-start;gap:10px;pointer-events:none}
 body.phb-app .phb-import-center[hidden],body.phb-app .phb-import-toast[hidden],body.phb-app .phb-import-feed[hidden]{display:none!important}
 body.phb-app .phb-import-toggle{display:flex;align-items:center;gap:10px;pointer-events:auto;cursor:pointer;text-align:left;border:1px solid var(--ui-line-strong);border-radius:40px;padding:9px 16px 9px 10px;background:var(--ui-raised);color:var(--ui-ink);box-shadow:var(--ui-shadow-raised);max-width:100%}
 body.phb-app .phb-import-toggle:hover{background:var(--ui-soft)}
@@ -345,7 +345,7 @@ body.phb-app .phb-import-toast p{color:var(--ui-muted);font-size:12px;line-heigh
 body.phb-app .phb-import-toast-actions{display:flex;flex-wrap:wrap;gap:9px}
 
 
-@media(max-width:640px){body.phb-app .phb-import-center{left:10px;bottom:10px;width:min(380px,calc(100vw - 78px))}body.phb-app .phb-import-toast{top:74px;right:10px;width:calc(100vw - 20px)}body.phb-app .phb-import-feed{max-height:60dvh}}
+@media(max-width:640px){body.phb-app .phb-import-center{right:10px;bottom:10px;width:min(380px,calc(100vw - 20px))}body.phb-app .phb-import-toast{top:74px;right:10px;width:calc(100vw - 20px)}body.phb-app .phb-import-feed{max-height:60dvh}}
 @media(prefers-reduced-motion:reduce){body.phb-app .phb-import-dot.is-working{animation-duration:3s}}
 
 /* Identical top-right primary actions across financial and document areas. */
@@ -422,3 +422,16 @@ body.phb-app .kpi-grid .kpi{padding:20px;min-width:0}
 body.phb-app .kpi-grid .kpi>span{display:block;min-height:2.8em;font-size:12px;line-height:1.4}
 body.phb-app .kpi-grid .kpi>strong{display:block;font-size:clamp(21px,2vw,27px);line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 body.phb-app .kpi-grid .kpi>small{display:block;margin-top:8px;font-size:12px;line-height:1.5}
+
+/* Explicit foreground processing uses a top-layer modal, blocking pointer and keyboard input. */
+body.phb-app .phb-import-wait{width:min(440px,calc(100vw - 32px));padding:28px;border:1px solid var(--ui-line);border-radius:14px;background:var(--ui-surface);color:var(--ui-ink);text-align:center;box-shadow:var(--ui-shadow-raised)}
+body.phb-app .phb-import-wait:not([open]){display:none}
+body.phb-app .phb-import-wait::backdrop{background:rgba(10,30,40,.68);backdrop-filter:blur(2px)}
+body.phb-app .phb-import-wait .phb-busy-spinner{margin:0 auto 18px}
+body.phb-app .phb-import-wait h2{font-size:20px;margin:0 0 12px}
+body.phb-app .phb-import-wait p{font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+body.phb-app .phb-import-wait small{font-size:12px;color:var(--ui-muted);line-height:1.6}
+body.phb-app .phb-processing-control{min-width:0;display:grid;gap:6px;font-size:13px}
+body.phb-app .phb-processing-control select{width:100%;min-width:0;min-height:40px}
+body.phb-app.phb-page-zeitplan:has(#scheduleChatFab:not([hidden])) .phb-import-center{bottom:84px}
+body.phb-app.phb-page-zeitplan:has(#scheduleChatFab[aria-expanded=true]) .phb-import-center{left:12px;right:auto;bottom:12px;width:min(405px,calc(100vw - 88px))}

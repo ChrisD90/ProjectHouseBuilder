@@ -419,7 +419,7 @@
       <div class="offer-tile-details" id="offerDetails${o.id}" ${expanded?'':'hidden'}>
         <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>
         ${notes}${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/download">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}${accepted?billingBlock(o):''}
-        ${versionUpload(o)}${versionHistory(o)}
+        ${o.document_id?`<p><a class="mini" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Angebots-PDF öffnen</a></p>`:''}${versionUpload(o)}${versionHistory(o)}
 
         ${o.deletion_reason?`<p class="offer-mapping">${esc(o.deletion_reason)}</p>`:''}${notice(o)}${parsedPositions(o)}
       </div>
@@ -528,24 +528,27 @@
       let model='';
       if(mode==='ai')model=window.PHBAI?.selection()?.model||'';
       const files=form.elements.files.files;
-      const jobs=await window.PHBImports.enqueue({
-        kind:'offers',files,analysisMode:mode,model
+      const result=await window.PHBImports.run({
+        form,kind:'offers',files,analysisMode:mode,model
       });
       form.reset();
-      inform('offerImportStatus',jobs.length+' PDF(s) fertig analysiert. Über die Importübersicht prüfen und bearbeiten.');
-      workflow.close();
-      await reload();
+      workflowFlow.finish();
+      if(result.background)await reload();else window.PHBImports.review(result.jobs);
     } catch(err) {inform('offerImportStatus','Fehler: '+err.message,true)}
-    finally{offerUploading=false;submit.disabled=false;}
+    finally{offerUploading=false;window.PHBImports.release(submit);}
   });
   $('offerManualForm').addEventListener('submit',async event=>{
     event.preventDefault();if(offerUploading)return;const form=event.currentTarget;
     offerUploading=true;const submit=form.querySelector('button[type=submit]');submit.disabled=true;
     inform('offerManualStatus','Angebot wird gespeichert …');
     try {
-      await request('/api/offers/manual',{method:'POST',data:readForm(form)});
-      form.reset();await reload();
-      inform('offerManualStatus','Angebot gespeichert. Du kannst es im Hintergrund vergleichen oder annehmen.');
+      const values=readForm(form),file=form.elements.namedItem('file').files[0];
+      if(file){
+        const data=new FormData();for(const [key,value] of Object.entries(values))if(key!=='file')data.set(key,value??'');data.set('file',file);
+        await request('/api/offers/manual',{method:'POST',formData:data});
+      }else{delete values.file;await request('/api/offers/manual',{method:'POST',data:values});}
+      form.reset();await reload();workflowFlow.snapshot();
+      inform('offerManualStatus','Angebot gespeichert. Es wird erst mit deiner Annahme beauftragt.');
     } catch(err) {inform('offerManualStatus','Fehler: '+err.message,true)}
     finally{offerUploading=false;submit.disabled=false;}
   });
@@ -607,14 +610,16 @@
     try{
       const mode=form.elements.analysis_mode.value;
       const model=mode==='ai'?window.PHBAI?.selection()?.model||'':'';
-      await window.PHBImports.enqueue({
-        kind:'versions',files:form.elements.file.files,analysisMode:mode,
+      const result=await window.PHBImports.run({
+        form,kind:'versions',files:form.elements.file.files,analysisMode:mode,
         model,fields:{offer_id:String(id)}
       });
       form.reset();
-      status.textContent='PDF analysiert. Neue Version über die Importübersicht prüfen.';
+      status.textContent=result.background?'Analyse läuft in der Warteschlange.':'PDF analysiert.';
+      if(result.background){if(workflow.open)workflowFlow.finish();form.closest('details').open=false;}
+      else window.PHBImports.review(result.jobs);
     }catch(err){status.textContent='Fehler: '+err.message;}
-    finally{button.disabled=false;}
+    finally{window.PHBImports.release(button);}
   });
   document.addEventListener('toggle',async e=>{
     const details=e.target;
@@ -747,7 +752,7 @@
       versionDrafts.some(v=>v.id===draftId||v.offer_id===draftId);
     if(isKnown){
       openWorkflow(true);
-      requestAnimationFrame(()=>$('offerDrafts').querySelector('[data-offer-card="'+draftId+'"]')?.scrollIntoView({block:'nearest'}));
+      requestAnimationFrame(()=>$('offerDrafts').querySelector('[data-offer-card="'+draftId+'"],[data-version-card^="'+draftId+':"]')?.scrollIntoView({block:'nearest'}));
     }
   }).catch(error=>{
     $('offerList').textContent='Angebote konnten nicht geladen werden: '+error.message;

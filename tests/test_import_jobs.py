@@ -1,10 +1,11 @@
 """Sequential background uploads, durable job progress, retry and AI consent."""
 import io
+import json
 import os
 import unittest
 from unittest.mock import patch
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import (app,db,initialize,ImportJob,Receipt,ProjectDocument,
+from app import (app,db,initialize,ImportJob,Receipt,ProjectDocument,Loan,
                  IMPORT_QUEUE_ROOT,_run_import_job,_recover_interrupted_imports)
 
 
@@ -123,6 +124,56 @@ class ImportJobsTest(unittest.TestCase):
         resp=self.enqueue(mode='ai')
         self.assertEqual(resp.status_code,403)
         self.assertEqual(self.client.get('/api/import-jobs').status_code,200)
+
+    def test_loan_scan_is_durable_but_does_not_create_financing_until_reviewed_save(self):
+        from flask import jsonify
+        with patch('app._ai_request_required'):
+            result=self.enqueue(kind='loans',mode='ai',extra={'loan_values':json.dumps({'name':'Eigene Bezeichnung'}),'overwrite':'false'})
+        self.assertEqual(result.status_code,202,result.json)
+        jid=result.json['jobs'][0]['id']
+        self.assertEqual(self.client.get(f'/api/import-jobs/{jid}/loan-review').status_code,409)
+        with patch.dict(app.view_functions,{'loan_ai_extract':lambda:jsonify(fields={'principal':100000,'interest_rate':3.5},warnings=['Vertrag prüfen'])}):
+            _run_import_job(jid)
+        self.assertEqual(db.session.query(Loan).count(),0)
+        review=self.client.get(f'/api/import-jobs/{jid}/loan-review')
+        self.assertEqual(review.status_code,200,review.json)
+        self.assertEqual(review.json['fields']['principal'],100000)
+        self.assertEqual(review.json['values']['name'],'Eigene Bezeichnung')
+        job=self.client.get('/api/import-jobs').json['jobs'][0]
+        self.assertEqual(job['review_url'],f'/finanzierung?loan_scan={jid}')
+        bad=self.client.post('/api/financing/loans',json={'name':'Bad','principal':0,'scan_job_id':jid})
+        self.assertEqual(bad.status_code,400)
+        self.assertEqual(db.session.get(ImportJob,jid).status,'Fertig')
+        fields={'name':'Geprüfter Kredit','principal':100000,'interest_rate':3.5,'monthly_payment':500,'scan_job_id':jid}
+        saved=self.client.post('/api/financing/loans',json=fields)
+        self.assertEqual(saved.status_code,201,saved.json)
+        self.assertEqual(db.session.get(ImportJob,jid).status,'Übernommen')
+        again=self.client.get(f'/api/import-jobs/{jid}/loan-review').json
+        self.assertTrue(again['reviewed']);self.assertEqual(again['loan_id'],saved.json['id'])
+        self.assertEqual(self.client.post('/api/financing/loans',json=fields).status_code,400)
+        self.assertEqual(db.session.query(Loan).count(),1)
+
+    def test_loan_scan_requires_ai_permission_and_valid_context(self):
+        self.assertEqual(self.enqueue(kind='loans',mode='local').status_code,400)
+        self.assertEqual(self.enqueue(kind='loans',mode='ai').status_code,403)
+        with patch('app._ai_request_required'):
+            self.assertEqual(self.enqueue(kind='loans',mode='ai',names=('one.pdf','two.pdf')).status_code,400)
+            self.assertEqual(self.enqueue(kind='loans',mode='ai',extra={'loan_id':'9999'}).status_code,400)
+            self.assertEqual(self.enqueue(kind='loans',mode='ai',extra={'loan_values':'[]'}).status_code,400)
+            self.assertEqual(self.enqueue(kind='loans',mode='ai',extra={'loan_values':'{"unexpected":1}'}).status_code,400)
+
+    def test_existing_loan_scan_cannot_be_saved_on_another_loan(self):
+        from flask import jsonify
+        first=self.client.post('/api/financing/loans',json={'name':'First','principal':500}).json['id']
+        second=self.client.post('/api/financing/loans',json={'name':'Second','principal':500}).json['id']
+        with patch('app._ai_request_required'):
+            result=self.enqueue(kind='loans',mode='ai',extra={'loan_id':str(first)})
+        jid=result.json['jobs'][0]['id']
+        with patch.dict(app.view_functions,{'loan_ai_extract':lambda:jsonify(fields={'principal':700},warnings=[])}):_run_import_job(jid)
+        invalid=self.client.patch(f'/api/financing/loans/{second}',json={'principal':700,'scan_job_id':jid})
+        self.assertEqual(invalid.status_code,400,invalid.json)
+        self.assertEqual(float(db.session.get(Loan,second).principal),500)
+        self.assertEqual(self.client.patch(f'/api/financing/loans/{first}',json={'principal':700,'scan_job_id':jid}).status_code,200)
 
     def test_offer_revision_uses_serial_worker_and_returns_original_offer_link(self):
         created=self.client.post('/api/offers/manual',json={

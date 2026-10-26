@@ -175,15 +175,15 @@ $('projectDocumentUpload').onsubmit=async e=>{
  try{
    const data=new FormData(form),fields={};
    for(const [key,value] of data.entries())if(key!=='files')fields[key]=value;
-   const jobs=await window.PHBImports.enqueue({
-     kind:'documents',files:form.elements.namedItem('files').files,
+   const result=await window.PHBImports.run({
+     form,kind:'documents',files:form.elements.namedItem('files').files,
      analysisMode:'local',fields
    });
-   form.reset();report(jobs.length+' Projektunterlage(n) fertig eingelesen.');
-   uploadDialog.close();
-   await reload();
+   form.reset();uploadDialog.close();
+   if(result.background){await reload();report('Die Dokumente werden in der Warteschlange verarbeitet.');}
+   else window.PHBImports.review(result.jobs);
  }catch(err){report(err.message,true);}
- finally{btn.disabled=false;uploadRunning=false;}
+ finally{uploadRunning=false;window.PHBImports.release(btn);}
 };
 document.addEventListener('phb-import-updated',event=>{
  if(event.detail.kind==='documents'&&!$('docEditDialog').open)reload().catch(()=>{});

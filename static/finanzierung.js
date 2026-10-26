@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
-let loanSaving=false,equityBusy=false;
+let loanSaving=false,equityBusy=false,pendingLoanScan=null;
 const loanFlow=PHBFlow.manage({
  dialog:'loanDialog',forms:['loanForm'],dismiss:['closeLoan'],
  isBusy:()=>loanAiBusy||loanSaving,
@@ -71,6 +71,7 @@ function updateLoanEditorMode(id){
 function openLoan(id=null){
  const loan=id?state.loans.find(x=>x.id===id):null;
  if(id&&!loan){message('Kredit nicht gefunden.',true);return;}
+ pendingLoanScan=null;
  $('loanForm').reset();
  $('loanForm').elements.namedItem('id').value='';
  if(loan)fill($('loanForm'),loan);
@@ -106,19 +107,27 @@ $('loanAiAnalyze').onclick=async()=>{
  $('closeLoan').disabled=true;
  $('loanSaveButton').disabled=true;
  $('deleteLoan').disabled=true;
- $('loanAiStatus').textContent='ChatGPT liest die Kreditunterlage. Die Daten werden noch nicht gespeichert …';
+ $('loanAiStatus').textContent='ChatGPT liest die Kreditunterlage. Der Kredit wird noch nicht angelegt oder geändert …';
  $('loanAiWarnings').hidden=true;
  $('loanAiWarnings').replaceChildren();
  try{
-   const form=new FormData();
-   form.set('file',file);
-   form.set('model',permission.model);
-   form.set('plan_only','true');
-   const response=await fetch('/api/financing/loans/ai/extract',{
-     method:'POST',headers:{'X-PHB-AI':'1'},body:form
-   });
-   const data=await response.json();
-   if(!response.ok)throw Error(data.error||'ChatGPT-Auslesen fehlgeschlagen.');
+   const values=payload($('loanForm')),id=values.id;delete values.id;
+   const result=await window.PHBImports.run({kind:'loans',files:[file],analysisMode:'ai',model:permission.model,
+    processingMode:$('loanProcessingMode').value,fields:{loan_id:id,loan_values:JSON.stringify(values),overwrite:String($('loanAiOverwrite').checked)}});
+   loanFlow.finish();
+   if(result.background)message('Die Kreditunterlage wird in der Warteschlange analysiert.');
+   else window.PHBImports.review(result.jobs);
+ }catch(e){$('loanAiStatus').textContent=e.message;}
+ finally{
+  loanAiBusy=false;
+  window.PHBImports.release(button);
+  $('closeLoan').disabled=false;
+  $('loanSaveButton').disabled=false;
+  $('deleteLoan').disabled=false;
+ }
+};
+
+function applyLoanAnalysis(data){
    const found=Object.entries(data.fields||{}).filter(([k,v])=>
      $('loanForm').elements.namedItem(k)&&v!==null&&v!=='');
    let applied=0,skipped=0;
@@ -127,7 +136,7 @@ $('loanAiAnalyze').onclick=async()=>{
    for(const [key,value] of found){
      const field=$('loanForm').elements.namedItem(key);
      const current=String(field.value||'').trim();
-     const empty=current===''||(!existing&&field.type==='number'&&Number(current)===0);
+     const empty=current===''||(!existing&&Number(PHBUI.currency.parse(current))===0);
      if(!allowOverwrite&&!empty){skipped++;continue;}
      field.value=value;PHBUI.currency.prepare(field);applied++;
    }
@@ -140,15 +149,17 @@ $('loanAiAnalyze').onclick=async()=>{
    $('loanAiStatus').textContent=applied+
      ' Vertragsfelder ergänzt'+(skipped?', '+skipped+' bestehende Angaben beibehalten':'')+
      '. Bitte alle Werte mit dem Original prüfen und danach die Änderungen speichern.';
- }catch(e){$('loanAiStatus').textContent=e.message;}
- finally{
-  loanAiBusy=false;
-  button.disabled=false;
-  $('closeLoan').disabled=false;
-  $('loanSaveButton').disabled=false;
-  $('deleteLoan').disabled=false;
- }
-};
+}
+async function reviewLoanScan(id){
+ const data=await api('/api/import-jobs/'+id+'/loan-review');
+ openLoan(data.loan_id||null);
+ if(data.reviewed){$('loanSaveStatus').textContent='Diese Kreditanalyse wurde bereits gespeichert.';return;}
+ fill($('loanForm'),data.values||{});
+ $('loanAiOverwrite').checked=Boolean(data.overwrite);
+ $('loanAiDetails').open=true;
+ applyLoanAnalysis(data);
+ pendingLoanScan=id;
+}
 
 $('loanDocumentUpload').onsubmit=async event=>{
  event.preventDefault();
@@ -203,12 +214,15 @@ $('loanForm').onsubmit=async event=>{
  const form=$('loanForm'),button=$('loanSaveButton'),status=$('loanSaveStatus');
  const fields=payload(form),id=fields.id;
  delete fields.id;
+ if(pendingLoanScan)fields.scan_job_id=pendingLoanScan;
  loanSaving=true;
  button.disabled=true;
  status.textContent='Vertragsangaben werden gespeichert …';
  status.classList.remove('error');
  try{
    const saved=await api('/api/financing/loans'+(id?'/'+id:''),id?'PATCH':'POST',fields);
+   pendingLoanScan=null;
+   const address=new URL(location.href);address.searchParams.delete('loan_scan');address.searchParams.set('loan_id',String(saved.id));history.replaceState(null,'',address);
    await reload();
    form.elements.namedItem('id').value=String(saved.id);
    // Show the persisted (server-validated) values, without altering finance bookings.
@@ -237,6 +251,8 @@ $('eventKind').onchange=fillOptions;
 $('eventForm').onsubmit=async e=>{e.preventDefault();const v=payload(e.currentTarget),loan=v.kind.startsWith('loan_');v[loan?'loan_id':'equity_id']=$('eventSource').value;try{await api('/api/financing/events','POST',v);await reload();message('Geldbewegung gespeichert.')}catch(err){message(err.message,true)}};
 
 reload().then(()=>{
+   const scanId=Number(new URLSearchParams(location.search).get('loan_scan'));
+   if(scanId>0)return reviewLoanScan(scanId);
    const loanId=Number(new URLSearchParams(location.search).get('loan_id'));
    if(loanId&&state.loans.some(loan=>loan.id===loanId))openLoan(loanId);
  }).catch(err=>message('Finanzierung nicht geladen: '+err.message,true));

@@ -2457,26 +2457,54 @@ def _analyse_pdf_offer(data, name):
 
 @app.post('/api/offers/manual')
 def offers_manual():
-    """Create a reviewed, list-ready offer without a PDF; no forecast until acceptance."""
-    values = request.get_json(silent=True)
+    """Create a reviewed offer, optionally with an original PDF, without running OCR."""
+    values = request.form.to_dict() if request.mimetype=='multipart/form-data' else request.get_json(silent=True)
     if not isinstance(values, dict):
         return jsonify(error='Bitte Angebotsdaten eingeben.'), 400
     obj = Offer(
         digest=sha256(('manual:' + uuid4().hex).encode('utf-8')).hexdigest(),
         filename='Manuell erfasst', vendor='', number='', category='Sonstiges',
         status='Angebot', warnings='[]', reconciled=False)
+    stored=None
     try:
         _apply_offer_fields(obj, values)
         if not obj.vendor.strip() or obj.vendor == 'Firma nicht erkannt':
             raise ValueError('Bitte einen Anbieter angeben.')
         if obj.gross is None or obj.gross <= 0:
             raise ValueError('Bitte einen positiven Bruttogesamtbetrag eingeben.')
+        uploaded=request.files.get('file')
+        if uploaded and uploaded.filename:
+            if Path(uploaded.filename).suffix.lower()!='.pdf':raise ValueError('Bitte einen PDF-Anhang auswählen.')
+            data=uploaded.read(15*1024*1024+1)
+            if not data or len(data)>15*1024*1024 or not data.startswith(b'%PDF-'):
+                raise ValueError('PDF-Anhang muss eine gültige PDF-Datei bis 15 MB sein.')
+            try:
+                from pypdf import PdfReader
+                pdf=PdfReader(io.BytesIO(data))
+                if pdf.is_encrypted or not pdf.pages:raise ValueError()
+            except Exception:raise ValueError('PDF-Anhang ist beschädigt, leer oder verschlüsselt.') from None
+            digest=sha256(data).hexdigest()
+            if db.session.scalar(select(Offer.id).where(Offer.digest==digest)):
+                raise ValueError('Dieses PDF ist bereits einem Angebot zugeordnet.')
+            DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)
+            stored=uuid4().hex+'.pdf';(DOCUMENT_ROOT/stored).write_bytes(data)
+            obj.digest=digest;obj.filename=Path(uploaded.filename).name[:240]
+            document=Document(original_name=obj.filename,stored_name=stored,kind='Angebot',
+                contractor_id=obj.contractor_id,budget_line_id=obj.budget_line_id,
+                notes='PDF-Anhang eines manuell erfassten Angebots; ohne automatische Analyse.')
+            db.session.add(document);db.session.flush();obj.document_id=document.id
         db.session.add(obj)
         db.session.commit()
         return jsonify(ok=True, id=obj.id, offer=offer_dict(obj)), 201
     except (ValueError, TypeError) as exc:
         db.session.rollback()
+        if stored:(DOCUMENT_ROOT/stored).unlink(missing_ok=True)
         return jsonify(error=str(exc)), 400
+    except Exception:
+        db.session.rollback()
+        if stored:(DOCUMENT_ROOT/stored).unlink(missing_ok=True)
+        app.logger.exception('Manuelles Angebot konnte nicht gespeichert werden')
+        return jsonify(error='Angebot konnte nicht gespeichert werden; bitte erneut versuchen.'),500
 
 
 @app.get('/api/offers')
@@ -3823,7 +3851,8 @@ from financing import register_financing
 (Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument) = register_financing(
     app, db, Receipt, CostItem, BudgetLine, budget_summary,
     root=ROOT, ai_request_required=_ai_request_required,
-    chatgpt=chatgpt, extract_json=extract_json)
+    chatgpt=chatgpt, extract_json=extract_json,
+    mark_scan_reviewed=lambda job_id,loan_id: _finish_loan_scan(job_id,loan_id))
 
 
 from energy_planning import register_energy_planning
@@ -4119,6 +4148,7 @@ _import_recovery_done=False
 _MAX_IMPORT_COUNT=8
 _MAX_IMPORT_BATCH_BYTES=75*1024*1024
 _ALLOWED_IMPORTS={
+    'loans':{'.pdf','.jpg','.jpeg','.png','.webp'},
     'costplans':{'.pdf','.xlsx','.csv','.txt','.docx','.jpg','.jpeg','.png','.webp'},
     'offers':{'.pdf'},
     'versions':{'.pdf'},
@@ -4178,8 +4208,34 @@ def _import_result(job):
             'offers':'/angebote?offer_draft=',
             'versions':'/angebote?offer_draft=',
             'receipts':'/belege?receipt_id=',
-            'documents':'/dokumente?document_id='}[job.kind]
+            'documents':'/dokumente?document_id=',
+            'loans':'/finanzierung?loan_scan='}[job.kind]
     return prefix+str(job.result_id)
+
+
+@app.get('/api/import-jobs/<int:job_id>/loan-review')
+def loan_import_review(job_id):
+    job=db.session.get(ImportJob,job_id)
+    if not job or job.kind!='loans':return jsonify(error='Kreditanalyse nicht gefunden.'),404
+    if job.status not in ('Fertig','Übernommen','Ausgeblendet') or not job.result_id:
+        return jsonify(error='Die Kreditanalyse ist noch nicht erfolgreich abgeschlossen.'),409
+    meta=json.loads(job.extra_json or '{}')
+    if meta.get('loan_id') and db.session.get(Loan,meta['loan_id']) is None:
+        return jsonify(error='Der zugehörige Kredit wurde gelöscht. Vorschläge können nicht mehr darauf angewendet werden.'),409
+    return jsonify(**meta.get('analysis',{}),loan_id=meta.get('loan_id'),
+                   values=meta.get('values',{}),overwrite=meta.get('overwrite',False),reviewed=meta.get('saved',False))
+
+
+def _finish_loan_scan(job_id,loan_id):
+    try:job=db.session.get(ImportJob,int(job_id))
+    except (ValueError,TypeError):raise ValueError('Ungültige Kreditanalyse.') from None
+    if not job or job.kind!='loans' or job.status not in ('Fertig','Ausgeblendet'):
+        raise ValueError('Die Kreditanalyse ist nicht zur Übernahme verfügbar.')
+    target=json.loads(job.extra_json or '{}').get('loan_id')
+    if target and target!=loan_id:raise ValueError('Die Kreditanalyse gehört zu einem anderen Kredit.')
+    job.status='Übernommen';job.stage='Vertragsdaten geprüft und gespeichert';job.updated_at=datetime.utcnow()
+    meta=json.loads(job.extra_json or '{}');meta.update(loan_id=loan_id,saved=True)
+    job.extra_json=json.dumps(meta,ensure_ascii=False)
 
 
 def _run_import_job(job_id):
@@ -4206,7 +4262,7 @@ def _run_import_job(job_id):
             ai_background_hooks.progress=update_stage
             raw=source.read_bytes()
             fields={'file':(io.BytesIO(raw),filename)}
-            if job_type in ('offers','versions','receipts','costplans'):
+            if job_type in ('offers','versions','receipts','costplans','loans'):
                 fields.update(analysis_mode=mode,model=ai_model,plan_only='true')
             else:
                 fields.update(meta)
@@ -4216,7 +4272,7 @@ def _run_import_job(job_id):
             # authorized AI at enqueue time; no browser credentials are stored.
             endpoint=('offers/'+str(meta['offer_id'])+'/versions') if job_type=='versions' else {
                 'costplans':'cost-plan-imports','offers':'offers/import','receipts':'receipts',
-                'documents':'project-documents'}[job_type]
+                'documents':'project-documents','loans':'financing/loans/ai/extract'}[job_type]
             with app.test_request_context(
                 '/api/'+endpoint,
                 method='POST',data=fields,
@@ -4227,7 +4283,8 @@ def _run_import_job(job_id):
                         'offers':lambda:offers_import(),
                         'versions':lambda:upload_offer_version(meta['offer_id']),
                         'receipts':lambda:receipt_upload(),
-                        'documents':lambda:project_document_upload()}[job_type]()
+                        'documents':lambda:project_document_upload(),
+                        'loans':lambda:app.view_functions['loan_ai_extract']()}[job_type]()
                 if isinstance(result,tuple):
                     response,status_code=result[0],result[1]
                 else:
@@ -4235,12 +4292,14 @@ def _run_import_job(job_id):
                 payload=response.get_json() or {}
             if status_code>=400:
                 raise ValueError(str(payload.get('error','Import fehlgeschlagen'))[:450])
-            result_id=(payload.get('document',{}).get('id') if job_type=='documents'
+            result_id=(job_id if job_type=='loans' else payload.get('document',{}).get('id') if job_type=='documents'
                        else payload.get('offer_id') if job_type=='versions'
                        else payload.get('id'))
             if not result_id:raise ValueError('Server hat keinen gespeicherten Entwurf zurückgegeben.')
             job=db.session.get(ImportJob,job_id)
             job.result_id=int(result_id)
+            if job_type=='loans':
+                meta['analysis']=payload;job.extra_json=json.dumps(meta,ensure_ascii=False)
             if job_type=='versions':
                 meta['version_number']=payload.get('version',{}).get('version')
                 job.extra_json=json.dumps(meta,ensure_ascii=False)
@@ -4299,6 +4358,7 @@ def enqueue_import_jobs():
     mode=request.form.get('analysis_mode','local')
     if mode not in ('ai','local') or (kind=='documents' and mode!='local'):
         return jsonify(error='Unbekannte Analyseart.'),400
+    if kind=='loans' and mode!='ai':return jsonify(error='Kreditunterlagen werden mit ChatGPT analysiert.'),400
     model=request.form.get('model','')
     if mode=='ai':
         _ai_request_required()
@@ -4328,6 +4388,19 @@ def enqueue_import_jobs():
             path.write_bytes(data)
             staged.append((filename,stored))
         meta={}
+        if kind=='loans':
+            if len(files)!=1:raise ValueError('Pro Kreditanalyse genau eine Unterlage auswählen.')
+            target=request.form.get('loan_id','')
+            loan_id=int(target) if target else None
+            if loan_id is not None and (loan_id<1 or db.session.get(Loan,loan_id) is None):
+                raise ValueError('Kredit für diese Analyse nicht gefunden.')
+            raw=request.form.get('loan_values','{}')
+            if len(raw)>10000:raise ValueError('Zu viele Vertragsdaten.')
+            values=json.loads(raw)
+            allowed={'name','bank','reference','principal','interest_rate','monthly_payment','initial_repayment_rate','extra_repayment_pct','contract_date','fixed_until','interest_free_until','commitment_interest_rate','notes'}
+            if not isinstance(values,dict) or any(k not in allowed or not isinstance(v,(str,int,float,type(None))) for k,v in values.items()):
+                raise ValueError('Ungültige Vertragsdaten.')
+            meta.update(loan_id=loan_id,values=values,overwrite=request.form.get('overwrite')=='true')
         if kind=='versions':
             try:offer_id=int(request.form.get('offer_id',''))
             except (ValueError,TypeError):raise ValueError('Angebot für neue Version auswählen.')

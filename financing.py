@@ -67,7 +67,7 @@ def note(value):
     return s
 
 
-def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *, root, ai_request_required, chatgpt, extract_json):
+def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *, root, ai_request_required, chatgpt, extract_json,mark_scan_reviewed=None):
     class Loan(db.Model):
         __tablename__ = 'finance_loan'
         id = db.Column(db.Integer, primary_key=True)
@@ -476,8 +476,10 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
     @app.post('/api/financing/loans')
     def loan_create():
         try:
-            l=Loan();form_loan(l,request.get_json(silent=True) or {})
+            data=request.get_json(silent=True) or {}
+            l=Loan();form_loan(l,data)
             db.session.add(l);db.session.flush();validate_ledger()
+            if data.get('scan_job_id') and mark_scan_reviewed:mark_scan_reviewed(data['scan_job_id'],l.id)
             payload=loan_json(l);db.session.commit()
             return jsonify(payload),201
         except (ValueError,TypeError) as exc:
@@ -491,6 +493,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
             data=loan_json(l)
             data.update(request.get_json(silent=True) or {})
             form_loan(l,data);db.session.flush();validate_ledger()
+            if data.get('scan_job_id') and mark_scan_reviewed:mark_scan_reviewed(data['scan_job_id'],l.id)
             payload=loan_json(l);db.session.commit();return jsonify(payload)
         except (ValueError,TypeError) as exc:
             db.session.rollback();return jsonify(error=str(exc)),400

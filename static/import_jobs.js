@@ -9,8 +9,49 @@
    const arr=JSON.parse(localStorage.getItem(storageKey)||'[]');
    if(Array.isArray(arr))arr.slice(-200).forEach(x=>finished.add(Number(x)));
  }catch(_){}
- let records=[],pending=false,panelOpen=false,activePoll=null;
- const submitting=new Set(),working=new Set(),disabledStates=new WeakMap();
+ let records=[],pollFlight=null,panelOpen=false,activePoll=null;
+ const submitting=new Set(),working=new Set(),disabledStates=new WeakMap(),foregroundJobs=new Set();
+ let waitDialog=null;
+ function prepareModes(root){
+  const forms=[...(root.querySelectorAll?.('form[data-import-kind],form[data-version-upload]')||[])];
+  if(root.matches?.('form[data-import-kind],form[data-version-upload]'))forms.push(root);
+  for(const form of forms){
+   if(form.querySelector('[name=processing_mode]'))continue;
+   const label=document.createElement('label');label.className='phb-processing-control';
+   label.append('Verarbeitung');
+   const select=document.createElement('select');select.name='processing_mode';select.dataset.phbIgnoreDirty='true';
+   select.add(new Option('Im Vordergrund – direkt prüfen','foreground'));
+   select.add(new Option('Im Hintergrund – später prüfen','background'));
+   label.append(select);
+   const button=form.querySelector('button[type=submit]');
+   if(button)button.before(label);else form.append(label);
+  }
+ }
+ function showWait(mode){
+  if(waitDialog?.open)throw Error('Eine Verarbeitung läuft bereits im Vordergrund.');
+  if(!waitDialog){
+   waitDialog=document.createElement('dialog');waitDialog.id='phbImportWait';waitDialog.className='phb-import-wait';
+   waitDialog.setAttribute('aria-labelledby','phbImportWaitTitle');
+   waitDialog.innerHTML='<div class="phb-busy-spinner" aria-hidden="true"></div><h2 id="phbImportWaitTitle"></h2><p id="phbImportWaitStage" role="status" aria-live="polite"></p><small>Die aufbereiteten Daten kannst du anschließend prüfen und bearbeiten.</small>';
+   waitDialog.addEventListener('cancel',e=>e.preventDefault());document.body.append(waitDialog);
+  }
+  $('phbImportWaitTitle').textContent=mode==='background'?'Dateien werden hochgeladen':'Dokumente werden verarbeitet';
+  $('phbImportWaitStage').textContent=mode==='background'?'Die Warteschlange übernimmt nach dem Upload.':'Nach Abschluss öffnet sich die Prüfung automatisch.';
+  waitDialog.setAttribute('aria-busy','true');waitDialog.showModal();
+ }
+ async function run({form,processingMode,...options}){
+  const mode=processingMode||form?.querySelector('[name=processing_mode]')?.value||'foreground';
+  if(!['foreground','background'].includes(mode))throw Error('Bitte eine Verarbeitungsart auswählen.');
+  showWait(mode);
+  try{return {jobs:await enqueue({...options,processingMode:mode}),background:mode==='background'};}
+  finally{waitDialog.close();waitDialog.removeAttribute('aria-busy');}
+ }
+ function review(jobs){
+  const job=jobs.find(j=>j.status==='Fertig'&&j.review_url);
+  if(job)location.assign(job.review_url);
+  else {panelOpen=true;render();}
+ }
+ window.addEventListener('beforeunload',event=>{if(waitDialog?.open){event.preventDefault();event.returnValue='';}});
  function syncLocks(){
   const kinds=new Set([...working,...submitting,...records.filter(alive).map(j=>j.kind)]);
   document.querySelectorAll('[data-import-kind],form[data-version-upload]').forEach(node=>{
@@ -23,9 +64,13 @@
    }
   });
  }
+ function release(control){
+  if(disabledStates.has(control))disabledStates.set(control,false);
+  control.disabled=false;syncLocks();
+ }
  document.addEventListener('click',e=>{syncLocks();if(e.target.closest('[data-import-busy]')){e.preventDefault();e.stopImmediatePropagation();}},true);
  document.addEventListener('submit',e=>{if(e.target.dataset.importBusy==='true'){e.preventDefault();e.stopImmediatePropagation();}},true);
- const labels={costplans:'Kostenplanung',offers:'Angebot',receipts:'Rechnung',documents:'Projektdokument'};
+ const labels={costplans:'Kostenplanung',offers:'Angebot',receipts:'Rechnung',documents:'Projektdokument',loans:'Kreditunterlage'};
  const finishedState=j=>['Fertig','Fehler','Unterbrochen'].includes(j.status);
  const alive=j=>j.status==='Wartend'||j.status==='Läuft';
  function remember(id){
@@ -123,9 +168,12 @@
    for(const j of records.slice(0,18))list.append(jobNode(j));
    if(!records.length){const p=document.createElement('p');p.textContent='Keine Importe vorhanden.';list.append(p);}
  }
- async function poll(){
-   if(pending)return;
-   pending=true;
+ function poll(){
+   if(pollFlight)return pollFlight;
+   pollFlight=pollOnce().finally(()=>{pollFlight=null;});
+   return pollFlight;
+ }
+ async function pollOnce(){
    try{
      const result=await fetch('/api/import-jobs',{cache:'no-store'});
      if(!result.ok)throw Error('Status nicht erreichbar');
@@ -136,13 +184,13 @@
      for(const j of newlyCompleted){
        remember(j.id);
        const age=now()-Date.parse(j.finished_at||j.updated_at||0);
-       if(age>=0 && age<8*3600000)displayToast(j);
+       if(age>=0 && age<8*3600000&&!foregroundJobs.has(j.id))displayToast(j);
        document.dispatchEvent(new CustomEvent('phb-import-updated',{detail:j}));
      }
      render();
    }catch(error){
      $('phbImportCount').textContent='Status nicht erreichbar';
-   }finally{pending=false;}
+   }
  }
  function schedule(){
    clearTimeout(activePoll);
@@ -150,6 +198,8 @@
    activePoll=setTimeout(async()=>{await poll();schedule();},delay);
  }
  function setup(){
+   prepareModes(document);
+   new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1)prepareModes(node);}).observe(document.body,{childList:true,subtree:true});
    $('phbImportToggle').onclick=()=>{panelOpen=!panelOpen;render();};
    $('phbImportClose').onclick=()=>{panelOpen=false;render();};
    $('phbImportDismissAll').onclick=async()=>{
@@ -172,9 +222,9 @@
   if(submitting.has(kind)||working.has(kind)||records.some(j=>j.kind===kind&&alive(j)))throw Error('Diese Analyse läuft bereits. Bitte Ergebnis oder Fehler abwarten.');
   submitting.add(kind);
   try{return await processBatch(options);}
-  finally{submitting.delete(kind);working.delete(kind);await poll();syncLocks();}
+  finally{submitting.delete(kind);working.delete(kind);await poll();syncLocks();for(const job of records.filter(j=>j.kind===kind))foregroundJobs.delete(job.id);}
  }
- async function processBatch({kind,files,analysisMode='local',model='',fields={}}){
+ async function processBatch({kind,files,analysisMode='local',model='',fields={},processingMode='foreground'}){
    const selected=Array.from(files||[]);
    if(!selected.length)throw Error('Bitte mindestens eine Datei auswählen.');
    if(selected.length>8)throw Error('Maximal acht Dateien pro Durchgang.');
@@ -187,7 +237,7 @@
    for(const [key,value] of Object.entries(fields))data.set(key,value??'');
    // Optional system notification only after an explicit import action.
    // In-app notifications never depend on this permission.
-   if('Notification' in window&&Notification.permission==='default'){
+   if(processingMode==='background'&&'Notification' in window&&Notification.permission==='default'){
      try{Notification.requestPermission().catch(()=>{});}catch(_){}
    }
    syncLocks();
@@ -195,8 +245,11 @@
      method:'POST',headers:analysisMode==='ai'?{'X-PHB-AI':'1'}:{},body:data});
    const result=await response.json();
    if(!response.ok)throw Error(result.error||'Import konnte nicht gestartet werden.');
-   panelOpen=true;
+   records=[...result.jobs,...records.filter(j=>!result.jobs.some(created=>created.id===j.id))];
+   if(processingMode==='foreground')result.jobs.forEach(j=>foregroundJobs.add(j.id));
+   panelOpen=false;
    await poll();schedule();
+   if(processingMode==='background')return result.jobs;
    working.add(kind);syncLocks();
    let failures=0;
    while(true){
@@ -206,6 +259,7 @@
      const payload=await status.json();if(!status.ok)throw Error(payload.error||'Importstatus nicht erreichbar.');jobs=payload.jobs;
      if(!Array.isArray(jobs)||jobs.length!==result.jobs.length||jobs.some(j=>!result.jobs.some(original=>original.id===j.id)||!['Wartend','Läuft','Fertig','Übernommen','Ausgeblendet','Fehler','Unterbrochen'].includes(j.status)))throw Error('Ungültiger Importstatus.');
      failures=0;
+     if(waitDialog?.open){const current=jobs.find(alive)||jobs[jobs.length-1];$('phbImportWaitStage').textContent=current?current.filename+' · '+current.stage:'Verarbeitung läuft …';}
     }catch(error){if(++failures>=3)throw Error('Verbindung zum Importstatus unterbrochen. Die Importübersicht zeigt den letzten Stand; der Server kann weiterarbeiten.');}
     if(jobs&&jobs.every(j=>!alive(j))){
      const failed=jobs.filter(j=>['Fehler','Unterbrochen'].includes(j.status));
@@ -215,7 +269,7 @@
     await new Promise(resolve=>setTimeout(resolve,1000));
    }
  }
- window.PHBImports={enqueue,refresh:poll,open:()=>{panelOpen=true;render();}};
+ window.PHBImports={enqueue,run,review,release,refresh:poll,open:()=>{panelOpen=true;render();}};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});
  else setup();
 })();
