@@ -60,6 +60,11 @@ deutsche und englische Sprachdaten sowie Poppler. Auf **Intel-Macs ab macOS 11**
 die Werkzeuge über Micromamba und conda-forge ausschließlich unter `.runtime/ocr`
 installiert, ohne Homebrew, Administratorrechte oder Änderungen am Shell-Profil. Der
 Micromamba-Download ist auf eine Version mit fest hinterlegter SHA-256-Prüfsumme gepinnt.
+Der Download nutzt das macOS-eigene `/usr/bin/curl` mit aktiver Zertifikatsprüfung;
+eine fehlende CA-Einrichtung der Python.org-Installation blockiert ihn damit nicht mehr.
+Für die anschließenden Paketdownloads wird der macOS-Zertifikatsspeicher
+`/etc/ssl/cert.pem` verwendet, sofern vorhanden. Eigene CA-Dateien aus `SSL_CERT_FILE`,
+`CURL_CA_BUNDLE` oder `REQUESTS_CA_BUNDLE` werden berücksichtigt und müssen existieren.
 Die Sprachdaten werden explizit aus dieser Installation geladen, auch beim Start aus VS Code.
 Auf **Apple Silicon** werden die Pakete aus `Brewfile` über Homebrew installiert;
 fehlt Homebrew, startet dessen offizieller Installer (macOS kann Administratorrechte und

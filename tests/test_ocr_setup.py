@@ -5,6 +5,7 @@ import io
 import os
 from pathlib import Path
 import subprocess
+import ssl
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -66,24 +67,74 @@ class OCRRuntimeTests(unittest.TestCase):
 
 
 class IntelOCRSetupTests(unittest.TestCase):
+    @staticmethod
+    def curl_response(data):
+        def run(command,**kwargs):
+            Path(command[command.index('--output')+1]).write_bytes(data)
+            return subprocess.CompletedProcess(command,0)
+        return run
+
     def test_download_is_verified_and_reused_without_network(self):
         data=b'synthetic executable';digest=hashlib.sha256(data).hexdigest()
         with tempfile.TemporaryDirectory() as tmp:
             binary=Path(tmp)/'bin'/'micromamba'
-            with patch('urllib.request.urlopen',return_value=io.BytesIO(data)):
+            with patch('subprocess.run',side_effect=self.curl_response(data)):
                 setup_intel_ocr.download_verified('https://example.test/binary',binary,digest)
             self.assertEqual(binary.read_bytes(),data)
             self.assertTrue(os.access(binary,os.X_OK))
-            with patch('urllib.request.urlopen',side_effect=AssertionError('cached binary must not download')):
+            with patch('subprocess.run',side_effect=AssertionError('cached binary must not download')):
                 setup_intel_ocr.download_verified('https://example.test/binary',binary,digest)
 
     def test_corrupt_download_never_replaces_or_executes_binary(self):
         with tempfile.TemporaryDirectory() as tmp:
             binary=Path(tmp)/'micromamba';binary.write_bytes(b'previous')
-            with patch('urllib.request.urlopen',return_value=io.BytesIO(b'corrupt')):
+            with patch('subprocess.run',side_effect=self.curl_response(b'corrupt')):
                 with self.assertRaisesRegex(RuntimeError,'Prüfsumme'):
                     setup_intel_ocr.download_verified('https://example.test/binary',binary,'0'*64)
             self.assertEqual(binary.read_bytes(),b'previous')
+
+    def test_download_works_without_python_ca_setup_and_keeps_tls_verification(self):
+        data=b'verified executable';digest=hashlib.sha256(data).hexdigest()
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch('urllib.request.urlopen',side_effect=ssl.SSLCertVerificationError('unable to get local issuer certificate')) as python_https,patch('subprocess.run',side_effect=self.curl_response(data)) as run:
+                setup_intel_ocr.download_verified('https://example.test/binary',Path(tmp)/'micromamba',digest)
+            python_https.assert_not_called()
+            command=run.call_args.args[0]
+            self.assertEqual(command[0],'/usr/bin/curl')
+            self.assertEqual(command[command.index('--proto-redir')+1],'=https')
+            self.assertNotIn('--insecure',command)
+            self.assertNotIn('-k',command)
+            self.assertTrue(run.call_args.kwargs['check'])
+
+    def test_failed_https_download_preserves_previous_binary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary=Path(tmp)/'micromamba';binary.write_bytes(b'previous')
+            with patch('subprocess.run',side_effect=subprocess.CalledProcessError(60,['curl'])):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    setup_intel_ocr.download_verified('https://example.test/binary',binary,'0'*64)
+            self.assertEqual(binary.read_bytes(),b'previous')
+
+    def test_macos_system_ca_bundle_is_used_when_python_defaults_are_missing(self):
+        with patch.dict(os.environ,{},clear=True),patch('scripts.setup_intel_ocr.sys.platform','darwin'),patch('pathlib.Path.is_file',return_value=True):
+            self.assertEqual(setup_intel_ocr.ca_bundle(),'/etc/ssl/cert.pem')
+
+    def test_explicit_ca_bundle_is_respected_and_missing_bundle_fails_closed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bundle=Path(tmp)/'organization.pem';bundle.touch()
+            with patch.dict(os.environ,{'SSL_CERT_FILE':str(bundle)}):
+                self.assertEqual(setup_intel_ocr.ca_bundle(),str(bundle))
+                bundle.unlink()
+                with self.assertRaisesRegex(RuntimeError,'SSL_CERT_FILE'):
+                    setup_intel_ocr.ca_bundle()
+
+    def test_package_downloads_use_the_same_trusted_ca_bundle(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.object(setup_intel_ocr,'download_verified'),patch.object(setup_intel_ocr,'ca_bundle',return_value='/trusted/macos.pem'),patch('subprocess.run') as run:
+                setup_intel_ocr.install(Path(tmp))
+            command=run.call_args.args[0]
+            self.assertEqual(command[command.index('--ssl-verify')+1],'/trusted/macos.pem')
+            self.assertEqual(run.call_args.kwargs['env']['SSL_CERT_FILE'],'/trusted/macos.pem')
+            self.assertEqual(run.call_args.kwargs['env']['CURL_CA_BUNDLE'],'/trusted/macos.pem')
 
     def test_installer_uses_intel_packages_in_dedicated_prefix(self):
         with tempfile.TemporaryDirectory() as tmp:
