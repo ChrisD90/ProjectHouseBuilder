@@ -177,6 +177,8 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                 raise ValueError('Eine Zahlung verweist auf einen nicht gebuchten Beleg.')
             amounts[payment.receipt_id] += dec(payment.amount)
         for rid, amount in amounts.items():
+            if amount > dec(receipts[rid].paid_amount):
+                raise ValueError('Zahlungszuordnungen übersteigen den bezahlten Betrag.')
             if amount > dec(receipts[rid].gross_amount)-dec(receipts[rid].advance_deduction):
                 raise ValueError('Zahlungen übersteigen den Rechnungsbetrag.')
 
@@ -193,7 +195,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         unallocated = sum((x['unallocated_drawn'] for x in ls), ZERO)
         eq_available = sum((x['available'] for x in es), ZERO)
         reserved = sum((dec(x.reserve) for x in equity), ZERO)
-        sourced = sum((dec(x.amount) for x in payments), ZERO)
+        sourced = sum((dec(x.amount) for x in payments if x.source in ('loan','equity')), ZERO)
         booked = db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht')).all()
         old_unassigned = sum((dec(r.paid_amount) for r in booked), ZERO) - sourced
         if old_unassigned < 0:
@@ -229,7 +231,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         if any(x['after_reserve'] < ZERO for x in es):
             warnings.append('Mindestens ein Eigenkapitalkonto liegt unter der gewünschten Reserve.')
         if old_unassigned > ZERO:
-            warnings.append('Es bestehen ältere Zahlungen ohne hinterlegte Finanzierungsquelle.')
+            warnings.append('Es bestehen bezahlte Rechnungsbeträge ohne Finanzierungszuordnung.')
         return {'project_budget':cost['budget'], 'loan_frame':float(loan_total), 'loan_drawn':float(drawn), 'loan_undrawn':float(undrawn),
                 'loan_unallocated':float(unallocated), 'loan_debt':float(sum((x['outstanding_principal'] for x in ls),ZERO)),
                 'equity_available':float(eq_available), 'equity_reserve':float(reserved),
@@ -238,7 +240,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                 'unassigned_paid_receipts':float(old_unassigned),
                 'project_forecast':cost['planned'], 'project_paid':cost['paid'],
                 'project_remaining':cost['remaining'], 'financing_gap':float(max(ZERO,remaining-available)),
-                'unpaid_booked':float(sum((max(ZERO,dec(r.gross_amount)-dec(r.paid_amount)) for r in booked),ZERO)),
+                'unpaid_booked':float(sum((max(ZERO,dec(r.gross_amount)-dec(r.advance_deduction)-dec(r.paid_amount)) for r in booked),ZERO)),
                 'overdue':float(overdue),'no_due_date':float(no_date), 'months':month_view, 'warnings':warnings}
 
     LOAN_DOCUMENT_ROOT = Path(root) / 'private' / 'loans'
@@ -445,7 +447,8 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                        receipts=[{'id':r.id,'name':r.supplier or r.original_name,'invoice_number':r.invoice_number,
                                   'gross':float(r.gross_amount or 0),'paid':float(r.paid_amount or 0),
                                   'open':float(max(ZERO,dec(r.gross_amount)-dec(r.advance_deduction)-dec(r.paid_amount))),
-                                  'due_date':r.due_date,'category':r.category}
+                                  'due_date':r.due_date,'category':r.category,
+                                  'unassigned':float(max(ZERO,dec(r.paid_amount)-sum((dec(p.amount) for p in all_rows(ReceiptFinancingPayment) if p.receipt_id==r.id and p.source in ('loan','equity')),ZERO)))}
                                  for r in db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht').order_by(Receipt.id.desc()))],
                        summary=summary())
 
@@ -567,19 +570,21 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         d=request.get_json(silent=True) or {}
         try:
             rid=model_id(d.get('receipt_id'))
-            receipt=db.session.get(Receipt,rid)
+            receipt=db.session.scalar(select(Receipt).where(Receipt.id==rid).with_for_update())
             if not receipt or receipt.status!='Gebucht':
                 raise ValueError('Zahlungen können nur gebuchten Rechnungen zugeordnet werden.')
             source=d.get('source')
-            if source not in ('loan','equity'):
-                raise ValueError('Quelle muss Kredit oder Eigenkapital sein.')
-            ref=model_id(d.get('loan_id') if source=='loan' else d.get('equity_id'))
-            if not db.session.get(Loan if source=='loan' else EquityAccount,ref):
-                raise ValueError('Finanzierungsquelle nicht vorhanden.')
-            # Old paid_amount entries must not be attributed twice.
-            previous=sum((dec(x.amount) for x in db.session.scalars(select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==rid))),ZERO)
-            if dec(receipt.paid_amount)!=previous:
-                raise ValueError('Der Beleg enthält eine ältere, nicht zugeordnete Zahlung. Erst den direkten Zahlbetrag im Beleg auf 0 setzen bzw. berichtigen.')
+            if source not in ('loan','equity','unassigned'):
+                raise ValueError('Quelle muss Kredit, Eigenkapital oder Nicht zugewiesen sein.')
+            ref=None
+            if source!='unassigned':
+                ref=model_id(d.get('loan_id') if source=='loan' else d.get('equity_id'))
+                if not db.session.get(Loan if source=='loan' else EquityAccount,ref):
+                    raise ValueError('Finanzierungsquelle nicht vorhanden.')
+            previous=dec(receipt.paid_amount)
+            recorded=sum((dec(p.amount) for p in all_rows(ReceiptFinancingPayment) if p.receipt_id==receipt.id),ZERO)
+            if previous!=recorded and source!='unassigned':
+                raise ValueError('Bestehende nicht zugewiesene Zahlung zuerst über Nachträglich zuordnen einer Quelle zuweisen.')
             amount=money(d.get('amount'),positive=True)
             if previous+amount>dec(receipt.gross_amount)-dec(receipt.advance_deduction):
                 raise ValueError('Zahlung übersteigt den noch offenen Rechnungsbetrag.')
@@ -594,6 +599,52 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
             result=payment_json(p);db.session.commit();return jsonify(result),201
         except (ValueError,TypeError) as exc:
             db.session.rollback();return jsonify(error=str(exc)),400
+
+    @app.post('/api/financing/payments/assign')
+    def finance_payment_assign():
+        d=request.get_json(silent=True) or {}
+        try:
+            receipt=db.session.scalar(select(Receipt).where(Receipt.id==model_id(d.get('receipt_id'))).with_for_update())
+            if not receipt or receipt.status!='Gebucht':raise ValueError('Nur Zahlungen gebuchter Rechnungen zuordnen.')
+            source=d.get('source')
+            if source not in ('loan','equity'):raise ValueError('Kredit oder Eigenkapital wählen.')
+            ref=model_id(d.get('loan_id') if source=='loan' else d.get('equity_id'))
+            if not db.session.get(Loan if source=='loan' else EquityAccount,ref):raise ValueError('Finanzierungsquelle nicht gefunden.')
+            amount=money(d.get('amount'),positive=True)
+            payment=None
+            if d.get('payment_id'):
+                payment=db.session.get(ReceiptFinancingPayment,model_id(d['payment_id']))
+                if not payment or payment.receipt_id!=receipt.id or payment.source!='unassigned':
+                    raise ValueError('Diese Zahlung kann nicht nachträglich zugeordnet werden.')
+                available=dec(payment.amount)
+            else:
+                existing=sum((dec(p.amount) for p in all_rows(ReceiptFinancingPayment) if p.receipt_id==receipt.id),ZERO)
+                available=dec(receipt.paid_amount)-existing
+            if amount>available:raise ValueError('Zuordnung übersteigt den noch nicht zugewiesenen Zahlbetrag.')
+            payment_date=payment.payment_date if payment else iso_date(d.get('payment_date'))
+            notes=payment.notes if payment else 'Nachträgliche Zuordnung einer bestehenden Zahlung'
+            if payment and amount==available:
+                payment.source=source;payment.loan_id=ref if source=='loan' else None;payment.equity_id=ref if source=='equity' else None
+                assigned=payment
+            else:
+                if payment:payment.amount=available-amount
+                assigned=ReceiptFinancingPayment(receipt_id=receipt.id,source=source,
+                    loan_id=ref if source=='loan' else None,equity_id=ref if source=='equity' else None,
+                    amount=amount,payment_date=payment_date,notes=notes)
+                db.session.add(assigned)
+            db.session.flush();validate_ledger()
+            result=payment_json(assigned);db.session.commit()
+            return jsonify(result),200
+        except (ValueError,TypeError) as exc:
+            db.session.rollback();return jsonify(error=str(exc)),400
+
+    @app.post('/api/financing/payments/<int:pid>/unassign')
+    def finance_payment_unassign(pid):
+        payment=db.session.get(ReceiptFinancingPayment,pid)
+        if not payment:return jsonify(error='Zahlung nicht gefunden.'),404
+        payment.source='unassigned';payment.loan_id=None;payment.equity_id=None
+        db.session.flush();validate_ledger();db.session.commit()
+        return jsonify(ok=True)
 
     @app.delete('/api/financing/payments/<int:pid>')
     def finance_payment_delete(pid):

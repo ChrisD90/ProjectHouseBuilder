@@ -27,6 +27,8 @@ jobs:
           node --test tests/workflow_runtime.test.cjs
           node --check static/app.js
           node --check static/gantt_drag.js
+          node --check static/task_completion.js
+          node --check static/receipt_cancellations.js
           node --check static/costs.js
           node --check static/cost_plan_imports.js
           node --check static/energieplanung.js

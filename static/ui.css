@@ -627,3 +627,25 @@ body.phb-app #gantt .bar:focus-visible{outline:3px solid var(--ui-accent);outlin
 /* A horizontal wrapping header avoids vertical flex-basis gaps on narrow screens. */
 body.phb-app .phb-action-header{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center}
 @media(max-width:650px){body.phb-app .phb-action-header>div:first-child{flex-basis:100%}}
+
+/* Optional planning entry point, outside the toolbar and above the document feed. */
+body.phb-app.phb-page-zeitplan>.schedule-chat-fab{
+ position:fixed;right:24px;bottom:24px;top:auto;left:auto;z-index:45;
+ display:inline-flex;align-items:center;gap:9px;min-height:48px;padding:12px 18px;
+ border-radius:24px;background:var(--ui-accent);color:var(--ui-surface);border:1px solid var(--ui-accent);box-shadow:var(--ui-shadow-raised)
+}
+body.phb-app.phb-page-zeitplan>.schedule-chat-fab .schedule-chat-fab-icon{width:22px;height:22px;flex:none}
+body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{top:auto;bottom:88px;right:24px;max-height:calc(100dvh - 110px)}
+body.phb-app #taskAutosaveStatus{padding:0 24px;color:var(--ui-muted);font-size:13px}
+body.phb-app .receipt-payment-badge{display:inline-block;margin:4px 0;padding:4px 8px;border:1px solid var(--ui-line);border-radius:8px;color:var(--ui-warning);font-size:12px}
+body.phb-app #receiptCancelForm{display:grid;gap:14px}
+body.phb-app #receiptCancelForm label{display:grid;gap:6px}
+body.phb-app .receipt-payment-history-row>div{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:600px){
+ body.phb-app.phb-page-zeitplan>.schedule-chat-fab{right:16px;bottom:16px}
+ body.phb-app.phb-page-zeitplan main.phb-main .schedule-chat-popover{top:auto;bottom:80px;right:12px;max-height:calc(100dvh - 100px);width:calc(100vw - 24px)}
+}
+@media(max-width:600px){
+ body.phb-app.phb-page-zeitplan>.schedule-chat-fab{width:48px;height:48px;min-width:48px;padding:0;justify-content:center}
+ body.phb-app.phb-page-zeitplan>.schedule-chat-fab>span{display:none}
+}

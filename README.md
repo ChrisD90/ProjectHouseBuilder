@@ -297,7 +297,7 @@ Beim ersten Initialisieren der Stammdaten werden die üblichen Renovierungsgewer
 
 **Projektbudget = Summe der vereinbarten Darlehensrahmen + Eigenkapital-Startbestände + spätere Eigenkapitaleinzahlungen − Entnahmen.** Kreditabrufe sind keine zusätzlichen Mittel, Zahlungen und Tilgungen werden nicht ein zweites Mal vom Projektbudget abgezogen. Die Kostenansicht zeigt diese verfügbare Finanzierungsbasis im Vergleich zur aktuellen Kostenprognose. Unter **Finanzierung** liegen „+ Kredit erfassen“ und „+ Konto“ nebeneinander im Seitenkopf; der bisherige manuelle Budget-Ändern-Button ist entfernt. Ältere gespeicherte freie Budgetwerte sind nicht mehr maßgeblich, und direkte Änderungen über `/api/budget/config` werden mit einem Hinweis abgelehnt. Kreditraten, Abrufe, Eigenkapitalreserve und verfügbare Zahlungsmittel werden weiterhin separat geführt.
 
-Der Bereich **„Rechnungen bezahlen“** liegt jetzt im bestehenden Belegbearbeitungsdialog unter **Rechnungen & Belege**. Nach Klick auf eine **gebuchte Rechnung** öffnet die Aktion „Rechnung bezahlen“ einen vierstufigen Ablauf: Kredit/Eigenkapital wählen, konkrete Finanzierungsquelle auswählen, Betrag (auch Teilzahlung) und Datum ergänzen, Zahlung bestätigen. Angezeigt werden offene Summe, bereits bezahlte Beträge sowie bisherige Zuordnungen. Einzelne Zahlungszuordnungen können dort storniert werden. Verwendet werden weiterhin die geprüften Endpunkte `/api/financing/payments` – keine neue oder doppelte Kostenbuchung. Bereits manuell erfasste Zahlungen ohne Quelle müssen wie bisher erst berichtigt werden. Kreditzahlungen setzen tatsächlich abgerufene und noch ungebundene Kreditmittel voraus. Die bisherige Liquiditätsvorschau wurde vorläufig aus der Finanzierungsoberfläche entfernt.
+Der Bereich **„Rechnungen bezahlen“** liegt jetzt im bestehenden Belegbearbeitungsdialog unter **Rechnungen & Belege**. Nach Klick auf eine **gebuchte Rechnung** öffnet die Aktion „Rechnung bezahlen“ einen vierstufigen Ablauf: Kredit/Eigenkapital wählen, konkrete Finanzierungsquelle auswählen, Betrag (auch Teilzahlung) und Datum ergänzen, Zahlung bestätigen. Angezeigt werden offene Summe, bereits bezahlte Beträge sowie bisherige Zuordnungen. Einzelne Zahlungszuordnungen können dort storniert werden. Verwendet werden weiterhin die geprüften Endpunkte `/api/financing/payments` – keine neue oder doppelte Kostenbuchung. Zahlungen ohne Quelle können als „Nicht zugewiesen“ bestehen bleiben und später ohne erneute Zahlung zugeordnet werden. Kreditzahlungen setzen tatsächlich abgerufene und noch ungebundene Kreditmittel voraus. Die bisherige Liquiditätsvorschau wurde vorläufig aus der Finanzierungsoberfläche entfernt.
 
 Die globale **Importwarteschlange** bietet pro abgeschlossenem/fehlgeschlagenem/unterbrochenem Auftrag „Ausblenden“ sowie die Sammelaktion „Erledigte ausblenden“. Offene und gerade laufende Aufträge sind geschützt. Die Jobs bleiben für die technische Nachvollziehbarkeit als archivierte Datensätze erhalten, verschwinden aber aus der aktiven Übersicht; Originaldokumente, Angebote und Rechnungen werden **nicht** gelöscht. Für fehlgeschlagene Aufträge wird die temporäre Warteschlangendatei beim endgültigen manuellen Ausblenden entfernt; eine erneute Analyse erfordert dann einen neuen Upload. Bereits fachlich übernommene Aufträge verschwinden ebenfalls aus der aktiven Liste.
 
@@ -387,3 +387,38 @@ während Einbettung durch fremde Websites gesperrt bleibt.
 Die Änderungen benötigen keine zusätzliche Datenbankmigration. Der Service-Worker-
 Cache wurde aktualisiert. Die Datenprüfung erfolgt weiter auf dem Server;
 Oberflächensperren ersetzen keine Fachvalidierung.
+
+
+## Bezahlt ohne Finanzierungsquelle, Rechnungsstorno und Abschluss zurücknehmen
+
+- Eine **gebuchte Rechnung** kann mit **Als bezahlt markieren** vollständig oder
+  über **Zahlung erfassen → Später zuordnen** teilweise bezahlt werden, auch ohne
+  angelegtes Konto oder Darlehen. Diese Beträge erscheinen als **Nicht zugewiesen**.
+- Unter **Zahlung erfassen → Erfasste Zahlungen → Finanzierung zuordnen** wird
+  später ein Kredit oder Eigenkapitalkonto gewählt. Teilzuordnungen sind möglich.
+  Dabei ändert sich der bereits bezahlte Betrag nicht. Das gilt auch für ältere,
+  direkt am Beleg gespeicherte Zahlbeträge. **Zuordnung lösen** erhält die Zahlung;
+  **Zahlung zurücknehmen** macht den Betrag wieder offen.
+- **Rechnung stornieren** zeigt zuerst die betroffenen Rechnungs- und Zahlbeträge.
+  Nach Bestätigung werden Buchung, Zahlungsvermerke und Finanzierungszuordnungen
+  zusammen zurückgenommen. Der Beleg bleibt mit Status **Storniert**, Original,
+  Grund und unveränderlicher Stornohistorie erhalten. Eine echte Rücküberweisung
+  erfolgt dadurch nicht. Ein Storno lässt sich nicht als neuer Entwurf bearbeiten;
+  eine korrigierte Rechnung separat erfassen. Eine verrechnete Abschlagsrechnung
+  kann erst nach Rücknahme/Storno der zugehörigen Schlussrechnung storniert werden.
+- **Buchung zurücknehmen** bleibt für normale Entwurfskorrekturen verfügbar;
+  vorhandene Zahlungszuordnungen müssen dafür weiterhin zuerst zurückgenommen werden.
+- Abgeschlossene Arbeitspakete bieten **Abschluss zurücknehmen**. Dabei werden
+  vorheriger Status/Fortschritt und Ist-Ende aus der Historie wiederhergestellt.
+  Bei alten Paketen ohne Abschlussereignis gilt Offen / 0 % / kein Ist-Ende.
+  Notizen und Abhängigkeiten bleiben erhalten. Bei abgeschlossenen Paketen sind
+  Speichern und Löschen ausgeblendet; Notizen, Vorgänger und Nachfolger werden
+  automatisch gespeichert. Fehler werden sichtbar angezeigt.
+- Die **ChatGPT-Planung** liegt wieder als Floating Button rechts unten. Sie ist
+  nur bei bestehender ChatGPT-Verbindung und vorhandenem Bauzeitenplan sichtbar.
+  Die Schaltfläche zum Verbinden im Kopfbereich bleibt verfügbar.
+
+Migration `0016` ergänzt ausschließlich die Tabelle für Stornohistorien. Bestehende
+Rechnungen, Zahlungen, Kredit- und Eigenkapitaldaten werden nicht umgeschrieben.
+Beim lokalen SQLite-Update erstellt der Starter zuvor wie bisher ein verifiziertes
+Komplettbackup; bei NAS/Docker wird die neue Tabelle beim Initialisieren angelegt.

@@ -1727,6 +1727,28 @@ def task_complete(task_id):
         return jsonify(error='Abschluss fehlgeschlagen. Details stehen im Serverprotokoll.'),500
 
 
+@app.post('/api/tasks/<int:task_id>/reopen')
+def task_reopen(task_id):
+    task=db.session.scalar(select(Task).where(Task.id==task_id).with_for_update())
+    if not task:return jsonify(error='Arbeitspaket nicht gefunden.'),404
+    body=request.get_json(silent=True) or {}
+    if not isinstance(body,dict) or body.get('confirm') is not True:return jsonify(error='Rücknahme ausdrücklich bestätigen.'),400
+    if task.status!='Erledigt':return jsonify(error='Arbeitspaket ist nicht abgeschlossen.'),409
+    before={'status':task.status,'progress':task.progress,'actual_end':task.actual_end.isoformat() if task.actual_end else ''}
+    previous={'status':'Offen','progress':0,'actual_end':''}
+    record=db.session.scalar(select(ScheduleHistory).where(ScheduleHistory.answer_text=='Arbeitspaket '+task.code+' abgeschlossen.').order_by(ScheduleHistory.id.desc()).limit(1))
+    if record:
+        for entry in json.loads(record.changes_json):
+            if entry.get('code')==task.code:
+                for change in entry.get('changes',[]):
+                    if change['field'] in previous:previous[change['field']]=change['before']
+    if previous['status']=='Erledigt':previous={'status':'Offen','progress':0,'actual_end':''}
+    task.status=previous['status'];task.progress=previous['progress'];task.actual_end=parse_date(previous['actual_end'])
+    _schedule_audit('Manuell','Abschluss von '+task.code+' zurückgenommen.',[{'action':'update','code':task.code,'name':task.name,
+       'changes':[{'field':key,'before':before[key],'after':previous[key]} for key in previous if before[key]!=previous[key]]}])
+    db.session.commit();return jsonify(ok=True,**previous)
+
+
 @app.post('/api/tasks/assign-contractors')
 def tasks_assign_contractors():
     body=request.get_json(silent=True) or {}
@@ -2929,6 +2951,9 @@ def _validate_invoice_advance(r, offer):
 
 
 def _receipt_json(r, include_text=False):
+    assigned=sum((float(p.amount) for p in db.session.scalars(select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==r.id,ReceiptFinancingPayment.source.in_(['loan','equity'])))),0.0)
+    unassigned=round(max(0,float(r.paid_amount or 0)-assigned),2)
+    cancellation=db.session.scalar(select(ReceiptCancellation).where(ReceiptCancellation.receipt_id==r.id)) if r.status=='Storniert' else None
     obj={'id':r.id,'filename':r.original_name,'source':r.source,'supplier':r.supplier,'invoice_number':r.invoice_number,
          'document_date':r.document_date,'due_date':r.due_date,'gross_amount':float(r.gross_amount) if r.gross_amount is not None else None,
          'net_amount':float(r.net_amount) if r.net_amount is not None else None,
@@ -2941,6 +2966,9 @@ def _receipt_json(r, include_text=False):
          'contractor_id':r.contractor_id,'assignment_type':r.assignment_type or ('Angebot' if _accepted_receipt_offer(r) else 'Kostenposition' if r.cost_item_id else ''),
          'offer_id':_accepted_receipt_offer(r).id if _accepted_receipt_offer(r) else None,
          'warnings':json.loads(r.warnings or '[]'),'created_at':r.created_at.isoformat()}
+    obj.update(assigned_amount=round(assigned,2),unassigned_amount=unassigned,
+               payment_assignment='Nicht zugewiesen' if unassigned>0 and not assigned else 'Teilweise zugewiesen' if unassigned>0 else 'Zugewiesen' if assigned else 'Unbezahlt',
+               cancellation={'date':cancellation.created_at.isoformat(),'reason':cancellation.reason,'previous_paid':float(json.loads(cancellation.snapshot_json)['receipt'].get('paid_amount') or 0)} if cancellation else None)
     if include_text:obj['ocr_text']=r.ocr_text
     return obj
 
@@ -3197,6 +3225,7 @@ def receipt_preview(rid):
 def receipt_edit(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    if r.status=='Storniert':return jsonify(error='Stornierter Beleg bleibt unverändert erhalten.'),409
     data=request.get_json(silent=True) or {}
     if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','contractor_id','assignment_type','category','supplier','invoice_number','document_date','kind','billing_type','advance_deduction','labor_amount')):
         return jsonify(error='Zum Ändern der Zuordnung oder Belegsumme zunächst Buchung zurücknehmen.'),409
@@ -3294,6 +3323,7 @@ def receipt_book(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
     if r.status=='Gebucht':return jsonify(_receipt_json(r))
+    if r.status!='Entwurf':return jsonify(error='Nur Entwürfe können gebucht werden.'),409
     try:
         _validate_receipt_booking(r)
         # Warn on duplicate reference but rely on identical-file hash as a hard duplicate.
@@ -3311,6 +3341,7 @@ def receipt_book(rid):
 def receipt_unbook(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    if r.status=='Storniert':return jsonify(error='Stornierter Beleg bleibt als Nachweis erhalten.'),409
     offer=_accepted_receipt_offer(r)
     if offer and r.status=='Gebucht' and r.billing_type!='Schlussrechnung':
         ids=[item.id for item in db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id))]
@@ -3319,14 +3350,14 @@ def receipt_unbook(rid):
         if final is not None:
             return jsonify(error='Zuerst die Schlussrechnung zurücknehmen, da sie bisherige Abschläge verrechnet.'),409
     if db.session.scalar(select(ReceiptFinancingPayment.id).where(ReceiptFinancingPayment.receipt_id==rid).limit(1)) is not None:
-        return jsonify(error='Zuerst die zugeordneten Zahlungen unter Finanzierung entfernen.'),409
+        return jsonify(error='Zuerst Zahlungen im Rechnungsdialog zurücknehmen oder Rechnung mit Zahlungsvermerken gemeinsam stornieren.'),409
     r.status='Entwurf';db.session.commit();return jsonify(_receipt_json(r))
 
 @app.delete('/api/receipts/<int:rid>')
 def receipt_delete(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
-    if r.status=='Gebucht':return jsonify(error='Gebuchten Beleg erst zurücknehmen.'),409
+    if r.status in ('Gebucht','Storniert'):return jsonify(error='Gebuchte und stornierte Belege bleiben erhalten.'),409
     if db.session.scalar(select(ReceiptFinancingPayment.id).where(ReceiptFinancingPayment.receipt_id==rid).limit(1)) is not None:
         return jsonify(error='Zuerst Finanzierungszahlungen entfernen.'),409
     path=RECEIPT_ROOT/r.stored_name
@@ -3753,6 +3784,10 @@ CostPlanImport, cost_plan_upload = register_cost_plan_imports(
     mark_reviewed=lambda kind, iid: _mark_import_reviewed(kind, iid))
 from company_search import register_company_search
 register_company_search(app, ai_required=_ai_request_required, chatgpt=chatgpt, extract_json=extract_json)
+
+
+from receipt_cancellations import register_cancellations
+ReceiptCancellation = register_cancellations(app, db, Receipt, ReceiptFinancingPayment, receipt_offer=_accepted_receipt_offer)
 
 
 # Backup settings belong to the server; a browser can only select reachable/mounted paths.

@@ -194,7 +194,7 @@ async function reload(keepId=selected){
  $('categories').innerHTML=r.categories.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');
  fillSelect($('budgetLines'),c.budget_lines.filter(x=>x.active&&!x.is_group),x=>x.category+' · '+x.title);
  renderCostItems();
- $('list').innerHTML=list.map(x=>`<button type="button" data-id="${x.id}" class="entry ${keepId===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span><strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} neu abgerechnet · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>`).join('')||'<p>Du hast noch keine Belege erfasst.</p>';
+ $('list').innerHTML=list.map(x=>`<button type="button" data-id="${x.id}" class="entry ${keepId===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span>${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}<strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>`).join('')||'<p>Du hast noch keine Belege erfasst.</p>';
  document.querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
  if(keepId&&list.some(x=>x.id===keepId))await open(keepId);
  else if(linkReceipt&&list.some(x=>x.id===linkReceipt))await open(linkReceipt);
@@ -221,14 +221,18 @@ async function open(id){
  $('receiptAssignmentType').value=x.assignment_type||'';
  $('receiptTaxRate').value=detectReceiptTaxRate(x);
  updateLaborHint(x.labor_source,x.labor_amount);
- $('book').hidden=x.status==='Gebucht';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status==='Gebucht';
+ $('book').hidden=x.status!=='Entwurf';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status!=='Entwurf';
+ $('cancelReceipt').hidden=x.status!=='Gebucht';$('markReceiptPaid').hidden=x.status!=='Gebucht'||x.paid_amount>=x.counted_amount;
+ $('review').querySelector('button[type=submit]').hidden=x.status==='Storniert';
  $('payReceipt').hidden=x.status!=='Gebucht';
+ $('receiptCancellationInfo').hidden=!x.cancellation;
+ $('receiptCancellationInfo').textContent=x.cancellation?'Storniert am '+new Date(x.cancellation.date).toLocaleDateString('de-DE')+' · zurückgenommene Zahlungsvermerke: '+money(x.cancellation.previous_paid)+(x.cancellation.reason?' · Grund: '+x.cancellation.reason:''):'';
  $('receiptPaymentsPanel').hidden=true;
  $('receiptReviewLayout').hidden=false;
  $('receiptReviewStage').hidden=false;
- for(let node of $('review').querySelectorAll('input,select,textarea'))node.disabled=x.status==='Gebucht'&&node.name!=='notes'&&node.name!=='paid_amount'&&node.name!=='due_date';
+ for(let node of $('review').querySelectorAll('input,select,textarea'))node.disabled=x.status==='Storniert'||x.status==='Gebucht'&&node.name!=='notes'&&node.name!=='paid_amount'&&node.name!=='due_date';
  $('review').elements.namedItem('paid_amount').disabled=true;
- $('receiptTaxRate').disabled=x.status==='Gebucht';
+ $('receiptTaxRate').disabled=x.status!=='Entwurf';
  $('receiptTaxHint').textContent='Wenn du den Bruttobetrag bearbeitest, werden Netto und USt mit dem gewählten Satz automatisch berechnet. Bei gemischten Steuersätzen „manuell“ auswählen. Originalbeleg prüfen.';
  if(linkedCostItem&&x.status==='Entwurf'&&!x.cost_item_id&&!x.assignment_type){
    $('receiptAssignmentType').value='Angebot';
@@ -237,100 +241,121 @@ async function open(id){
  updateInvoiceControls();
  $('original').href='/api/receipts/'+id+'/download';$('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
- $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Gebucht'?'Gebucht: Für Betragsänderungen zuerst Buchung zurücknehmen.':'Bitte Daten prüfen, dann speichern und buchen.');
+ $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Original bleibt erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Für Betragsänderungen zuerst Buchung zurücknehmen.':'Bitte Daten prüfen, dann speichern und buchen.');
  }catch(e){notice(e.message,true)}
 }
-let paymentState=null;
+let paymentState=null,assigningPayment=null;
 const paymentForm=$('receiptPaymentForm');
+const currentPaymentReceipt=()=>paymentState?.receipts.find(r=>r.id===selected);
+function assignmentLimit(){
+ if(!assigningPayment)return 0;
+ if(assigningPayment==='legacy'){
+  const all=paymentState.payments.filter(p=>p.receipt_id===selected);
+  return Math.max(0,Number(currentPaymentReceipt().paid)-all.reduce((sum,p)=>sum+Number(p.amount),0));
+ }
+ return Number(paymentState.payments.find(p=>p.id===assigningPayment)?.amount||0);
+}
 function paymentAccountOptions(){
+ if(!paymentState)return;
+ const source=$('receiptPaymentSource').value,receipt=currentPaymentReceipt();
+ const deferred=source==='unassigned';
+ $('receiptPaymentAccountWrap').hidden=deferred;$('receiptPaymentAccount').required=!deferred;
+ const accounts=source==='loan'?paymentState.loans:source==='equity'?paymentState.equity:[];
+ const available=a=>Number(source==='loan'?a.balance?.unallocated_drawn:a.balance?.available)||0;
+ const usable=accounts.filter(a=>available(a)>0.005);
+ $('receiptPaymentAccount').innerHTML=usable.map(a=>'<option value="'+a.id+'">'+safe(a.name)+' · frei '+money(available(a))+'</option>').join('');
+ const limit=assigningPayment?assignmentLimit():Number(receipt?.open||0);
+ const maximum=deferred?limit:Math.min(limit,available(usable[0]||{}));
+ $('receiptPaymentAmount').value=maximum>0?PHBUI.currency.format(maximum):'';
+ $('submitReceiptPayment').disabled=!receipt||maximum<=0||(assigningPayment&&deferred);
+ $('submitReceiptPayment').textContent=assigningPayment?'Bestehende Zahlung zuordnen':'Zahlung verbindlich verbuchen';
+ $('receiptPaymentMessage').textContent=deferred?'Die Rechnung wird bezahlt markiert. Die Finanzierungsquelle kannst du später zuordnen.':
+  usable.length?(assigningPayment?'Nur die Finanzierungsquelle wird ergänzt; der bezahlte Betrag bleibt unverändert.':''):'Keine frei verfügbaren Mittel. Konto/Kredit anlegen oder „Später zuordnen“ wählen.';
+}
+async function showReceiptPayments(){
+ if(!selected||list.find(r=>r.id===selected)?.status!=='Gebucht')return;
+ paymentState=await api('/api/financing');assigningPayment=null;
+ const receipt=currentPaymentReceipt();if(!receipt)throw Error('Gebuchte Rechnung nicht gefunden.');
+ const allocations=paymentState.payments.filter(p=>p.receipt_id===selected);
+ const legacy=Math.max(0,Number(receipt.paid)-allocations.reduce((sum,p)=>sum+Number(p.amount),0));
+ $('receiptPaymentsPanel').hidden=false;receiptFlow.stage(2);$('receiptReviewLayout').hidden=true;$('receiptReviewStage').hidden=true;
+ $('receiptPaymentTotals').innerHTML='<span>Rechnungsbetrag: <b>'+money(receipt.gross)+'</b></span><span>Bereits bezahlt: <b>'+money(receipt.paid)+'</b></span><span>Noch offen: <b>'+money(receipt.open)+'</b></span><span>Nicht zugewiesen: <b>'+money(receipt.unassigned)+'</b></span>';
+ paymentForm.hidden=receipt.open<=0;paymentForm.elements.namedItem('payment_date').disabled=false;paymentForm.elements.namedItem('notes').disabled=false;$('receiptPaymentSource').value='unassigned';
+ $('receiptPaymentSource').querySelector('[value=unassigned]').disabled=false;
+ $('receiptPaymentHistory').innerHTML='<h4>Erfasste Zahlungen</h4>'+allocations.map(p=>{
+  const unassigned=p.source==='unassigned';
+  const title=unassigned?'Nicht zugewiesen':(p.source==='loan'?paymentState.loans:paymentState.equity).find(a=>a.id===(p.loan_id||p.equity_id))?.name||p.source;
+  return '<div class="receipt-payment-history-row"><span>'+money(p.amount)+' · '+safe(p.payment_date)+' · '+safe(title)+(p.notes?' · '+safe(p.notes):'')+'</span><div>'+
+   (unassigned?'<button type="button" data-assign-payment="'+p.id+'">Finanzierung zuordnen</button>':'<button type="button" data-unassign-payment="'+p.id+'">Zuordnung lösen</button>')+
+   '<button type="button" data-undo-finance-payment="'+p.id+'">Zahlung zurücknehmen</button></div></div>';
+ }).join('')+(legacy>0.005?'<div class="receipt-payment-history-row"><span>'+money(legacy)+' · Nicht zugewiesen (bisherige Zahlung)</span><button type="button" data-assign-payment="legacy">Finanzierung zuordnen</button></div>':'')+
+ (!allocations.length&&legacy<=0.005?'<p class="note">Noch keine Zahlungen erfasst.</p>':'');
+ paymentForm.elements.namedItem('payment_date').value=new Date().toLocaleDateString('sv-SE');paymentAccountOptions();receiptFlow.snapshot();
+}
+$('payReceipt').onclick=async()=>{try{await showReceiptPayments();}catch(error){notice(error.message,true);}};
+$('closeReceiptPayment').onclick=()=>{if(paymentBusy)return;$('receiptPaymentsPanel').hidden=true;receiptFlow.stage(1);$('receiptReviewLayout').hidden=false;$('receiptReviewStage').hidden=false;};
+$('receiptPaymentSource').onchange=paymentAccountOptions;
+$('receiptPaymentAccount').onchange=()=>{
  if(!paymentState)return;
  const source=$('receiptPaymentSource').value;
  const accounts=source==='loan'?paymentState.loans:paymentState.equity;
- const available=a=>Number(source==='loan'?a.balance?.unallocated_drawn:a.balance?.available)||0;
- const usable=accounts.filter(x=>available(x)>0.005);
- $('receiptPaymentAccount').innerHTML=usable.map(a=>
-   '<option value="'+a.id+'">'+safe(a.name)+' · frei '+money(available(a))+'</option>').join('');
- const receipt=paymentState.receipts.find(x=>x.id===selected);
- const account=usable[0];
- const max=Math.min(Number(receipt?.open||0),available(account||{}));
- $('receiptPaymentAmount').value=max>0?PHBUI.currency.format(max):'';
- $('submitReceiptPayment').disabled=!usable.length||!receipt||receipt.open<=0;
- $('receiptPaymentMessage').textContent=usable.length?'':'Keine frei verfügbaren Mittel aus dieser Finanzierungsart. Konten und Kreditabrufe unter Finanzierung prüfen.';
-}
-async function showReceiptPayments(){
- if(!selected)return;
- const current=list.find(r=>r.id===selected);
- if(!current||current.status!=='Gebucht')return;
- paymentState=await api('/api/financing');
- const receipt=paymentState.receipts.find(x=>x.id===selected);
- if(!receipt)throw Error('Gebuchte Rechnung wurde nicht in der Finanzierungsübersicht gefunden.');
- const allocations=paymentState.payments.filter(x=>x.receipt_id===selected);
- $('receiptPaymentsPanel').hidden=false;
-  receiptFlow.stage(2);
- $('receiptReviewLayout').hidden=true;
- $('receiptReviewStage').hidden=true;
- $('receiptPaymentTotals').innerHTML='<span>Rechnungsbetrag: <b>'+money(receipt.gross)+'</b></span>'+
-   '<span>Bereits bezahlt: <b>'+money(receipt.paid)+'</b></span>'+
-   '<span>Noch offen: <b>'+money(receipt.open)+'</b></span>';
- $('receiptPaymentMessage').textContent='';
- $('receiptPaymentForm').hidden=receipt.open<=0;
- $('receiptPaymentHistory').innerHTML='<h4>Erfasste Zahlungen</h4>'+
-   (allocations.length?allocations.map(p=>'<div class="receipt-payment-history-row"><span>'+
-     money(p.amount)+' · '+safe(p.payment_date)+' · '+
-     safe((p.source==='loan'?paymentState.loans:paymentState.equity).find(a=>a.id===(p.loan_id||p.equity_id))?.name||p.source)+
-     (p.notes?' · '+safe(p.notes):'')+
-     '</span><button type="button" data-undo-finance-payment="'+p.id+'">Zahlung stornieren</button></div>').join(''):'<p class="note">Noch keine zugeordneten Zahlungen erfasst.</p>');
- if(receipt.open>0&&receipt.paid>allocations.reduce((sum,p)=>sum+Number(p.amount),0)+0.005)
-   $('receiptPaymentMessage').textContent='Für diesen Beleg existiert bereits eine manuell erfasste Zahlung ohne Finanzierungsquelle. Bitte den bisherigen Zahlbetrag im Beleg berichtigen, bevor du die Finanzierungsquelle zuordnest.';
- paymentForm.elements.namedItem('payment_date').value=new Date().toLocaleDateString('sv-SE');
- paymentAccountOptions();
- receiptFlow.snapshot(); // Auto-filled payment values are not user edits.
- requestAnimationFrame(()=>$('receiptPaymentsPanel').scrollIntoView({block:'nearest'}));
-}
-$('payReceipt').onclick=async()=>{
- try{await showReceiptPayments();}
- catch(err){notice(err.message,true);}
+ const account=accounts.find(a=>String(a.id)===$('receiptPaymentAccount').value);
+ const available=Number(source==='loan'?account?.balance?.unallocated_drawn:account?.balance?.available)||0;
+ const maximum=Math.min(assigningPayment?assignmentLimit():Number(currentPaymentReceipt()?.open||0),available);
+ $('receiptPaymentAmount').value=maximum>0?PHBUI.currency.format(maximum):'';
+ $('submitReceiptPayment').disabled=maximum<=0;
 };
-$('closeReceiptPayment').onclick=()=>{
-  $('receiptPaymentsPanel').hidden=true;
-  receiptFlow.stage(1);
-  $('receiptReviewLayout').hidden=false;
-  $('receiptReviewStage').hidden=false;
-};
-$('receiptPaymentSource').onchange=paymentAccountOptions;
-paymentForm.onsubmit=async event=>{
- event.preventDefault();
- if(!selected||!paymentState||paymentBusy)return;
- const submit=$('submitReceiptPayment');
- PHBUI.currency.normalizeForm(paymentForm);
-  const data=Object.fromEntries(new FormData(paymentForm).entries());
- const account=$('receiptPaymentAccount').value;
- if(!account){$('receiptPaymentMessage').textContent='Bitte eine Finanzierungsquelle auswählen.';return;}
- data.receipt_id=selected;
- data[data.source==='loan'?'loan_id':'equity_id']=account;
- if(!await PHBUI.confirm('Zahlung von '+money(PHBUI.currency.parse(data.amount))+' verbindlich aus '+(data.source==='loan'?'Kredit':'Eigenkapital')+' buchen?'))return;
- paymentBusy=true;
- submit.disabled=true;$('receiptPaymentMessage').textContent='Zahlung wird geprüft und verbucht …';
+$('markReceiptPaid').onclick=async()=>{
+ if(receiptBusy||paymentBusy||!selected)return;
+ paymentBusy=true;const button=$('markReceiptPaid');button.disabled=true;
  try{
-   await api('/api/financing/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-   await reload(selected);
-   await showReceiptPayments();
-   $('receiptPaymentMessage').textContent='Zahlung verbucht. Offener Rechnungsbetrag und verfügbare Mittel wurden aktualisiert.';
- }catch(error){$('receiptPaymentMessage').textContent='Zahlung fehlgeschlagen: '+error.message;}
- finally{paymentBusy=false;submit.disabled=false;}
+  const state=await api('/api/financing'),receipt=state.receipts.find(r=>r.id===selected);
+  if(!receipt||receipt.open<=0)return;
+  if(!await PHBUI.confirm('Offenen Betrag von '+money(receipt.open)+' als bezahlt markieren? Finanzierung zunächst „Nicht zugewiesen“.'))return;
+  await api('/api/financing/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({receipt_id:selected,source:'unassigned',amount:receipt.open,payment_date:new Date().toLocaleDateString('sv-SE')})});
+  await reload(selected);notice('Als bezahlt markiert · Finanzierung nicht zugewiesen.');
+ }catch(error){notice(error.message,true);}finally{paymentBusy=false;button.disabled=false;}
 };
 $('receiptPaymentHistory').addEventListener('click',async event=>{
- const button=event.target.closest('[data-undo-finance-payment]');
- if(!button||paymentBusy)return;
- if(!await PHBUI.confirm('Diese Zahlung stornieren? Der offene Rechnungsbetrag und die verfügbaren Mittel werden neu berechnet.'))return;
- paymentBusy=true;button.disabled=true;
+ if(paymentBusy)return;
+ const assign=event.target.closest('[data-assign-payment]');
+ if(assign){
+  assigningPayment=assign.dataset.assignPayment==='legacy'?'legacy':Number(assign.dataset.assignPayment);
+  paymentForm.hidden=false;
+  const existing=paymentState.payments.find(p=>p.id===assigningPayment);
+  paymentForm.elements.namedItem('payment_date').disabled=!!existing;
+  if(existing)paymentForm.elements.namedItem('payment_date').value=existing.payment_date;
+  paymentForm.elements.namedItem('notes').disabled=true;
+  $('receiptPaymentSource').querySelector('[value=unassigned]').disabled=true;
+  $('receiptPaymentSource').value=paymentState.loans.length?'loan':'equity';paymentAccountOptions();return;
+ }
+ const undo=event.target.closest('[data-undo-finance-payment]'),unassign=event.target.closest('[data-unassign-payment]');
+ if(!undo&&!unassign)return;
+ if(!await PHBUI.confirm(unassign?'Nur die Finanzierungszuordnung lösen? Die Rechnung bleibt bezahlt.':'Diese Zahlung zurücknehmen? Der offene Betrag und die verfügbaren Mittel werden neu berechnet.'))return;
+ paymentBusy=true;
  try{
-   await api('/api/financing/payments/'+button.dataset.undoFinancePayment,{method:'DELETE'});
-   await reload(selected);await showReceiptPayments();
-   $('receiptPaymentMessage').textContent='Zahlung storniert.';
- }catch(error){notice(error.message,true);}
- finally{paymentBusy=false;button.disabled=false;}
+  const id=undo?.dataset.undoFinancePayment||unassign.dataset.unassignPayment;
+  await api('/api/financing/payments/'+id+(unassign?'/unassign':''),{method:unassign?'POST':'DELETE'});
+  await reload(selected);await showReceiptPayments();
+ }catch(error){notice(error.message,true);}finally{paymentBusy=false;}
 });
+paymentForm.onsubmit=async event=>{
+ event.preventDefault();if(!selected||!paymentState||paymentBusy)return;
+ try{
+  const data=Object.fromEntries(new FormData(paymentForm));data.amount=PHBUI.currency.parse(data.amount);
+  if(!Number.isFinite(data.amount)||data.amount<=0)throw Error('Gültigen Zahlungsbetrag eingeben.');
+  if(data.source!=='unassigned'){
+   const account=$('receiptPaymentAccount').value;if(!account)throw Error('Finanzierungsquelle wählen oder später zuordnen.');
+   data[data.source==='loan'?'loan_id':'equity_id']=account;
+  }
+  data.receipt_id=selected;if(assigningPayment&&assigningPayment!=='legacy')data.payment_id=assigningPayment;
+  if(!await PHBUI.confirm(assigningPayment?money(data.amount)+' einer Finanzierungsquelle zuordnen? Keine erneute Zahlung.':money(data.amount)+' als Zahlung erfassen'+(data.source==='unassigned'?' – Finanzierung nicht zugewiesen':'')+'?'))return;
+  paymentBusy=true;$('submitReceiptPayment').disabled=true;
+  await api('/api/financing/payments'+(assigningPayment?'/assign':''),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  await reload(selected);await showReceiptPayments();$('receiptPaymentMessage').textContent='Gespeichert. Zahlungsstand aktualisiert.';
+ }catch(error){$('receiptPaymentMessage').textContent=error.message;}
+ finally{paymentBusy=false;$('submitReceiptPayment').disabled=false;}
+};
 
 $('upload').onsubmit=async e=>{
  e.preventDefault();

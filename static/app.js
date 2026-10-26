@@ -40,8 +40,10 @@ function openTask(id){if(taskBusy||ganttBusy)return;editing=id;let t=project.tas
  for(let [key,value] of Object.entries(t)){if(key==='predecessors'||key==='successors')continue;if(f.elements.namedItem(key))f.elements.namedItem(key).value=value??''}let sel=f.elements.namedItem('predecessors');sel.innerHTML=project.tasks.filter(x=>x.id!==id).map(x=>`<option value="${escapeHtml(x.code)}" ${t.predecessors.includes(x.code)?'selected':''}>${escapeHtml(x.code)} — ${escapeHtml(x.name)}</option>`).join('');$('taskSuggestion').hidden=true;$('taskSuggestion').replaceChildren();let successors=f.elements.namedItem('successors');successors.innerHTML=project.tasks.filter(x=>x.id!==id).map(x=>`<option value="${escapeHtml(x.code)}" ${(t.successors||[]).includes(x.code)?'selected':''}>${escapeHtml(x.code)} — ${escapeHtml(x.name)}</option>`).join('');
  const completed=t.status==='Erledigt';$('taskLockNotice').hidden=!completed;
  for(const field of f.querySelectorAll('input,select,textarea'))field.disabled=completed&&!['notes','predecessors','successors'].includes(field.name);
- $('delete').disabled=completed;$('complete').hidden=!id||completed;taskFlow.open()}
-const taskFlow=PHBFlow.manage({dialog:'overlay',forms:['taskForm'],dismiss:['cancel'],isBusy:()=>taskBusy});
+ $('delete').disabled=completed;$('delete').style.display=completed||!id?'none':'block';$('complete').hidden=!id||completed;
+ $('reopenTask').hidden=!completed;$('taskForm').querySelector('button[type=submit]').hidden=completed;
+ $('cancel').textContent=completed?'Schließen':'Abbrechen';taskFlow.open();document.dispatchEvent(new CustomEvent('phb-task-opened',{detail:{id,completed}}))}
+const taskFlow=PHBFlow.manage({dialog:'overlay',forms:['taskForm'],dismiss:['cancel'],isBusy:()=>taskBusy,onClose:()=>window.PHBTaskCompletion?.closed()});
 function closeModal(){taskFlow.finish();}
 $('newTask').onclick=()=>openTask(null);$('filter').oninput=()=>{renderGantt();renderTable()};$('phase').onchange=()=>{renderGantt();renderTable()};$('scale').onchange=renderGantt;$('workType').onchange=()=>{renderGantt();renderTable()};
 $('templateConfirm').onchange=renderTemplatePreview;

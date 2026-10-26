@@ -140,7 +140,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("var(--ui-surface)",css)
         self.assertIn(":not(.schedule-chat-fab)",css)
 
-    def test_chatgpt_planner_is_explicit_toolbar_action_not_floating_bubble(self):
+    def test_chatgpt_planner_floats_outside_toolbar_only_when_connected(self):
         page=self.render('index')
         self.assertIn('id="scheduleChatFab"',page)
         self.assertIn('ChatGPT-Planung</span>',page)
@@ -149,12 +149,12 @@ class SidebarUITest(unittest.TestCase):
         gantt_toolbar=page.index('id="openTaskList"')
         chat_button=page.index('id="scheduleChatFab"')
         self.assertLess(gantt_toolbar,chat_button)
-        self.assertLess(chat_button,page.index('</div></div><div class="ganttwrap"'))
+        self.assertGreater(chat_button,page.index('</div></div><div class="ganttwrap"'))
         css=(STATIC/'ui.css').read_text()
         self.assertIn('.schedule-chat-fab[hidden]',css)
         self.assertIn('.schedule-chat-popover[hidden]',css)
-        self.assertIn('.filters .schedule-chat-fab',css)
-        self.assertIn('position:static',css)
+        self.assertIn('.phb-page-zeitplan>.schedule-chat-fab',css)
+        self.assertIn('position:fixed;right:24px;bottom:24px',css)
         js=(STATIC/'schedule_chat.js').read_text()
         self.assertIn('panel.hidden=true;',js)
         self.assertIn('fab.hidden=true;',js)

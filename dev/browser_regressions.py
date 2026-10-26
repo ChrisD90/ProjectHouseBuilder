@@ -29,7 +29,14 @@ import app as backend
 backend.DOCUMENT_ROOT=Path(sys.argv[2])/"documents"
 backend.IMPORT_QUEUE_ROOT=Path(sys.argv[2])/"queue"
 backend.PROJECT_DOCUMENT_ROOT=Path(sys.argv[2])/"project-documents"
-with backend.app.app_context():backend.initialize();backend._ensure_import_recovery()
+with backend.app.app_context():
+ backend.initialize();backend._ensure_import_recovery()
+ backend.RECEIPT_ROOT=Path(sys.argv[2])/"receipts";backend.RECEIPT_ROOT.mkdir()
+ from pypdf import PdfWriter
+ writer=PdfWriter();writer.add_blank_page(width=595,height=842)
+ with (backend.RECEIPT_ROOT/"invoice.pdf").open("wb") as file:writer.write(file)
+ backend.db.session.add(backend.Receipt(digest="browser-invoice",original_name="Testrechnung.pdf",stored_name="invoice.pdf",supplier="Browser-Testbetrieb",invoice_number="B-1",document_date="2026-10-26",gross_amount=100,paid_amount=0,status="Gebucht",assignment_type="Eigenleistung"))
+ backend.db.session.commit()
 from werkzeug.serving import make_server
 server=make_server("127.0.0.1",0,backend.app,threaded=True)
 print("PHB_TEST_PORT="+str(server.server_port),flush=True)
@@ -81,9 +88,13 @@ server.serve_forever()
                     expect(page.locator('#taskForm [name=predecessors]')).to_be_enabled()
                     expect(page.locator('#taskForm [name=successors]')).to_be_enabled()
                     page.locator('#taskForm [name=notes]').fill('Nachträgliche Dokumentation')
-                    page.locator('#taskForm button[type=submit]').click();expect(page.locator('#overlay')).not_to_be_visible()
+                    expect(page.locator('#taskForm button[type=submit]')).not_to_be_visible();expect(page.locator('#delete')).not_to_be_visible()
+                    expect(page.locator('#taskAutosaveStatus')).to_contain_text('Automatisch gespeichert',timeout=6000)
                     assert next(t for t in page.request.get(BASE+'/api/project').json()['tasks'] if t['id']==b)['notes']=='Nachträgliche Dokumentation'
-                    print('PASS: drag, constraint rollback, completed-task protection and notes/dependency editor')
+                    page.locator('#reopenTask').click();page.locator('.phb-messagebox button',has_text='Bestätigen').click()
+                    expect(page.locator('#taskForm [name=duration]')).to_be_enabled();expect(page.locator('#taskForm button[type=submit]')).to_be_visible()
+                    page.locator('#cancel').click()
+                    print('PASS: drag, completed-task autosave, hidden save/delete and reopening')
 
                     # Keep genuine page data/APIs; simulate slow background analysis at the queue boundary.
                     queue={'jobs':[],'terminal':False,'posts':0,'error':False}
@@ -161,6 +172,38 @@ server.serve_forever()
                     page.locator('#closeLoan').click()
                     if page.locator('.phb-messagebox').is_visible():page.locator('.phb-messagebox button',has_text='Bestätigen').click()
                     print('PASS: direct loan scan blocks duplicate actions, save, close and Escape until error response')
+                    page.goto(BASE+'/belege');page.locator('#list .entry').first.click()
+                    page.locator('#markReceiptPaid').click();page.locator('.phb-messagebox button',has_text='Bestätigen').click()
+                    expect(page.locator('#list .entry').first).to_contain_text('Nicht zugewiesen')
+                    rid=page.request.get(BASE+'/api/receipts').json()['receipts'][0]['id']
+                    assert page.request.get(BASE+'/api/receipts/'+str(rid)).json()['paid_amount']==100
+                    account=page.request.post(BASE+'/api/financing/equity',data={'name':'Späteres Konto','opening_balance':200,'reserve':0})
+                    assert account.status==201,account.text()
+                    page.locator('#payReceipt').click();page.locator('[data-assign-payment]').first.click()
+                    expect(page.locator('#receiptPaymentSource')).to_have_value('equity')
+                    page.locator('#submitReceiptPayment').click();page.locator('.phb-messagebox button',has_text='Bestätigen').click()
+                    expect(page.locator('[data-unassign-payment]')).to_be_visible()
+                    assigned=page.request.get(BASE+'/api/receipts/'+str(rid)).json();assert assigned['paid_amount']==100 and assigned['unassigned_amount']==0
+                    page.locator('[data-unassign-payment]').click();page.locator('.phb-messagebox button',has_text='Bestätigen').click()
+                    expect(page.locator('[data-assign-payment]')).to_be_visible()
+                    assert page.request.get(BASE+'/api/receipts/'+str(rid)).json()['paid_amount']==100
+                    page.locator('#closeReceiptPayment').click();page.locator('#cancelReceipt').click()
+                    expect(page.locator('#receiptCancelDialog')).to_be_visible()
+                    page.locator('#receiptCancelReason').fill('Durch neue Rechnung ersetzt')
+                    page.locator('#receiptCancelForm button[type=submit]').click();expect(page.locator('#receiptCancelDialog')).not_to_be_visible()
+                    expect(page.locator('#list .entry').first).to_contain_text('Storniert')
+                    cancelled=page.request.get(BASE+'/api/receipts/'+str(rid)).json();assert cancelled['paid_amount']==0 and cancelled['cancellation']['reason']=='Durch neue Rechnung ersetzt'
+                    assert page.request.get(BASE+'/api/receipts/'+str(rid)+'/download').status==200
+                    page.locator('#closeReceiptWorkflow').click()
+                    page.goto(BASE+'/');expect(page.locator('#scheduleChatFab')).to_be_visible()
+                    assert page.locator('#scheduleChatFab').evaluate("e=>getComputedStyle(e).position")=='fixed'
+                    box=page.locator('#scheduleChatFab').bounding_box();assert box['x']+box['width']>1390 and box['y']+box['height']>950
+                    page.set_viewport_size({'width':360,'height':800})
+                    floating=page.locator('#scheduleChatFab').bounding_box();feed=page.locator('#phbImportCenter').bounding_box()
+                    assert not feed or floating['x']>=feed['x']+feed['width']+4,'Floating chat must not overlap the import widget'
+                    context.route('**/api/ai/status',lambda request:request.fulfill(json={'connected':False,'sharing':False,'credits_acknowledged':False}))
+                    page.reload();expect(page.locator('#scheduleChatFab')).not_to_be_visible()
+                    print('PASS: source-free payment, later assignment without double payment, retained invoice cancellation, connection-gated floating button')
                     for width in (360,768,1440):
                         page.set_viewport_size({'width':width,'height':950})
                         for path in ['/','/kosten','/angebote','/belege','/finanzierung','/dokumente','/energieplanung','/stammdaten','/daten']:
