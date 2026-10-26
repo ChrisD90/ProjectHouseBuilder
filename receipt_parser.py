@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 from pypdf import PdfReader
+from ocr_runtime import ocr_diagnostics, find_ocr_tool
 
 CATEGORY_RULES = {
     'Elektro': ['elektro', 'kabel', 'leitung', 'steckdose', 'shelly', 'schalter', 'sicherung', 'voltus'],
@@ -37,70 +38,12 @@ def decimal_amount(s):
         return value.quantize(Decimal('0.01')) if value.is_finite() and value >= 0 else None
     except (InvalidOperation, ValueError):
         return None
-
-
-def ocr_diagnostics():
-    """Report what the *running worker* can execute, not what the Dockerfile requests.
-
-    Old images can serve new source files mounted from a NAS share, so checking
-    the build-time image marker helps distinguish stale image from broken OCR.
-    No secrets, paths to private documents or environment values are returned.
-    """
-    import os
-    import shutil
-    import sys
-    locations={name:shutil.which(name) for name in ('tesseract','pdftoppm')}
-    tools={name:bool(path) for name,path in locations.items()}
-    languages=[]
-    versions={}
-    if tools['tesseract']:
-        try:
-            langs=subprocess.run([locations['tesseract'],'--list-langs'],capture_output=True,
-                                 text=True,timeout=8,check=False)
-            languages=[line.strip() for line in (langs.stdout+'\n'+langs.stderr).splitlines()
-                       if re.fullmatch(r'[a-z]{3}(?:_[A-Za-z0-9]+)?',line.strip())]
-            ver=subprocess.run([locations['tesseract'],'--version'],capture_output=True,
-                               text=True,timeout=8,check=False)
-            versions['tesseract']=(ver.stdout or ver.stderr).splitlines()[0][:110] if (
-                ver.stdout or ver.stderr) else ''
-        except (OSError,subprocess.TimeoutExpired):
-            pass
-    if tools['pdftoppm']:
-        try:
-            ver=subprocess.run([locations['pdftoppm'],'-v'],capture_output=True,
-                               text=True,timeout=8,check=False)
-            versions['pdftoppm']=(ver.stderr or ver.stdout).splitlines()[0][:110] if (
-                ver.stderr or ver.stdout) else ''
-        except (OSError,subprocess.TimeoutExpired):
-            pass
-    docker=Path('/.dockerenv').exists() or bool(os.environ.get('PHB_OCR_IMAGE'))
-    image=os.environ.get('PHB_OCR_IMAGE','')
-    ready=all(tools.values()) and 'deu' in languages and 'eng' in languages
-    if ready:
-        reason='OCR im laufenden App-Prozess einsatzbereit.'
-    elif docker and not image:
-        reason=('Der laufende Container verwendet offenbar nicht das aktuelle OCR-geprüfte '
-                'App-Image. App-Image ohne Cache neu bauen und App-Container neu erstellen.')
-    elif docker:
-        reason=('OCR-Pakete sind im laufenden App-Container nicht nutzbar. '
-                'Build-/Startprotokoll und Sprachen prüfen; App-Image neu bauen.')
-    elif sys.platform=='darwin':
-        reason='OCR fehlt auf dem lokalen Mac. Homebrew tesseract, tesseract-lang und poppler installieren.'
-    else:
-        reason='Tesseract, Poppler und die Sprachdaten deu+eng auf dem App-Server installieren.'
-    return {'tools':tools,'languages':languages,'ready':ready,'versions':versions,
-            'environment':'container' if docker else 'local',
-            'image_marker':image,'reason':reason,
-            'hint':'OCR wird serverseitig geprüft; der Browser muss keine OCR-Pakete installieren.'}
-
-
-
 def _ocr(path):
     """Try block text and, for sparse scans, a more permissive page layout."""
     try:
         results=[]
         for mode in ('3','6'):
-            p=subprocess.run(['tesseract',str(path),'stdout','-l','deu+eng',
+            p=subprocess.run([find_ocr_tool('tesseract') or 'tesseract',str(path),'stdout','-l','deu+eng',
                               '--psm',mode],timeout=55,check=True,capture_output=True,text=True)
             text=p.stdout.strip()
             results.append(text)
@@ -139,7 +82,7 @@ def extract_pdf_pages(data,max_pages=15,layout=False):
         for i in scanned:
             target=Path(temp)/('scan-'+str(i+1))
             try:
-                subprocess.run(['pdftoppm','-f',str(i+1),'-l',str(i+1),'-singlefile',
+                subprocess.run([find_ocr_tool('pdftoppm') or 'pdftoppm','-f',str(i+1),'-l',str(i+1),'-singlefile',
                                 '-r','230','-gray','-png',str(source),str(target)],
                                timeout=60,check=True,stdout=subprocess.DEVNULL,
                                stderr=subprocess.PIPE)

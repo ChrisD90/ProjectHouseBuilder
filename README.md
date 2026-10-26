@@ -55,7 +55,28 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 - **Stammdaten (`/stammdaten`):** Firmen und automatisch aus PDF-Angeboten übernommene Betriebe zentral pflegen: Ansprechpartner, weitere Kontakte, Telefonnummern, E-Mail, Website, Adresse und Notizen. Separate Gewerke und gemeinsam genutzte Rechnungs-/Kostenkategorien anlegen, umbenennen und – falls unverknüpft – löschen.
 - **Backup, Export & Datenverwaltung (`/daten`):** geprüfte vollständige Sicherungen einschließlich PDFs und Bildern, CSV-/JSON-Exporte, ZIP-Projektarchiv, Wiederherstellungshinweise. Der vollständige Reset ist hinter „Erweiterte Aktionen“ verborgen und bleibt nur nach Pflichtbackup möglich.
 
-OCR von Bildern benötigt zusätzlich Tesseract und Poppler auf dem Mac; bei lesbaren PDF-Texten ist kein OCR erforderlich. Die Anwendung ist als lokale Einzelplatzsoftware konzipiert und wird **nicht** per Router-Portweiterleitung veröffentlicht.
+Der Start über `sh start_mac_linux.sh` richtet die lokale OCR automatisch ein: Tesseract,
+deutsche und englische Sprachdaten sowie Poppler. Auf dem Mac werden die Pakete aus
+`Brewfile` über Homebrew installiert; fehlt Homebrew, startet dessen offizieller Installer
+(macOS kann Administratorrechte und Command Line Tools anfordern). Bei der ersten
+Einrichtung sind Internet und Installationsrechte nötig. Bereits funktionsfähige OCR wird
+bei späteren Starts nur geprüft; es gibt dann keinen Paketdownload. Unter Debian/Ubuntu
+werden fehlende Pakete per apt eingerichtet. Andere Linux-Distributionen können den
+Docker-Start verwenden. Docker enthält alle OCR-Pakete bereits im Image.
+
+Vor dem Serverstart müssen beide Programme ausführbar und **deu + eng** verfügbar sein;
+bei einem Fehler stoppt der Start mit einer Erklärung. Das gilt auch bei `python app.py`
+und beim Containerstart. Diagnose und Verarbeitung verwenden dieselbe Programmsuche,
+einschließlich `/opt/homebrew/bin` (Apple Silicon) und `/usr/local/bin` (Intel). Python-/pip-
+Pakete allein enthalten diese Systemprogramme nicht. Ein manuell gesetzter
+`TESSDATA_PREFIX` muss auf vollständige, passende Sprachdaten zeigen.
+
+OCR separat einrichten: `sh scripts/ensure_ocr.sh`; nur prüfen:
+`python3 ocr_runtime.py --check`. Ein echter Funktionstest mit synthetischem Foto und
+zweiseitigem Scan läuft nach der Python-Installation mit `python dev/ocr_smoke.py`.
+GitHub Actions führt diesen Test unter macOS und Linux aus.
+
+Die Anwendung ist als lokale Einzelplatzsoftware konzipiert und wird **nicht** per Router-Portweiterleitung veröffentlicht.
 
 ## Alternative Betriebsarten
 

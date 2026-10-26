@@ -40,7 +40,8 @@ services:
       - sh
       - -c
       - >-
-        python -c 'from app import app, initialize; ctx=app.app_context(); ctx.push(); initialize(); ctx.pop()'
+        python ocr_runtime.py --check
+        && python -c 'from app import app, initialize; ctx=app.app_context(); ctx.push(); initialize(); ctx.pop()'
         && exec gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 2 --reload --timeout 120 app:app
     networks: [dev_internal]
 networks:

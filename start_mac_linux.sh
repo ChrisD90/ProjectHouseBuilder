@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")"
+sh scripts/ensure_ocr.sh
 python3 -m venv .venv
 . .venv/bin/activate
 # Avoid a source build of cryptography on unsupported macOS/Python combinations.

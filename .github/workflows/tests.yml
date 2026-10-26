@@ -44,9 +44,29 @@ jobs:
           node --check static/daten.js
           node --check static/chatgpt.js
           node --check static/sw.js
+  ocr:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Set up native OCR (same bootstrap as app start)
+        run: sh scripts/ensure_ocr.sh
+      - name: Python dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Real photo and scanned PDF recognition
+        run: python dev/ocr_smoke.py
   local-compose:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Validate isolated local Compose setup
         run: docker compose --env-file .env.dev.example -f compose.dev.yaml config --quiet
+      - name: Build OCR image and recognize scans as container user
+        run: |
+          docker build --tag phb-ocr-ci .
+          docker run --rm --network none --entrypoint python phb-ocr-ci dev/ocr_smoke.py

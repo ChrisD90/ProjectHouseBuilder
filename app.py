@@ -4421,6 +4421,9 @@ def _ensure_import_recovery():
 
 
 if __name__=='__main__':
+    from ocr_runtime import main as check_ocr
+    if check_ocr(['--check']):
+        raise SystemExit(1)
     if DATABASE_URL.startswith('sqlite:'):
         from schema_manager import upgrade_database
         upgrade_database()

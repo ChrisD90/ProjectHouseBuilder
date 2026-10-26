@@ -44,6 +44,12 @@ Der Code für Test und NAS liegt im **selben Branch** `feature/synology-nas`. Du
 
 ## Browser-Regressionsprüfung (optional)
 
+Die OCR-Pakete und beide Sprachen werden beim Docker-Build und vor jedem
+Containerstart geprüft. `python ocr_runtime.py --check` prüft eine native Installation;
+`sh scripts/ensure_ocr.sh` richtet fehlende Systempakete ein. Nach Installation der
+Python-Abhängigkeiten testet `python dev/ocr_smoke.py` echte Foto- und PDF-OCR mit
+synthetischen Daten. GitHub Actions prüft dies auch auf macOS und Linux.
+
 `python3 dev/browser_regressions.py` prüft Drag-and-drop, geschützte abgeschlossene
 Aufgaben, beide Abhängigkeitsrichtungen, Uploads bis zum endgültigen Ergebnis,
 Fehlerfreigabe, Wiederaufnahme nach Navigation und die neun Seiten bei
