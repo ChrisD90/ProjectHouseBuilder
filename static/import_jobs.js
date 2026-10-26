@@ -78,6 +78,7 @@
    try{localStorage.setItem(storageKey,JSON.stringify([...finished].slice(-200)));}catch(_){}
  }
  function displayToast(j){
+   if(panelOpen)return;
    const toast=$('phbImportToast');toast.replaceChildren();
    const title=document.createElement('strong');title.textContent=j.status==='Fertig'
      ?'Dokument fertig eingelesen':'Dokumentimport benötigt Aufmerksamkeit';
@@ -158,9 +159,10 @@
  function render(){
    const active=records.filter(alive),done=records.filter(j=>j.status==='Fertig'),
      failed=records.filter(j=>j.status==='Fehler'||j.status==='Unterbrochen');
-   $('phbImportCenter').hidden=!(records.length||panelOpen);
+   $('phbImportCenter').hidden=false;
    $('phbImportCount').textContent=active.length?active.length+' läuft / wartet':
      failed.length?failed.length+' Hinweis(e)':done.length?done.length+' fertig':'Keine Aufträge';
+   $('phbImportToggle').title='Warteschlange: '+$('phbImportCount').textContent;
    $('phbImportToggle').setAttribute('aria-expanded',String(panelOpen));
    $('phbImportFeed').hidden=!panelOpen;
    $('phbImportDismissAll').hidden=!records.some(finishedState);
@@ -200,7 +202,7 @@
  function setup(){
    prepareModes(document);
    new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)if(node.nodeType===1)prepareModes(node);}).observe(document.body,{childList:true,subtree:true});
-   $('phbImportToggle').onclick=()=>{panelOpen=!panelOpen;render();};
+   $('phbImportToggle').onclick=()=>{panelOpen=!panelOpen;if(panelOpen)$('phbImportToast').hidden=true;render();};
    $('phbImportClose').onclick=()=>{panelOpen=false;render();};
    $('phbImportDismissAll').onclick=async()=>{
      if(!await PHBUI.confirm('Alle fertig verarbeiteten, fehlgeschlagenen und unterbrochenen Importmeldungen ausblenden? Bereits importierte Dokumente und Daten bleiben erhalten.'))return;

@@ -43,6 +43,12 @@
         <div class="phb-breadcrumb"><span>Sanierung Gartenstraße</span><span aria-hidden="true">/</span><strong>{{ phb_title }}</strong></div>
       </div>
       <div class="phb-topbar-right">
+        <section id="phbImportCenter" class="phb-import-center" aria-label="Warteschlange">
+          <button type="button" id="phbImportToggle" class="phb-import-toggle" aria-expanded="false" aria-controls="phbImportFeed" title="Warteschlange öffnen">
+            <span class="phb-import-toggle-icon" aria-hidden="true">⇪</span>
+            <span class="phb-import-toggle-copy"><strong>Warteschlange</strong><small id="phbImportCount">Keine Aufträge</small></span>
+          </button>
+        </section>
         <label class="phb-theme-control" for="phbThemeMode">
           <svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#sun"></use></svg>
           <span>Darstellung</span>
@@ -70,19 +76,13 @@
 </div>
 <span id="phbBusyStatus" class="visually-hidden" role="status" aria-live="polite"></span>
 
-<section id="phbImportCenter" class="phb-import-center" aria-label="Hintergrundimporte" hidden>
-  <button type="button" id="phbImportToggle" class="phb-import-toggle" aria-expanded="false" aria-controls="phbImportFeed">
-    <span class="phb-import-toggle-icon" aria-hidden="true">⇪</span>
-    <span><strong>Warteschlange</strong><small id="phbImportCount">Keine Aufträge</small></span>
-  </button>
-  <div id="phbImportFeed" class="phb-import-feed" hidden>
-    <div class="phb-import-feed-head"><h2>Verarbeitung &amp; Prüfung</h2>
-      <div class="phb-import-feed-actions"><button type="button" id="phbImportDismissAll" hidden>Erledigte ausblenden</button>
-      <button type="button" id="phbImportClose" aria-label="Importübersicht schließen">Schließen</button></div>
-    </div>
-    <p>Dateien werden einzeln verarbeitet. Du kannst auf anderen Seiten weiterarbeiten; fertige Entwürfe warten auf deine Prüfung.</p>
-    <div id="phbImportList" class="phb-import-list" aria-live="polite"></div>
+<div id="phbImportFeed" class="phb-import-feed" hidden>
+  <div class="phb-import-feed-head"><h2>Verarbeitung &amp; Prüfung</h2>
+    <div class="phb-import-feed-actions"><button type="button" id="phbImportDismissAll" hidden>Erledigte ausblenden</button>
+    <button type="button" id="phbImportClose" aria-label="Importübersicht schließen">Schließen</button></div>
   </div>
-</section>
+  <p>Dateien werden einzeln verarbeitet. Du kannst auf anderen Seiten weiterarbeiten; fertige Entwürfe warten auf deine Prüfung.</p>
+  <div id="phbImportList" class="phb-import-list" aria-live="polite"></div>
+</div>
 <div id="phbImportToast" class="phb-import-toast" role="status" aria-live="polite" hidden></div>
 <script defer src="/static/import_jobs.js"></script>

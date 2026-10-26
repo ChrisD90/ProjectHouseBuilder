@@ -313,15 +313,16 @@ body.phb-app.phb-page-zeitplan .schedule-doc-choice strong{display:block;font-si
 body.phb-app.phb-page-zeitplan .schedule-doc-choice small{display:block;font-size:10px;color:var(--ui-muted);line-height:1.45;margin-top:3px}
 body.phb-app.phb-page-zeitplan .schedule-history-sources{border-top:1px solid var(--ui-line);padding-top:7px;font-size:11px}
 
-/* Global, actionable progress for queued OCR/PDF/ChatGPT jobs. */
-body.phb-app .phb-import-center{position:fixed;right:clamp(12px,2vw,24px);bottom:clamp(12px,2vw,24px);width:min(405px,calc(100vw - 24px));z-index:1305;display:flex;flex-direction:column-reverse;align-items:flex-start;gap:10px;pointer-events:none}
+/* Global import activity has one permanent slot in the top bar. */
+body.phb-app .phb-import-center{position:relative;z-index:21;display:block;flex:none;width:154px;pointer-events:auto}
 body.phb-app .phb-import-center[hidden],body.phb-app .phb-import-toast[hidden],body.phb-app .phb-import-feed[hidden]{display:none!important}
-body.phb-app .phb-import-toggle{display:flex;align-items:center;gap:10px;pointer-events:auto;cursor:pointer;text-align:left;border:1px solid var(--ui-line-strong);border-radius:40px;padding:9px 16px 9px 10px;background:var(--ui-raised);color:var(--ui-ink);box-shadow:var(--ui-shadow-raised);max-width:100%}
+body.phb-app .phb-import-toggle{display:flex;align-items:center;gap:8px;width:100%;height:42px;pointer-events:auto;cursor:pointer;text-align:left;border:1px solid var(--ui-line-strong);border-radius:10px;padding:5px 9px 5px 6px;background:var(--ui-raised);color:var(--ui-ink);box-shadow:none;overflow:hidden}
 body.phb-app .phb-import-toggle:hover{background:var(--ui-soft)}
-body.phb-app .phb-import-toggle-icon{display:grid;place-items:center;flex:none;width:35px;height:35px;border-radius:50%;background:var(--ui-soft-accent);color:var(--ui-accent);font-size:19px}
-body.phb-app .phb-import-toggle strong{font-size:12px;display:block;line-height:1.4}
-body.phb-app .phb-import-toggle small{display:block;font-size:11px;color:var(--ui-muted)}
-body.phb-app .phb-import-feed{pointer-events:auto;max-height:min(525px,65dvh);overflow-y:auto;width:100%;background:var(--ui-raised);border:1px solid var(--ui-line);border-radius:17px;box-shadow:var(--ui-shadow-raised);padding:17px}
+body.phb-app .phb-import-toggle-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:8px;background:var(--ui-soft-accent);color:var(--ui-accent);font-size:17px}
+body.phb-app .phb-import-toggle-copy{min-width:0}
+body.phb-app .phb-import-toggle strong{font-size:11px;display:block;line-height:1.3}
+body.phb-app .phb-import-toggle small{display:block;max-width:96px;font-size:10px;color:var(--ui-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.phb-app .phb-import-feed{position:fixed;right:clamp(12px,2vw,24px);top:76px;z-index:1305;pointer-events:auto;max-height:calc(100dvh - 92px);overflow-y:auto;width:min(405px,calc(100vw - 24px));background:var(--ui-raised);border:1px solid var(--ui-line);border-radius:17px;box-shadow:var(--ui-shadow-raised);padding:17px}
 body.phb-app .phb-import-feed-head{display:flex;gap:12px;justify-content:space-between;align-items:center}
 body.phb-app .phb-import-feed-head h2{font-size:15px;margin:0;color:var(--ui-ink)}
 
@@ -345,7 +346,8 @@ body.phb-app .phb-import-toast p{color:var(--ui-muted);font-size:12px;line-heigh
 body.phb-app .phb-import-toast-actions{display:flex;flex-wrap:wrap;gap:9px}
 
 
-@media(max-width:640px){body.phb-app .phb-import-center{right:10px;bottom:10px;width:min(380px,calc(100vw - 20px))}body.phb-app .phb-import-toast{top:74px;right:10px;width:calc(100vw - 20px)}body.phb-app .phb-import-feed{max-height:60dvh}}
+@media(max-width:1200px){body.phb-app .phb-import-center{width:42px}body.phb-app .phb-import-toggle{width:42px;padding:5px}body.phb-app .phb-import-toggle-copy{display:none}}
+@media(max-width:640px){body.phb-app .phb-import-feed{top:70px;right:10px;width:calc(100vw - 20px);max-height:calc(100dvh - 82px)}body.phb-app .phb-import-toast{top:74px;right:10px;width:calc(100vw - 20px)}}
 @media(prefers-reduced-motion:reduce){body.phb-app .phb-import-dot.is-working{animation-duration:3s}}
 
 /* Identical top-right primary actions across financial and document areas. */
@@ -433,5 +435,3 @@ body.phb-app .phb-import-wait p{font-size:14px;line-height:1.6;overflow-wrap:any
 body.phb-app .phb-import-wait small{font-size:12px;color:var(--ui-muted);line-height:1.6}
 body.phb-app .phb-processing-control{min-width:0;display:grid;gap:6px;font-size:13px}
 body.phb-app .phb-processing-control select{width:100%;min-width:0;min-height:40px}
-body.phb-app.phb-page-zeitplan:has(#scheduleChatFab:not([hidden])) .phb-import-center{bottom:84px}
-body.phb-app.phb-page-zeitplan:has(#scheduleChatFab[aria-expanded=true]) .phb-import-center{left:12px;right:auto;bottom:12px;width:min(405px,calc(100vw - 88px))}

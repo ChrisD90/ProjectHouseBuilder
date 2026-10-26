@@ -181,9 +181,10 @@ server.serve_forever()
                             page.goto(BASE+path);page.wait_for_load_state('networkidle')
                             if launcher:page.locator('#'+launcher).click()
                             if kind=='versions':
-                                card=page.locator('[data-offer-card="102"]');card.locator('[data-offer-expand]').click()
-                                card.locator('.offer-version-upload-details').evaluate('e=>e.open=true')
-                                form=card.locator('form[data-version-upload]');file_input=form.locator('input[type=file]');submit=form.locator('button[type=submit]')
+                                card=page.locator('[data-offer-card="102"]');card.locator('[data-offer-details]').click()
+                                expect(page.locator('#offerDetailsDialog')).to_be_visible()
+                                page.locator('#offerDetailsDialog .offer-version-upload-details').evaluate('e=>e.open=true')
+                                form=page.locator('#offerDetailsDialog form[data-version-upload]');file_input=form.locator('input[type=file]');submit=form.locator('button[type=submit]')
                             elif kind=='loans':
                                 page.locator('#loanAiDetails').evaluate('e=>e.open=true')
                                 form=page.locator('#loanForm');file_input=page.locator('#loanAiFile');submit=page.locator('#loanAiAnalyze')
@@ -218,8 +219,7 @@ server.serve_forever()
                                 before=page.url
                                 expect(submit).to_be_disabled()
                                 expect(page.locator('#phbImportCenter')).to_be_visible()
-                                indicator=page.locator('#phbImportCenter').bounding_box()
-                                assert indicator['x']+indicator['width']>1300,('queue must sit at bottom right',indicator)
+                                assert page.locator('#phbImportCenter').evaluate("e=>e.parentElement.classList.contains('phb-topbar-right')"),'queue control must stay in its top-bar slot'
                                 queue['terminal']=True
                                 expect(page.locator('#phbImportCount')).to_contain_text('fertig',timeout=10000)
                                 expect(submit).to_be_enabled()
@@ -239,10 +239,28 @@ server.serve_forever()
                     quote=next(o for o in page.request.get(BASE+'/api/offers').json()['offers'] if o['vendor']=='Manuell mit Original-PDF')
                     assert quote['gross']==1234.56 and quote['document_id'] and quote['status']=='Angebot'
                     page.locator('#closeOfferWorkflow').click();expect(page.locator('#offerWorkflowDialog')).not_to_be_visible()
-                    card=page.locator('[data-offer-card="'+str(quote['id'])+'"]');card.locator('[data-offer-expand]').click()
-                    expect(card.locator('a',has_text='Angebots-PDF öffnen')).to_be_visible()
+                    card=page.locator('[data-offer-card="'+str(quote['id'])+'"]');card.locator('[data-offer-details]').click()
+                    expect(page.locator('#offerDetailsDialog')).to_be_visible()
+                    expect(page.locator('#offerDetailsContent a',has_text='Angebots-PDF öffnen')).to_be_visible()
+                    assert card.locator('.offer-tile-details').count()==0,'tile must not expand inline'
+                    if os.environ.get('PHB_BROWSER_SCREENSHOTS'):
+                        page.screenshot(path=str(output/'offer-details-1440.png'))
                     assert page.request.get(BASE+'/api/documents/'+str(quote['document_id'])+'/download').status==200
-                    print('PASS: manual offer PDF attachment, unchanged entered amount and downloadable original')
+                    page.locator('#closeOfferDetails').click();expect(page.locator('#offerDetailsDialog')).not_to_be_visible()
+                    page.set_viewport_size({'width':360,'height':500})
+                    card.locator('[data-offer-accept]').click();expect(page.locator('#offerAcceptanceDialog')).to_be_visible()
+                    page.locator('#offerAcceptanceForm [name=mode][value=confirmation]').check()
+                    page.locator('#offerAcceptanceFile').set_input_files({'name':'Bestaetigung.pdf','mimeType':'application/pdf','buffer':(root/'receipts/invoice.pdf').read_bytes()})
+                    acceptance=page.locator('#offerAcceptanceForm')
+                    assert acceptance.evaluate('e=>e.scrollHeight>e.clientHeight'),'acceptance form must own a scroll area on a short viewport'
+                    acceptance.evaluate('e=>e.scrollTop=e.scrollHeight')
+                    expect(page.locator('#offerAcceptanceSubmit')).to_be_visible()
+                    if os.environ.get('PHB_BROWSER_SCREENSHOTS'):
+                        page.screenshot(path=str(output/'offer-acceptance-360.png'))
+                    page.locator('#offerAcceptanceBack').click();page.locator('.phb-messagebox button',has_text='Bestätigen').click()
+                    expect(page.locator('#offerAcceptanceDialog')).not_to_be_visible()
+                    page.set_viewport_size({'width':1440,'height':1000})
+                    print('PASS: offer detail dialog, manual PDF and scrollable confirmation acceptance')
                     # Error releases the top-layer busy state and keeps the originating dialog retryable.
                     queue.update(jobs=[],terminal=False,error=False,kind='loans',review_url=None)
                     page.goto(BASE+'/finanzierung');page.locator('#newLoan').click();page.locator('#loanAiDetails').evaluate('e=>e.open=true')

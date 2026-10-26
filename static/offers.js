@@ -4,7 +4,6 @@
   const $ = id => document.getElementById(id);
   if (!$('offerImportForm') || !$('offerList')) return;
   let offers = [], categories = [], budgets = [], versionDrafts = [];
-  const expandedOffers=new Set();
   let comparingOffers = false;
   let offerUploading = false;
   let currentPreviewDocument=null;
@@ -109,6 +108,11 @@
       $('offerEditPdfFrame').removeAttribute('src');
       editingOfferId=null;
     }
+  });
+  const detailsDialog=$('offerDetailsDialog');
+  const detailsFlow=PHBFlow.manage({
+    dialog:'offerDetailsDialog',forms:['offerDetailsContent'],
+    dismiss:['closeOfferDetails']
   });
   function openOfferEdit(id){
     const offer=offers.find(o=>o.id===id);
@@ -399,31 +403,42 @@
     const [label,color]=stage(o);
     const accepted=['Angenommen','Beauftragt'].includes(o.status);
     const rejected=o.status==='Abgelehnt';
-    const expanded=expandedOffers.has(o.id);
     const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
-    const notes=o.notes?`<p class="offer-notes">${esc(o.notes)}</p>`:'';
     const actions=accepted
       ? `<span class="offer-accepted-note">✓ ${o.acceptance?"Auftrag fixiert":"Berücksichtigt"}</span><a class="mini" href="/?firmenvorschlaege=1">Firma im Bauzeitenplan zuordnen</a><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>${o.acceptance?"":`<button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`}`
       : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
     return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
-      <button type="button" class="offer-tile-toggle" data-offer-expand="${o.id}"
-        aria-expanded="${expanded}" aria-controls="offerDetails${o.id}"
-        aria-label="Details zu ${esc(o.vendor)} ${expanded?'schließen':'öffnen'}">
+      <button type="button" class="offer-tile-open" data-offer-details="${o.id}"
+        aria-haspopup="dialog" aria-controls="offerDetailsDialog"
+        aria-label="Details zu ${esc(o.vendor)} öffnen">
         <span class="offer-stage ${color}">${label}</span>
         <strong class="offer-tile-vendor">${esc(o.vendor)}</strong>
         <span class="offer-tile-meta">${meta}${o.number?` · Nr. ${esc(o.number)}`:''}</span>
         <strong class="offer-tile-price">${fmt(accepted?o.agreed_gross:o.gross)}</strong>
-        <span class="offer-tile-chevron" aria-hidden="true">${expanded?'−':'+'}</span>
+        <span class="offer-tile-chevron" aria-hidden="true">→</span>
       </button>
       <div class="offer-actions offer-tile-actions">${actions}${o.can_delete?`<button class="mini danger" type="button" data-offer-delete="${o.id}">Angebot löschen</button>`:''}</div>
-      <div class="offer-tile-details" id="offerDetails${o.id}" ${expanded?'':'hidden'}>
-        <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>
-        ${notes}${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/download">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}${accepted?billingBlock(o):''}
-        ${o.document_id?`<p><a class="mini" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Angebots-PDF öffnen</a></p>`:''}${versionUpload(o)}${versionHistory(o)}
-
-        ${o.deletion_reason?`<p class="offer-mapping">${esc(o.deletion_reason)}</p>`:''}${notice(o)}${parsedPositions(o)}
-      </div>
     </article>`;
+  }
+
+  function openOfferDetails(id){
+    const o=offers.find(item=>Number(item.id)===Number(id));
+    if(!o)return;
+    const accepted=['Angenommen','Beauftragt'].includes(o.status);
+    $('offerDetailsTitle').textContent=o.vendor+' · '+fmt(accepted?o.agreed_gross:o.gross);
+    $('offerDetailsMeta').textContent=[o.category,o.issued||'Ohne Datum',o.number?'Nr. '+o.number:''].filter(Boolean).join(' · ');
+    $('offerDetailsContent').innerHTML=`
+      <section class="offer-detail-summary">
+        <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>
+        ${o.notes?`<p class="offer-notes">${esc(o.notes)}</p>`:''}
+        ${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/download">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}
+        ${o.document_id?`<p><a class="mini" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Angebots-PDF öffnen</a></p>`:''}
+        ${o.deletion_reason?`<p class="offer-mapping">${esc(o.deletion_reason)}</p>`:''}${notice(o)}
+      </section>
+      ${accepted?billingBlock(o):''}
+      ${parsedPositions(o)}
+      ${versionUpload(o)}${versionHistory(o)}`;
+    detailsFlow.open();
   }
 
   function refreshUI() {
@@ -616,7 +631,11 @@
       });
       form.reset();
       status.textContent=result.background?'Analyse läuft in der Warteschlange.':'PDF analysiert.';
-      if(result.background){if(workflow.open)workflowFlow.finish();form.closest('details').open=false;}
+      if(result.background){
+        if(workflow.open)workflowFlow.finish();
+        if(detailsDialog.open)detailsFlow.finish();
+        const disclosure=form.closest('details');if(disclosure)disclosure.open=false;
+      }
       else window.PHBImports.review(result.jobs);
     }catch(err){status.textContent='Fehler: '+err.message;}
     finally{window.PHBImports.release(button);}
@@ -656,18 +675,9 @@
     }catch(err){await PHBUI.alert(err.message)}
   });
   document.addEventListener('click',event=>{
-    const toggle=event.target.closest('button[data-offer-expand]');
+    const toggle=event.target.closest('button[data-offer-details]');
     if(!toggle)return;
-    const id=Number(toggle.dataset.offerExpand);
-    const details=$('offerDetails'+id);
-    if(!details)return;
-    const open=details.hidden;
-    details.hidden=!open;
-    toggle.setAttribute('aria-expanded',String(open));
-    toggle.setAttribute('aria-label',toggle.getAttribute('aria-label').replace(
-      open?'öffnen':'schließen',open?'schließen':'öffnen'));
-    toggle.querySelector('.offer-tile-chevron').textContent=open?'−':'+';
-    if(open)expandedOffers.add(id);else expandedOffers.delete(id);
+    openOfferDetails(Number(toggle.dataset.offerDetails));
   });
   document.addEventListener('click',async e=>{
     const button=e.target.closest('button[data-offer-promote],button[data-offer-accept],button[data-offer-reject],button[data-offer-relist],button[data-offer-unaccept],button[data-offer-edit],button[data-offer-delete]');
@@ -743,8 +753,7 @@
   reload().then(()=>{
     const linkedOfferId=Number(new URLSearchParams(location.search).get('offer_id'));
     if(linkedOfferId&&offers.some(offer=>offer.id===linkedOfferId)){
-      expandedOffers.add(linkedOfferId);refreshUI();
-      requestAnimationFrame(()=>document.querySelector('[data-offer-card="'+linkedOfferId+'"]')?.scrollIntoView({block:'center'}));
+      requestAnimationFrame(()=>openOfferDetails(linkedOfferId));
     }
     const draftId=Number(new URLSearchParams(location.search).get('offer_draft'));
     if(!draftId)return;

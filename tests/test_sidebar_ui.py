@@ -342,6 +342,9 @@ class SidebarUITest(unittest.TestCase):
                 self.assertEqual(html.count('id="phbImportCenter"'),1)
                 self.assertEqual(html.count('id="phbImportToast"'),1)
                 self.assertEqual(html.count('src="/static/import_jobs.js"'),1)
+                topbar=html.index('class="phb-topbar-right"')
+                self.assertLess(topbar,html.index('id="phbImportCenter"'))
+                self.assertLess(html.index('id="phbImportCenter"'),html.index('id="phbThemeMode"'))
         for page,element in (
             ('angebote','offerImportForm'),
             ('belege','upload'),
@@ -375,16 +378,20 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('.phb-action-header .phb-header-actions',styles)
         self.assertIn('justify-content:flex-end',styles)
 
-    def test_offer_tiles_are_compact_and_expandable_with_quick_actions(self):
+    def test_offer_tiles_are_compact_and_open_details_dialog_with_quick_actions(self):
         js=(STATIC/'offers.js').read_text()
         css=(STATIC/'angebote.css').read_text()
-        for marker in ('offer-tile-toggle','offer-tile-details',
-                       'data-offer-expand','data-offer-accept','data-offer-edit',
-                       'data-offer-reject','aria-expanded'):
+        page=self.render('angebote')
+        for marker in ('offer-tile-open','data-offer-details','openOfferDetails',
+                       'data-offer-accept','data-offer-edit','data-offer-reject',
+                       'aria-haspopup="dialog"'):
             self.assertIn(marker,js)
+        self.assertIn('id="offerDetailsDialog"',page)
+        self.assertIn('id="offerDetailsContent"',page)
         self.assertIn('#offerList .offer-tile',css)
         self.assertIn('grid-template-columns:repeat(auto-fill',css)
-        self.assertIn('.offer-tile-details[hidden]',css)
+        self.assertIn('.phb-offer-details-dialog',css)
+        self.assertNotIn('offer-tile-details',js)
 
     def test_task_list_and_history_are_on_demand_and_do_not_take_page_space(self):
         page=self.render('index')
@@ -404,6 +411,9 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('id="offerAcceptanceDialog"',offers)
         self.assertIn('id="offerAcceptanceFile"',offers)
         self.assertIn('id="offerAcceptanceGross"',offers)
+        css=(STATIC/'angebote.css').read_text()
+        self.assertIn('.offer-acceptance-form{',css)
+        self.assertIn('overflow-y:auto',css[css.index('.offer-acceptance-form{'):])
         script=(STATIC/'offers.js').read_text()
         self.assertIn("offerUrl(id)+'/accept'",script)
         self.assertIn('openOfferAcceptance(Number(id))',script)

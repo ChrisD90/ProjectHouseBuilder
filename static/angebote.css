@@ -181,18 +181,15 @@
   border:1px solid var(--ui-line);border-radius:14px;
   box-shadow:0 2px 8px rgba(16,39,51,.05)
 }
-.phb-page-angebote #offerList .offer-tile:has(.offer-tile-toggle[aria-expanded="true"]){
-  border-color:var(--ui-accent);box-shadow:0 5px 19px rgba(16,39,51,.1)
-}
-.phb-page-angebote #offerList .offer-tile-toggle{
+.phb-page-angebote #offerList .offer-tile-open{
   appearance:none;display:grid;grid-template-columns:1fr auto;gap:5px 12px;
   width:100%;min-height:140px;padding:18px 18px 13px;
   border:0;background:transparent!important;text-align:left;color:var(--ui-ink);
   cursor:pointer;border-radius:0;align-content:start
 }
-.phb-page-angebote #offerList .offer-tile-toggle:hover{background:var(--ui-soft)!important}
-.phb-page-angebote #offerList .offer-tile-toggle:focus-visible{outline:3px solid var(--ui-accent);outline-offset:-3px}
-.phb-page-angebote #offerList .offer-tile-toggle .offer-stage{justify-self:start;grid-column:1}
+.phb-page-angebote #offerList .offer-tile-open:hover{background:var(--ui-soft)!important}
+.phb-page-angebote #offerList .offer-tile-open:focus-visible{outline:3px solid var(--ui-accent);outline-offset:-3px}
+.phb-page-angebote #offerList .offer-tile-open .offer-stage{justify-self:start;grid-column:1}
 .phb-page-angebote #offerList .offer-tile-vendor{
   grid-column:1;font-size:16px;line-height:1.35;font-weight:750;overflow-wrap:anywhere
 }
@@ -214,13 +211,6 @@
 }
 .phb-page-angebote #offerList .offer-tile-actions :is(button,a){white-space:normal}
 .phb-page-angebote #offerList .offer-tile-actions .offer-accepted-note{font-size:11px}
-.phb-page-angebote #offerList .offer-tile-details{
-  padding:17px;border-top:1px solid var(--ui-line);
-  background:var(--ui-soft);min-width:0;overflow-wrap:anywhere
-}
-.phb-page-angebote #offerList .offer-tile-details[hidden]{display:none!important}
-.phb-page-angebote #offerList .offer-tile-details :is(.offer-notes,.offer-mapping){font-size:12px}
-.phb-page-angebote #offerList .offer-tile-details .tablewrap{max-width:100%;overflow-x:auto}
 @media(max-width:640px){
   .phb-page-angebote #offerList{grid-template-columns:1fr;padding:12px}
 }
@@ -272,7 +262,7 @@ body.phb-app .phb-offer-workflow .offer-review-layout>.offer-cards{padding:0;mar
 
 /* Two-path formal order acceptance: quotation 1:1 or documented final amount. */
 .phb-offer-acceptance-dialog{width:min(720px,calc(100vw - 28px));max-height:92dvh}
-.offer-acceptance-form{padding:18px 24px 24px;display:grid;gap:16px}
+.offer-acceptance-form{padding:18px 24px 24px;display:grid;gap:16px;flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
 .offer-acceptance-summary{margin:0;padding:13px 15px;border-radius:10px;background:var(--ui-soft,#eef6f8);font-weight:650}
 .offer-acceptance-choices{display:grid;gap:12px;border:0;padding:0;margin:0}
 .offer-acceptance-choices legend{font-weight:700;margin-bottom:12px}
@@ -285,3 +275,12 @@ body.phb-app .phb-offer-workflow .offer-review-layout>.offer-cards{padding:0;mar
 .offer-acceptance-upload label{display:grid;gap:7px;font-weight:600}
 .offer-acceptance-upload input{max-width:100%}
 #offerAcceptanceError{color:#a52f3d}
+
+/* Listed offers keep their tiles compact and put all long content in one dialog. */
+body.phb-app .phb-workflow-dialog.phb-offer-details-dialog{top:50%;right:0;bottom:auto;left:0;transform:translateY(-50%);margin:0 auto;width:min(1040px,calc(100vw - 28px));height:auto;max-height:92dvh}
+body.phb-app .phb-offer-details-dialog .offer-details-content{display:grid;gap:16px;align-content:start;grid-auto-rows:max-content}
+body.phb-app .phb-offer-details-dialog .offer-detail-summary{padding:16px 18px;border:1px solid var(--ui-line);border-radius:12px;background:var(--ui-soft);overflow-wrap:anywhere}
+body.phb-app .phb-offer-details-dialog .offer-detail-summary>:first-child{margin-top:0}
+body.phb-app .phb-offer-details-dialog .offer-detail-summary>:last-child{margin-bottom:0}
+body.phb-app .phb-offer-details-dialog .tablewrap{max-width:100%;overflow-x:auto}
+body.phb-app .phb-offer-details-dialog .offer-version-upload-details{margin:0}
