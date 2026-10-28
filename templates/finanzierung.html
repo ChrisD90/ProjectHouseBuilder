@@ -15,11 +15,11 @@
 <div class="panel"><div class="panel-title"><div><h2>Eigenkapital</h2><p>Kontostand und gewünschte Sicherheitsreserve verwalten.</p></div></div><div id="equityList" class="cards"></div></div>
 </section>
 <section class="finance-events">
-<div class="panel"><h2>Kreditabrufe & Geldbewegungen</h2><form id="eventForm" class="fields"><label>Vorgang<select name="kind" id="eventKind"><option value="loan_drawdown">Kreditabruf</option><option value="loan_repayment">Tilgung</option><option value="loan_interest">Gezahlte Zinsen</option><option value="loan_fee">Bankgebühren</option><option value="equity_deposit">Eigenkapital aufstocken</option><option value="equity_withdrawal">Eigenkapital entnehmen</option></select></label>
-<label>Quelle<select id="eventSource" required></select></label><label>Betrag (€)<input required name="amount" type="number" min="0.01" step="0.01"></label><label>Datum<input required name="event_date" type="date"></label><label class="wide">Notiz<input name="notes" maxlength="2000" placeholder="Optional"></label><button type="submit" class="primary wide">Geldbewegung speichern</button></form><p class="hint">Tilgungen und Zinsen sind Finanzierungsvorgänge und keine erneuten Baukosten. Kreditabrufe sind kein Ertrag.</p><div id="events" class="records"></div></div>
+<div class="panel"><h2>Kreditabrufe & Geldbewegungen</h2><p class="hint">Hier kannst du eine bereits erfolgte Auszahlung direkt buchen. Für einen Abruf mit Rechnungen, PDF-Vorschau und Bankbestätigung nutze „+ Mittelabruf“ oben.</p><form id="eventForm" class="fields"><label>Vorgang<select name="kind" id="eventKind"><option value="loan_drawdown">Kreditabruf manuell buchen</option><option value="loan_repayment">Tilgung</option><option value="loan_interest">Gezahlte Zinsen</option><option value="loan_fee">Bankgebühren</option><option value="equity_deposit">Eigenkapital aufstocken</option><option value="equity_withdrawal">Eigenkapital entnehmen</option></select></label>
+<label>Quelle<select id="eventSource" required></select></label><label>Betrag (€)<input required name="amount" type="number" min="0.01" step="0.01"></label><label>Datum<input required name="event_date" type="date"></label><label class="wide">Notiz<input name="notes" maxlength="2000" placeholder="Optional"></label><label class="wide manual-drawdown-document" id="manualDrawdownDocumentWrap">Auszahlungsformular (optional)<input id="manualDrawdownDocument" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"><small>Das eingereichte oder bestätigte Formular wird als Nachweis an der Geldbewegung gespeichert.</small></label><button type="submit" class="primary wide">Geldbewegung speichern</button></form><p class="hint">Tilgungen und Zinsen sind Finanzierungsvorgänge und keine erneuten Baukosten. Kreditabrufe sind kein Ertrag.</p><div id="events" class="records"></div></div>
 
 </section>
-<section class="panel drawdown-history-panel"><div class="panel-title"><div><h2>Mittelabrufe bei der Bank</h2><p>Erstellte Einreichungspakete, umgebuchte Eigenkapitalzahlungen und Downloads.</p></div></div><div id="drawdownHistory" class="drawdown-history"><p>Noch keine Mittelabrufe erstellt.</p></div></section>
+<section class="panel drawdown-history-panel"><div class="panel-title"><div><h2>Mittelabrufe bei der Bank</h2><p>Entwürfe, Einreichungen, Bankentscheidungen und Buchungen bleiben als Historie erhalten.</p></div></div><div id="drawdownHistory" class="drawdown-history"><p>Noch keine Mittelabrufe erstellt.</p></div></section>
 
 <dialog id="loanDialog" class="loan-dialog" aria-labelledby="loanDialogTitle">
 <form id="loanForm" class="modal">
@@ -67,7 +67,8 @@
 </dialog>
 <dialog id="drawdownDialog" class="drawdown-dialog" aria-labelledby="drawdownDialogTitle">
 <form id="drawdownForm" class="modal">
-  <div class="modal-head"><div><h2 id="drawdownDialogTitle">Mittelabruf vorbereiten</h2><p>Belege auswählen, Zahlungen umbuchen und Bankpaket herunterladen.</p></div><button type="button" class="secondary" id="closeDrawdown">Schließen</button></div>
+  <div class="modal-head"><div><h2 id="drawdownDialogTitle">Mittelabruf vorbereiten</h2><p>Belege auswählen, Formular prüfen und erst nach Bestätigung der Bank buchen.</p></div><button type="button" class="secondary" id="closeDrawdown">Schließen</button></div>
+  <div id="drawdownSetupStage">
   <div class="drawdown-fields">
     <label>Kredit<select name="loan_id" id="drawdownLoan" required></select></label>
     <label>Gewünschtes Auszahlungsdatum<input name="requested_date" type="date" required></label>
@@ -81,9 +82,22 @@
   <div id="drawdownTemplateState" class="drawdown-template-state" role="status">Kredit auswählen, um die Abrufvorlage zu prüfen.</div>
   <label id="drawdownAiWrap" class="drawdown-ai" hidden><input type="checkbox" id="drawdownAiPrefill"> Hinterlegte PDF-Vorlage mit ChatGPT vorausfüllen <small>Die ausgefüllte Datei kommt in das ZIP. Vor Einreichung selbst prüfen und unterschreiben.</small></label>
   <section class="drawdown-receipts" aria-labelledby="drawdownReceiptsTitle"><div class="drawdown-section-head"><div><h3 id="drawdownReceiptsTitle">Einzureichende Rechnungen und Kassenzettel</h3><p>Aus Eigenkapital oder ohne Finanzierungsquelle bezahlte Beträge können ausgewählt werden.</p></div><strong id="drawdownSelectedTotal">0,00 € ausgewählt</strong></div><div id="drawdownReceiptList" class="drawdown-receipt-list"><p>Bitte Kredit auswählen.</p></div></section>
-  <p class="drawdown-booking-note">Beim Erstellen werden ausgewählte Eigenkapital- und nicht zugewiesene Zahlungen auf den gewählten Kredit umgebucht und derselbe Betrag als neuer Kreditabruf gebucht. Bereits aus einem Kredit bezahlte Anteile werden nicht doppelt verrechnet.</p>
+  <p class="drawdown-booking-note">Das Erstellen der Vorschau erzeugt noch keine Buchung. Erst wenn du den Mittelabruf eingereicht hast und anschließend „Bank bestätigt“ wählst, werden die ausgewählten Beträge auf den Kredit umgebucht.</p>
   <p id="drawdownStatus" class="hint" role="status" aria-live="polite"></p>
-  <div class="modal-actions"><span id="drawdownCapacity">Noch abrufbar: –</span><button type="submit" id="createDrawdownPackage" class="primary">Mittelabruf buchen &amp; ZIP herunterladen</button></div>
+  <div class="modal-actions"><span id="drawdownCapacity">Noch abrufbar: –</span><button type="submit" id="createDrawdownPackage" class="primary">PDF-Vorschau erstellen</button></div>
+  </div>
+  <section id="drawdownPreviewStage" class="drawdown-preview-stage" hidden>
+    <div class="drawdown-preview-head"><div><span class="drawdown-status-badge status-entwurf">Entwurf</span><h3>Formular und Rechnungspositionen prüfen</h3><p>Änderungen an Summe und Positionen werden in die PDF-Vorschau übertragen.</p></div><button type="button" id="backToDrawdownSetup" class="secondary">Neue Auswahl</button></div>
+    <div class="drawdown-preview-grid">
+      <div class="drawdown-position-panel">
+        <label class="drawdown-total-field">Gesamtsumme (€)<input id="drawdownPreviewTotal" type="number" min="0.01" step="0.01"></label>
+        <div id="drawdownPositionEditor" class="drawdown-position-editor"></div>
+        <p id="drawdownPreviewMessage" class="hint" role="status" aria-live="polite"></p>
+        <div class="drawdown-preview-actions"><button type="button" id="updateDrawdownPreview">Vorschau aktualisieren</button><button type="button" id="submitDrawdownPackage" class="primary">Bei Bank einreichen &amp; ZIP laden</button></div>
+      </div>
+      <div class="drawdown-pdf-panel" id="drawdownPdfPanel"><div class="drawdown-no-preview">Für diesen Kredit ist keine PDF-Abrufvorlage hinterlegt. Positionen und ZIP-Übersicht können trotzdem geprüft und eingereicht werden.</div><iframe id="drawdownPdfPreview" title="PDF-Vorschau des Mittelabrufs"></iframe></div>
+    </div>
+  </section>
 </form>
 </dialog>
 <dialog id="equityDialog" aria-labelledby="equityDialogTitle"><form id="equityForm" class="modal"><div class="modal-head"><h2 id="equityDialogTitle">Eigenkapitalkonto</h2><button type="button" class="secondary" id="closeEquity">Schließen</button></div><input type="hidden" name="id"><div class="fields"><label>Bezeichnung<input name="name" maxlength="160" required placeholder="Eigenkapital Sanierung"></label><label>Startbestand (€)<input name="opening_balance" type="number" min="0" step="0.01" required></label><label>Sicherheitsreserve (€)<input name="reserve" type="number" min="0" step="0.01" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div><div class="modal-actions"><button type="button" id="deleteEquity" class="danger">Konto löschen</button><button type="submit" class="primary">Konto speichern</button></div></form></dialog>

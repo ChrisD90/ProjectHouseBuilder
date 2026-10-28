@@ -113,6 +113,14 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         event_date = db.Column(db.String(10), nullable=False)
         notes = db.Column(db.Text, nullable=False, default='')
 
+    class FinancingEventDocument(db.Model):
+        __tablename__ = 'finance_event_document'
+        id = db.Column(db.Integer, primary_key=True)
+        event_id = db.Column(db.Integer, db.ForeignKey('finance_event.id', ondelete='CASCADE'), nullable=False, unique=True)
+        original_name = db.Column(db.String(240), nullable=False)
+        stored_name = db.Column(db.String(80), nullable=False, unique=True)
+        uploaded_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
+
     class ReceiptFinancingPayment(db.Model):
         __tablename__ = 'finance_receipt_payment'
         id = db.Column(db.Integer, primary_key=True)
@@ -245,6 +253,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                 'overdue':float(overdue),'no_due_date':float(no_date), 'months':month_view, 'warnings':warnings}
 
     LOAN_DOCUMENT_ROOT = Path(root) / 'private' / 'loans'
+    EVENT_DOCUMENT_ROOT = Path(root) / 'private' / 'financing-events'
     LOAN_FILE_TYPES = {'.pdf', '.jpg', '.jpeg', '.png', '.webp'}
     MAX_LOAN_FILE_BYTES = 15 * 1024 * 1024
 
@@ -437,8 +446,12 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                 'balance':{k:float(v) for k,v in equity_account(r).items()}}
 
     def event_json(r):
+        document=db.session.scalar(select(FinancingEventDocument).where(
+            FinancingEventDocument.event_id==r.id))
         return {'id':r.id,'kind':r.kind,'loan_id':r.loan_id,'equity_id':r.equity_id,
-                'amount':float(r.amount),'event_date':r.event_date,'notes':r.notes}
+                'amount':float(r.amount),'event_date':r.event_date,'notes':r.notes,
+                'document':{'id':document.id,'filename':document.original_name,
+                    'download_url':f'/api/financing/events/{r.id}/document'} if document else None}
 
     def payment_json(r):
         receipt=db.session.get(Receipt,r.receipt_id)
@@ -514,6 +527,8 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
     def loan_delete(lid):
         l=db.session.get(Loan,lid)
         if not l:return jsonify(error='Kredit nicht gefunden.'),404
+        lock_reason=services.get('loan_lock_reason',lambda _loan_id:'')(lid)
+        if lock_reason:return jsonify(error=lock_reason),409
         if db.session.scalar(select(LoanDocument.id).where(LoanDocument.loan_id==lid).limit(1)):
             return jsonify(error='Kredit hat noch Dokumente. Diese vor dem Löschen einzeln entfernen.'),409
         if db.session.scalar(select(FinancingEvent.id).where(FinancingEvent.loan_id==lid).limit(1)) or db.session.scalar(select(ReceiptFinancingPayment.id).where(ReceiptFinancingPayment.loan_id==lid).limit(1)):
@@ -570,15 +585,63 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         except (ValueError,TypeError) as exc:
             db.session.rollback();return jsonify(error=str(exc)),400
 
+    @app.post('/api/financing/manual-drawdowns')
+    def manual_drawdown_create():
+        target=None
+        try:
+            loan_id=model_id(request.form.get('loan_id'))
+            loan=db.session.get(Loan,loan_id)
+            if not loan:raise ValueError('Kredit nicht gefunden.')
+            event=FinancingEvent(kind='loan_drawdown',loan_id=loan_id,
+                amount=money(request.form.get('amount'),positive=True),
+                event_date=iso_date(request.form.get('event_date')),
+                notes=note(request.form.get('notes')))
+            db.session.add(event);db.session.flush();validate_ledger()
+            upload=request.files.get('file')
+            if upload and upload.filename:
+                filename,ext,data=file_payload()
+                EVENT_DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)
+                stored=uuid4().hex+ext;target=EVENT_DOCUMENT_ROOT/stored
+                with target.open('xb') as output:output.write(data)
+                db.session.add(FinancingEventDocument(event_id=event.id,
+                    original_name=filename,stored_name=stored))
+            db.session.flush();result=event_json(event);db.session.commit()
+            return jsonify(result),201
+        except (ValueError,TypeError) as exc:
+            db.session.rollback()
+            if target:target.unlink(missing_ok=True)
+            return jsonify(error=str(exc)),400
+        except Exception:
+            db.session.rollback()
+            if target:target.unlink(missing_ok=True)
+            app.logger.exception('Manueller Kreditabruf konnte nicht gespeichert werden')
+            return jsonify(error='Manueller Kreditabruf konnte nicht sicher gespeichert werden.'),500
+
+    @app.get('/api/financing/events/<int:eid>/document')
+    def finance_event_document_download(eid):
+        document=db.session.scalar(select(FinancingEventDocument).where(
+            FinancingEventDocument.event_id==eid))
+        if not document:return jsonify(error='Auszahlungsformular nicht gefunden.'),404
+        path=EVENT_DOCUMENT_ROOT/document.stored_name
+        if not path.is_file():return jsonify(error='Gespeichertes Auszahlungsformular fehlt.'),404
+        response=send_file(path,as_attachment=True,download_name=document.original_name)
+        response.headers['Cache-Control']='no-store';return response
+
     @app.delete('/api/financing/events/<int:eid>')
     def finance_event_delete(eid):
         e=db.session.get(FinancingEvent,eid)
         if not e:return jsonify(error='Buchung nicht gefunden.'),404
         if e.kind=='loan_drawdown' and (e.notes or '').startswith('Mittelabruf #'):
             return jsonify(error='Diesen Kreditabruf bitte im Bereich „Mittelabrufe bei der Bank“ gemeinsam mit seinen Umbuchungen zurücknehmen.'),409
+        document=db.session.scalar(select(FinancingEventDocument).where(
+            FinancingEventDocument.event_id==eid))
+        path=EVENT_DOCUMENT_ROOT/document.stored_name if document else None
         try:
+            if document:db.session.delete(document)
             db.session.delete(e);db.session.flush();validate_ledger()
-            db.session.commit();return jsonify(ok=True)
+            db.session.commit()
+            if path:path.unlink(missing_ok=True)
+            return jsonify(ok=True)
         except ValueError as exc:
             db.session.rollback();return jsonify(error=str(exc)),409
 
@@ -679,6 +742,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
 
     services={'all_rows':all_rows,'dec':dec,'model_id':model_id,
               'loan_account':loan_account,'validate_ledger':validate_ledger,
+              'event_document_model':FinancingEventDocument,
               'payment_source_exists':lambda source,ref:db.session.get(
                   Loan if source=='loan' else EquityAccount,ref) is not None}
     return Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument, services

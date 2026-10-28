@@ -123,6 +123,8 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertIn(b'id="newDrawdown"',page.data)
         self.assertIn(b'id="drawdownDialog"',page.data)
         self.assertIn(b'id="drawdownHistory"',page.data)
+        self.assertIn(b'id="drawdownPreviewStage"',page.data)
+        self.assertIn(b'id="manualDrawdownDocument"',page.data)
         self.assertIn(b'name="document_type"',page.data)
 
     def test_equity_account_reserve_and_overdraft(self):
@@ -271,37 +273,70 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertTrue(selected['eligible'])
         self.assertEqual(options.json['template']['filename'],'Bank-Abruf.pdf')
 
-        denied=self.client.post('/api/financing/drawdowns/package',json={
+        denied=self.client.post('/api/financing/drawdowns/drafts',json={
             'loan_id':lid,'receipt_ids':[rid],'requested_date':'2026-10-28',
             'ai_prefill':True,'model':'m1','plan_only':'true'},base_url='http://127.0.0.1:5055')
         self.assertEqual(denied.status_code,403,denied.json)
         self.assertEqual(self.state()['summary']['loan_drawn'],0)
         self.assertEqual(db.session.get(ReceiptFinancingPayment,paid.json['id']).source,'equity')
 
-        package=self.client.post('/api/financing/drawdowns/package',json={
+        created=self.client.post('/api/financing/drawdowns/drafts',json={
             'loan_id':lid,'receipt_ids':[rid],'requested_date':'2026-10-28',
             'borrower_names':'Erika und Max Beispiel','property_address':'Musterweg 1',
             'recipient_name':'Erika Beispiel','recipient_iban':'DE02120300000000202051',
             'location':'Musterstadt','notes':'Erster Abruf','ai_prefill':False})
+        self.assertEqual(created.status_code,201,created.json)
+        self.assertEqual(created.json['status'],'Entwurf')
+        drawdown_id=created.json['id']
+        drawdown=db.session.get(LoanDrawdown,drawdown_id)
+        self.addCleanup((Path(app.root_path)/'private'/'loan-drawdowns'/drawdown.preview_name).unlink,missing_ok=True)
+        self.addCleanup((Path(app.root_path)/'private'/'loan-drawdowns'/drawdown.stored_name).unlink,missing_ok=True)
+        self.assertEqual(self.state()['summary']['loan_drawn'],0)
+        self.assertEqual(db.session.get(ReceiptFinancingPayment,paid.json['id']).source,'equity')
+        preview=self.client.get(created.json['preview_url'])
+        self.assertEqual(preview.status_code,200);preview.close()
+
+        updated=self.client.patch(f'/api/financing/drawdowns/{drawdown_id}/draft',json={
+            'requested_amount':'150','requested_date':'2026-10-28',
+            'borrower_names':'Erika und Max Beispiel','property_address':'Musterweg 1',
+            'recipient_name':'Erika Beispiel','recipient_iban':'DE02120300000000202051',
+            'location':'Musterstadt','notes':'Erster Abruf',
+            'positions':[{'receipt_id':rid,'supplier':'Test GmbH','invoice_number':'R-4711',
+                          'document_date':'2026-10-22','amount':'150'}]})
+        self.assertEqual(updated.status_code,200,updated.json)
+        self.assertEqual(updated.json['requested_amount'],150)
+        self.assertEqual(updated.json['positions'][0]['invoice_number'],'R-4711')
+
+        package=self.client.post(f'/api/financing/drawdowns/{drawdown_id}/submit')
         self.assertEqual(package.status_code,200,repr(package.get_data()[:200]))
-        self.assertEqual(package.headers['X-PHB-Rebooked-Amount'],'200.00')
         with zipfile.ZipFile(io.BytesIO(package.data)) as archive:
             names=archive.namelist()
             self.assertIn('00_Mittelabruf-Uebersicht.txt',names)
             self.assertIn('01_Bank-Abruf.pdf',names)
             self.assertTrue(any(name.startswith('Rechnungen/01_') for name in names))
-            self.assertIn('200.00 EUR',archive.read('00_Mittelabruf-Uebersicht.txt').decode())
+            overview=archive.read('00_Mittelabruf-Uebersicht.txt').decode()
+            self.assertIn('150.00 EUR',overview)
+            self.assertIn('Status: Eingereicht',overview)
 
+        # Einreichung and ZIP generation are audit-only until the bank confirms.
+        self.assertEqual(self.state()['summary']['loan_drawn'],0)
+        self.assertEqual(db.session.get(ReceiptFinancingPayment,paid.json['id']).source,'equity')
+        history=self.client.get('/api/financing/drawdowns').json['drawdowns']
+        self.assertEqual(history[0]['status'],'Eingereicht')
+        confirmed=self.client.post(f'/api/financing/drawdowns/{drawdown_id}/confirm',
+                                   json={'confirmed_date':'2026-10-30'})
+        self.assertEqual(confirmed.status_code,200,confirmed.json)
+        self.assertEqual(confirmed.json['status'],'Bestätigt')
         state=self.state()
-        self.assertEqual(state['summary']['loan_drawn'],200)
-        self.assertEqual(state['summary']['paid_loan'],200)
-        self.assertEqual(state['summary']['paid_equity'],0)
+        self.assertEqual(state['summary']['loan_drawn'],150)
+        self.assertEqual(state['summary']['paid_loan'],150)
+        self.assertEqual(state['summary']['paid_equity'],50)
         payment=db.session.get(ReceiptFinancingPayment,paid.json['id'])
-        self.assertEqual((payment.source,payment.loan_id,payment.equity_id),('loan',lid,None))
+        self.assertEqual((payment.source,payment.loan_id,payment.equity_id,float(payment.amount)),('equity',None,eid,50))
         self.assertEqual(self.client.post(f'/api/financing/payments/{payment.id}/unassign').status_code,409)
         self.assertEqual(self.client.delete(f'/api/financing/payments/{payment.id}').status_code,409)
         self.assertEqual(self.client.get(f'/api/receipts/{rid}/cancel-preview').status_code,409)
-        drawdown=db.session.scalar(db.select(LoanDrawdown))
+        drawdown=db.session.get(LoanDrawdown,drawdown_id)
         self.assertIsNotNone(drawdown)
         self.assertEqual(self.client.delete(f'/api/financing/events/{drawdown.event_id}').status_code,409)
         history=self.client.get('/api/financing/drawdowns').json['drawdowns']
@@ -316,8 +351,10 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertEqual(state['summary']['paid_loan'],0)
         self.assertEqual(state['summary']['paid_equity'],200)
         payment=db.session.get(ReceiptFinancingPayment,paid.json['id'])
-        self.assertEqual((payment.source,payment.loan_id,payment.equity_id),('equity',None,eid))
-        self.assertEqual(self.client.get('/api/financing/drawdowns').json['drawdowns'],[])
+        self.assertEqual((payment.source,payment.loan_id,payment.equity_id,float(payment.amount)),('equity',None,eid,200))
+        history=self.client.get('/api/financing/drawdowns').json['drawdowns']
+        self.assertEqual(len(history),1)
+        self.assertEqual(history[0]['status'],'Zurückgenommen')
 
     def test_drawdown_never_double_books_receipts_already_paid_from_target_loan(self):
         first=self.loan('1000','Kredit A');second=self.loan('1000','Kredit B')
@@ -329,10 +366,27 @@ class FinanceWorkflowTest(unittest.TestCase):
             f'/api/financing/drawdowns/options?loan_id={second}').json['receipts'] if row['id']==rid)
         self.assertFalse(first_option['eligible']);self.assertEqual(first_option['already_target'],300)
         self.assertFalse(second_option['eligible']);self.assertEqual(second_option['other_loan'],300)
-        rejected=self.client.post('/api/financing/drawdowns/package',json={
+        rejected=self.client.post('/api/financing/drawdowns/drafts',json={
             'loan_id':first,'receipt_ids':[rid],'requested_date':'2026-10-28'})
         self.assertEqual(rejected.status_code,400,rejected.json)
         self.assertEqual(self.state()['summary']['loan_drawn'],300)
+
+    def test_manual_drawdown_books_immediately_and_keeps_attached_form(self):
+        lid=self.loan('1000','Manueller Kredit')
+        response=self.client.post('/api/financing/manual-drawdowns',data={
+            'loan_id':str(lid),'amount':'175.50','event_date':'2026-10-28',
+            'notes':'Auszahlung laut Bankbestätigung',
+            'file':(io.BytesIO(b'%PDF-1.4\nBestaetigtes Formular'),'Auszahlung.pdf')
+        },content_type='multipart/form-data')
+        self.assertEqual(response.status_code,201,response.json)
+        self.assertEqual(response.json['kind'],'loan_drawdown')
+        self.assertEqual(response.json['document']['filename'],'Auszahlung.pdf')
+        self.assertEqual(self.state()['summary']['loan_drawn'],175.5)
+        downloaded=self.client.get(response.json['document']['download_url'])
+        self.assertEqual(downloaded.status_code,200)
+        self.assertEqual(downloaded.data,b'%PDF-1.4\nBestaetigtes Formular');downloaded.close()
+        self.assertEqual(self.client.delete('/api/financing/events/'+str(response.json['id'])).status_code,200)
+        self.assertEqual(self.state()['summary']['loan_drawn'],0)
 
     def test_chatgpt_loan_proposal_requires_explicit_consent_and_never_autosaves(self):
         from chatgpt_local import chatgpt

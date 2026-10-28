@@ -85,6 +85,8 @@
 .phb-page-finanzierung .finance-events>.panel{width:100%;margin-bottom:18px}
 .phb-page-finanzierung .finance-events .fields{max-width:900px}
 .phb-page-finanzierung .phb-header-actions{gap:10px}
+.phb-page-finanzierung .manual-drawdown-document small{font-size:11px;color:#687d83;line-height:1.45}
+.phb-page-finanzierung .manual-drawdown-document[hidden]{display:none}
 
 /* Bank drawdown workflow */
 .phb-page-finanzierung .drawdown-history-panel{margin:0 0 18px}
@@ -96,6 +98,13 @@
 .phb-page-finanzierung .drawdown-history-row>div{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .phb-page-finanzierung .drawdown-history-row>div:first-child{display:grid;gap:4px}
 .phb-page-finanzierung .drawdown-history-row span{font-size:12px;color:#60747b}
+.phb-page-finanzierung .drawdown-history-title{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.phb-page-finanzierung .drawdown-status-badge{display:inline-flex;align-items:center;width:max-content;padding:3px 8px;border-radius:999px;background:#eef2f3;color:#4d6168!important;font-size:11px!important;font-weight:700}
+.phb-page-finanzierung .status-entwurf{background:#eef4f5;color:#47616a!important}
+.phb-page-finanzierung .status-eingereicht{background:#fff1cf;color:#7b5610!important}
+.phb-page-finanzierung .status-bestätigt{background:#def3e9;color:#17603f!important}
+.phb-page-finanzierung .status-abgelehnt{background:#fde5e1;color:#8c3026!important}
+.phb-page-finanzierung .status-zurückgenommen{background:#ececef;color:#5b5b67!important}
 .phb-page-finanzierung .button-link{display:inline-flex;align-items:center;padding:8px 12px;border:1px solid #b8cdd1;border-radius:8px;background:#fff;text-decoration:none;font-size:13px;font-weight:650}
 .phb-page-finanzierung .doc-type{color:#0d6873}
 .phb-page-finanzierung .drawdown-dialog{width:min(920px,calc(100vw - 24px));max-height:min(92dvh,980px);overflow:auto}
@@ -128,6 +137,25 @@
 .phb-page-finanzierung .drawdown-amount{text-align:right}
 .phb-page-finanzierung .drawdown-dialog .modal-actions{margin-top:17px;flex-wrap:wrap}
 .phb-page-finanzierung #drawdownStatus:not(:empty){padding:10px 12px;background:#fff3e8;border-radius:8px;color:#7c4d22}
+.phb-page-finanzierung .drawdown-preview-stage[hidden]{display:none}
+.phb-page-finanzierung .drawdown-preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+.phb-page-finanzierung .drawdown-preview-head h3{margin:7px 0 3px;font-size:18px}
+.phb-page-finanzierung .drawdown-preview-head p{margin:0;font-size:12px}
+.phb-page-finanzierung .drawdown-preview-grid{display:grid;grid-template-columns:minmax(330px,.85fr) minmax(380px,1.15fr);gap:16px;align-items:start}
+.phb-page-finanzierung .drawdown-position-panel,.phb-page-finanzierung .drawdown-pdf-panel{min-width:0;border:1px solid #dce7e9;border-radius:11px;background:#f9fbfb;padding:14px}
+.phb-page-finanzierung .drawdown-total-field{display:grid;gap:6px;margin-bottom:12px;font-size:13px;font-weight:700;color:#28515a}
+.phb-page-finanzierung .drawdown-total-field input,.phb-page-finanzierung .drawdown-position input{width:100%;min-width:0;padding:9px;border:1px solid #c8d7da;border-radius:7px;background:#fff}
+.phb-page-finanzierung .drawdown-position-editor{display:grid;gap:10px;max-height:470px;overflow:auto;padding-right:2px}
+.phb-page-finanzierung .drawdown-position{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding:12px;border:1px solid #d8e5e7;border-radius:9px;background:#fff}
+.phb-page-finanzierung .drawdown-position header{grid-column:1/-1;display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#657a80}
+.phb-page-finanzierung .drawdown-position header span{overflow-wrap:anywhere;text-align:right}
+.phb-page-finanzierung .drawdown-position label{display:grid;gap:4px;min-width:0;font-size:11px;color:#526b72}
+.phb-page-finanzierung .drawdown-preview-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;margin-top:13px}
+.phb-page-finanzierung .drawdown-pdf-panel{padding:8px;background:#e8edef}
+.phb-page-finanzierung .drawdown-pdf-panel iframe{display:block;width:100%;height:min(65dvh,680px);border:0;border-radius:7px;background:#fff}
+.phb-page-finanzierung .drawdown-pdf-panel iframe[hidden]{display:none}
+.phb-page-finanzierung .drawdown-no-preview{padding:30px 20px;text-align:center;color:#60747b;font-size:13px;line-height:1.55;background:#fff;border-radius:7px}
+.phb-page-finanzierung .drawdown-no-preview[hidden]{display:none}
 @media(max-width:720px){
  .phb-page-finanzierung .drawdown-dialog .modal{padding:17px}
  .phb-page-finanzierung .drawdown-fields{grid-template-columns:1fr}
@@ -138,4 +166,9 @@
  .phb-page-finanzierung .drawdown-receipt{grid-template-columns:auto minmax(0,1fr)}
  .phb-page-finanzierung .drawdown-amount{grid-column:2;text-align:left}
  .phb-page-finanzierung .drawdown-dialog .modal-actions button{width:100%}
+ .phb-page-finanzierung .drawdown-preview-head{flex-direction:column}
+ .phb-page-finanzierung .drawdown-preview-grid{grid-template-columns:1fr}
+ .phb-page-finanzierung .drawdown-position{grid-template-columns:1fr}
+ .phb-page-finanzierung .drawdown-position header{grid-column:auto}
+ .phb-page-finanzierung .drawdown-preview-actions>*{width:100%}
 }
