@@ -2,6 +2,7 @@
 /* Dedicated, independent offers screen. Neither drafts nor listed quotes affect costs. */
 (() => {
   const $ = id => document.getElementById(id);
+  const icon = name => `<svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#${name}"></use></svg>`;
   if (!$('offerImportForm') || !$('offerList')) return;
   let offers = [], categories = [], budgets = [], versionDrafts = [];
   let comparingOffers = false;
@@ -113,6 +114,10 @@
   const detailsFlow=PHBFlow.manage({
     dialog:'offerDetailsDialog',forms:['offerDetailsContent'],
     dismiss:['closeOfferDetails']
+  });
+  const invoicesFlow=PHBFlow.manage({
+    dialog:'offerInvoicesDialog',forms:['offerInvoicesContent'],
+    dismiss:['closeOfferInvoices']
   });
   function openOfferEdit(id){
     const offer=offers.find(o=>o.id===id);
@@ -401,9 +406,11 @@
     const rejected=o.status==='Abgelehnt';
     const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
     const actions=accepted
-      ? `<span class="offer-accepted-note">✓ ${o.acceptance?"Auftrag fixiert":"Berücksichtigt"}</span><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button><a class="mini" href="/?firmenvorschlaege=1">Firma im Bauzeitenplan zuordnen</a><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>${o.acceptance?"":`<button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`}`
-      : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
+      ? `<span class="offer-accepted-note">✓ ${o.acceptance?"Auftrag fixiert":"Berücksichtigt"}</span><a class="mini" href="/?firmenvorschlaege=1" title="Firma im Bauzeitenplan zuordnen">Firma zuordnen</a><button class="mini" type="button" data-offer-invoices="${o.id}">Rechnungen (${o.billing?.linked_invoices?.length??o.billing?.invoices?.length??0})</button><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>${o.acceptance?"":`<button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`}`
+      : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
+    const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
     return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
+      ${corner}
       <button type="button" class="offer-tile-open" data-offer-details="${o.id}"
         aria-haspopup="dialog" aria-controls="offerDetailsDialog"
         aria-label="Details zu ${esc(o.vendor)} öffnen">
@@ -413,8 +420,20 @@
         <strong class="offer-tile-price">${fmt(accepted?o.agreed_gross:o.gross)}</strong>
         <span class="offer-tile-chevron" aria-hidden="true">→</span>
       </button>
-      <div class="offer-actions offer-tile-actions">${actions}${o.can_delete?`<button class="mini danger" type="button" data-offer-delete="${o.id}">Angebot löschen</button>`:''}</div>
+      <div class="offer-actions offer-tile-actions">${actions}</div>
     </article>`;
+  }
+
+  function openOfferInvoices(id){
+    const o=offers.find(item=>Number(item.id)===Number(id));
+    if(!o||!['Angenommen','Beauftragt'].includes(o.status))return;
+    const billing=o.billing||{};
+    const invoices=billing.linked_invoices||billing.invoices||[];
+    $('offerInvoicesTitle').textContent='Rechnungen · '+o.vendor;
+    $('offerInvoicesMeta').textContent=(o.number?'Angebot '+o.number+' · ':'')+invoices.length+' zugeordnete Belege';
+    const rows=invoices.map(r=>`<tr><td><strong>${esc(r.number||r.filename||'Rechnung #'+r.id)}</strong><small>${esc(r.supplier||o.vendor)} · ${esc(r.date||'Ohne Datum')}</small></td><td><span class="offer-invoice-status">${esc(r.status||'Gebucht')}</span><small>${esc(r.billing_type||r.kind||'Rechnung')}</small></td><td>${fmt(r.gross)}</td><td>${fmt(r.counted)}</td><td>${fmt(r.paid)}</td><td><a class="mini" href="/api/receipts/${r.id}/preview" target="_blank" rel="noopener">Original ansehen</a><a class="mini" href="/belege?receipt_id=${r.id}">Bearbeiten</a></td></tr>`).join('');
+    $('offerInvoicesContent').innerHTML=`<section class="offer-invoice-summary"><span>Auftragswert <b>${fmt(billing.agreed??o.agreed_gross)}</b></span><span>Gebucht <b>${fmt(billing.billed)}</b></span><span>Bezahlt <b>${fmt(billing.paid)}</b></span><span>Rest <b>${fmt(billing.remaining)}</b></span></section>${rows?`<div class="tablewrap"><table><thead><tr><th>Beleg</th><th>Status / Art</th><th>Brutto</th><th>Angerechnet</th><th>Bezahlt</th><th>Aktionen</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="offer-empty">Diesem Angebot sind noch keine Rechnungen zugeordnet.</p>'}<div class="offer-invoices-actions"><a class="primary" href="/belege?offer_id=${o.id}">Neue Rechnung zuordnen</a></div>`;
+    invoicesFlow.open();
   }
 
   function openOfferDetails(id){
@@ -680,7 +699,7 @@
     openOfferDetails(Number(toggle.dataset.offerDetails));
   });
   document.addEventListener('click',async e=>{
-    const button=e.target.closest('button[data-offer-promote],button[data-offer-accept],button[data-offer-reject],button[data-offer-relist],button[data-offer-unaccept],button[data-offer-edit],button[data-offer-delete]');
+    const button=e.target.closest('button[data-offer-promote],button[data-offer-accept],button[data-offer-reject],button[data-offer-relist],button[data-offer-unaccept],button[data-offer-edit],button[data-offer-delete],button[data-offer-invoices]');
     if(!button)return;
     const dataset=button.dataset;
     const key=Object.keys(dataset).find(k=>k.startsWith('offer'));
@@ -688,6 +707,10 @@
     try {
       if(key==='offerEdit'){
         openOfferEdit(Number(id));
+        return;
+      }
+      if(key==='offerInvoices'){
+        openOfferInvoices(Number(id));
         return;
       }
       if(key==='offerPromote'){

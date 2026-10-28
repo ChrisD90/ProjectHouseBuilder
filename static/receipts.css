@@ -21,6 +21,12 @@
 .phb-page-belege #review .actions{gap:10px;margin-top:22px}
 .phb-page-belege #review>.note{margin:15px 0 0;line-height:1.6}
 .phb-page-belege .panel{min-width:0}
+.phb-page-belege .receipt-list-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+.phb-page-belege .receipt-list-head h2{margin:0 0 3px}
+.phb-page-belege .receipt-list-head .note{margin:0}
+.phb-page-belege .receipt-search{position:relative;display:block;flex:0 1 430px;min-width:260px}
+.phb-page-belege .receipt-search .phb-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--ui-muted);pointer-events:none}
+.phb-page-belege .receipt-search input{padding-left:39px;background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-line)}
 @media(max-width:1080px){
  .phb-page-belege #upload{grid-template-columns:repeat(2,minmax(0,1fr))}
  .phb-page-belege #upload button{grid-column:1/-1;justify-self:start}
@@ -29,6 +35,8 @@
  .phb-page-belege #upload,.phb-page-belege .receipt-assignment-fields{grid-template-columns:minmax(0,1fr)}
  .phb-page-belege #upload button{width:100%}
  .phb-page-belege .receipt-assignment{padding:14px}
+ .phb-page-belege .receipt-list-head{display:grid}
+ .phb-page-belege .receipt-search{min-width:0;width:100%;max-width:none}
 }
 
 /* Separately reviewable gross labor share: not a tax eligibility decision. */

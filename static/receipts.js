@@ -3,6 +3,7 @@ const $=id=>document.getElementById(id);
 const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
 let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;
+let receiptSearchText='';
 const receiptDialog=$('receiptWorkflowDialog');
 function showReceiptPreview(item){
  const pane=$('receiptPdfPane'),frame=$('receiptPdfFrame'),image=$('receiptImagePreview');
@@ -82,6 +83,30 @@ function renderCostItems(){
     contractors.map(x=>`<option value="${x.id}">${safe(x.name)} · ${safe(x.trade||'Betrieb')}</option>`).join('');
   linkedCostItem=offered.find(x=>x.offer_id===linkOffer)?.id||null;
 }
+function normalizedSearch(value){
+ return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('de-DE').trim();
+}
+function receiptMatchesSearch(receipt){
+ if(!receiptSearchText)return true;
+ const values=[receipt.supplier,receipt.invoice_number,receipt.filename,receipt.document_date,
+  receipt.due_date,receipt.category,receipt.kind,receipt.billing_type,receipt.status,
+  receipt.notes,assignmentLabel(receipt),receipt.gross_amount,receipt.counted_amount,
+  receipt.paid_amount,money(receipt.gross_amount),money(receipt.counted_amount)];
+ const haystack=normalizedSearch(values.join(' '));
+ return receiptSearchText.split(/\s+/).every(term=>haystack.includes(term));
+}
+function renderReceiptList(){
+ const visible=list.filter(receiptMatchesSearch);
+ $('receiptSearchResult').textContent=receiptSearchText
+  ?`${visible.length} von ${list.length} Belegen gefunden`
+  :`${list.length} Belege insgesamt`;
+ $('list').innerHTML=visible.map(x=>`<button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span>${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}<strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>`).join('')||(receiptSearchText?'<p>Keine Belege entsprechen der Suche.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
+ $('list').querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
+}
+$('receiptSearch').addEventListener('input',event=>{
+ receiptSearchText=normalizedSearch(event.currentTarget.value);
+ renderReceiptList();
+});
 function grossToTaxParts(gross,rate){
   const cents=Math.round(Number(gross)*100);
   if(!Number.isSafeInteger(cents)||cents<0)return null;
@@ -203,8 +228,8 @@ async function reload(keepId=selected){
  $('categories').innerHTML=r.categories.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');
  fillSelect($('budgetLines'),c.budget_lines.filter(x=>x.active&&!x.is_group),x=>x.category+' · '+x.title);
  renderCostItems();
- $('list').innerHTML=list.map(x=>`<button type="button" data-id="${x.id}" class="entry ${keepId===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span>${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}<strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>`).join('')||'<p>Du hast noch keine Belege erfasst.</p>';
- document.querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
+ if(keepId&&list.some(x=>x.id===keepId))selected=keepId;
+ renderReceiptList();
  if(keepId&&list.some(x=>x.id===keepId))await open(keepId);
  else if(linkReceipt&&list.some(x=>x.id===linkReceipt))await open(linkReceipt);
  else if(!list.length){$('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);}

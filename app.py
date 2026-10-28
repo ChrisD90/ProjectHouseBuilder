@@ -1929,9 +1929,9 @@ def offer_billing_dict(offer):
         return None
     items=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id)).all()
     ids=[item.id for item in items]
-    receipts=(db.session.scalars(select(Receipt).where(
-        Receipt.status=='Gebucht',Receipt.cost_item_id.in_(ids)).order_by(Receipt.id)).all()
-        if ids else [])
+    linked_receipts=(db.session.scalars(select(Receipt).where(
+        Receipt.cost_item_id.in_(ids)).order_by(Receipt.id)).all() if ids else [])
+    receipts=[r for r in linked_receipts if r.status=='Gebucht']
     billed=sum((_receipt_increment(r) for r in receipts),Decimal('0'))
     paid=sum((Decimal(r.paid_amount or 0) for r in receipts),Decimal('0'))
     agreed=Decimal(str(_contract_gross(offer)))
@@ -1944,7 +1944,13 @@ def offer_billing_dict(offer):
                 'supplier':r.supplier,'billing_type':r.billing_type,
                 'gross':float(r.gross_amount or 0),'advance_deduction':float(r.advance_deduction or 0),
                 'counted':float(_receipt_increment(r)), 'paid':float(r.paid_amount or 0)}
-                for r in receipts]}
+                for r in receipts],
+            'linked_invoices':[{'id':r.id,'number':r.invoice_number,'date':r.document_date,
+                'supplier':r.supplier,'billing_type':r.billing_type,'kind':r.kind,
+                'status':r.status,'filename':r.original_name,'gross':float(r.gross_amount or 0),
+                'advance_deduction':float(r.advance_deduction or 0),
+                'counted':float(_receipt_increment(r)), 'paid':float(r.paid_amount or 0)}
+                for r in linked_receipts]}
 
 
 def financing_budget_total():

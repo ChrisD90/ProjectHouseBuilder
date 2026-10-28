@@ -123,7 +123,7 @@ Stehen bereits nur 5.000 € Restbetrag auf dem Beleg, bleibt die Verrechnung be
 
 1. In der **linken Sidebar → Angebote** öffnen (`http://127.0.0.1:5055/angebote`).
 2. **PDF hochladen** → die App liest lokal aus und legt einen prüfbaren Entwurf an. Vor der Übernahme kannst du **jede erkannte Einzelposition aufklappen, ändern oder löschen** und **weitere Positionen etwa aus gesonderten Beiblättern hinzufügen**. Mengen, Einzelpreise, Netto-Positionsbeträge, Leistungsgruppen, optionale Positionen und PDF-Seiten lassen sich korrigieren. „Aus Menge × Einzelpreis berechnen“ schlägt auf Wunsch einen Betrag vor. Eine leere Positionsliste ist bei nicht lesbaren Scans erlaubt. Die Summe der nicht-optionalen Positionen wird mit dem geprüften Angebotsnetto verglichen; Differenzen und fehlende Beträge werden angezeigt, der **Bruttogesamtbetrag nie automatisch überschrieben**. Den Entwurf bei Bedarf zwischenspeichern und erst dann „Geprüft – in Liste übernehmen“ wählen. **Oder:** **Manuell erfassen** → Anbieter, Bruttosumme und Kategorie eintragen; direkt „Angebot speichern“ drücken.
-3. Alle Angebote in einer Liste nach Gewerk und Gesamtbetrag vergleichen. **Annehmen** überträgt den Preis als beauftragten Wert in die Kostenprognose; Ablehnen behält das Angebot zum Vergleich ohne Kostenwirkung.
+3. Alle Angebote in einer Liste nach Gewerk und Gesamtbetrag vergleichen. Die Liste zeigt höchstens sechs Kacheln gleichzeitig und scrollt bei weiteren Angeboten innerhalb des Bereichs. Stift und Mülleimer oben rechts öffnen die Bearbeitung beziehungsweise – soweit fachlich zulässig – das Löschen. Bei angenommenen Angeboten öffnet **„Rechnungen“** die zugeordneten Belege samt Abrechnungsstand in einem Dialog. **Annehmen** überträgt den Preis als beauftragten Wert in die Kostenprognose; Ablehnen behält das Angebot zum Vergleich ohne Kostenwirkung.
 4. **Kosten & Budget** dient nur für Schätzungen, zusätzliche Ausgaben und die Gesamtübersicht. Wenn ein Angebot einer Planposition zugeordnet ist, ersetzt der angenommene Preis deren Schätzwert; ohne Zuordnung gilt es als zusätzlicher Auftrag.
 5. **Rechnungen & Belege** erfasst tatsächliche Rechnungen, Zahlungen und Finanzierung.
 
@@ -242,6 +242,8 @@ CI simuliert werden. Automatisierte Tests verwenden keine echten Zugangsdaten.
 ## Rechnungen: lokale Erkennung, ChatGPT und eindeutige Zuordnung
 
 Unter **Rechnungen & Belege** beim Hochladen zwischen „Lokal analysieren“ (Standard, keine Übertragung an ChatGPT) und „Mit ChatGPT analysieren“ wählen. Für ChatGPT muss die lokale Verbindung aktiv sein und die Bestätigung zur Nutzung des ChatGPT-Plans im Verbindungsdialog gesetzt sein. Bei ChatGPT gehen nur die explizit ausgewählte PDF-Datei oder das Foto an OpenAI. Beide Analysearten legen **nur einen Entwurf** an: erkannte Werte immer gegen das Original kontrollieren, danach ausdrücklich speichern und buchen. Ein fehlgeschlagener KI-Aufruf wird nicht unbemerkt durch einen anderen Anbieter ersetzt.
+
+Die Suchleiste über der Belegübersicht filtert die bereits geladenen Belege direkt nach Firma, Rechnungs- oder Bonnummer, Dateiname, Datum, Kategorie, Status, Abrechnungsart, Zuordnung und Betrag. Die Trefferzahl zeigt, wie viele Einträge der aktuellen Suche entsprechen.
 
 Im Prüfbereich ist die Zuordnungsart exklusiv:
 - **Angenommenes Angebot**: eine der angenommenen und ausgewählten Angebotspositionen wählen; die bestehende Abrechnung einschließlich Abschlägen/Schlussrechnung bleibt erhalten.

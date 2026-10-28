@@ -384,14 +384,33 @@ class SidebarUITest(unittest.TestCase):
         page=self.render('angebote')
         for marker in ('offer-tile-open','data-offer-details','openOfferDetails',
                        'data-offer-accept','data-offer-edit','data-offer-reject',
-                       'aria-haspopup="dialog"'):
+                       'data-offer-delete','data-offer-invoices','openOfferInvoices',
+                       'aria-haspopup="dialog"',"icon('pencil')","icon('trash')"):
             self.assertIn(marker,js)
         self.assertIn('id="offerDetailsDialog"',page)
         self.assertIn('id="offerDetailsContent"',page)
+        self.assertIn('id="offerInvoicesDialog"',page)
+        self.assertIn('id="offerInvoicesContent"',page)
         self.assertIn('#offerList .offer-tile',css)
-        self.assertIn('grid-template-columns:repeat(auto-fill',css)
+        self.assertIn('grid-template-columns:repeat(3',css)
+        self.assertIn('max-height:610px',css)
+        self.assertIn('overflow-y:auto',css)
+        self.assertIn('.offer-tile-corner-actions',css)
         self.assertIn('.phb-offer-details-dialog',css)
+        self.assertIn('.phb-offer-invoices-dialog',css)
         self.assertNotIn('offer-tile-details',js)
+
+    def test_receipt_overview_has_client_side_search(self):
+        page=self.render('belege')
+        script=(STATIC/'receipts.js').read_text()
+        styles=(STATIC/'receipts.css').read_text()
+        self.assertIn('id="receiptSearch"',page)
+        self.assertIn('id="receiptSearchResult"',page)
+        self.assertIn('ui-icons.svg#search',page)
+        self.assertIn('receiptMatchesSearch',script)
+        self.assertIn('renderReceiptList',script)
+        self.assertIn('Keine Belege entsprechen der Suche.',script)
+        self.assertIn('.receipt-search',styles)
 
     def test_task_list_and_history_are_on_demand_and_do_not_take_page_space(self):
         page=self.render('index')
