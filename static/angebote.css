@@ -226,10 +226,15 @@
 .phb-page-angebote #offerList .offer-tile-actions :is(button,a){white-space:normal}
 .phb-page-angebote #offerList .offer-tile-actions .offer-accepted-note{font-size:11px}
 .phb-page-angebote #offerList .offer-tile-corner-actions{position:absolute;z-index:2;top:12px;right:12px;display:flex;gap:5px}
-.phb-page-angebote #offerList .offer-tile-icon{display:grid;place-items:center;width:32px;height:32px;padding:0;border:1px solid var(--ui-line);border-radius:9px;background:var(--ui-surface);color:var(--ui-ink-soft);box-shadow:0 2px 7px rgba(16,39,51,.08)}
+.phb-page-angebote #offerList .offer-tile-icon{display:grid;place-items:center;width:32px;height:32px;min-height:32px;padding:0;border:1px solid var(--ui-line);border-radius:9px;background:var(--ui-surface);color:var(--ui-ink-soft);box-shadow:0 2px 7px rgba(16,39,51,.08);position:relative}
 .phb-page-angebote #offerList .offer-tile-icon:hover{background:var(--ui-soft);color:var(--ui-accent)}
 .phb-page-angebote #offerList .offer-tile-icon.danger:hover{color:var(--ui-danger);border-color:color-mix(in srgb,var(--ui-danger) 35%,var(--ui-line))}
 .phb-page-angebote #offerList .offer-tile-icon .phb-icon{width:17px;height:17px}
+body.phb-app.phb-page-angebote .offer-drafts-icon{display:grid;place-items:center;width:36px;height:36px;min-width:36px;min-height:36px;padding:0;position:relative;border:1px solid var(--ui-line-strong);border-radius:9px;background:var(--ui-surface);color:var(--ui-accent)}
+.phb-page-angebote .offer-drafts-icon[hidden]{display:none!important}
+.phb-page-angebote .offer-drafts-icon:hover{background:var(--ui-soft)}
+.phb-page-angebote .offer-drafts-icon .phb-icon{width:18px;height:18px}
+.phb-page-angebote .offer-icon-badge{position:absolute;top:-6px;right:-6px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border:2px solid var(--ui-surface);border-radius:999px;background:var(--ui-danger);color:#fff;font-size:10px;font-weight:800;line-height:1}
 @media(max-width:1050px){
   .phb-page-angebote #offerList{grid-template-columns:repeat(2,minmax(0,1fr));max-height:904px}
 }

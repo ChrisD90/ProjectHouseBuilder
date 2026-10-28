@@ -404,11 +404,12 @@
     const [label,color]=stage(o);
     const accepted=['Angenommen','Beauftragt'].includes(o.status);
     const rejected=o.status==='Abgelehnt';
+    const invoiceCount=o.billing?.linked_invoices?.length??o.billing?.invoices?.length??0;
     const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
     const actions=accepted
-      ? `<span class="offer-accepted-note">✓ ${o.acceptance?"Auftrag fixiert":"Berücksichtigt"}</span><a class="mini" href="/?firmenvorschlaege=1" title="Firma im Bauzeitenplan zuordnen">Firma zuordnen</a><button class="mini" type="button" data-offer-invoices="${o.id}">Rechnungen (${o.billing?.linked_invoices?.length??o.billing?.invoices?.length??0})</button><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>${o.acceptance?"":`<button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`}`
+      ? `<a class="mini" href="/?firmenvorschlaege=1" title="Arbeitspaket im Bauzeitenplan zuordnen">Arbeitspaket zuordnen</a><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>${o.acceptance?"":`<button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`}`
       : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
-    const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
+    const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${accepted?`<button class="offer-tile-icon" type="button" data-offer-invoices="${o.id}" aria-label="Zugeordnete Rechnungen anzeigen: ${invoiceCount}" title="Zugeordnete Rechnungen anzeigen">${icon('receipt')}<span class="offer-icon-badge">${invoiceCount}</span></button>`:''}${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
     return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
       ${corner}
       <button type="button" class="offer-tile-open" data-offer-details="${o.id}"
@@ -467,8 +468,9 @@
     $('offersAcceptedTotal').textContent=fmt(accepted.reduce((sum,o)=>sum+Number(o.agreed_gross??o.gross??0),0));
     $('offersCountRejected').textContent=String(rejected.length);
     $('offersDraftBadge').textContent=(drafts.length+versionDrafts.length)?`(${drafts.length+versionDrafts.length})`:'';
-    $('offerDraftTriggerCount').textContent=(drafts.length+versionDrafts.length)
-      ?'('+String(drafts.length+versionDrafts.length)+')':'';
+    const draftCount=drafts.length+versionDrafts.length;
+    $('openOfferDrafts').hidden=draftCount===0;
+    $('offerDraftTriggerCount').textContent=String(draftCount);
     $('offerDrafts').innerHTML=(drafts.length||versionDrafts.length) ? [...drafts.map(renderDraft),...versionDrafts.map(renderVersionDraft)].join('') : '<p class="offer-empty">Keine offenen PDF-Entwürfe. Neue PDF-Dateien kannst du oben hochladen.</p>';
     $('offerDrafts').querySelectorAll('form[data-review],form[data-version-review]').forEach(checkPositions);
     const first=drafts.find(o=>o.document_id)||versionDrafts.find(v=>v.document_id);

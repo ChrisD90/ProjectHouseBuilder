@@ -4,7 +4,7 @@
 <body class="phb-app phb-page-angebote">
 {% set phb_active = 'angebote' %}{% set phb_title = 'Angebote' %}{% include '_shell_open.html' %}
 <main id="phbMain" class="budget-main phb-main offers-page">
-  <div class="heading offers-heading phb-action-header"><div><span class="phb-page-kicker">Finanzen / Handwerkerangebote</span><h1>Angebote</h1><p>Alle Angebote an einem Ort: per PDF einlesen oder direkt eingeben, vergleichen und später entscheiden.</p></div><div class="phb-header-actions"><a class="mini" href="/kosten">Kostenübersicht ansehen →</a><button type="button" id="openOfferWorkflow" class="primary">+ Angebot erfassen</button></div></div>
+  <div class="heading offers-heading phb-action-header"><div><span class="phb-page-kicker">Finanzen / Handwerkerangebote</span><h1>Angebote</h1><p>Alle Angebote an einem Ort: per PDF einlesen oder direkt eingeben, vergleichen und später entscheiden.</p></div><div class="phb-header-actions"><button type="button" id="openOfferDrafts" class="offer-drafts-icon" aria-label="Offene Angebotsentwürfe prüfen" title="Offene Angebotsentwürfe prüfen" hidden><svg class="phb-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#file-check"></use></svg><span id="offerDraftTriggerCount" class="offer-icon-badge">0</span></button><button type="button" id="openOfferWorkflow" class="primary">+ Angebot erfassen</button></div></div>
   <div class="offers-how" aria-label="So funktioniert die Angebotsverwaltung">
     <span><b>1</b> Angebot erfassen</span><span class="offers-how-arrow" aria-hidden="true">→</span>
     <span><b>2</b> PDF-Daten und Positionen prüfen</span><span class="offers-how-arrow" aria-hidden="true">→</span>
@@ -83,7 +83,6 @@
       <div class="offer-form-actions"><button type="button" id="offerAcceptanceBack" class="subtle">Abbrechen</button><button id="offerAcceptanceSubmit" type="submit" class="primary">Auftrag verbindlich annehmen</button></div>
     </form>
   </dialog>
-<div class="phb-workflow-inline-trigger"><button type="button" id="openOfferDrafts" class="subtle">Offene Entwürfe prüfen <span id="offerDraftTriggerCount"></span></button></div>
   <section class="panel budget-panel offer-compare-section" id="angebotsliste"><div class="panelbar"><div><h2>Deine Angebote</h2><p>Nur die jeweils aktuelle Version wird angezeigt. Frühere PDFs, Summen und Positionen findest du über „Versionshistorie“.</p></div><label class="offers-filter">Gewerk <select id="offerCategoryFilter"><option value="">Alle Kategorien</option></select></label></div>
    <div id="offerList" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div>
    <p class="section-note">Bei angenommener Leistung wird der Bruttogesamtbetrag genau einmal übernommen. Wenn du eine Kostenplanposition zuordnest, ersetzt der angenommene Preis deren Schätzung. Zu jedem <strong>angenommenen Angebot</strong> siehst du hier die Teilrechnungen, den bereits bezahlten Betrag und mögliche Überziehungen. Rechnungen werden unter <a href="/belege">Rechnungen & Belege</a> erfasst.</p>

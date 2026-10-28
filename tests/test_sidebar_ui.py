@@ -385,8 +385,17 @@ class SidebarUITest(unittest.TestCase):
         for marker in ('offer-tile-open','data-offer-details','openOfferDetails',
                        'data-offer-accept','data-offer-edit','data-offer-reject',
                        'data-offer-delete','data-offer-invoices','openOfferInvoices',
-                       'aria-haspopup="dialog"',"icon('pencil')","icon('trash')"):
+                       'aria-haspopup="dialog"',"icon('pencil')","icon('receipt')","icon('trash')"):
             self.assertIn(marker,js)
+        self.assertNotIn('Kostenübersicht ansehen',page)
+        self.assertIn('id="openOfferDrafts"',page)
+        self.assertIn('class="offer-drafts-icon"',page)
+        self.assertLess(page.index('id="openOfferDrafts"'),page.index('id="openOfferWorkflow"'))
+        self.assertIn("$('openOfferDrafts').hidden=draftCount===0",js)
+        self.assertIn('Arbeitspaket zuordnen',js)
+        self.assertNotIn('Firma zuordnen',js)
+        self.assertNotIn('Auftrag fixiert',js)
+        self.assertNotIn('Berücksichtigt',js)
         self.assertIn('id="offerDetailsDialog"',page)
         self.assertIn('id="offerDetailsContent"',page)
         self.assertIn('id="offerInvoicesDialog"',page)
@@ -396,6 +405,8 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('max-height:610px',css)
         self.assertIn('overflow-y:auto',css)
         self.assertIn('.offer-tile-corner-actions',css)
+        self.assertIn('.offer-drafts-icon',css)
+        self.assertIn('.offer-icon-badge',css)
         self.assertIn('.phb-offer-details-dialog',css)
         self.assertIn('.phb-offer-invoices-dialog',css)
         self.assertNotIn('offer-tile-details',js)
