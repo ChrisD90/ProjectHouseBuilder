@@ -91,6 +91,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         loan_id = db.Column(db.Integer, db.ForeignKey('finance_loan.id', ondelete='RESTRICT'), nullable=False)
         original_name = db.Column(db.String(240), nullable=False)
         stored_name = db.Column(db.String(80), unique=True, nullable=False)
+        document_type = db.Column(db.String(30), nullable=False, default='attachment', server_default='attachment')
         notes = db.Column(db.String(500), nullable=False, default='')
         uploaded_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
@@ -274,7 +275,8 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
 
     def document_json(d):
         return {'id':d.id,'loan_id':d.loan_id,'filename':d.original_name,
-                'notes':d.notes,'uploaded_at':d.uploaded_at.isoformat() if d.uploaded_at else ''}
+                'document_type':d.document_type or 'attachment','notes':d.notes,
+                'uploaded_at':d.uploaded_at.isoformat() if d.uploaded_at else ''}
 
     @app.post('/api/financing/loans/ai/extract')
     def loan_ai_extract():
@@ -371,13 +373,23 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         notes=str(request.form.get('notes','') or '').strip()
         if len(notes)>500 or any(ord(c)<32 for c in notes):
             return jsonify(error='Dokumentnotiz zu lang oder ungültig.'),400
+        document_type=str(request.form.get('document_type','attachment') or 'attachment')
+        if document_type not in ('attachment','drawdown_template'):
+            return jsonify(error='Unbekannter Dokumenttyp.'),400
+        if document_type=='drawdown_template' and ext!='.pdf':
+            return jsonify(error='Eine Kreditabruf-Vorlage muss eine PDF-Datei sein.'),400
         LOAN_DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)
         stored=uuid4().hex+ext
         target=LOAN_DOCUMENT_ROOT/stored
         try:
             with target.open('xb') as output:
                 output.write(data)
-            d=LoanDocument(loan_id=lid,original_name=filename,stored_name=stored,notes=notes)
+            if document_type=='drawdown_template':
+                for old in db.session.scalars(select(LoanDocument).where(
+                    LoanDocument.loan_id==lid,LoanDocument.document_type=='drawdown_template')):
+                    old.document_type='attachment'
+            d=LoanDocument(loan_id=lid,original_name=filename,stored_name=stored,
+                           document_type=document_type,notes=notes)
             db.session.add(d);db.session.commit()
             return jsonify(document_json(d)),201
         except Exception:
@@ -562,6 +574,8 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
     def finance_event_delete(eid):
         e=db.session.get(FinancingEvent,eid)
         if not e:return jsonify(error='Buchung nicht gefunden.'),404
+        if e.kind=='loan_drawdown' and (e.notes or '').startswith('Mittelabruf #'):
+            return jsonify(error='Diesen Kreditabruf bitte im Bereich „Mittelabrufe bei der Bank“ gemeinsam mit seinen Umbuchungen zurücknehmen.'),409
         try:
             db.session.delete(e);db.session.flush();validate_ledger()
             db.session.commit();return jsonify(ok=True)
@@ -645,6 +659,8 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
     def finance_payment_unassign(pid):
         payment=db.session.get(ReceiptFinancingPayment,pid)
         if not payment:return jsonify(error='Zahlung nicht gefunden.'),404
+        lock_reason=services.get('payment_lock_reason',lambda _pid:'')(pid)
+        if lock_reason:return jsonify(error=lock_reason),409
         payment.source='unassigned';payment.loan_id=None;payment.equity_id=None
         db.session.flush();validate_ledger();db.session.commit()
         return jsonify(ok=True)
@@ -653,10 +669,14 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
     def finance_payment_delete(pid):
         p=db.session.get(ReceiptFinancingPayment,pid)
         if not p:return jsonify(error='Zahlung nicht gefunden.'),404
+        lock_reason=services.get('payment_lock_reason',lambda _pid:'')(pid)
+        if lock_reason:return jsonify(error=lock_reason),409
         receipt=db.session.get(Receipt,p.receipt_id)
         receipt.paid_amount=dec(receipt.paid_amount)-dec(p.amount)
         db.session.delete(p)
         db.session.flush();validate_ledger()
         db.session.commit();return jsonify(ok=True)
 
-    return Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument
+    services={'all_rows':all_rows,'dec':dec,'model_id':model_id,
+              'loan_account':loan_account,'validate_ledger':validate_ledger}
+    return Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument, services

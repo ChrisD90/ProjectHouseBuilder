@@ -40,7 +40,7 @@ Die alten Excel-Kostenplanvorlagen und ihr automatischer Import sind **entfernt*
 
 ## Datenbankschema und Updates
 
-`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung, `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung und `0008` die explizite Rechnungszuordnung. Bereits bestehende Rechnungen bleiben erhalten; bisherige Zuordnungen zu Kostenpositionen werden übernommen und nicht automatisch als Eigenleistung deklariert. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
+`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung, `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung und `0008` die explizite Rechnungszuordnung. `0018` ergänzt Kreditabrufvorlagen und nachvollziehbare Mittelabrufpakete. Bereits bestehende Rechnungen bleiben erhalten; bisherige Zuordnungen zu Kostenpositionen werden übernommen und nicht automatisch als Eigenleistung deklariert. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
 
 Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.db-shm`, `private/`, `backups/`, `.env`, `instance/` aus. Diese Dateien niemals in GitHub einchecken. Die Datenbank nie in einem Cloud-Sync-Ordner betreiben; nur vollständige Backups synchronisieren.
 
@@ -51,7 +51,7 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 - **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, korrigieren, annehmen oder ablehnen. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.
 - **Kosten & Budget (`/kosten`):** Ausschließlich Kostenschätzungen und zusätzliche Ausgaben planen; keine zweite Angebotsverwaltung. Angenommene Angebote werden automatisch eingerechnet, aber nicht nochmals bearbeitbar als manuelle Kostenposition angezeigt.
 - **Belege:** Rechnungen/Kassenzettel als PDF oder Foto importieren und wahlweise **lokal** (PDF-Text/Tesseract OCR) oder nach ausdrücklicher Freigabe mit **ChatGPT** analysieren. Belege anschließend prüfen und **genau einer Zuordnungsart** zuweisen: angenommenes Angebot, Betrieb oder Eigenleistung. Die Budgetposition bleibt separat auswählbar; keine automatische Buchung.
-- **Finanzierung:** Kredite manuell erfassen oder Kreditunterlagen ausdrücklich mit ChatGPT auslesen und Vertragsfelder vor dem Speichern prüfen. Briefe, Vertrags-PDFs und gescannte Dokumente lassen sich am einzelnen Kredit anhängen; außerdem Eigenkapital, Kreditabrufe, Tilgungen, aufgeteilte Rechnungszahlungen und Liquiditätsvorschau.
+- **Finanzierung:** Kredite manuell erfassen oder Kreditunterlagen ausdrücklich mit ChatGPT auslesen und Vertragsfelder vor dem Speichern prüfen. Briefe, Vertrags-PDFs und gescannte Dokumente lassen sich am einzelnen Kredit anhängen. Für jeden Kredit kann eine Bankvorlage hinterlegt und ein Mittelabruf-ZIP aus ausgewählten Rechnungen erzeugt werden; aus Eigenkapital oder zunächst unzugeordnet bezahlte Beträge werden dabei nachvollziehbar auf den gewählten Kredit umgebucht.
 - **Stammdaten (`/stammdaten`):** Firmen und automatisch aus PDF-Angeboten übernommene Betriebe zentral pflegen: Ansprechpartner, weitere Kontakte, Telefonnummern, E-Mail, Website, Adresse und Notizen. Separate Gewerke und gemeinsam genutzte Rechnungs-/Kostenkategorien anlegen, umbenennen und – falls unverknüpft – löschen.
 - **Backup, Export & Datenverwaltung (`/daten`):** geprüfte vollständige Sicherungen einschließlich PDFs und Bildern, CSV-/JSON-Exporte, ZIP-Projektarchiv, Wiederherstellungshinweise. Der vollständige Reset ist hinter „Erweiterte Aktionen“ verborgen und bleibt nur nach Pflichtbackup möglich.
 
@@ -147,8 +147,9 @@ mit 15.000 € Abzug -> 5.000 € zusätzlich abgerechnet. **Enthält eine Schlu
 nur den noch offenen Restbetrag, den Abzug bei null lassen.** Das Originalbrutto bleibt
 immer unverändert abrufbar. Ein weiterer Beleg wird nach gebuchter Schlussrechnung
 gesperrt, bis diese korrigiert wird. Vorherige Abschläge lassen sich nicht zurücknehmen,
-solange eine Schlussrechnung auf sie Bezug nimmt. Gebuchte Belege lassen sich nur
-nach Zurücknehmen der Buchung umhängen. Zahlungen und Rechnungswerte bleiben getrennt.
+solange eine Schlussrechnung auf sie Bezug nimmt. Bei gebuchten und stornierten
+Belegen kann die Zuordnung zu Angebot, Betrieb und Budget gesondert korrigiert werden;
+Zahlungen, Rechnungswerte und Stornonachweis bleiben dabei unverändert.
 
 Die neuen Spalten werden per Migration `0005` angelegt. Bei einer vorhandenen SQLite-DB
 erstellt der Mac-Start vor der Migration wie gewohnt zwingend ein vollständiges,
@@ -240,7 +241,7 @@ Im Prüfbereich ist die Zuordnungsart exklusiv:
 - **Betrieb**: einen unter Stammdaten → Firmen & Ansprechpartner angelegten Betrieb wählen, ohne Angebotsverknüpfung.
 - **Eigenleistung / Material**: Ausgaben ohne Betrieb und ohne Angebot zuordnen.
 
-Die **Budgetposition** ist davon grundsätzlich unabhängig, soweit die Angebotsabrechnung nicht bereits eine feste Budgetverknüpfung vorgibt. Gebuchte Belege können erst nach Zurücknehmen der Buchung umgehängt werden. Für historische Rechnungen mit alten Kostenpositionsverknüpfungen bleibt diese Zuordnung bestehen, damit frühere Buchungen und Finanzierungszuordnungen unverändert bleiben.
+Die **Budgetposition** ist davon grundsätzlich unabhängig, soweit die Angebotsabrechnung nicht bereits eine feste Budgetverknüpfung vorgibt. Für gebuchte und stornierte Belege gibt es „Zuordnung korrigieren“; dieser Vorgang ändert nur Angebot/Betrieb/Eigenleistung und Budgetposition. Für historische Rechnungen mit alten Kostenpositionsverknüpfungen bleibt diese Zuordnung bestehen, bis sie ausdrücklich korrigiert wird. Rechnungswerte, Zahlungen und Finanzierungszuordnungen bleiben unverändert.
 
 Der Start auf dem Mac führt vor der neuen Schema-Migration `0008` wie gewohnt ein verifiziertes Backup aus. Ohne erreichbares Backup-Ziel wird die Migration aus Sicherheitsgründen abgebrochen. Die ChatGPT-Analyse nutzt ausschließlich die bereits verbundene Plannutzung; es gibt keinen kostenpflichtigen API-Key-Fallback.
 
@@ -502,3 +503,33 @@ Migration `0016` ergänzt ausschließlich die Tabelle für Stornohistorien. Best
 Rechnungen, Zahlungen, Kredit- und Eigenkapitaldaten werden nicht umgeschrieben.
 Beim lokalen SQLite-Update erstellt der Starter zuvor wie bisher ein verifiziertes
 Komplettbackup; bei NAS/Docker wird die neue Tabelle beim Initialisieren angelegt.
+
+## Kredit-Mittelabrufe und Bankpakete (Migration 0018)
+
+Im Bereich **Finanzierung** startet **„+ Mittelabruf“** einen eigenen Ablauf. Zuerst wird
+der Zielkredit gewählt; dadurch bleiben mehrere parallel laufende Darlehen eindeutig
+getrennt. Die Liste zeigt gebuchte und bezahlte Rechnungen sowie Kassenzettel mit ihrer
+aktuellen Finanzierungsquelle. Auswählbar sind die Anteile, die bisher aus Eigenkapital
+oder ohne Finanzierungsquelle bezahlt wurden. Bereits dem Zielkredit zugeordnete Beträge
+werden angezeigt, aber weder erneut abgerufen noch doppelt verbucht. Zahlungen eines
+anderen Kredits werden nicht automatisch verschoben.
+
+Beim Erstellen passieren Kreditabruf und Umbuchung in einer Datenbanktransaktion: Der
+neu anzufordernde Betrag wird beim gewählten Kredit als Abruf gebucht, die ausgewählten
+Eigenkapital-/unzugeordneten Zahlungsanteile werden auf diesen Kredit umgestellt und der
+bezahlte Rechnungsbetrag bleibt unverändert. Das erzeugte ZIP enthält eine Übersicht und
+die Originaldateien aller ausgewählten Belege. Es wird unter
+`private/loan-drawdowns/` gespeichert, gehört damit zum vollständigen Backup und kann in
+der Mittelabrufhistorie erneut geladen werden. **„Abruf zurücknehmen“** stellt
+Kreditabruf und alle zugehörigen Zahlungsquellen gemeinsam wieder her; wenn eine dieser
+Buchungen inzwischen anderweitig verändert wurde, wird die automatische Rücknahme
+abgelehnt.
+
+In **Kredit bearbeiten → Kreditunterlagen** kann die Dokumentart **„Vorlage für
+Kreditabruf“** gewählt werden. Pro Kredit ist eine aktive PDF-Vorlage vorgesehen; eine
+neue Auswahl stuft die bisherige Vorlage zur normalen Kreditunterlage zurück, ohne die
+Datei zu löschen. Das Originalformular wird auch ohne ChatGPT in das ZIP aufgenommen.
+Wenn die lokale ChatGPT-Verbindung aktiv ist und die Plannutzung bestätigt wurde, kann
+ChatGPT die ausfüllbaren PDF-Felder anhand der geprüften Kredit-, Abruf- und Belegdaten
+vorausfüllen. Das Ergebnis bleibt eine zu prüfende, gegebenenfalls zu unterschreibende
+Bankvorlage; unbekannte Angaben und Unterschriften werden nicht erfunden.

@@ -5,7 +5,7 @@ import os
 import unittest
 from unittest.mock import patch
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import app,db,initialize,Receipt,CostItem,BudgetLine,Contractor
+from app import app,db,initialize,Receipt,CostItem,BudgetLine,Contractor,Offer
 
 class ReceiptWebappTest(unittest.TestCase):
     def setUp(self):
@@ -199,6 +199,47 @@ class ReceiptWebappTest(unittest.TestCase):
         self.assertIsNone(saved.contractor_id)
         self.assertIsNone(saved.cost_item_id)
         self.assertEqual(saved.assignment_type,'')
+
+    def test_booked_and_cancelled_receipt_assignment_can_be_corrected_safely(self):
+        contractor=Contractor(name='Falsch gewählter Betrieb',trade='Elektro')
+        budget=BudgetLine(code='KORR',category='Elektro',title='Elektroinstallation',estimate=5000)
+        offer=Offer(digest='k'*64,vendor='Richtiger Angebotsbetrieb',gross=120,
+                    filename='Angebot.pdf',status='Angenommen',category='Elektro')
+        db.session.add_all([contractor,budget,offer]);db.session.flush()
+        item=CostItem(title='Angenommenes Elektroangebot',category='Elektro',state='Beauftragt',
+                      offer=120,committed=120,selected=True,offer_id=offer.id,budget_line_id=budget.id)
+        db.session.add(item);db.session.commit()
+        rid=self.upload().json['id']
+        booked=self.client.patch(f'/api/receipts/{rid}',json={
+            'assignment_type':'Betrieb','contractor_id':contractor.id,'cost_item_id':None,
+            'budget_line_id':None,'book_now':True})
+        self.assertEqual(booked.status_code,200,booked.json)
+
+        corrected=self.client.patch(f'/api/receipts/{rid}/assignment',json={
+            'assignment_type':'Angebot','cost_item_id':item.id,'contractor_id':None,
+            'budget_line_id':budget.id})
+        self.assertEqual(corrected.status_code,200,corrected.json)
+        self.assertEqual(corrected.json['assignment_type'],'Angebot')
+        self.assertEqual(corrected.json['cost_item_id'],item.id)
+        self.assertIsNone(corrected.json['contractor_id'])
+        self.assertEqual(corrected.json['gross_amount'],120)
+        invalid=self.client.patch(f'/api/receipts/{rid}/assignment',json={
+            'assignment_type':'Angebot','cost_item_id':None,'contractor_id':contractor.id})
+        self.assertEqual(invalid.status_code,400,invalid.json)
+        self.assertEqual(db.session.get(Receipt,rid).cost_item_id,item.id)
+
+        preview=self.client.get(f'/api/receipts/{rid}/cancel-preview')
+        self.assertEqual(preview.status_code,200,preview.json)
+        cancelled=self.client.post(f'/api/receipts/{rid}/cancel',json={
+            'confirm':True,'plan_digest':preview.json['plan_digest'],'reason':'Testkorrektur'})
+        self.assertEqual(cancelled.status_code,200,cancelled.json)
+        after_cancel=self.client.patch(f'/api/receipts/{rid}/assignment',json={
+            'assignment_type':'Eigenleistung','cost_item_id':None,'contractor_id':None,
+            'budget_line_id':budget.id})
+        self.assertEqual(after_cancel.status_code,200,after_cancel.json)
+        self.assertEqual(after_cancel.json['status'],'Storniert')
+        self.assertEqual(after_cancel.json['assignment_type'],'Eigenleistung')
+        self.assertEqual(after_cancel.json['gross_amount'],120)
 
     def test_chatgpt_receipt_upload_explicit_consent_and_editable_draft(self):
         from chatgpt_local import chatgpt

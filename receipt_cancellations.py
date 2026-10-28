@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 
-def register_cancellations(app, db, Receipt, Payment, *, receipt_offer):
+def register_cancellations(app, db, Receipt, Payment, *, receipt_offer, receipt_has_drawdown=lambda _rid:False):
     class ReceiptCancellation(db.Model):
         __tablename__='receipt_cancellation'
         id=db.Column(db.Integer,primary_key=True)
@@ -25,6 +25,8 @@ def register_cancellations(app, db, Receipt, Payment, *, receipt_offer):
 
     def check(receipt):
         if receipt.status!='Gebucht':raise ValueError('Nur eine gebuchte Rechnung kann storniert werden.')
+        if receipt_has_drawdown(receipt.id):
+            raise ValueError('Die Rechnung gehört zu einem Mittelabruf. Bitte zuerst den Mittelabruf mit seinen Umbuchungen zurücknehmen.')
         offer=receipt_offer(receipt)
         if offer and receipt.billing_type!='Schlussrechnung':
             from app import CostItem

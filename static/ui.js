@@ -44,6 +44,7 @@
     if(path.includes('/api/ai/offers/compare'))return 'ChatGPT vergleicht die Angebote …';
     if(path.includes('/api/ai/'))return 'ChatGPT verarbeitet deine Anfrage …';
     if(path.includes('/api/financing/loans/ai/extract'))return 'ChatGPT liest die Kreditunterlagen …';
+    if(path.includes('/api/financing/drawdowns/package'))return 'Mittelabruf und Bankpaket werden erstellt …';
     if(path.includes('/api/receipts')&&method==='POST'&&!/\/book|\/unbook/.test(path)){
       return form?.get?.('analysis_mode')==='ai'?'ChatGPT prüft deine Rechnung …':'Rechnung wird lokal analysiert …';
     }
@@ -57,7 +58,7 @@
     return 'Projektinformationen werden geladen …';
   };
   function classify(url,method,form){
-    const expensive=/\/api\/contractors\/research|\/api\/ai\/|\/api\/financing\/loans\/ai\/extract|\/api\/backup\/(manual|create)|\/api\/tasks\/initialize|\/api\/tasks\/clear/.test(url);
+    const expensive=/\/api\/contractors\/research|\/api\/ai\/|\/api\/financing\/loans\/ai\/extract|\/api\/financing\/drawdowns\/package|\/api\/backup\/(manual|create)|\/api\/tasks\/initialize|\/api\/tasks\/clear/.test(url);
     const upload=method==='POST'&&form instanceof FormData&&(form.has('file')||form.has('files'));
     return {long:expensive||upload,lock:method!=='GET'&&method!=='HEAD',message:labelFor(url,method,form)};
   }

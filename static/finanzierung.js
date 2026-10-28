@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
-let loanSaving=false,equityBusy=false,pendingLoanScan=null;
+let loanSaving=false,equityBusy=false,drawdownBusy=false,pendingLoanScan=null,drawdownOptions=null;
 const loanFlow=PHBFlow.manage({
  dialog:'loanDialog',forms:['loanForm'],dismiss:['closeLoan'],
  isBusy:()=>loanAiBusy||loanSaving,
@@ -9,6 +9,11 @@ const loanFlow=PHBFlow.manage({
 const equityFlow=PHBFlow.manage({
  dialog:'equityDialog',forms:['equityForm'],dismiss:['closeEquity'],
  isBusy:()=>equityBusy
+});
+const drawdownFlow=PHBFlow.manage({
+ dialog:'drawdownDialog',forms:['drawdownForm'],dismiss:['closeDrawdown'],
+ isBusy:()=>drawdownBusy,
+ busyMessage:'Der Mittelabruf wird gebucht und das ZIP-Paket erstellt. Bitte das Ergebnis abwarten.'
 });
 
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -33,20 +38,22 @@ function render(){
  $('loanList').innerHTML=state.loans.map(l=>`<article class="smallcard"><h3>${esc(l.name)}</h3><p class="meta">${esc(l.bank)} · ${esc(l.reference)}</p><div class="values"><div>Rahmen<b>${euro(l.principal)}</b></div><div>Sollzins<b>${esc(l.interest_rate)} %</b></div><div>Monatsrate<b>${euro(l.monthly_payment)}</b></div><div>Abgerufen<b>${euro(l.balance.drawn)}</b></div><div>Unverbraucht<b>${euro(l.balance.unallocated_drawn)}</b></div><div>Restschuld nach eingetragenen Tilgungen<b>${euro(l.balance.outstanding_principal)}</b></div></div><div class="inline-actions"><span class="loan-doc-count">${l.documents?.length||0} Dokumente</span><button type="button" data-loan="${l.id}">Bearbeiten &amp; ergänzen</button></div></article>`).join('')||'<p>Noch kein Darlehen erfasst.</p>';
  $('equityList').innerHTML=state.equity.map(l=>`<article class="smallcard"><h3>${esc(l.name)}</h3><div class="values"><div>Startbestand<b>${euro(l.opening_balance)}</b></div><div>Noch verfügbar<b>${euro(l.balance.available)}</b></div><div>Sicherheitsreserve<b>${euro(l.reserve)}</b></div><div>Über Reserve<b>${euro(l.balance.after_reserve)}</b></div></div><div class="inline-actions"><button type="button" data-equity="${l.id}">Bearbeiten</button></div></article>`).join('')||'<p>Noch kein Eigenkapitalkonto erfasst.</p>';
  const kinds={loan_drawdown:'Kreditabruf',loan_repayment:'Tilgung',loan_interest:'Zinsen',loan_fee:'Gebühren',equity_deposit:'Eigenkapital-Zugang',equity_withdrawal:'Eigenkapital-Entnahme'};
- $('events').innerHTML=state.events.map(e=>`<div class="record"><div><strong>${esc(kinds[e.kind])}</strong> · ${euro(e.amount)}<br><span>${esc(e.event_date)} · ${esc(sourceTitle(e.loan_id?'loan':'equity',e.loan_id||e.equity_id))} ${e.notes?'· '+esc(e.notes):''}</span></div><button type="button" data-delete-event="${e.id}" class="danger" title="Buchung stornieren">✕</button></div>`).join('');
+ $('events').innerHTML=state.events.map(e=>`<div class="record"><div><strong>${esc(kinds[e.kind])}</strong> · ${euro(e.amount)}<br><span>${esc(e.event_date)} · ${esc(sourceTitle(e.loan_id?'loan':'equity',e.loan_id||e.equity_id))} ${e.notes?'· '+esc(e.notes):''}</span></div>${e.kind==='loan_drawdown'&&/^Mittelabruf #/.test(e.notes||'')?'':`<button type="button" data-delete-event="${e.id}" class="danger" title="Buchung stornieren">✕</button>`}</div>`).join('');
+ $('drawdownHistory').innerHTML=(state.drawdowns||[]).map(d=>`<article class="drawdown-history-row"><div><strong>${esc(d.loan_name)} · ${euro(d.requested_amount)}</strong><span>${esc(d.requested_date)} · ${d.receipt_count} Beleg${d.receipt_count===1?'':'e'}${d.ai_prefilled?' · Vorlage mit ChatGPT vorausgefüllt':''}</span></div><div><a class="button-link" href="${esc(d.download_url)}">ZIP laden</a><button type="button" class="danger" data-undo-drawdown="${d.id}">Abruf zurücknehmen</button></div></article>`).join('')||'<p class="hint">Noch keine Mittelabrufe erstellt.</p>';
 
  fillOptions();
  document.querySelectorAll('[data-loan]').forEach(el=>el.onclick=()=>openLoan(Number(el.dataset.loan)));
  document.querySelectorAll('[data-equity]').forEach(el=>el.onclick=()=>openEquity(Number(el.dataset.equity)));
  document.querySelectorAll('[data-delete-event]').forEach(el=>el.onclick=()=>erase('events',Number(el.dataset.deleteEvent)));
  document.querySelectorAll('[data-delete-payment]').forEach(el=>el.onclick=()=>erase('payments',Number(el.dataset.deletePayment)));
+ document.querySelectorAll('[data-undo-drawdown]').forEach(el=>el.onclick=()=>undoDrawdown(Number(el.dataset.undoDrawdown)));
 }
-async function reload(){state=await api('/api/financing');render()}
+async function reload(){const [finance,drawdowns]=await Promise.all([api('/api/financing'),api('/api/financing/drawdowns')]);state=finance;state.drawdowns=drawdowns.drawdowns||[];render()}
 function fill(form,obj){for(const [k,v] of Object.entries(obj||{})){const f=form.elements.namedItem(k);if(f&&f.tagName!=='BUTTON'){f.value=v??'';if(f instanceof HTMLInputElement)PHBUI.currency.prepare(f);}}}
 function documentRows(loan){
  $('loanDocumentList').innerHTML=(loan.documents||[]).map(d=>`<div class="loan-doc-row">
    <div><a href="/api/financing/loans/${loan.id}/documents/${d.id}/download">${esc(d.filename)}</a>
-   <small>${esc(d.notes||'Ohne Beschreibung')} · ${esc(d.uploaded_at?.slice(0,10)||'')}</small></div>
+   <small>${d.document_type==='drawdown_template'?'<b class="doc-type">Aktive Kreditabruf-Vorlage</b> · ':''}${esc(d.notes||'Ohne Beschreibung')} · ${esc(d.uploaded_at?.slice(0,10)||'')}</small></div>
    <button type="button" class="danger" data-delete-loan-document="${d.id}" aria-label="Dokument ${esc(d.filename)} entfernen">Löschen</button>
  </div>`).join('')||'<p class="hint">Noch keine Dokumente hinterlegt.</p>';
  $('loanDocumentList').querySelectorAll('[data-delete-loan-document]').forEach(b=>b.onclick=async()=>{
@@ -249,6 +256,75 @@ $('deleteLoan').onclick=async()=>{if(loanAiBusy)return;const id=$('loanForm').el
 $('deleteEquity').onclick=async()=>{const id=$('equityForm').elements.namedItem('id').value;if(!await PHBUI.confirm('Eigenkapitalkonto ohne Buchungen löschen?'))return;try{await api('/api/financing/equity/'+id,'DELETE');$('equityDialog').close();await reload()}catch(e){message(e.message,true)}};
 $('eventKind').onchange=fillOptions;
 $('eventForm').onsubmit=async e=>{e.preventDefault();const v=payload(e.currentTarget),loan=v.kind.startsWith('loan_');v[loan?'loan_id':'equity_id']=$('eventSource').value;try{await api('/api/financing/events','POST',v);await reload();message('Geldbewegung gespeichert.')}catch(err){message(err.message,true)}};
+
+function updateDrawdownTotal(){
+ const selected=[...$('drawdownReceiptList').querySelectorAll('input[type=checkbox]:checked')];
+ const total=selected.reduce((sum,input)=>sum+Number(input.dataset.amount||0),0);
+ $('drawdownSelectedTotal').textContent=euro(total)+' ausgewählt';
+ $('createDrawdownPackage').disabled=drawdownBusy||!selected.length||total>Number(drawdownOptions?.undrawn||0)+0.004;
+}
+function renderDrawdownOptions(){
+ const options=drawdownOptions;
+ $('drawdownCapacity').textContent='Noch abrufbar: '+euro(options?.undrawn||0);
+ const template=options?.template;
+ $('drawdownTemplateState').innerHTML=template
+  ? '<strong>Abrufvorlage vorhanden:</strong> '+esc(template.filename)
+  : '<strong>Keine Abrufvorlage hinterlegt.</strong> Das ZIP wird trotzdem mit Übersicht und Belegen erstellt. Eine PDF-Vorlage kannst du beim Kredit ergänzen.';
+ const aiAvailable=Boolean(template&&window.PHBAI?.connected());
+ $('drawdownAiWrap').hidden=!aiAvailable;
+ if(!aiAvailable)$('drawdownAiPrefill').checked=false;
+ const rows=options?.receipts||[];
+ $('drawdownReceiptList').innerHTML=rows.map(r=>`<label class="drawdown-receipt ${r.eligible?'':'disabled'}"><input type="checkbox" value="${r.id}" data-amount="${r.rebookable}" ${r.eligible?'':'disabled'}><span><strong>${esc(r.supplier)}</strong><small>${esc(r.document_date||'Ohne Datum')} · ${esc(r.invoice_number||r.filename)} · ${esc(r.source_summary)}</small></span><span class="drawdown-amount"><b>${euro(r.rebookable)}</b><small>neu abrufbar</small></span></label>`).join('')||'<p class="hint">Noch keine bezahlten, gebuchten Belege vorhanden.</p>';
+ $('drawdownReceiptList').querySelectorAll('input[type=checkbox]').forEach(input=>input.onchange=updateDrawdownTotal);
+ updateDrawdownTotal();
+}
+async function loadDrawdownOptions(){
+ const loanId=Number($('drawdownLoan').value);
+ if(!loanId){drawdownOptions=null;renderDrawdownOptions();return;}
+ $('drawdownReceiptList').innerHTML='<p class="hint">Belege und Zahlungsquellen werden geladen …</p>';
+ try{drawdownOptions=await api('/api/financing/drawdowns/options?loan_id='+loanId);renderDrawdownOptions();}
+ catch(error){drawdownOptions=null;$('drawdownStatus').textContent=error.message;renderDrawdownOptions();}
+}
+async function openDrawdown(){
+ $('drawdownForm').reset();drawdownOptions=null;
+ $('drawdownLoan').innerHTML=state.loans.map(loan=>option(loan.id,loan.name+' · noch abrufbar '+euro(loan.balance.undrawn))).join('');
+ $('drawdownForm').elements.namedItem('requested_date').value=TODAY;
+ $('drawdownStatus').textContent='';
+ drawdownFlow.open();
+ if(!state.loans.length){$('drawdownStatus').textContent='Bitte zuerst einen Kredit anlegen.';renderDrawdownOptions();return;}
+ await loadDrawdownOptions();drawdownFlow.snapshot();
+}
+$('newDrawdown').onclick=openDrawdown;
+$('drawdownLoan').onchange=loadDrawdownOptions;
+$('closeDrawdown').onclick=()=>{if(!drawdownBusy)$('drawdownDialog').close();};
+document.addEventListener('phb-ai-status',()=>{if($('drawdownDialog').open)renderDrawdownOptions();});
+async function undoDrawdown(id){
+ if(!await PHBUI.confirm('Diesen Mittelabruf vollständig zurücknehmen? Kreditabruf und alle dadurch umgebuchten Finanzierungsquellen werden gemeinsam wiederhergestellt.'))return;
+ try{await api('/api/financing/drawdowns/'+id,'DELETE');await reload();message('Mittelabruf und Umbuchungen wurden gemeinsam zurückgenommen.');}
+ catch(error){message(error.message,true);}
+}
+$('drawdownForm').onsubmit=async event=>{
+ event.preventDefault();if(drawdownBusy)return;
+ const receiptIds=[...$('drawdownReceiptList').querySelectorAll('input[type=checkbox]:checked')].map(input=>Number(input.value));
+ if(!receiptIds.length){$('drawdownStatus').textContent='Bitte mindestens einen Beleg auswählen.';return;}
+ const fields=Object.fromEntries(new FormData(event.currentTarget));
+ fields.loan_id=Number(fields.loan_id);fields.receipt_ids=receiptIds;
+ fields.ai_prefill=$('drawdownAiPrefill').checked;
+ if(fields.ai_prefill){
+  try{const selection=window.PHBAI?.selection();fields.model=selection?.model||'';fields.plan_only='true';}catch(error){$('drawdownStatus').textContent=error.message;return;}
+ }
+ drawdownBusy=true;const button=$('createDrawdownPackage');button.disabled=true;
+ $('drawdownStatus').textContent=fields.ai_prefill?'ChatGPT füllt die Bankvorlage; anschließend werden Umbuchung und ZIP erstellt …':'Umbuchung und ZIP-Paket werden erstellt …';
+ try{
+  const headers={'Content-Type':'application/json'};if(fields.ai_prefill)headers['X-PHB-AI']='1';
+  const response=await fetch('/api/financing/drawdowns/package',{method:'POST',headers,body:JSON.stringify(fields)});
+  if(!response.ok){const result=await response.json();throw Error(result.error||'Mittelabruf konnte nicht erstellt werden.');}
+  const blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='Mittelabruf_'+fields.requested_date+'.zip';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  drawdownFlow.finish();await reload();message('Mittelabruf gebucht, Zahlungen umgebucht und ZIP-Paket heruntergeladen.');
+ }catch(error){$('drawdownStatus').textContent=error.message;}
+ finally{drawdownBusy=false;button.disabled=false;updateDrawdownTotal();}
+};
 
 reload().then(()=>{
    const scanId=Number(new URLSearchParams(location.search).get('loan_scan'));

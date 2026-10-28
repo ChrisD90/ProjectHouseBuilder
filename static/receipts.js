@@ -2,7 +2,7 @@
 const $=id=>document.getElementById(id);
 const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
-let selected=null,list=[],overview=null;
+let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;
 const receiptDialog=$('receiptWorkflowDialog');
 function showReceiptPreview(item){
  const pane=$('receiptPdfPane'),frame=$('receiptPdfFrame'),image=$('receiptImagePreview');
@@ -133,7 +133,7 @@ $('receiptLabor').addEventListener('input',()=>{
 });
 function updateInvoiceControls(){
  const mode=$('receiptAssignmentType').value;
- const frozen=$('book').hidden;
+ const frozen=$('book').hidden&&!assignmentEditing;
  $('receiptOfferWrap').hidden=mode!=='Angebot'&&mode!=='Kostenposition';
  $('receiptContractorWrap').hidden=mode!=='Betrieb';
  $('receiptContractorHint').hidden=mode!=='Betrieb';
@@ -211,7 +211,7 @@ async function reload(keepId=selected){
  if(linkOffer&&!selected){$('uploadStatus').textContent='Angebot ausgewählt: Lade die Rechnung hoch und prüfe danach die Verknüpfung im Entwurf.';}
 }
 async function open(id){
- try{let x=await api('/api/receipts/'+id);selected=id;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
+ try{let x=await api('/api/receipts/'+id);selected=id;currentReceipt=x;assignmentEditing=false;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;
  $('receiptReviewLayout').hidden=false;
  $('receiptReviewStage').hidden=false;
@@ -231,6 +231,8 @@ async function open(id){
  $('receiptTaxRate').value=detectReceiptTaxRate(x);
  updateLaborHint(x.labor_source,x.labor_amount);
  $('book').hidden=x.status!=='Entwurf';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status!=='Entwurf';
+ $('editReceiptAssignment').hidden=!['Gebucht','Storniert'].includes(x.status);
+ $('saveReceiptAssignment').hidden=true;$('cancelReceiptAssignment').hidden=true;
  $('cancelReceipt').hidden=x.status!=='Gebucht';$('markReceiptPaid').hidden=x.status!=='Gebucht'||x.paid_amount>=x.counted_amount;
  for(const button of $('review').querySelectorAll('button[type=submit]')){
    button.hidden=x.status==='Storniert';
@@ -240,7 +242,7 @@ async function open(id){
  $('review').querySelector('.receipt-draft-toolbar').hidden=x.status==='Storniert';
  $('receiptReviewState').textContent=x.status;
  $('receiptReviewTitle').textContent=x.status==='Entwurf'?'Rechnungsdaten prüfen':x.status==='Gebucht'?'Gebuchte Rechnung':'Stornierte Rechnung';
- $('receiptReviewHelp').textContent=x.status==='Entwurf'?'Unvollständige Daten kannst du jederzeit zwischenspeichern. Erst „Verbindlich buchen“ übernimmt die Rechnung in Kosten und Abrechnung; die Zahlung erfasst du danach separat.':x.status==='Gebucht'?'Notizen und das optionale Zahlungsziel kannst du weiterhin ergänzen. Für andere Änderungen zuerst die Buchung zurücknehmen. Zahlungen erfasst du separat.':'Der stornierte Beleg bleibt mit Original und Stornogrund als Nachweis erhalten.';
+ $('receiptReviewHelp').textContent=x.status==='Entwurf'?'Unvollständige Daten kannst du jederzeit zwischenspeichern. Erst „Verbindlich buchen“ übernimmt die Rechnung in Kosten und Abrechnung; die Zahlung erfasst du danach separat.':x.status==='Gebucht'?'Notizen und das optionale Zahlungsziel kannst du weiterhin ergänzen. Eine falsche Zuordnung zu Angebot, Betrieb oder Budget kannst du direkt korrigieren.':'Der stornierte Beleg bleibt mit Original und Stornogrund als Nachweis erhalten. Seine Kostenzuordnung kann weiterhin korrigiert werden.';
  $('receiptWorkflowTitle').textContent=x.status==='Entwurf'?'Rechnung prüfen':x.status==='Gebucht'?'Gebuchte Rechnung':'Stornierte Rechnung';
  $('payReceipt').hidden=x.status!=='Gebucht';
  $('receiptCancellationInfo').hidden=!x.cancellation;
@@ -263,6 +265,33 @@ async function open(id){
  $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Original bleibt erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Für Betragsänderungen zuerst Buchung zurücknehmen.':'Entwurf: Du kannst jederzeit zwischenspeichern, auch ohne Firma, Betrag oder Zahlungsziel.');
  }catch(e){notice(e.message,true)}
 }
+
+function setAssignmentEditing(enabled){
+ assignmentEditing=enabled;
+ $('editReceiptAssignment').hidden=enabled;
+ $('saveReceiptAssignment').hidden=!enabled;
+ $('cancelReceiptAssignment').hidden=!enabled;
+ for(const id of ['receiptAssignmentType','costItems','receiptContractor','budgetLines'])$(id).disabled=!enabled;
+ updateInvoiceControls();
+ if(enabled){
+  $('receiptReviewHelp').textContent='Korrigiere nur die Zuordnung. Rechnungsbetrag, Zahlungsstand und Stornonachweis bleiben unverändert.';
+  $('receiptAssignmentType').focus();
+ }
+}
+$('editReceiptAssignment').onclick=()=>setAssignmentEditing(true);
+$('cancelReceiptAssignment').onclick=()=>{if(currentReceipt)open(currentReceipt.id);};
+$('saveReceiptAssignment').onclick=async()=>{
+ if(!selected||!currentReceipt||receiptBusy)return;
+ const mode=$('receiptAssignmentType').value;
+ if(!mode){notice('Bitte eine Zuordnungsart auswählen.',true);return;}
+ const fields={assignment_type:mode,
+   cost_item_id:(mode==='Angebot'||mode==='Kostenposition')?$('costItems').value:null,
+   contractor_id:mode==='Betrieb'?$('receiptContractor').value:null,
+   budget_line_id:$('budgetLines').value||null};
+ await receiptAction(()=>api('/api/receipts/'+selected+'/assignment',{
+   method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(fields)
+ }),$('saveReceiptAssignment'),'Zuordnung korrigiert. Betrag, Zahlungsstand und Nachweis blieben unverändert.');
+};
 let paymentState=null,assigningPayment=null;
 const paymentForm=$('receiptPaymentForm');
 const currentPaymentReceipt=()=>paymentState?.receipts.find(r=>r.id===selected);

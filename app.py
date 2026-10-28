@@ -3375,6 +3375,35 @@ def receipt_edit(rid):
     except (ValueError,TypeError) as err:
         db.session.rollback();return jsonify(error=str(err)),400
 
+@app.patch('/api/receipts/<int:rid>/assignment')
+def receipt_assignment_edit(rid):
+    """Correct the cost attribution without rewriting the financial receipt."""
+    r=db.session.get(Receipt,rid)
+    if not r:return jsonify(error='Beleg nicht gefunden.'),404
+    if r.status not in ('Gebucht','Storniert'):
+        return jsonify(error='Die gesonderte Zuordnungskorrektur ist nur für gebuchte oder stornierte Belege vorgesehen.'),409
+    data=request.get_json(silent=True) or {}
+    if not isinstance(data,dict):return jsonify(error='Ungültige Zuordnungsdaten.'),400
+    allowed={'assignment_type','cost_item_id','contractor_id','budget_line_id'}
+    if not set(data).issubset(allowed):return jsonify(error='Es dürfen nur Kosten- und Angebotszuordnungen geändert werden.'),400
+    try:
+        mode=str(data.get('assignment_type') or '')
+        if mode not in ('Angebot','Betrieb','Eigenleistung','Kostenposition'):
+            raise ValueError('Bitte Angebot, Betrieb oder Eigenleistung auswählen.')
+        r.assignment_type=mode
+        for field,model in (('cost_item_id',CostItem),('contractor_id',Contractor),('budget_line_id',BudgetLine)):
+            value=data.get(field)
+            key=int(value) if value not in ('',None) else None
+            if key and not db.session.get(model,key):raise ValueError('Ausgewählte Zuordnung existiert nicht mehr.')
+            setattr(r,field,key)
+        linked_offer=_validate_accepted_invoice_link(r)
+        _validate_invoice_advance(r,linked_offer)
+        _validate_receipt_booking(r)
+        db.session.commit()
+        return jsonify(_receipt_json(r))
+    except (ValueError,TypeError) as err:
+        db.session.rollback();return jsonify(error=str(err)),400
+
 def _validate_receipt_booking(r):
     from decimal import Decimal
     _validate_receipt_assignment(r)
@@ -3848,11 +3877,17 @@ def server_error(err):
 
 # Shared application code: finance models and routes live in a separate module.
 from financing import register_financing
-(Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument) = register_financing(
+(Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument, finance_services) = register_financing(
     app, db, Receipt, CostItem, BudgetLine, budget_summary,
     root=ROOT, ai_request_required=_ai_request_required,
     chatgpt=chatgpt, extract_json=extract_json,
     mark_scan_reviewed=lambda job_id,loan_id: _finish_loan_scan(job_id,loan_id))
+
+from loan_drawdowns import register_loan_drawdowns
+LoanDrawdown, LoanDrawdownItem, list_loan_drawdowns = register_loan_drawdowns(
+    app, db, Loan, LoanDocument, FinancingEvent, ReceiptFinancingPayment, Receipt,
+    root=ROOT, services=finance_services, ai_request_required=_ai_request_required,
+    chatgpt=chatgpt, extract_json=extract_json)
 
 
 from energy_planning import register_energy_planning
@@ -3868,7 +3903,9 @@ register_company_search(app, ai_required=_ai_request_required, chatgpt=chatgpt, 
 
 
 from receipt_cancellations import register_cancellations
-ReceiptCancellation = register_cancellations(app, db, Receipt, ReceiptFinancingPayment, receipt_offer=_accepted_receipt_offer)
+ReceiptCancellation = register_cancellations(
+    app, db, Receipt, ReceiptFinancingPayment, receipt_offer=_accepted_receipt_offer,
+    receipt_has_drawdown=finance_services['receipt_has_drawdown'])
 
 
 # Backup settings belong to the server; a browser can only select reachable/mounted paths.
