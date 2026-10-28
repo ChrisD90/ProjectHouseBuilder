@@ -3031,6 +3031,8 @@ def _receipt_json(r, include_text=False):
     assigned=sum((float(p.amount) for p in db.session.scalars(select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==r.id,ReceiptFinancingPayment.source.in_(['loan','equity'])))),0.0)
     unassigned=round(max(0,float(r.paid_amount or 0)-assigned),2)
     cancellation=db.session.scalar(select(ReceiptCancellation).where(ReceiptCancellation.receipt_id==r.id)) if r.status=='Storniert' else None
+    reversal=db.session.scalar(select(ReceiptCancellationReversal).where(
+        ReceiptCancellationReversal.receipt_id==r.id).order_by(ReceiptCancellationReversal.id.desc()).limit(1))
     obj={'id':r.id,'filename':r.original_name,'source':r.source,'supplier':r.supplier,'invoice_number':r.invoice_number,
          'document_date':r.document_date,'due_date':r.due_date,'gross_amount':float(r.gross_amount) if r.gross_amount is not None else None,
          'net_amount':float(r.net_amount) if r.net_amount is not None else None,
@@ -3045,7 +3047,10 @@ def _receipt_json(r, include_text=False):
          'warnings':json.loads(r.warnings or '[]'),'created_at':r.created_at.isoformat()}
     obj.update(assigned_amount=round(assigned,2),unassigned_amount=unassigned,
                payment_assignment='Nicht zugewiesen' if unassigned>0 and not assigned else 'Teilweise zugewiesen' if unassigned>0 else 'Zugewiesen' if assigned else 'Unbezahlt',
-               cancellation={'date':cancellation.created_at.isoformat(),'reason':cancellation.reason,'previous_paid':float(json.loads(cancellation.snapshot_json)['receipt'].get('paid_amount') or 0)} if cancellation else None)
+               cancellation={'date':cancellation.created_at.isoformat(),'reason':cancellation.reason,'previous_paid':float(json.loads(cancellation.snapshot_json)['receipt'].get('paid_amount') or 0)} if cancellation else None,
+               cancellation_reversal={'date':reversal.reversed_at.isoformat(),'reason':reversal.reason,
+                    'canceled_at':reversal.cancellation_created_at.isoformat(),
+                    'restored_paid':float(json.loads(reversal.cancellation_snapshot_json)['receipt'].get('paid_amount') or 0)} if reversal else None)
     if include_text:obj['ocr_text']=r.ocr_text
     return obj
 
@@ -3903,9 +3908,12 @@ register_company_search(app, ai_required=_ai_request_required, chatgpt=chatgpt, 
 
 
 from receipt_cancellations import register_cancellations
-ReceiptCancellation = register_cancellations(
+ReceiptCancellation, ReceiptCancellationReversal = register_cancellations(
     app, db, Receipt, ReceiptFinancingPayment, receipt_offer=_accepted_receipt_offer,
-    receipt_has_drawdown=finance_services['receipt_has_drawdown'])
+    receipt_has_drawdown=finance_services['receipt_has_drawdown'],
+    validate_receipt_booking=_validate_receipt_booking,
+    validate_ledger=finance_services['validate_ledger'],
+    payment_source_exists=finance_services['payment_source_exists'])
 
 
 # Backup settings belong to the server; a browser can only select reachable/mounted paths.

@@ -40,7 +40,7 @@ Die alten Excel-Kostenplanvorlagen und ihr automatischer Import sind **entfernt*
 
 ## Datenbankschema und Updates
 
-`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung, `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung und `0008` die explizite Rechnungszuordnung. `0018` ergänzt Kreditabrufvorlagen und nachvollziehbare Mittelabrufpakete. Bereits bestehende Rechnungen bleiben erhalten; bisherige Zuordnungen zu Kostenpositionen werden übernommen und nicht automatisch als Eigenleistung deklariert. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
+`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung, `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung und `0008` die explizite Rechnungszuordnung. `0018` ergänzt Kreditabrufvorlagen und nachvollziehbare Mittelabrufpakete; `0019` protokolliert zurückgenommene Rechnungsstornos. Bereits bestehende Rechnungen bleiben erhalten; bisherige Zuordnungen zu Kostenpositionen werden übernommen und nicht automatisch als Eigenleistung deklariert. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
 
 Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.db-shm`, `private/`, `backups/`, `.env`, `instance/` aus. Diese Dateien niemals in GitHub einchecken. Die Datenbank nie in einem Cloud-Sync-Ordner betreiben; nur vollständige Backups synchronisieren.
 
@@ -487,6 +487,13 @@ Oberflächensperren ersetzen keine Fachvalidierung.
   erfolgt dadurch nicht. Ein Storno lässt sich nicht als neuer Entwurf bearbeiten;
   eine korrigierte Rechnung separat erfassen. Eine verrechnete Abschlagsrechnung
   kann erst nach Rücknahme/Storno der zugehörigen Schlussrechnung storniert werden.
+- Bei einer stornierten Rechnung stellt **Storno zurücknehmen** die verbindliche
+  Buchung, den früheren Zahlungsstand und alle damaligen Finanzierungszuordnungen
+  gemeinsam wieder her. Vorher werden Kreditrahmen und verfügbares Eigenkapital
+  erneut geprüft. Wurden die freigewordenen Mittel inzwischen anderweitig verwendet
+  oder wurde eine benötigte Finanzierungsquelle gelöscht, bleibt das Storno unverändert.
+  Jede erfolgreiche Rücknahme wird mit dem ursprünglichen Stornogrund und Snapshot
+  in einer separaten Historie festgehalten; die Rechnung kann später erneut storniert werden.
 - **Buchung zurücknehmen** bleibt für normale Entwurfskorrekturen verfügbar;
   vorhandene Zahlungszuordnungen müssen dafür weiterhin zuerst zurückgenommen werden.
 - Abgeschlossene Arbeitspakete bieten **Abschluss zurücknehmen**. Dabei werden
@@ -499,8 +506,9 @@ Oberflächensperren ersetzen keine Fachvalidierung.
   nur bei bestehender ChatGPT-Verbindung und vorhandenem Bauzeitenplan sichtbar.
   Die Schaltfläche zum Verbinden im Kopfbereich bleibt verfügbar.
 
-Migration `0016` ergänzt ausschließlich die Tabelle für Stornohistorien. Bestehende
-Rechnungen, Zahlungen, Kredit- und Eigenkapitaldaten werden nicht umgeschrieben.
+Migration `0016` ergänzt die aktiven Stornohistorien; Migration `0019` ergänzt die
+Historie erfolgreich zurückgenommener Stornos. Bestehende Rechnungen, Zahlungen,
+Kredit- und Eigenkapitaldaten werden nicht umgeschrieben.
 Beim lokalen SQLite-Update erstellt der Starter zuvor wie bisher ein verifiziertes
 Komplettbackup; bei NAS/Docker wird die neue Tabelle beim Initialisieren angelegt.
 

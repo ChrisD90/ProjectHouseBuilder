@@ -24,4 +24,19 @@
   }catch(error){document.getElementById('receiptCancelMessage').textContent=error.message;}
   finally{busy=false;receiptBusy=false;controls.forEach(n=>n.disabled=false);}
  };
+ document.getElementById('reopenCancelledReceipt').onclick=async()=>{
+  if(receiptBusy||paymentBusy||!selected)return;
+  const button=document.getElementById('reopenCancelledReceipt');
+  try{
+   const state=await api('/api/receipts/'+selected+'/cancel-reversal-preview');
+   const confirmed=await PHBUI.confirm(
+    'Storno zurücknehmen und die Rechnung wieder verbindlich buchen? '+money(state.restore_paid)+
+    ' Zahlungsstand und '+state.allocation_count+' Finanzierungszuordnung(en) werden gemeinsam wiederhergestellt.');
+   if(!confirmed)return;
+   await receiptAction(()=>api('/api/receipts/'+selected+'/cancel-reversal',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({confirm:true,plan_digest:state.plan_digest})
+   }),button,'Storno zurückgenommen. Rechnung, Zahlungsvermerke und Finanzierungszuordnungen wurden wiederhergestellt.');
+  }catch(error){notice(error.message,true);}
+ };
 })();

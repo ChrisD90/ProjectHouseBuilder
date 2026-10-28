@@ -233,7 +233,7 @@ async function open(id){
  $('book').hidden=x.status!=='Entwurf';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status!=='Entwurf';
  $('editReceiptAssignment').hidden=!['Gebucht','Storniert'].includes(x.status);
  $('saveReceiptAssignment').hidden=true;$('cancelReceiptAssignment').hidden=true;
- $('cancelReceipt').hidden=x.status!=='Gebucht';$('markReceiptPaid').hidden=x.status!=='Gebucht'||x.paid_amount>=x.counted_amount;
+ $('cancelReceipt').hidden=x.status!=='Gebucht';$('reopenCancelledReceipt').hidden=x.status!=='Storniert';$('markReceiptPaid').hidden=x.status!=='Gebucht'||x.paid_amount>=x.counted_amount;
  for(const button of $('review').querySelectorAll('button[type=submit]')){
    button.hidden=x.status==='Storniert';
    button.textContent=x.status==='Entwurf'?'Entwurf zwischenspeichern':'Änderungen speichern';
@@ -245,8 +245,10 @@ async function open(id){
  $('receiptReviewHelp').textContent=x.status==='Entwurf'?'Unvollständige Daten kannst du jederzeit zwischenspeichern. Erst „Verbindlich buchen“ übernimmt die Rechnung in Kosten und Abrechnung; die Zahlung erfasst du danach separat.':x.status==='Gebucht'?'Notizen und das optionale Zahlungsziel kannst du weiterhin ergänzen. Eine falsche Zuordnung zu Angebot, Betrieb oder Budget kannst du direkt korrigieren.':'Der stornierte Beleg bleibt mit Original und Stornogrund als Nachweis erhalten. Seine Kostenzuordnung kann weiterhin korrigiert werden.';
  $('receiptWorkflowTitle').textContent=x.status==='Entwurf'?'Rechnung prüfen':x.status==='Gebucht'?'Gebuchte Rechnung':'Stornierte Rechnung';
  $('payReceipt').hidden=x.status!=='Gebucht';
- $('receiptCancellationInfo').hidden=!x.cancellation;
- $('receiptCancellationInfo').textContent=x.cancellation?'Storniert am '+new Date(x.cancellation.date).toLocaleDateString('de-DE')+' · zurückgenommene Zahlungsvermerke: '+money(x.cancellation.previous_paid)+(x.cancellation.reason?' · Grund: '+x.cancellation.reason:''):'';
+ const cancellationInfo=x.cancellation
+  ? 'Storniert am '+new Date(x.cancellation.date).toLocaleDateString('de-DE')+' · zurückgenommene Zahlungsvermerke: '+money(x.cancellation.previous_paid)+(x.cancellation.reason?' · Grund: '+x.cancellation.reason:'')
+  : x.cancellation_reversal?'Storno zurückgenommen am '+new Date(x.cancellation_reversal.date).toLocaleDateString('de-DE')+' · wiederhergestellter Zahlungsstand: '+money(x.cancellation_reversal.restored_paid)+(x.cancellation_reversal.reason?' · Grund: '+x.cancellation_reversal.reason:''):'';
+ $('receiptCancellationInfo').hidden=!cancellationInfo;$('receiptCancellationInfo').textContent=cancellationInfo;
  $('receiptPaymentsPanel').hidden=true;
  $('receiptReviewLayout').hidden=false;
  $('receiptReviewStage').hidden=false;

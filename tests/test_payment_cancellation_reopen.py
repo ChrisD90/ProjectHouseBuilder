@@ -5,7 +5,7 @@ from datetime import date
 from decimal import Decimal
 import unittest
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import (app,db,initialize,Receipt,ReceiptFinancingPayment,ReceiptCancellation,
+from app import (app,db,initialize,Receipt,ReceiptFinancingPayment,ReceiptCancellation,ReceiptCancellationReversal,
                  EquityAccount,Loan,FinancingEvent,Task,Offer,CostItem)
 
 
@@ -30,6 +30,11 @@ class PaymentCancellationTest(unittest.TestCase):
         preview=self.client.get('/api/receipts/'+str(self.rid)+'/cancel-preview')
         self.assertEqual(preview.status_code,200,preview.json)
         return self.client.post('/api/receipts/'+str(self.rid)+'/cancel',json={'confirm':True,'plan_digest':preview.json['plan_digest'],'reason':'Doppelt erfasst',**extra})
+    def reverse_cancel(self,**extra):
+        preview=self.client.get('/api/receipts/'+str(self.rid)+'/cancel-reversal-preview')
+        self.assertEqual(preview.status_code,200,preview.json)
+        return self.client.post('/api/receipts/'+str(self.rid)+'/cancel-reversal',json={
+            'confirm':True,'plan_digest':preview.json['plan_digest'],'reason':'Storno war irrtümlich',**extra})
 
     def test_paid_without_any_account_is_marked_unassigned(self):
         result=self.payment();self.assertEqual(result.status_code,201,result.json)
@@ -101,6 +106,62 @@ class PaymentCancellationTest(unittest.TestCase):
         self.assertEqual(self.receipt()['paid_amount'],20)
         self.assertEqual(self.receipt()['status'],'Gebucht')
         self.assertEqual(db.session.query(ReceiptCancellation).count(),0)
+
+    def test_cancellation_can_be_reversed_with_all_payments_and_audit_history(self):
+        pid=self.payment().json['id'];eid=self.equity(100);self.assign(pid,60,eid)
+        self.assertEqual(self.cancel().status_code,200)
+        preview=self.client.get(f'/api/receipts/{self.rid}/cancel-reversal-preview')
+        self.assertEqual(preview.status_code,200,preview.json)
+        self.assertEqual(preview.json['restore_paid'],100)
+        self.assertEqual(preview.json['payment_count'],2)
+        self.assertEqual(preview.json['allocation_count'],1)
+        restored=self.client.post(f'/api/receipts/{self.rid}/cancel-reversal',json={
+            'confirm':True,'plan_digest':preview.json['plan_digest'],'reason':'Storno war irrtümlich'})
+        self.assertEqual(restored.status_code,200,restored.json)
+        current=self.receipt()
+        self.assertEqual(current['status'],'Gebucht')
+        self.assertEqual(current['paid_amount'],100)
+        self.assertEqual(current['unassigned_amount'],40)
+        self.assertEqual(len(db.session.query(ReceiptFinancingPayment).all()),2)
+        self.assertEqual(self.state()['equity'][0]['balance']['available'],40)
+        self.assertEqual(db.session.query(ReceiptCancellation).count(),0)
+        reversal=db.session.query(ReceiptCancellationReversal).one()
+        self.assertEqual(reversal.cancellation_reason,'Doppelt erfasst')
+        self.assertEqual(reversal.reason,'Storno war irrtümlich')
+        self.assertEqual(current['cancellation_reversal']['restored_paid'],100)
+        self.assertEqual(current['cancellation_reversal']['reason'],'Storno war irrtümlich')
+        # A reopened invoice can be cancelled again; the old reversal remains auditable.
+        self.assertEqual(self.cancel().status_code,200)
+        self.assertEqual(db.session.query(ReceiptCancellation).count(),1)
+        self.assertEqual(db.session.query(ReceiptCancellationReversal).count(),1)
+
+    def test_cancellation_reversal_is_atomic_when_financing_capacity_was_reused(self):
+        pid=self.payment().json['id'];eid=self.equity(100);self.assign(pid,100,eid)
+        self.assertEqual(self.cancel().status_code,200)
+        other=Receipt(digest='other',original_name='Andere.pdf',stored_name='other.pdf',
+                      supplier='Andere GmbH',document_date='2026-10-27',gross_amount=100,
+                      paid_amount=0,status='Gebucht',assignment_type='Eigenleistung')
+        db.session.add(other);db.session.commit()
+        spent=self.client.post('/api/financing/payments',json={'receipt_id':other.id,'source':'equity',
+            'equity_id':eid,'amount':100,'payment_date':'2026-10-27'})
+        self.assertEqual(spent.status_code,201,spent.json)
+        failed=self.reverse_cancel()
+        self.assertEqual(failed.status_code,409,failed.json)
+        self.assertIn('Verfügbarer Betrag reicht nicht aus',failed.json['error'])
+        self.assertEqual(self.receipt()['status'],'Storniert')
+        self.assertEqual(self.receipt()['paid_amount'],0)
+        self.assertEqual(db.session.query(ReceiptCancellation).count(),1)
+        self.assertEqual(db.session.query(ReceiptCancellationReversal).count(),0)
+
+    def test_cancellation_reversal_refuses_a_deleted_financing_source(self):
+        pid=self.payment().json['id'];eid=self.equity(100);self.assign(pid,100,eid)
+        self.assertEqual(self.cancel().status_code,200)
+        self.assertEqual(self.client.delete(f'/api/financing/equity/{eid}').status_code,200)
+        failed=self.reverse_cancel()
+        self.assertEqual(failed.status_code,409,failed.json)
+        self.assertIn('Eigenkapitalkonto existiert nicht mehr',failed.json['error'])
+        self.assertEqual(self.receipt()['status'],'Storniert')
+        self.assertEqual(db.session.query(ReceiptFinancingPayment).count(),0)
 
     def test_cannot_cancel_installment_while_final_invoice_uses_it(self):
         offer=Offer(digest='offer',vendor='Firma',gross=1000,status='Angenommen',filename='Angebot.pdf')

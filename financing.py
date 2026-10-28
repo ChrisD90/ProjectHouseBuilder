@@ -678,5 +678,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         db.session.commit();return jsonify(ok=True)
 
     services={'all_rows':all_rows,'dec':dec,'model_id':model_id,
-              'loan_account':loan_account,'validate_ledger':validate_ledger}
+              'loan_account':loan_account,'validate_ledger':validate_ledger,
+              'payment_source_exists':lambda source,ref:db.session.get(
+                  Loan if source=='loan' else EquityAccount,ref) is not None}
     return Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument, services

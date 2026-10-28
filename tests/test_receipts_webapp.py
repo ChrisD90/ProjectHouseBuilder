@@ -240,6 +240,15 @@ class ReceiptWebappTest(unittest.TestCase):
         self.assertEqual(after_cancel.json['status'],'Storniert')
         self.assertEqual(after_cancel.json['assignment_type'],'Eigenleistung')
         self.assertEqual(after_cancel.json['gross_amount'],120)
+        preview=self.client.get(f'/api/receipts/{rid}/cancel-reversal-preview')
+        self.assertEqual(preview.status_code,200,preview.json)
+        reopened=self.client.post(f'/api/receipts/{rid}/cancel-reversal',json={
+            'confirm':True,'plan_digest':preview.json['plan_digest']})
+        self.assertEqual(reopened.status_code,200,reopened.json)
+        current=self.client.get(f'/api/receipts/{rid}').json
+        self.assertEqual(current['status'],'Gebucht')
+        self.assertEqual(current['assignment_type'],'Eigenleistung')
+        self.assertEqual(current['budget_line_id'],budget.id)
 
     def test_chatgpt_receipt_upload_explicit_consent_and_editable_draft(self):
         from chatgpt_local import chatgpt
