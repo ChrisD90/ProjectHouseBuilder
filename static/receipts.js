@@ -29,7 +29,6 @@ const receiptFlow=PHBFlow.manage({
 function openReceiptDialog(review=false){
   receiptDialog.classList.toggle('is-reviewing',Boolean(review));
   if(!review)$('receiptWorkflowTitle').textContent='Beleg hochladen und prüfen';
-  $('receiptUploadAgain').hidden=!review;
   if(!receiptDialog.open)receiptFlow.open({step:review?1:0});
   else receiptFlow.stage(review?1:0);
   if(review){
@@ -39,11 +38,6 @@ function openReceiptDialog(review=false){
   }
 }
 $('openReceiptWorkflow').onclick=()=>{
-  selected=null;
-  $('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);
-  openReceiptDialog(false);
-};
-$('receiptUploadAgain').onclick=()=>{
   selected=null;
   $('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);
   openReceiptDialog(false);
@@ -264,7 +258,6 @@ async function open(id){
    button.textContent=x.status==='Entwurf'?'Entwurf zwischenspeichern':'Änderungen speichern';
  }
  $('receiptCreateCompany').hidden=x.status!=='Entwurf';
- $('review').querySelector('.receipt-draft-toolbar').hidden=false;
  $('receiptReviewState').textContent=x.status;
  $('receiptReviewTitle').textContent=x.status==='Entwurf'?'Rechnungsdaten prüfen':x.status==='Gebucht'?'Gebuchte Rechnung':'Stornierte Rechnung';
  $('receiptReviewHelp').textContent=x.status==='Entwurf'?'Unvollständige Daten kannst du jederzeit zwischenspeichern. Erst „Verbindlich buchen“ übernimmt die Rechnung in Kosten und Abrechnung; die Zahlung erfasst du danach separat.':x.status==='Gebucht'?'Alle Rechnungsdaten bleiben bearbeitbar. Änderungen an Betrag, Zuordnung und Abrechnungsart werden vor dem Speichern gegen Zahlungen und Angebotsabrechnung geprüft.':'Auch ein stornierter Beleg kann fachlich korrigiert werden. Originaldatei, Stornogrund und Historie bleiben erhalten.';
@@ -337,15 +330,19 @@ function paymentAccountOptions(){
  $('receiptPaymentAccountWrap').hidden=deferred;$('receiptPaymentAccount').required=!deferred;
  const accounts=source==='loan'?paymentState.loans:source==='equity'?paymentState.equity:[];
  const available=a=>Number(source==='loan'?a.balance?.unallocated_drawn:a.balance?.available)||0;
- const usable=accounts.filter(a=>available(a)>0.005);
- $('receiptPaymentAccount').innerHTML=usable.map(a=>'<option value="'+a.id+'">'+safe(a.name)+' · frei '+money(available(a))+'</option>').join('');
+ const select=$('receiptPaymentAccount'),previous=select.value;
+ select.innerHTML=accounts.map(a=>'<option value="'+a.id+'">'+safe(a.name)+' · bestätigt verfügbar '+money(available(a))+(available(a)>0.005?'':' · derzeit keine freien Mittel')+'</option>').join('');
+ const selected=accounts.find(a=>String(a.id)===previous)||accounts.find(a=>available(a)>0.005)||accounts[0];
+ if(selected)select.value=String(selected.id);
  const limit=assigningPayment?assignmentLimit():Number(receipt?.open||0);
- const maximum=deferred?limit:Math.min(limit,available(usable[0]||{}));
+ const maximum=deferred?limit:Math.min(limit,available(selected||{}));
  $('receiptPaymentAmount').value=maximum>0?PHBUI.currency.format(maximum):'';
  $('submitReceiptPayment').disabled=!receipt||maximum<=0||(assigningPayment&&deferred);
  $('submitReceiptPayment').textContent=assigningPayment?'Bestehende Zahlung zuordnen':'Zahlung verbindlich verbuchen';
  $('receiptPaymentMessage').textContent=deferred?'Die Rechnung wird bezahlt markiert. Die Finanzierungsquelle kannst du später zuordnen.':
-  usable.length?(assigningPayment?'Nur die Finanzierungsquelle wird ergänzt; der bezahlte Betrag bleibt unverändert.':''):'Keine frei verfügbaren Mittel. Konto/Kredit anlegen oder „Später zuordnen“ wählen.';
+  !accounts.length?(source==='loan'?'Noch kein Kredit angelegt. Unter Finanzierung kannst du einen Kredit erfassen.':'Noch kein Eigenkapitalkonto angelegt.'):
+  maximum>0?(assigningPayment?'Nur die Finanzierungsquelle wird ergänzt; der bezahlte Betrag bleibt unverändert.':''):
+  source==='loan'?'Der Kredit ist auswählbar. Eine Zahlung daraus ist möglich, sobald ein Mittelabruf von der Bank bestätigt wurde.':'Das Konto ist auswählbar, hat aber derzeit keine frei verfügbaren Mittel.';
 }
 async function showReceiptPayments(){
  if(!selected||list.find(r=>r.id===selected)?.status!=='Gebucht')return;
@@ -379,6 +376,9 @@ $('receiptPaymentAccount').onchange=()=>{
  const maximum=Math.min(assigningPayment?assignmentLimit():Number(currentPaymentReceipt()?.open||0),available);
  $('receiptPaymentAmount').value=maximum>0?PHBUI.currency.format(maximum):'';
  $('submitReceiptPayment').disabled=maximum<=0;
+ $('receiptPaymentMessage').textContent=maximum>0
+  ?(assigningPayment?'Nur die Finanzierungsquelle wird ergänzt; der bezahlte Betrag bleibt unverändert.':'')
+  :source==='loan'?'Für diesen Kredit sind noch keine bestätigten, freien Mittel verfügbar.':'Auf diesem Eigenkapitalkonto sind keine freien Mittel verfügbar.';
 };
 $('markReceiptPaid').onclick=async()=>{
  if(receiptBusy||paymentBusy||!selected)return;
@@ -496,7 +496,7 @@ $('receiptCreateCompany').onclick=async event=>{
  const id=selected;
  const saved=await receiptAction(()=>api('/api/receipts/'+id,{
   method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(fields)
- }),$('saveReceiptDraftTop'),'Entwurf gespeichert.');
+ }),$('saveReceiptDraft'),'Entwurf gespeichert.');
  if(saved)location.assign('/stammdaten?receipt_id='+id+'&new_company=1#firmen');
 };
 $('book').onclick=async()=>{
