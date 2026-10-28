@@ -3,25 +3,8 @@
 {% set phb_active = 'zeitplan' %}{% set phb_title = 'Bauzeitenplan' %}{% include '_shell_open.html' %}
 
 <main id="phbMain" class="phb-main"><div class="phb-page-intro"><div><span class="phb-page-kicker">Organisation &amp; Ablauf</span><h1>Bauzeitenplan</h1><p>Gewerke, Termine und Abhängigkeiten im Blick behalten.</p></div><div class="phb-page-actions"><label>Projektstart <input id="projectStart" type="date"></label><button id="saveStart" class="subtle" type="button">Start speichern</button><button id="companySuggestions" class="subtle" type="button">Firmen &amp; Arbeitspakete <span id="suggestionCount"></span></button><button id="managePhases" class="subtle" type="button">Bauphasen</button><button id="newTask" class="primary" type="button">+ Arbeitspaket</button></div></div><section class="metrics schedule-metrics"><article><span>Arbeitspakete</span><b id="count">–</b></article><article><span>Planende</span><b id="end">–</b></article><article><span>In Arbeit</span><b id="ongoing">–</b></article><article><span>Eigenleistungen</span><b id="selfCount">–</b></article><article><span>Fremdleistungen</span><b id="externalCount">–</b></article></section>
-<section class="panel template-panel" id="templatePanel" aria-labelledby="templateTitle" hidden>
-  <div class="template-intro">
-    <div><span class="phb-page-kicker">Optionaler Startpunkt</span>
-      <h2 id="templateTitle">Muster-Bauzeitplan übernehmen</h2>
-      <p>Du musst die Sanierung nicht Aufgabe für Aufgabe anlegen. Der Vorschlag berücksichtigt den Dachumbau, die Gebäudehülle, Wärmepumpe, Elektro, Sanitär, Innenausbau und eure Eigenleistungen. Du kannst danach jede Tätigkeit frei anpassen.</p>
-      <p class="template-note">Unverbindliche Reihenfolge und Dauer in <strong>Kalendertagen</strong>. Statik, Genehmigungen, Fachbetriebe und Energieberater müssen den Ablauf prüfen.</p>
-    </div>
-    <div class="template-summary"><strong id="templateCount">–</strong><span>vorgeschlagene Arbeitsschritte</span>
-      <div class="template-work-stats"><span id="templateSelf">– Eigenleistung</span><span id="templateExternal">– Fremdleistung</span></div>
-    </div>
-  </div>
-  <div id="templatePhases" class="template-phases" aria-label="Enthaltene Bauphasen"></div>
-  <details class="template-details"><summary>Alle vorgeschlagenen Arbeitsschritte und Zuständigkeiten ansehen</summary><div class="template-list" id="templateTasks" role="region" aria-label="Muster-Arbeitsschritte"></div></details>
-  <div class="template-actions"><label class="template-confirm"><input id="templateConfirm" type="checkbox"> Ich möchte diesen Musterplan in meinen leeren Bauzeitplan einfügen.</label>
-    <button id="initializeTemplate" class="primary" type="button" disabled>Musterplan einfügen</button></div>
-  <p class="template-message" id="templateMessage" role="status">Die Initialisierung überschreibt keine vorhandenen Arbeitsschritte und kann nur in einen leeren Bauzeitplan erfolgen.</p>
-</section>
 <section class="panel phb-ai-schedule" id="aiSchedulePanel" hidden>
-  <h2>Alternative Erstplanung mit ChatGPT</h2>
+  <h2>Bauzeitenplan mit ChatGPT erstellen</h2>
   <p>Nur bei einem leeren Bauzeitenplan: Lass aus deinen Anforderungen einen individuellen Plan erstellen, prüfe jede Aufgabe und bestätige die Übernahme.</p>
   <label>Deine Wünsche / Rahmenbedingungen <textarea id="aiScheduleNeeds" rows="3" maxlength="2200" placeholder="Zum Beispiel: Eigenleistungen nur am Wochenende, Dämmarbeiten vor Heizung …"></textarea></label>
   <button type="button" id="aiScheduleSuggest" class="subtle">Mit ChatGPT einen Ablauf vorschlagen</button>

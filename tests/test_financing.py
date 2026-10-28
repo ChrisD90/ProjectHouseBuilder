@@ -295,6 +295,8 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertEqual(options.status_code,200,options.json)
         selected=next(row for row in options.json['receipts'] if row['id']==rid)
         self.assertEqual(selected['rebookable'],200)
+        self.assertEqual(selected['unpaid'],100)
+        self.assertEqual(selected['submittable'],300)
         self.assertTrue(selected['eligible'])
         self.assertEqual(options.json['template']['filename'],'Bank-Abruf.pdf')
 
@@ -395,6 +397,43 @@ class FinanceWorkflowTest(unittest.TestCase):
             'loan_id':first,'receipt_ids':[rid],'requested_date':'2026-10-28'})
         self.assertEqual(rejected.status_code,400,rejected.json)
         self.assertEqual(self.state()['summary']['loan_drawn'],300)
+
+    def test_drawdown_accepts_unpaid_invoice_and_keeps_funds_unallocated(self):
+        loan=self.loan('1000','Kredit für offene Rechnungen')
+        receipt_id=self.receipt('300')
+        receipt=db.session.get(Receipt,receipt_id)
+        receipt_path=Path(app.root_path)/'private'/'receipts'/receipt.stored_name
+        receipt_path.parent.mkdir(parents=True,exist_ok=True)
+        receipt_path.write_bytes(b'%PDF-1.4\nOffene Originalrechnung')
+        self.addCleanup(receipt_path.unlink,missing_ok=True)
+
+        options=self.client.get(f'/api/financing/drawdowns/options?loan_id={loan}').json['receipts']
+        option=next(row for row in options if row['id']==receipt_id)
+        self.assertEqual(option['rebookable'],0)
+        self.assertEqual(option['unpaid'],300)
+        self.assertEqual(option['submittable'],300)
+        self.assertTrue(option['eligible'])
+
+        created=self.client.post('/api/financing/drawdowns/drafts',json={
+            'loan_id':loan,'receipt_ids':[receipt_id],'requested_date':'2026-10-28'})
+        self.assertEqual(created.status_code,201,created.json)
+        drawdown_id=created.json['id']
+        drawdown=db.session.get(LoanDrawdown,drawdown_id)
+        self.addCleanup((Path(app.root_path)/'private'/'loan-drawdowns'/drawdown.stored_name).unlink,missing_ok=True)
+        package=self.client.post(f'/api/financing/drawdowns/{drawdown_id}/submit')
+        self.assertEqual(package.status_code,200,repr(package.data[:200]))
+        confirmed=self.client.post(f'/api/financing/drawdowns/{drawdown_id}/confirm',
+                                   json={'confirmed_date':'2026-10-30'})
+        self.assertEqual(confirmed.status_code,200,confirmed.json)
+        summary=self.state()['summary']
+        self.assertEqual(summary['loan_drawn'],300)
+        self.assertEqual(summary['paid_loan'],0)
+        self.assertEqual(summary['loan_unallocated'],300)
+        self.assertEqual(float(db.session.get(Receipt,receipt_id).paid_amount),0)
+
+        reversed_=self.client.delete(f'/api/financing/drawdowns/{drawdown_id}')
+        self.assertEqual(reversed_.status_code,200,reversed_.json)
+        self.assertEqual(self.state()['summary']['loan_drawn'],0)
 
     def test_manual_drawdown_books_immediately_and_keeps_attached_form(self):
         lid=self.loan('1000','Manueller Kredit')

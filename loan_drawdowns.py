@@ -86,18 +86,23 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         recorded=sum((dec(row.amount) for row in payments),ZERO)
         legacy=max(ZERO,dec(receipt.paid_amount)-recorded)
         rebookable=legacy+sum((dec(row.amount) for row in payments if row.source in ('equity','unassigned')),ZERO)
+        invoice_amount=max(ZERO,dec(receipt.gross_amount)-dec(getattr(receipt,'advance_deduction',0)))
+        unpaid=max(ZERO,invoice_amount-dec(receipt.paid_amount))
+        submittable=rebookable+unpaid
         target=sum((dec(row.amount) for row in payments if row.source=='loan' and row.loan_id==loan_id),ZERO)
         other=sum((dec(row.amount) for row in payments if row.source=='loan' and row.loan_id!=loan_id),ZERO)
         labels=[]
-        if rebookable:labels.append('aus Eigenkapital / nicht zugewiesen')
+        if rebookable:labels.append('vorfinanziert '+format(rebookable,'.2f')+' €')
+        if unpaid:labels.append('offen '+format(unpaid,'.2f')+' €')
         if target:labels.append('bereits diesem Kredit zugeordnet')
         if other:labels.append('anderem Kredit zugeordnet')
         return {'id':receipt.id,'supplier':receipt.supplier or receipt.original_name,
                 'invoice_number':receipt.invoice_number,'document_date':receipt.document_date,
                 'filename':receipt.original_name,'kind':receipt.kind,'category':receipt.category,
-                'paid':float(dec(receipt.paid_amount)),'rebookable':float(rebookable),
+                'paid':float(dec(receipt.paid_amount)),'rebookable':float(rebookable),'unpaid':float(unpaid),
+                'submittable':float(submittable),
                 'already_target':float(target),'other_loan':float(other),
-                'eligible':rebookable>ZERO,'source_summary':' · '.join(labels) or 'Keine Zahlung erfasst'}
+                'eligible':submittable>ZERO,'source_summary':' · '.join(labels) or 'Kein offener oder vorfinanzierter Anteil'}
 
     def template_for(loan_id):
         return db.session.scalar(select(LoanDocument).where(
@@ -139,7 +144,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         except (TypeError,ValueError):return jsonify(error='Bitte einen Kredit auswählen.'),400
         loan=db.session.get(Loan,loan_id)
         if not loan:return jsonify(error='Kredit nicht gefunden.'),404
-        receipts=db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht',Receipt.paid_amount>0)
+        receipts=db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht')
             .order_by(Receipt.document_date.desc(),Receipt.id.desc())).all()
         grouped=payment_rows([row.id for row in receipts]) if receipts else {};template=template_for(loan_id)
         return jsonify(loan_id=loan_id,loan_name=loan.name,undrawn=float(loan_account(loan)['undrawn']),
@@ -283,7 +288,8 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         if not isinstance(raw,dict):raise ValueError('Rechnungsposition ungültig.')
         if int(raw.get('receipt_id') or 0)!=option['id']:raise ValueError('Rechnungsposition passt nicht zum ausgewählten Beleg.')
         amount=money(raw.get('amount'),positive=True)
-        if amount>dec(option['rebookable']):raise ValueError('Ein Positionsbetrag übersteigt den einreichbaren Zahlungsanteil.')
+        if amount>dec(option['submittable']):
+            raise ValueError('Für „'+option['supplier']+'“ können aktuell höchstens '+format(dec(option['submittable']),'.2f')+' € eingereicht werden (offener oder vorfinanzierter Rechnungsanteil).')
         return {'receipt_id':option['id'],'supplier':clean_text(raw.get('supplier'),'Lieferant',200,True),
                 'invoice_number':clean_text(raw.get('invoice_number'),'Rechnungsnummer',100),
                 'document_date':iso_date(raw.get('document_date'),optional=True),'amount':float(amount),
@@ -318,7 +324,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
             if any(not options[rid]['eligible'] for rid in ids):raise ValueError('Mindestens eine Rechnung besitzt keinen einreichbaren Zahlungsanteil.')
             positions=[position_data({'receipt_id':rid,'supplier':options[rid]['supplier'],
                 'invoice_number':options[rid]['invoice_number'],'document_date':options[rid]['document_date'],
-                'amount':options[rid]['rebookable']},options[rid]) for rid in ids]
+                'amount':options[rid]['submittable']},options[rid]) for rid in ids]
             body=apply_loan_profile(loan,body)
             data=base_data(body,positions);template=template_for(loan_id);ai=body.get('ai_prefill') is True
             if ai and not template:raise ValueError('Bitte zuerst beim gewählten Kredit eine PDF-Abrufvorlage hinterlegen.')
@@ -450,11 +456,14 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
                     payment_date=payment.payment_date,notes='Teilumbuchung über Mittelabruf #'+str(row.id))
                 db.session.add(new);db.session.flush();old.update(used=format(used,'.2f'),created_payment_id=new.id);splits.append(old)
             remaining-=used
-        if remaining>ZERO:
-            if remaining>legacy:raise ValueError('Der einreichbare Zahlungsanteil einer Rechnung hat sich geändert.')
-            new=Payment(receipt_id=receipt.id,source='loan',loan_id=row.loan_id,amount=remaining,
+        if remaining>ZERO and legacy>ZERO:
+            used=min(legacy,remaining)
+            new=Payment(receipt_id=receipt.id,source='loan',loan_id=row.loan_id,amount=used,
                 payment_date=confirmed_date,notes='Bisher nicht zugewiesene Zahlung über Mittelabruf #'+str(row.id))
-            db.session.add(new);db.session.flush();created.append({'payment_id':new.id,'amount':format(remaining,'.2f')})
+            db.session.add(new);db.session.flush();created.append({'payment_id':new.id,'amount':format(used,'.2f')})
+            remaining-=used
+        open_amount=max(ZERO,dec(receipt.gross_amount)-dec(getattr(receipt,'advance_deduction',0))-dec(receipt.paid_amount))
+        if remaining>open_amount:raise ValueError('Der offene oder vorfinanzierte Rechnungsanteil hat sich seit der Einreichung geändert.')
         item.snapshot_json=json.dumps({'version':2,'full':full,'splits':splits,'created':created,
             'receipt':{'supplier':receipt.supplier,'invoice_number':receipt.invoice_number,
                        'document_date':receipt.document_date,'filename':receipt.original_name}},ensure_ascii=False)
@@ -470,7 +479,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
             items=items_for(row.id);ids=[item.receipt_id for item in items];_ids,by_id,grouped,options=selected_options(row.loan_id,ids)
             total=sum((dec(item.claimed_amount) for item in items),ZERO)
             if total!=dec(row.requested_amount):raise ValueError('Gesamtsumme und Positionen stimmen nicht überein.')
-            if any(dec(item.claimed_amount)>dec(options[item.receipt_id]['rebookable']) for item in items):
+            if any(dec(item.claimed_amount)>dec(options[item.receipt_id]['submittable']) for item in items):
                 raise ValueError('Ein Rechnungsbetrag ist nicht mehr vollständig einreichbar.')
             if total>loan_account(loan)['undrawn']:raise ValueError('Der bestätigte Betrag übersteigt den Darlehensrahmen.')
             event=FinancingEvent(kind='loan_drawdown',loan_id=loan.id,amount=total,event_date=confirmed_date,

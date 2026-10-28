@@ -46,7 +46,7 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 
 ## Funktionen
 
-- **Bauzeitenplan (`/`):** Ein ausdrücklich gestarteter, individuell auf die Altbausanierung zugeschnittener **Musterplan mit 69 Arbeitsschritten** (21 Eigenleistungen / 48 Fremdleistungen, 9 Bauphasen) inklusive Abhängigkeiten. Ein Import ist **nur in den leeren Bauzeitenplan** möglich; vorhandene Aufgaben werden niemals überschrieben. Aufgaben können danach bearbeitet, gelöscht, neu erstellt und nach Eigen-/Fremdleistung gefiltert werden. Das Gantt kennzeichnet die Ausführungsart unabhängig vom Fortschrittsstatus.
+- **Bauzeitenplan (`/`):** Arbeitspakete und Bauphasen können manuell gepflegt werden. Bei leerem Plan kann ChatGPT aus der Projektbeschreibung einen prüfbaren Erstvorschlag mit Abhängigkeiten erstellen; übernommen wird er erst nach ausdrücklicher Freigabe. Aufgaben können danach bearbeitet, gelöscht und nach Eigen-/Fremdleistung gefiltert werden.
 - **Kosten & Budget:** eigene Budgetpositionen und Schätzwerte, Beauftragungen, Förderungen und Kostenprognose.
 - **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, jederzeit korrigieren, annehmen oder ablehnen. Abgelehnte Angebote liegen in einer eingeklappten Liste; die Übersicht zeigt die Gesamtsumme aller angenommenen Aufträge. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.
 - **Kosten & Budget (`/kosten`):** Ausschließlich Kostenschätzungen und zusätzliche Ausgaben planen; keine zweite Angebotsverwaltung. Angenommene Angebote werden automatisch eingerechnet, aber nicht nochmals bearbeitbar als manuelle Kostenposition angezeigt.
@@ -156,16 +156,16 @@ erstellt der Mac-Start vor der Migration wie gewohnt zwingend ein vollständiges
 geprüftes Backup einschließlich aller Originaldateien.
 
 
-## Bauzeitenplan: optionalen Musterplan laden
+## Bauzeitenplan mit ChatGPT erstellen
 
 1. **Bauzeitenplan** in der linken Sidebar öffnen: `http://127.0.0.1:5055/`.
-2. Im Abschnitt **„Muster-Bauzeitplan übernehmen“** die neun Bauphasen sowie die Zahl von Eigen- und Fremdleistungen ansehen.
-3. Einwilligung ankreuzen und **„Musterplan einfügen“** wählen. Es werden 69 Arbeitsschritte und ihre zeitlichen Abhängigkeiten hinzugefügt; alle sind anfänglich „Offen“.
+2. Bei bestehender ChatGPT-Verbindung im leeren Bauzeitenplan die Projektbeschreibung und Rahmenbedingungen eingeben.
+3. Den ChatGPT-Vorschlag prüfen und ausdrücklich übernehmen; alle übernommenen Arbeitspakete sind anschließend frei bearbeitbar.
 4. Danach jede Aufgabe, Dauer, Vorgänger, Ausführungsart und gegebenenfalls Firma individuell bearbeiten. Über den Filter **„Eigenleistung / Fremdleistung“** kannst du den eigenen Arbeitsanteil isoliert betrachten; CSV-/JSON-Export enthält die Kennzeichnung.
 
-Der Musterplan **wird auf neuen Installationen und nach einem Reset nicht mehr automatisch geladen**. Er wird nie auf einen vorhandenen Plan übertragen; eigene Aufgaben und reale Termine bleiben erhalten. Frühere Bestandsaufgaben werden durch Migration `0006` nicht gelöscht. Ihre Ausführungsart lautet zunächst „Noch offen“, wenn sie nicht eindeutig an der alten Gewerkbezeichnung zu erkennen ist. Vor jedem Schema-Upgrade vorhandener SQLite-Daten ist weiterhin das geprüfte vollständige Backup Pflicht.
+Die Anwendung bietet im UI keinen festen Musterzeitplan mehr an. ChatGPT erstellt den Vorschlag nur für einen leeren Plan und übernimmt ihn erst nach der ausdrücklichen Freigabe. Eigene Aufgaben und reale Termine bleiben erhalten. Frühere Bestandsaufgaben werden durch Migration `0006` nicht gelöscht. Ihre Ausführungsart lautet zunächst „Noch offen“, wenn sie nicht eindeutig an der alten Gewerkbezeichnung zu erkennen ist. Vor jedem Schema-Upgrade vorhandener SQLite-Daten ist weiterhin das geprüfte vollständige Backup Pflicht.
 
-Der Inhalt ist ein **unverbindlicher Planvorschlag** für das Haus mit Dach-/Kniestockerhöhung, Terrasse, teilweise gedämmter Fassade, Wärmepumpe, Elektro, Bädern, PV und Smart Home. Die **Dauerangaben sind grobe Kalendertag-Platzhalter**, keine verbindliche Termin- oder Baugenehmigungszusage. Sicherheit, Statik, Förderung, Trocknungszeiten sowie die Gewerke-Reihenfolge müssen anhand des tatsächlichen Bauzustands und der Architekten-/Fachplanung freigegeben werden. Bei Schadstoffen, tragenden Bauteilen, Elektroanschlüssen und Kältemittelanlagen sind entsprechende Fachbetriebe nötig. Baustellenkoordination und mögliche SiGeKo-Pflichten mit der Bauleitung abklären.
+Ein mit ChatGPT erstellter Ablauf ist ein **unverbindlicher Planvorschlag** anhand der eingegebenen Projektbeschreibung. Die **Dauerangaben sind grobe Kalendertag-Platzhalter**, keine verbindliche Termin- oder Baugenehmigungszusage. Sicherheit, Statik, Förderung, Trocknungszeiten sowie die Gewerke-Reihenfolge müssen anhand des tatsächlichen Bauzustands und der Architekten-/Fachplanung freigegeben werden. Bei Schadstoffen, tragenden Bauteilen, Elektroanschlüssen und Kältemittelanlagen sind entsprechende Fachbetriebe nötig. Baustellenkoordination und mögliche SiGeKo-Pflichten mit der Bauleitung abklären.
 
 **Fachliche Grundlagen des allgemeinen Ablaufs (die individuellen Arbeiten sind daraus abgeleitet, nicht wortwörtlich übernommen):**
 
@@ -174,7 +174,7 @@ Der Inhalt ist ein **unverbindlicher Planvorschlag** für das Haus mit Dach-/Kni
 - BG BAU, [Baustellenverordnung und Koordination](https://bgbauaktuell.bgbau.de/bg-bau-aktuell-12021/artikel-12021/schwerpunkt-baustellenverordnung)
 - [Altbausanierung und gewerkeübergreifende Reihenfolge](https://www.schulten-bau.de/blog/die-richtige-reihenfolge-bei-einer-sanierung-welche-gewerke-wann-kommen) – als nichtamtliche Ergänzung für Ausführungsabhängigkeiten
 
-**Bereits alter Musterplan vorhanden?** Unter **Bauzeitenplan** kannst du **„Nur Bauzeitplan leeren (mit Backup)“** wählen. Voraussetzung: ein erreichbarer Backupordner und die Eingabe `BAUZEITPLAN LEEREN`. Bei Verknüpfungen zwischen Kostenpositionen und Aufgaben wird das Leeren verweigert. Die Funktion wirkt nur auf Aufgaben und Abhängigkeiten, nicht auf Finanzen, Angebote, Rechnungen oder hochgeladene PDFs. Sie ist aus Sicherheitsgründen nur lokal mit SQLite verfügbar. Anschließend kann der neue Musterplan eingefügt werden.
+**Bereits alter Musterplan vorhanden?** Unter **Bauzeitenplan** kannst du **„Nur Bauzeitplan leeren (mit Backup)“** wählen. Voraussetzung: ein erreichbarer Backupordner und die Eingabe `BAUZEITPLAN LEEREN`. Bei Verknüpfungen zwischen Kostenpositionen und Aufgaben wird das Leeren verweigert. Die Funktion wirkt nur auf Aufgaben und Abhängigkeiten, nicht auf Finanzen, Angebote, Rechnungen oder hochgeladene PDFs. Sie ist aus Sicherheitsgründen nur lokal mit SQLite verfügbar. Anschließend kann ein neuer Plan manuell oder anhand der Projektbeschreibung mit ChatGPT erstellt werden.
 
 
 ### Angebotsversionen (Historie statt Dubletten)
@@ -283,7 +283,7 @@ Der Assistent liefert gegebenenfalls **strukturierte Änderungen**: Arbeitspaket
 
 Die **Entscheidungs- und Änderungshistorie** ist standardmäßig eingeklappt. Sie speichert Zeitpunkt, Nachricht, KI-Antwort, bestätigte Entscheidung, Status und die konkret geänderten Felder. Auch manuelle Änderungen an Arbeitspaketen, Projektstart und der ersten Planung werden erfasst. Die Historie befindet sich lokal in der Projektdatenbank und ist im verpflichtenden Komplettbackup enthalten. Eine Diskussion ohne Änderung wird als solche dokumentiert; abgelehnte Änderungen werden nicht angewendet.
 
-Ist **noch kein Bauzeitenplan vorhanden**, erscheinen der Muster-Bauzeitenplan und – bei verbundener ChatGPT-Plannutzung – die alternative KI-Erstplanung. Bei einem **bestehenden** Plan verschwinden die beiden Erstplanungsbereiche; der ChatGPT-Dialog ist ausschließlich bei bestehender Verbindung sichtbar. Die optionale Historie bleibt unabhängig von der ChatGPT-Verbindung einsehbar. Das vollständige Leeren des Plans ist nur unter „Erweiterte Aktionen“ mit Pflichtbackup und gesonderter Bestätigung möglich.
+Ist **noch kein Bauzeitenplan vorhanden**, erscheint bei verbundener ChatGPT-Plannutzung die KI-Erstplanung. Bei einem **bestehenden** Plan verschwindet die Erstplanung; der ChatGPT-Dialog ist ausschließlich bei bestehender Verbindung sichtbar. Die optionale Historie bleibt unabhängig von der ChatGPT-Verbindung einsehbar. Das vollständige Leeren des Plans ist nur unter „Erweiterte Aktionen“ mit Pflichtbackup und gesonderter Bestätigung möglich.
 
 Die Migration **`0011`** ergänzt nur die Historientabelle. Bereits bestehende Termine, Aufgaben, Firmen- und Kostenverknüpfungen bleiben beim Update erhalten. Für alle Termin- und Abhängigkeitsänderungen ist weiterhin fachliche Prüfung erforderlich.
 

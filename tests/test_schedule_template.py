@@ -89,7 +89,9 @@ class ScheduleTemplateTests(TestCase):
         self.assertIn('execution_type',backup['tasks'][0])
         self.assertEqual(self.client.get('/').status_code,200)
         html=self.client.get('/').data.decode('utf-8')
-        self.assertIn('id="initializeTemplate"',html)
+        self.assertNotIn('id="initializeTemplate"',html)
+        self.assertIn('id="aiSchedulePanel"',html)
+        self.assertIn('Bauzeitenplan mit ChatGPT erstellen',html)
         self.assertIn('name="execution_type"',html)
         self.assertIn('id="workType"',html)
 

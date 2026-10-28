@@ -326,7 +326,7 @@ function renderDrawdownOptions(){
  $('drawdownAiWrap').hidden=!aiAvailable;
  if(!aiAvailable)$('drawdownAiPrefill').checked=false;
  const rows=options?.receipts||[];
- $('drawdownReceiptList').innerHTML=rows.map(r=>`<label class="drawdown-receipt ${r.eligible?'':'disabled'}"><input type="checkbox" value="${r.id}" data-amount="${r.rebookable}" ${r.eligible?'':'disabled'}><span><strong>${esc(r.supplier)}</strong><small>${esc(r.document_date||'Ohne Datum')} · ${esc(r.invoice_number||r.filename)} · ${esc(r.source_summary)}</small></span><span class="drawdown-amount"><b>${euro(r.rebookable)}</b><small>neu abrufbar</small></span></label>`).join('')||'<p class="hint">Noch keine bezahlten, gebuchten Belege vorhanden.</p>';
+ $('drawdownReceiptList').innerHTML=rows.map(r=>`<label class="drawdown-receipt ${r.eligible?'':'disabled'}"><input type="checkbox" value="${r.id}" data-amount="${r.submittable}" ${r.eligible?'':'disabled'}><span><strong>${esc(r.supplier)}</strong><small>${esc(r.document_date||'Ohne Datum')} · ${esc(r.invoice_number||r.filename)} · ${esc(r.source_summary)}</small></span><span class="drawdown-amount"><b>${euro(r.submittable)}</b><small>einreichbar</small></span></label>`).join('')||'<p class="hint">Noch keine gebuchten Rechnungen vorhanden.</p>';
  $('drawdownReceiptList').querySelectorAll('input[type=checkbox]').forEach(input=>input.onchange=updateDrawdownTotal);
  updateDrawdownTotal();
 }

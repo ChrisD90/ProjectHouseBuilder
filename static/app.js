@@ -1,4 +1,4 @@
-let project={tasks:[],phases:[],start:'',contractors:[],contractor_suggestions:{}};let editing=null, templatePreview=null,taskBusy=false,ganttBusy=false;
+let project={tasks:[],phases:[],start:'',contractors:[],contractor_suggestions:{}};let editing=null,taskBusy=false,ganttBusy=false;
 const proposals=id=>(project.contractor_suggestions||{})[id]||[];
 const assignedCompany=t=>(project.contractors||[]).find(c=>c.id===t.contractor_id)?.name||t.company||'';
 const $=id=>document.getElementById(id);
@@ -10,17 +10,13 @@ const firstMonday=d=>addDays(d,-((new Date(d+'T12:00:00Z').getUTCDay()+6)%7));
 function message(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 async function api(path,options={}){const res=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const data=await res.json();if(!res.ok)throw Error(data.error||'Serverfehler');return data}
 async function reload(){try{project=await api('/api/project');render();document.dispatchEvent(new CustomEvent('phb-schedule-updated',{detail:{taskCount:project.tasks.length}}))}catch(e){message(e.message)}}
-async function loadTemplatePreview(){try{templatePreview=await api('/api/tasks/template');renderTemplatePreview()}catch(e){$('templateMessage').textContent=e.message;$('initializeTemplate').disabled=true}}
-function renderTemplatePreview(){
+function renderScheduleStart(){
  const empty=project.tasks.length===0;
- $('templatePanel').hidden=!empty;
  $('aiSchedulePanel').hidden=!empty||!Boolean(window.PHBAI?.connected());
  $('clearSchedule').hidden=empty;
- if(!empty||!templatePreview)return;
- const count=project.tasks.length;$('templateCount').textContent=templatePreview.count;$('templateSelf').textContent=templatePreview.execution_types.Eigenleistung+' Eigenleistung';$('templateExternal').textContent=templatePreview.execution_types.Fremdleistung+' Fremdleistung';$('templatePhases').innerHTML=templatePreview.phases.map(x=>`<span class="phase-chip">${escapeHtml(x.name)} <b>${x.count}</b></span>`).join('');$('templateTasks').innerHTML=templatePreview.tasks.map(t=>`<div class="template-step"><code>${escapeHtml(t.code)}</code><span>${escapeHtml(t.name)}<small>${escapeHtml(t.phase)} · ca. ${t.duration} Kalendertage</small></span><span class="work-chip ${t.execution_type==='Eigenleistung'?'self':'external'}">${escapeHtml(t.execution_type)}</span></div>`).join('');const can=!count&&!templatePreviewBusy;$('templateConfirm').disabled=!can;$('initializeTemplate').disabled=!can||!$('templateConfirm').checked;$('templateMessage').textContent=count?`Der vorhandene Plan enthält ${count} Arbeitsschritte und bleibt unverändert. Die Vorlage kann nur in einen leeren Plan eingefügt werden. Über „Nur Bauzeitplan leeren“ kannst du den bestehenden Plan nach einem geprüften Komplettbackup gezielt entfernen; deine Kosten und Belege bleiben erhalten.`:'Beim Einfügen werden alle vorgeschlagenen Arbeitspakete und ihre Abhängigkeiten erstellt. Anschließend kannst du alles ändern oder löschen.'}
-let templatePreviewBusy=false;
+}
 function visible(){const phaseId=$('phase').value;return project.tasks.filter(t=>(!phaseId||(phaseId==='unassigned'?!t.phase_id:String(t.phase_id??'')===phaseId))&&(!$('workType').value||t.execution_type===$('workType').value)&&[t.code,t.name,t.phase,t.trade,assignedCompany(t),t.execution_type].some(v=>String(v).toLowerCase().includes($('filter').value.toLowerCase())))}
-function render(){let ts=project.tasks;$('projectStart').value=project.start;$('count').textContent=ts.length;$('end').textContent=fmt(ts.reduce((x,t)=>t.end>x?t.end:x,project.start));$('ongoing').textContent=ts.filter(t=>t.status==='In Arbeit').length;$('selfCount').textContent=ts.filter(t=>t.execution_type==='Eigenleistung').length;$('externalCount').textContent=ts.filter(t=>t.execution_type==='Fremdleistung').length;let selected=$('phase').value;$('phase').innerHTML='<option value="">Alle Bauphasen</option>'+(project.phases||[]).map(p=>`<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('')+'<option value="unassigned">Ohne Bauphase</option>';$('phase').value=[...(project.phases||[]).map(p=>String(p.id)),'unassigned'].includes(selected)?selected:'';$('suggestionCount').textContent=(project.contracted_companies||[]).length?'('+(project.contracted_companies||[]).length+' Firmen)':'';renderGantt();renderTable();renderTemplatePreview();renderPhaseList()}
+function render(){let ts=project.tasks;$('projectStart').value=project.start;$('count').textContent=ts.length;$('end').textContent=fmt(ts.reduce((x,t)=>t.end>x?t.end:x,project.start));$('ongoing').textContent=ts.filter(t=>t.status==='In Arbeit').length;$('selfCount').textContent=ts.filter(t=>t.execution_type==='Eigenleistung').length;$('externalCount').textContent=ts.filter(t=>t.execution_type==='Fremdleistung').length;let selected=$('phase').value;$('phase').innerHTML='<option value="">Alle Bauphasen</option>'+(project.phases||[]).map(p=>`<option value="${p.id}">${escapeHtml(p.title)}</option>`).join('')+'<option value="unassigned">Ohne Bauphase</option>';$('phase').value=[...(project.phases||[]).map(p=>String(p.id)),'unassigned'].includes(selected)?selected:'';$('suggestionCount').textContent=(project.contracted_companies||[]).length?'('+(project.contracted_companies||[]).length+' Firmen)':'';renderGantt();renderTable();renderScheduleStart();renderPhaseList()}
 const taskListFlow=PHBFlow.manage({
  dialog:'taskListDialog',dismiss:['closeTaskList'],track:false
 });
@@ -56,18 +52,16 @@ function openTask(id){if(taskBusy||ganttBusy)return;editing=id;let t=project.tas
 const taskFlow=PHBFlow.manage({dialog:'overlay',forms:['taskForm'],dismiss:['cancel'],isBusy:()=>taskBusy,onClose:()=>window.PHBTaskCompletion?.closed()});
 function closeModal(){taskFlow.finish();}
 $('newTask').onclick=()=>openTask(null);$('filter').oninput=()=>{renderGantt();renderTable()};$('phase').onchange=()=>{renderGantt();renderTable()};$('scale').onchange=renderGantt;$('workType').onchange=()=>{renderGantt();renderTable()};$('taskForm').elements.namedItem('trade').onchange=()=>refreshTaskContractors();$('taskForm').elements.namedItem('execution_type').onchange=()=>refreshTaskContractors($('taskForm').elements.namedItem('contractor_id').value);
-$('templateConfirm').onchange=renderTemplatePreview;
 $('clearSchedule').onclick=async()=>{
  if(!project.tasks.length)return;
  const response=await PHBUI.prompt('Achtung: Alle Bauzeitplan-Aufgaben und deren Abhängigkeiten werden entfernt. Andere Projektdaten bleiben bestehen. Vorher ist ein vollständiges, geprüftes Backup Pflicht. Zur Bestätigung BAUZEITPLAN LEEREN eingeben:');
  if(response!=='BAUZEITPLAN LEEREN')return;
  if(!await PHBUI.confirm('Den Bauzeitplan nach vollständigem Backup wirklich leeren?'))return;
  $('clearSchedule').disabled=true;
- try{const result=await api('/api/tasks/clear',{method:'POST',headers:{'X-PHB-Schedule-Reset':'1'},body:JSON.stringify({confirmation:'BAUZEITPLAN LEEREN'})});$('phase').value='';$('filter').value='';$('workType').value='';await reload();if(!templatePreview)await loadTemplatePreview();message('Bauzeitplan geleert; Komplettbackup wurde erstellt.');$('templateMessage').textContent='Der Plan ist leer. Du kannst jetzt den Musterplan übernehmen.'}
- catch(e){message(e.message);$('templateMessage').textContent=e.message}
- finally{$('clearSchedule').disabled=false;renderTemplatePreview()}
+ try{await api('/api/tasks/clear',{method:'POST',headers:{'X-PHB-Schedule-Reset':'1'},body:JSON.stringify({confirmation:'BAUZEITPLAN LEEREN'})});$('phase').value='';$('filter').value='';$('workType').value='';await reload();message('Bauzeitenplan geleert; Komplettbackup wurde erstellt. Du kannst jetzt mit ChatGPT neu planen.')}
+ catch(e){message(e.message)}
+ finally{$('clearSchedule').disabled=false;renderScheduleStart()}
 };
-$('initializeTemplate').onclick=async()=>{if(!templatePreview||project.tasks.length||!$('templateConfirm').checked)return;if(!await PHBUI.confirm(`${templatePreview.count} vorgeschlagene Arbeitsschritte mit Terminen und Abhängigkeiten in den leeren Bauzeitenplan übernehmen?`))return;templatePreviewBusy=true;$('initializeTemplate').disabled=true;$('templateConfirm').disabled=true;$('templateMessage').textContent='Arbeitsschritte werden eingefügt …';try{const out=await api('/api/tasks/initialize',{method:'POST',body:JSON.stringify({confirm:true})});$('templateConfirm').checked=false;await reload();message(`${out.created} Arbeitsschritte übernommen`)}catch(e){$('templateMessage').textContent=e.message;message(e.message)}finally{templatePreviewBusy=false;renderTemplatePreview()}};
 $('saveStart').onclick=async()=>{try{await api('/api/project',{method:'PATCH',body:JSON.stringify({start:$('projectStart').value})});message('Projektstart gespeichert');await reload()}catch(e){message(e.message)}};
 async function mutateTask(path,method,data,text){
  if(taskBusy)return;
@@ -210,8 +204,8 @@ $('delete').onclick=async()=>{
  await mutateTask('/api/tasks/'+editing,'DELETE',undefined,'Arbeitspaket gelöscht; Abhängigkeiten verbunden');
 };
 $('today').onclick=()=>{let container=document.querySelector('.ganttwrap');let origin=firstMonday(project.start);let n=diff(origin,new Date().toISOString().slice(0,10));container.scrollLeft=Math.max(0,n*($('scale').value==='week'?26:7)-320)};
-reload().then(()=>{if(!project.tasks.length)loadTemplatePreview();if(new URLSearchParams(location.search).get('firmenvorschlaege')==='1')$('companySuggestions').click();});
-document.addEventListener('phb-ai-status',renderTemplatePreview);
+reload().then(()=>{if(new URLSearchParams(location.search).get('firmenvorschlaege')==='1')$('companySuggestions').click();});
+document.addEventListener('phb-ai-status',renderScheduleStart);
 
 /* ChatGPT plan-funded schedule suggestions: preview-only until explicit import. */
 (() => {

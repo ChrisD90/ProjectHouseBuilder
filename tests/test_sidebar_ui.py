@@ -89,7 +89,6 @@ class SidebarUITest(unittest.TestCase):
     def test_schedule_chat_is_gated_and_history_collapsed_by_default(self):
         page=self.render('index')
         for marker in (
-            'id="templatePanel" aria-labelledby="templateTitle" hidden',
             'id="aiSchedulePanel" hidden',
             'id="aiScheduleChatPanel" hidden',
             'id="scheduleHistoryDialog"',
@@ -424,6 +423,8 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('renderReceiptList',script)
         self.assertIn('Keine Belege entsprechen der Suche.',script)
         self.assertIn('.receipt-search',styles)
+        self.assertIn('.receipt-search input{display:block;width:100%;height:42px',styles)
+        self.assertIn('.entry .status{margin:0 0 8px 14px}',styles)
 
     def test_task_list_and_history_are_on_demand_and_do_not_take_page_space(self):
         page=self.render('index')
