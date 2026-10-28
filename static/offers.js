@@ -117,10 +117,6 @@
   function openOfferEdit(id){
     const offer=offers.find(o=>o.id===id);
     if(!offer)return;
-    if(['Angenommen','Beauftragt'].includes(offer.status)){
-      PHBUI.alert('Angenommene Angebote sind gesperrt. Für Nachträge bitte eine neue PDF-Version hochladen.');
-      return;
-    }
     editingOfferId=id;
     $('offerEditTitle').textContent='Angebot '+(offer.number||'#'+offer.id)+' bearbeiten';
     $('offerEditFields').innerHTML=fields(offer);
@@ -405,7 +401,7 @@
     const rejected=o.status==='Abgelehnt';
     const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
     const actions=accepted
-      ? `<span class="offer-accepted-note">✓ ${o.acceptance?"Auftrag fixiert":"Berücksichtigt"}</span><a class="mini" href="/?firmenvorschlaege=1">Firma im Bauzeitenplan zuordnen</a><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>${o.acceptance?"":`<button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`}`
+      ? `<span class="offer-accepted-note">✓ ${o.acceptance?"Auftrag fixiert":"Berücksichtigt"}</span><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button><a class="mini" href="/?firmenvorschlaege=1">Firma im Bauzeitenplan zuordnen</a><a class="mini" href="/belege?offer_id=${o.id}">Rechnung</a><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>${o.acceptance?"":`<button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`}`
       : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button><button class="mini" type="button" data-offer-edit="${o.id}">Bearbeiten</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
     return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
       <button type="button" class="offer-tile-open" data-offer-details="${o.id}"
@@ -445,9 +441,12 @@
     const drafts=offers.filter(o=>o.status==='Entwurf');
     const listed=offers.filter(o=>o.status==='Angebot');
     const accepted=offers.filter(o=>['Angenommen','Beauftragt'].includes(o.status));
+    const rejected=offers.filter(o=>o.status==='Abgelehnt');
     $('offersCountDraft').textContent=String(drafts.length+versionDrafts.length);
     $('offersCountListed').textContent=String(listed.length);
     $('offersCountAccepted').textContent=String(accepted.length);
+    $('offersAcceptedTotal').textContent=fmt(accepted.reduce((sum,o)=>sum+Number(o.agreed_gross??o.gross??0),0));
+    $('offersCountRejected').textContent=String(rejected.length);
     $('offersDraftBadge').textContent=(drafts.length+versionDrafts.length)?`(${drafts.length+versionDrafts.length})`:'';
     $('offerDraftTriggerCount').textContent=(drafts.length+versionDrafts.length)
       ?'('+String(drafts.length+versionDrafts.length)+')':'';
@@ -461,10 +460,11 @@
     const filter=$('offerCategoryFilter'), prev=filter.value;
     filter.innerHTML=option('','Alle Kategorien',prev)+categories.map(c=>option(c,c,prev)).join('');
     filter.value=categories.includes(prev)?prev:'';
-    const visible=offers.filter(o=>o.status!=='Entwurf'&&(!filter.value||o.category===filter.value));
-    const order={Angebot:0,Angenommen:1,Beauftragt:1,Abgelehnt:2};
+    const visible=offers.filter(o=>o.status!=='Entwurf'&&o.status!=='Abgelehnt'&&(!filter.value||o.category===filter.value));
+    const order={Angebot:0,Angenommen:1,Beauftragt:1};
     visible.sort((a,b)=>a.category.localeCompare(b.category,'de')||(order[a.status]??9)-(order[b.status]??9)||(a.gross??Infinity)-(b.gross??Infinity));
     $('offerList').innerHTML=visible.length ? visible.map(renderListed).join('') : '<p class="offer-empty">Noch keine Angebote in der Liste. Du kannst oben manuell ein Angebot anlegen oder ein PDF hochladen und prüfen.</p>';
+    $('rejectedOfferList').innerHTML=rejected.length?rejected.map(renderListed).join(''):'<p class="offer-empty">Keine abgelehnten Angebote.</p>';
     if ($('aiOfferChoices')) {
       const previous=new Set([...$('aiOfferChoices').querySelectorAll('input:checked')].map(x=>Number(x.value)));
       $('aiOfferChoices').innerHTML=visible.map(o=>`<label><input type="checkbox" name="ai-compare" value="${o.id}" ${previous.has(o.id)?'checked':''}><span>${esc(o.vendor)} · ${esc(o.category)} · ${fmt(o.gross)}</span></label>`).join('')||'<p class="offer-empty">Mindestens zwei geprüfte Angebote benötigt.</p>';

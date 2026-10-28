@@ -270,6 +270,15 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
                 'location':clean_text(body.get('location'),'Ort',160),'notes':note(body.get('notes')),
                 'positions':positions}
 
+    def apply_loan_profile(loan,body):
+        try:profile=json.loads(getattr(loan,'drawdown_profile_json','{}') or '{}')
+        except (TypeError,json.JSONDecodeError):profile={}
+        merged=dict(body)
+        if isinstance(profile,dict):
+            for key in ('borrower_names','property_address','recipient_iban','recipient_name','location','notes'):
+                if not str(merged.get(key,'') or '').strip() and profile.get(key):merged[key]=profile[key]
+        return merged
+
     def position_data(raw,option):
         if not isinstance(raw,dict):raise ValueError('Rechnungsposition ungültig.')
         if int(raw.get('receipt_id') or 0)!=option['id']:raise ValueError('Rechnungsposition passt nicht zum ausgewählten Beleg.')
@@ -310,6 +319,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
             positions=[position_data({'receipt_id':rid,'supplier':options[rid]['supplier'],
                 'invoice_number':options[rid]['invoice_number'],'document_date':options[rid]['document_date'],
                 'amount':options[rid]['rebookable']},options[rid]) for rid in ids]
+            body=apply_loan_profile(loan,body)
             data=base_data(body,positions);template=template_for(loan_id);ai=body.get('ai_prefill') is True
             if ai and not template:raise ValueError('Bitte zuerst beim gewählten Kredit eine PDF-Abrufvorlage hinterlegen.')
             mapping={}

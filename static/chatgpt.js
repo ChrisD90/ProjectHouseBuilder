@@ -12,6 +12,9 @@
   const model=$('phbAIModel');
   const check=$('phbAINoCredits');
   const warning=check.closest('label');
+  const usagePanel=document.createElement('section');
+  usagePanel.id='phbAIUsage';usagePanel.className='phb-ai-usage';usagePanel.hidden=true;
+  $('phbAIConnection').insertAdjacentElement('afterend',usagePanel);
   let consentSaving=false;
   const aiFlow=PHBFlow.manage({
     dialog:'phbAIDialog',
@@ -41,6 +44,19 @@
     diagnosticBox.open=false;
     diagnosticBox.hidden=true;
     diagnosticContent.textContent='';
+  }
+  function renderUsage(){
+    usagePanel.hidden=!state.connected;if(!state.connected)return;
+    const usage=state.usage||{},last=usage.last_request||{},limits=usage.rate_limits||{};
+    const number=value=>new Intl.NumberFormat('de-DE').format(Number(value)||0);
+    const safe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    const lastText=last.total_tokens!=null
+      ?`Letzte Anfrage: ${number(last.total_tokens)} Tokens (${number(last.input_tokens)} Eingabe, ${number(last.output_tokens)} Ausgabe)`
+      :'Noch keine Token-Nutzung aus einer abgeschlossenen Anfrage erfasst.';
+    const rate=[];
+    if(limits.token_remaining!=null)rate.push(`Aktuelles Token-Limit: ${number(limits.token_remaining)}${limits.token_limit!=null?' von '+number(limits.token_limit):''} verbleibend${limits.token_reset?' · Reset '+limits.token_reset:''}`);
+    if(limits.request_remaining!=null)rate.push(`Anfragen: ${number(limits.request_remaining)}${limits.request_limit!=null?' von '+number(limits.request_limit):''} verbleibend${limits.request_reset?' · Reset '+limits.request_reset:''}`);
+    usagePanel.innerHTML=`<strong>Nutzung &amp; Limits</strong><p>${safe(lastText)}</p><p>Für dieses Konto lokal erfasst: ${number(usage.cumulative_tokens)} Tokens.</p>${rate.map(text=>`<p>${safe(text)}</p>`).join('')}<p class="phb-ai-usage-note">${safe(usage.notice||'Das gesamte verbleibende ChatGPT-Kontingent wird der App nicht bereitgestellt.')} <a href="${safe(state.usage_url)}" target="_blank" rel="noopener noreferrer">ChatGPT-Nutzung öffnen ↗</a></p>`;
   }
   function formatDiagnostics(diag){
     const flags=diag.checks||{};
@@ -100,6 +116,7 @@
       $('phbAIConnection').textContent=state.connected
         ? 'Verbunden: '+(state.email||'ChatGPT-Konto')+(state.sharing?' · Plannutzung erlaubt':' · Plannutzung nicht erlaubt')
         : 'Nicht verbunden. Die lokale PDF-Analyse funktioniert weiterhin.';
+      renderUsage();
       check.checked=!!state.credits_acknowledged;
       check.disabled=!!state.credits_acknowledged || !state.sharing;
       warning.hidden=!!state.credits_acknowledged;

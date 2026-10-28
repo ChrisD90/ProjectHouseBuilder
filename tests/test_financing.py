@@ -125,7 +125,32 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertIn(b'id="drawdownHistory"',page.data)
         self.assertIn(b'id="drawdownPreviewStage"',page.data)
         self.assertIn(b'id="manualDrawdownDocument"',page.data)
+        self.assertIn(b'id="loanDrawdownProfileForm"',page.data)
         self.assertIn(b'name="document_type"',page.data)
+
+    def test_loan_drawdown_profile_is_reused_for_new_requests(self):
+        lid=self.loan('1000','Kredit mit Abrufprofil')
+        saved=self.client.patch(f'/api/financing/loans/{lid}/drawdown-profile',json={
+            'borrower_names':'Erika und Max Beispiel','property_address':'Musterweg 1',
+            'recipient_name':'Erika Beispiel','recipient_iban':'DE02 1203 0000 0000 2020 51',
+            'location':'Musterstadt','notes':'Immer mit Rechnungsnachweisen'})
+        self.assertEqual(saved.status_code,200,saved.json)
+        self.assertEqual(saved.json['profile']['recipient_iban'],'DE02120300000000202051')
+        self.assertEqual(self.client.patch(f'/api/financing/loans/{lid}/drawdown-profile',
+            json={'recipient_iban':'DE123'}).status_code,400)
+        loan=next(row for row in self.state()['loans'] if row['id']==lid)
+        self.assertEqual(loan['drawdown_profile']['property_address'],'Musterweg 1')
+
+        eid=self.equity('500','0');rid=self.receipt('100')
+        self.assertEqual(self.pay(rid,'100','equity',eid).status_code,201)
+        created=self.client.post('/api/financing/drawdowns/drafts',json={
+            'loan_id':lid,'receipt_ids':[rid],'requested_date':'2026-10-28'})
+        self.assertEqual(created.status_code,201,created.json)
+        self.assertEqual(created.json['borrower_names'],'Erika und Max Beispiel')
+        self.assertEqual(created.json['recipient_iban'],'DE02120300000000202051')
+        drawdown=db.session.get(LoanDrawdown,created.json['id'])
+        for name in (drawdown.preview_name,drawdown.stored_name):
+            if name:self.addCleanup((Path(app.root_path)/'private'/'loan-drawdowns'/name).unlink,missing_ok=True)
 
     def test_equity_account_reserve_and_overdraft(self):
         eid=self.equity()

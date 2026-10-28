@@ -148,15 +148,13 @@ class OfferInvoiceTrackingTests(unittest.TestCase):
         self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={'gross_amount':1000}).status_code,200)
         self.assertEqual(self.client.post(f'/api/receipts/{rid}/book').status_code,409)
 
-    def test_linked_invoice_locks_offer_and_changes_require_unbooking(self):
+    def test_linked_booked_invoice_can_be_reassigned_without_unbooking(self):
         oid,item=self.offer()
         rid=self.bill(item,2000)
         result=self.client.patch(f'/api/offers/{oid}',json={'status':'Abgelehnt'})
         self.assertEqual(result.status_code,409,result.json)
-        self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={'cost_item_id':None}).status_code,409)
-        self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={'advance_deduction':300}).status_code,409)
-        self.assertEqual(self.client.post(f'/api/receipts/{rid}/unbook').status_code,200)
         self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={'cost_item_id':None}).status_code,200)
+        self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={'advance_deduction':300}).status_code,400)
         self.assertEqual(self.client.patch(f'/api/offers/{oid}',json={'status':'Abgelehnt'}).status_code,200)
 
     def test_manual_quote_draft_and_other_costs_do_not_appear_in_accepted_only_selector(self):

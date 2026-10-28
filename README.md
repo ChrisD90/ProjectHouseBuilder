@@ -40,7 +40,7 @@ Die alten Excel-Kostenplanvorlagen und ihr automatischer Import sind **entfernt*
 
 ## Datenbankschema und Updates
 
-`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung, `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung und `0008` die explizite Rechnungszuordnung. `0018` ergänzt Kreditabrufvorlagen und nachvollziehbare Mittelabrufpakete; `0019` protokolliert zurückgenommene Rechnungsstornos; `0020` ergänzt Entwurf, Einreichung, Bankentscheidung, PDF-Vorschau und manuelle Abrufnachweise. Bereits bestehende Rechnungen bleiben erhalten; bisherige Zuordnungen zu Kostenpositionen werden übernommen und nicht automatisch als Eigenleistung deklariert. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
+`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung, `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung und `0008` die explizite Rechnungszuordnung. `0018` ergänzt Kreditabrufvorlagen und nachvollziehbare Mittelabrufpakete; `0019` protokolliert zurückgenommene Rechnungsstornos; `0020` ergänzt Entwurf, Einreichung, Bankentscheidung, PDF-Vorschau und manuelle Abrufnachweise; `0021` ergänzt wiederverwendbare Auszahlungsdaten pro Kredit. Bereits bestehende Rechnungen bleiben erhalten; bisherige Zuordnungen zu Kostenpositionen werden übernommen und nicht automatisch als Eigenleistung deklariert. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
 
 Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.db-shm`, `private/`, `backups/`, `.env`, `instance/` aus. Diese Dateien niemals in GitHub einchecken. Die Datenbank nie in einem Cloud-Sync-Ordner betreiben; nur vollständige Backups synchronisieren.
 
@@ -48,10 +48,10 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 
 - **Bauzeitenplan (`/`):** Ein ausdrücklich gestarteter, individuell auf die Altbausanierung zugeschnittener **Musterplan mit 69 Arbeitsschritten** (21 Eigenleistungen / 48 Fremdleistungen, 9 Bauphasen) inklusive Abhängigkeiten. Ein Import ist **nur in den leeren Bauzeitenplan** möglich; vorhandene Aufgaben werden niemals überschrieben. Aufgaben können danach bearbeitet, gelöscht, neu erstellt und nach Eigen-/Fremdleistung gefiltert werden. Das Gantt kennzeichnet die Ausführungsart unabhängig vom Fortschrittsstatus.
 - **Kosten & Budget:** eigene Budgetpositionen und Schätzwerte, Beauftragungen, Förderungen und Kostenprognose.
-- **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, korrigieren, annehmen oder ablehnen. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.
+- **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, jederzeit korrigieren, annehmen oder ablehnen. Abgelehnte Angebote liegen in einer eingeklappten Liste; die Übersicht zeigt die Gesamtsumme aller angenommenen Aufträge. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.
 - **Kosten & Budget (`/kosten`):** Ausschließlich Kostenschätzungen und zusätzliche Ausgaben planen; keine zweite Angebotsverwaltung. Angenommene Angebote werden automatisch eingerechnet, aber nicht nochmals bearbeitbar als manuelle Kostenposition angezeigt.
 - **Belege:** Rechnungen/Kassenzettel als PDF oder Foto importieren und wahlweise **lokal** (PDF-Text/Tesseract OCR) oder nach ausdrücklicher Freigabe mit **ChatGPT** analysieren. Belege anschließend prüfen und **genau einer Zuordnungsart** zuweisen: angenommenes Angebot, Betrieb oder Eigenleistung. Die Budgetposition bleibt separat auswählbar; keine automatische Buchung.
-- **Finanzierung:** Kredite manuell erfassen oder Kreditunterlagen ausdrücklich mit ChatGPT auslesen und Vertragsfelder vor dem Speichern prüfen. Briefe, Vertrags-PDFs und gescannte Dokumente lassen sich am einzelnen Kredit anhängen. Für jeden Kredit kann eine Bankvorlage hinterlegt und ein Mittelabruf-ZIP aus ausgewählten Rechnungen erzeugt werden. Entwurf und Einreichung bleiben ungebucht; erst die erfasste Bankbestätigung bucht den Abruf und die gewählten Eigenkapitalanteile um. Alternativ kann eine bereits bestätigte Auszahlung direkt mit optionalem Auszahlungsformular gebucht werden.
+- **Finanzierung:** Kredite manuell erfassen oder Kreditunterlagen ausdrücklich mit ChatGPT auslesen und Vertragsfelder vor dem Speichern prüfen. Briefe, Vertrags-PDFs und gescannte Dokumente lassen sich am einzelnen Kredit anhängen. Für jeden Kredit können eine Bankvorlage und wiederverwendbare Angaben wie Kreditnehmer, Objekt, Auszahlungskonto und Ort hinterlegt werden. Daraus lässt sich ein Mittelabruf-ZIP aus ausgewählten Rechnungen erzeugen. Entwurf und Einreichung bleiben ungebucht; erst die erfasste Bankbestätigung bucht den Abruf und die gewählten Eigenkapitalanteile um. Alternativ kann eine bereits bestätigte Auszahlung direkt mit optionalem Auszahlungsformular gebucht werden.
 - **Stammdaten (`/stammdaten`):** Firmen und automatisch aus PDF-Angeboten übernommene Betriebe zentral pflegen: Ansprechpartner, weitere Kontakte, Telefonnummern, E-Mail, Website, Adresse und Notizen. Separate Gewerke und gemeinsam genutzte Rechnungs-/Kostenkategorien anlegen, umbenennen und – falls unverknüpft – löschen.
 - **Backup, Export & Datenverwaltung (`/daten`):** geprüfte vollständige Sicherungen einschließlich PDFs und Bildern, CSV-/JSON-Exporte, ZIP-Projektarchiv, Wiederherstellungshinweise. Der vollständige Reset ist hinter „Erweiterte Aktionen“ verborgen und bleibt nur nach Pflichtbackup möglich.
 
@@ -217,6 +217,13 @@ Sign-in- und KI-Endpunkte sind nur auf Loopback verfügbar; für LAN-/Docker-Zug
 sind sie absichtlich nicht aktiviert. Die bestehenden lokalen Funktionen bleiben
 jederzeit unabhängig von ChatGPT nutzbar.
 
+Im Verbindungsdialog zeigt **„Nutzung & Limits“** die Tokenzahl der letzten Anfrage,
+die für das verbundene Konto lokal erfasste Summe und – sofern OpenAI sie in der Antwort
+mitsendet – die verbleibenden Token- und Anfragenlimits. Das gesamte verbleibende
+ChatGPT-Plankontingent stellt die Kontoschnittstelle der Anwendung nicht bereit; dafür
+führt ein Link direkt zur ChatGPT-Nutzungsansicht. Zugangstokens werden dabei nie an
+den Browser ausgegeben oder in der Nutzungsanzeige gespeichert.
+
 - Angebote: Analyseart lokal oder ChatGPT auswählen; KI-Ergebnisse sind *Entwürfe*,
   die vor Übernahme geprüft und bearbeitet werden. Auch neue Angebotsversionen.
 - Angebotsvergleich: Zwei bis acht geprüfte Angebote auswählen. Nur Angebotsdaten
@@ -316,7 +323,7 @@ Datei-Uploads sind auf den Arbeitsseiten nicht mehr als dauerhaft große Formula
 
 Bei **Angeboten** bleibt nach lokaler oder ChatGPT-PDF-Analyse derselbe Dialog geöffnet und zeigt den importierten Entwurf mit Korrekturen der Angebotsdaten und sämtlichen Einzelpositionen. Speichern, Prüfen, Freigeben und Hochladen überarbeiteter Versionen gehören zum bestehenden Ablauf; die Angebotsliste und das KI-Vergleichswerkzeug bleiben auf der Hauptseite. Über „Offene Entwürfe prüfen“ lässt sich der Bearbeitungsdialog erneut öffnen. Neue Versionen können an vorhandene Angebote angehängt und anschließend im Dialog geprüft werden.
 
-Bei **Rechnungen** öffnet die Analyse den vollständigen Prüfschritt **im selben Modal**: Rechnungsbeträge, USt, Lohnkosten, Zuordnung zu Angebot/Betrieb/Eigenleistung, Notizen, Originalbeleg, Speichern und verbindliches Buchen funktionieren dort weiter. Klicks auf bestehende Belege in der Übersicht öffnen ebenfalls den Bearbeitungsdialog. Bereits gebuchte Beträge sind weiterhin geschützt.
+Bei **Rechnungen** öffnet die Analyse den vollständigen Prüfschritt **im selben Modal**: Rechnungsbeträge, USt, Lohnkosten, Zuordnung zu Angebot/Betrieb/Eigenleistung, Notizen, Originalbeleg, Speichern und verbindliches Buchen funktionieren dort weiter. Klicks auf bestehende Belege in der Übersicht öffnen ebenfalls den Bearbeitungsdialog. Entwürfe, gebuchte und stornierte Rechnungen bleiben bearbeitbar; bestehende Zahlungen, Stornohistorien und Angebotsabrechnungen werden serverseitig geprüft, damit eine Korrektur keine inkonsistente Buchung erzeugt.
 
 Bei **Projektdokumenten** folgt auf den Upload unmittelbar der Bearbeitungsdialog für Titel, Klassifikation, Schlagworte und aktuellen Dokumentstatus. Die zentrale Bibliothek bleibt ohne Uploadformular sichtbar. Bei **Kosten & Budget** wurden die bestehenden Dokumenten-Zuordnungsfelder zusammen mit dem Dateiupload in einen Dialog verlegt. Dateien werden nur nach der bisherigen bewussten Benutzeraktion verarbeitet.
 
@@ -512,7 +519,7 @@ Kredit- und Eigenkapitaldaten werden nicht umgeschrieben.
 Beim lokalen SQLite-Update erstellt der Starter zuvor wie bisher ein verifiziertes
 Komplettbackup; bei NAS/Docker wird die neue Tabelle beim Initialisieren angelegt.
 
-## Kredit-Mittelabrufe und Bankpakete (Migrationen 0018 und 0020)
+## Kredit-Mittelabrufe und Bankpakete (Migrationen 0018, 0020 und 0021)
 
 Im Bereich **Finanzierung** startet **„+ Mittelabruf“** einen eigenen Ablauf. Zuerst wird
 der Zielkredit gewählt; dadurch bleiben mehrere parallel laufende Darlehen eindeutig
@@ -543,6 +550,10 @@ In **Kredit bearbeiten → Kreditunterlagen** kann die Dokumentart **„Vorlage 
 Kreditabruf“** gewählt werden. Pro Kredit ist eine aktive PDF-Vorlage vorgesehen; eine
 neue Auswahl stuft die bisherige Vorlage zur normalen Kreditunterlage zurück, ohne die
 Datei zu löschen. Das Originalformular wird auch ohne ChatGPT in das ZIP aufgenommen.
+Im selben Kreditdialog lassen sich unter **„Wiederverwendbare Angaben für Auszahlungen“**
+Kreditnehmer, Objektadresse, Zahlungsempfänger, IBAN, Ort und Standardhinweise speichern.
+Neue Mittelabrufe übernehmen diese Angaben automatisch; sie bleiben im einzelnen Entwurf
+änderbar und werden getrennt je Kredit geführt.
 Wenn die lokale ChatGPT-Verbindung aktiv ist und die Plannutzung bestätigt wurde, kann
 ChatGPT die ausfüllbaren PDF-Felder anhand der geprüften Kredit-, Abruf- und Belegdaten
 den Formularpositionen zuordnen und vorausfüllen. Das Ergebnis bleibt eine zu prüfende,

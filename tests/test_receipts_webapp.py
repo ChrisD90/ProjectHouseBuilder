@@ -28,7 +28,9 @@ class ReceiptWebappTest(unittest.TestCase):
         after=self.client.get('/api/costs').json['summary']
         self.assertEqual(round(after['paid']-start['paid'],2),120)
         self.assertEqual(round(after['planned']-start['planned'],2),120)
-        self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={'gross_amount':'999'}).status_code,409)
+        corrected=self.client.patch(f'/api/receipts/{rid}',json={'gross_amount':'999'})
+        self.assertEqual(corrected.status_code,200,corrected.json)
+        self.assertEqual(corrected.json['gross_amount'],999)
         self.assertEqual(self.client.delete(f'/api/receipts/{rid}').status_code,409)
         self.assertEqual(self.client.post(f'/api/receipts/{rid}/unbook').status_code,200)
         self.assertEqual(self.client.get('/api/costs').json['summary']['paid'],start['paid'])
@@ -141,7 +143,9 @@ class ReceiptWebappTest(unittest.TestCase):
         self.assertEqual(rejected.status_code,400,rejected.json)
         self.assertEqual(self.client.get(f'/api/receipts/{rid}').json['labor_amount'],400.0)
         self.assertEqual(self.client.post(f'/api/receipts/{rid}/book').status_code,200)
-        self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={'labor_amount':'100'}).status_code,409)
+        booked_edit=self.client.patch(f'/api/receipts/{rid}',json={'labor_amount':'100'})
+        self.assertEqual(booked_edit.status_code,200,booked_edit.json)
+        self.assertEqual(booked_edit.json['labor_amount'],100)
         self.assertEqual(self.client.post(f'/api/receipts/{rid}/unbook').status_code,200)
         cleared=self.client.patch(f'/api/receipts/{rid}',json={'labor_amount':None})
         self.assertEqual(cleared.status_code,200,cleared.json)
@@ -176,16 +180,12 @@ class ReceiptWebappTest(unittest.TestCase):
         self.assertEqual(rejected.status_code,400)
         self.assertEqual(db.session.get(Receipt,rid).assignment_type,'Betrieb')
         self.assertEqual(self.client.post(f'/api/receipts/{rid}/book').status_code,200)
-        self.assertEqual(self.client.patch(f'/api/receipts/{rid}',json={
-            'assignment_type':'Eigenleistung','contractor_id':None}).status_code,409)
-        self.assertEqual(self.client.delete(f'/api/contractors/{contractor.id}').status_code,409)
-        self.assertEqual(self.client.post(f'/api/receipts/{rid}/unbook').status_code,200)
         change=self.client.patch(f'/api/receipts/{rid}',json={
             'assignment_type':'Eigenleistung','contractor_id':None,'cost_item_id':None})
         self.assertEqual(change.status_code,200,change.json)
         self.assertEqual(change.json['assignment_type'],'Eigenleistung')
         self.assertIsNone(change.json['contractor_id'])
-        self.assertEqual(self.client.post(f'/api/receipts/{rid}/book').status_code,200)
+        self.assertEqual(self.client.delete(f'/api/contractors/{contractor.id}').status_code,200)
 
     def test_conflicting_assignment_is_rejected_atomically(self):
         contractor=Contractor(name='Firma Einbau');db.session.add(contractor);db.session.flush()

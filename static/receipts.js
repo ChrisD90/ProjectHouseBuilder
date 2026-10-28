@@ -133,7 +133,7 @@ $('receiptLabor').addEventListener('input',()=>{
 });
 function updateInvoiceControls(){
  const mode=$('receiptAssignmentType').value;
- const frozen=$('book').hidden&&!assignmentEditing;
+ const frozen=false;
  $('receiptOfferWrap').hidden=mode!=='Angebot'&&mode!=='Kostenposition';
  $('receiptContractorWrap').hidden=mode!=='Betrieb';
  $('receiptContractorHint').hidden=mode!=='Betrieb';
@@ -231,18 +231,18 @@ async function open(id){
  $('receiptTaxRate').value=detectReceiptTaxRate(x);
  updateLaborHint(x.labor_source,x.labor_amount);
  $('book').hidden=x.status!=='Entwurf';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status!=='Entwurf';
- $('editReceiptAssignment').hidden=!['Gebucht','Storniert'].includes(x.status);
+ $('editReceiptAssignment').hidden=true;
  $('saveReceiptAssignment').hidden=true;$('cancelReceiptAssignment').hidden=true;
  $('cancelReceipt').hidden=x.status!=='Gebucht';$('reopenCancelledReceipt').hidden=x.status!=='Storniert';$('markReceiptPaid').hidden=x.status!=='Gebucht'||x.paid_amount>=x.counted_amount;
  for(const button of $('review').querySelectorAll('button[type=submit]')){
-   button.hidden=x.status==='Storniert';
+   button.hidden=false;
    button.textContent=x.status==='Entwurf'?'Entwurf zwischenspeichern':'Änderungen speichern';
  }
  $('receiptCreateCompany').hidden=x.status!=='Entwurf';
- $('review').querySelector('.receipt-draft-toolbar').hidden=x.status==='Storniert';
+ $('review').querySelector('.receipt-draft-toolbar').hidden=false;
  $('receiptReviewState').textContent=x.status;
  $('receiptReviewTitle').textContent=x.status==='Entwurf'?'Rechnungsdaten prüfen':x.status==='Gebucht'?'Gebuchte Rechnung':'Stornierte Rechnung';
- $('receiptReviewHelp').textContent=x.status==='Entwurf'?'Unvollständige Daten kannst du jederzeit zwischenspeichern. Erst „Verbindlich buchen“ übernimmt die Rechnung in Kosten und Abrechnung; die Zahlung erfasst du danach separat.':x.status==='Gebucht'?'Notizen und das optionale Zahlungsziel kannst du weiterhin ergänzen. Eine falsche Zuordnung zu Angebot, Betrieb oder Budget kannst du direkt korrigieren.':'Der stornierte Beleg bleibt mit Original und Stornogrund als Nachweis erhalten. Seine Kostenzuordnung kann weiterhin korrigiert werden.';
+ $('receiptReviewHelp').textContent=x.status==='Entwurf'?'Unvollständige Daten kannst du jederzeit zwischenspeichern. Erst „Verbindlich buchen“ übernimmt die Rechnung in Kosten und Abrechnung; die Zahlung erfasst du danach separat.':x.status==='Gebucht'?'Alle Rechnungsdaten bleiben bearbeitbar. Änderungen an Betrag, Zuordnung und Abrechnungsart werden vor dem Speichern gegen Zahlungen und Angebotsabrechnung geprüft.':'Auch ein stornierter Beleg kann fachlich korrigiert werden. Originaldatei, Stornogrund und Historie bleiben erhalten.';
  $('receiptWorkflowTitle').textContent=x.status==='Entwurf'?'Rechnung prüfen':x.status==='Gebucht'?'Gebuchte Rechnung':'Stornierte Rechnung';
  $('payReceipt').hidden=x.status!=='Gebucht';
  const cancellationInfo=x.cancellation
@@ -252,9 +252,9 @@ async function open(id){
  $('receiptPaymentsPanel').hidden=true;
  $('receiptReviewLayout').hidden=false;
  $('receiptReviewStage').hidden=false;
- for(let node of $('review').querySelectorAll('input,select,textarea'))node.disabled=x.status==='Storniert'||x.status==='Gebucht'&&node.name!=='notes'&&node.name!=='paid_amount'&&node.name!=='due_date';
+ for(let node of $('review').querySelectorAll('input,select,textarea'))node.disabled=false;
  $('review').elements.namedItem('paid_amount').disabled=true;
- $('receiptTaxRate').disabled=x.status!=='Entwurf';
+ $('receiptTaxRate').disabled=false;
  $('receiptTaxHint').textContent='Wenn du den Bruttobetrag bearbeitest, werden Netto und USt mit dem gewählten Satz automatisch berechnet. Bei gemischten Steuersätzen „manuell“ auswählen. Originalbeleg prüfen.';
  if(linkedCostItem&&x.status==='Entwurf'&&!x.cost_item_id&&!x.assignment_type){
    $('receiptAssignmentType').value='Angebot';
@@ -264,7 +264,7 @@ async function open(id){
  const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);
  $('original').href='/api/receipts/'+id+'/download';$('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
- $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Original bleibt erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Für Betragsänderungen zuerst Buchung zurücknehmen.':'Entwurf: Du kannst jederzeit zwischenspeichern, auch ohne Firma, Betrag oder Zahlungsziel.');
+ $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Daten bleiben bearbeitbar; Original und Historie bleiben erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Rechnungsdaten können weiterhin geprüft und korrigiert werden.':'Entwurf: Du kannst jederzeit zwischenspeichern, auch ohne Firma, Betrag oder Zahlungsziel.');
  }catch(e){notice(e.message,true)}
 }
 

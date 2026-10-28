@@ -2693,8 +2693,8 @@ def offer_draft_update(offer_id):
     offer = db.session.get(Offer, offer_id)
     if not offer:
         return jsonify(error='Angebot nicht gefunden.'), 404
-    if offer.status not in ('Entwurf', 'Angebot', 'Abgelehnt'):
-        return jsonify(error='Ein angenommener Auftrag kann nicht mehr bearbeitet werden.'), 409
+    if offer.status not in ('Entwurf', 'Angebot', 'Abgelehnt', 'Angenommen', 'Beauftragt'):
+        return jsonify(error='Dieses Angebot kann nicht bearbeitet werden.'), 409
     values = request.get_json(silent=True) or {}
     if not isinstance(values, dict):
         return jsonify(error='Bitte gültige Angebotsdaten senden.'), 400
@@ -2706,6 +2706,10 @@ def offer_draft_update(offer_id):
         _apply_offer_fields(offer, values)
         if positions is not None:
             _update_draft_positions(offer, positions)
+        if offer.status in ('Angenommen','Beauftragt'):
+            # Keep a fixed acceptance amount while propagating corrected
+            # metadata and cost-plan mappings.
+            _sync_offer_costs(offer)
         _sync_current_version(offer)
         db.session.commit()
         return jsonify(ok=True, offer=offer_dict(offer))
@@ -3307,10 +3311,7 @@ def receipt_preview(rid):
 def receipt_edit(rid):
     r=db.session.get(Receipt,rid)
     if not r:return jsonify(error='Beleg nicht gefunden.'),404
-    if r.status=='Storniert':return jsonify(error='Stornierter Beleg bleibt unverändert erhalten.'),409
     data=request.get_json(silent=True) or {}
-    if r.status=='Gebucht' and any(k in data for k in ('gross_amount','budget_line_id','cost_item_id','contractor_id','assignment_type','category','supplier','invoice_number','document_date','kind','billing_type','advance_deduction','labor_amount')):
-        return jsonify(error='Zum Ändern der Zuordnung oder Belegsumme zunächst Buchung zurücknehmen.'),409
     if data.get('book_now') is True and r.status!='Entwurf':
         return jsonify(error='Nur ein noch nicht gebuchter Entwurf kann verbindlich gebucht werden.'),409
     try:
@@ -3334,6 +3335,19 @@ def receipt_edit(rid):
                 setattr(r,f,amount)
         if r.labor_amount is not None and r.gross_amount is not None and r.labor_amount>r.gross_amount:
             raise ValueError('Der Arbeits-/Lohnkostenanteil darf den Bruttobetrag nicht überschreiten.')
+        if r.status=='Storniert':
+            from decimal import Decimal, InvalidOperation
+            cancellation=db.session.scalar(select(ReceiptCancellation).where(
+                ReceiptCancellation.receipt_id==r.id))
+            if cancellation:
+                try:
+                    previous_paid=Decimal(str(json.loads(cancellation.snapshot_json)['receipt'].get('paid_amount') or 0))
+                except (KeyError,TypeError,ValueError,json.JSONDecodeError,InvalidOperation):
+                    raise ValueError('Der Stornonachweis ist beschädigt; Änderung wurde nicht gespeichert.') from None
+                counted=Decimal(str(r.gross_amount or 0))-Decimal(str(r.advance_deduction or 0))
+                if counted<previous_paid:
+                    db.session.rollback()
+                    return jsonify(error='Der korrigierte Rechnungsbetrag darf nicht unter dem Zahlungsstand vor dem Storno liegen.'),409
         for field,model in (('budget_line_id',BudgetLine),('cost_item_id',CostItem),('contractor_id',Contractor)):
             if field in data:
                 value=data[field];key=int(value) if value not in ('',None) else None

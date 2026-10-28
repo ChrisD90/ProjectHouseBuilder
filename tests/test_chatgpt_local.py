@@ -356,6 +356,30 @@ class ChatGPTLocalTests(unittest.TestCase):
                 local.run({'vendor':'not-a-list'},'Ungültige Eingabe','m1')
             not_sent.assert_not_called()
 
+    def test_token_usage_and_provider_limits_are_visible_without_credentials(self):
+        from chatgpt_local import ChatGPTLocal
+        self.profile()
+        local=ChatGPTLocal()
+        class UsageStream:
+            status_code=200
+            headers={'x-ratelimit-limit-tokens':'10000','x-ratelimit-remaining-tokens':'8765',
+                     'x-ratelimit-limit-requests':'100','x-ratelimit-remaining-requests':'98'}
+            def __enter__(self):return self
+            def __exit__(self,*_):return False
+            def iter_lines(self,**_):
+                yield b'data: {"type":"response.output_text.delta","delta":"Ergebnis"}'
+                yield b'data: {"type":"response.completed","response":{"usage":{"input_tokens":12,"output_tokens":7,"total_tokens":19}}}'
+        with patch.object(local,'models',return_value=[{'slug':'m1'}]), \
+             patch.object(local,'token',return_value='oauth-secret'), \
+             patch('chatgpt_local.requests.post',return_value=UsageStream()):
+            self.assertEqual(local.run('Text','Anweisung','m1'),'Ergebnis')
+        status=local.status()
+        self.assertEqual(status['usage']['last_request']['total_tokens'],19)
+        self.assertEqual(status['usage']['cumulative_tokens'],19)
+        self.assertEqual(status['usage']['rate_limits']['token_remaining'],'8765')
+        self.assertFalse(status['usage']['plan_remaining_available'])
+        self.assertNotIn('oauth-secret',json.dumps(status))
+
     def test_ai_compare_is_report_without_db_change(self):
         self.profile()
         ids=[]

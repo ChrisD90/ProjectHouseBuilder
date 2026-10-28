@@ -110,19 +110,24 @@ class ManualOfferTests(unittest.TestCase):
                 self.assertEqual(resp.status_code,400,resp.json)
         self.assertEqual(db.session.scalar(db.select(db.func.count(Offer.id))),0)
 
-    def test_manual_offers_are_editable_before_but_not_after_acceptance(self):
+    def test_manual_offers_remain_editable_after_acceptance(self):
         oid=self.create().json['id']
         self.assertEqual(self.client.patch(f'/api/offers/{oid}/draft',json={'vendor':'Sanitär Neu','gross':'9.100,00'}).status_code,200)
         self.assertEqual(db.session.get(Offer,oid).gross,9100)
         self.client.patch(f'/api/offers/{oid}',json={'status':'Angenommen'})
-        self.assertEqual(self.client.patch(f'/api/offers/{oid}/draft',json={'gross':'1'}).status_code,409)
-        self.assertEqual(db.session.get(Offer,oid).gross,9100)
+        changed=self.client.patch(f'/api/offers/{oid}/draft',json={'gross':'1','notes':'Korrigiert'})
+        self.assertEqual(changed.status_code,200,changed.json)
+        self.assertEqual(db.session.get(Offer,oid).gross,1)
+        self.assertEqual(db.session.get(Offer,oid).notes,'Korrigiert')
 
     def test_simple_navigation_does_not_duplicate_offer_forms_in_costs(self):
         offers=self.client.get('/angebote').get_data(as_text=True)
         costs=self.client.get('/kosten').get_data(as_text=True)
         self.assertIn('id="offerManualForm"',offers)
         self.assertIn('id="offerImportForm"',offers)
+        self.assertIn('id="offersAcceptedTotal"',offers)
+        self.assertIn('id="rejectedOffersSection"',offers)
+        self.assertIn('id="rejectedOfferList"',offers)
         self.assertNotIn('id="offerManualForm"',costs)
         self.assertNotIn('id="offerImportForm"',costs)
         self.assertNotIn('PDF-Angebote · Entwürfe & Vergleich',costs)

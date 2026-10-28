@@ -87,6 +87,12 @@ function documentRows(loan){
    }catch(e){$('loanDocumentStatus').textContent=e.message;}
  });
 }
+function showLoanDrawdownProfile(loan){
+ const form=$('loanDrawdownProfileForm');form.reset();
+ fill(form,loan?.drawdown_profile||{});
+ $('loanDrawdownProfileStatus').textContent='';
+ $('loanDrawdownProfileDetails').open=false;
+}
 function updateLoanEditorMode(id){
  const existing=Boolean(id);
  $('loanDialogTitle').textContent=existing?'Kredit bearbeiten und ergänzen':'Neuen Kredit anlegen';
@@ -116,7 +122,7 @@ function openLoan(id=null){
  $('loanAiDetails').open=false;
  $('loanDocUploadDetails').open=false;
  updateLoanEditorMode(id);
- if(loan)documentRows(loan);
+ if(loan){documentRows(loan);showLoanDrawdownProfile(loan);}
  loanFlow.open();
 }
 function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;equityFlow.open()}
@@ -210,6 +216,17 @@ $('loanDocumentUpload').onsubmit=async event=>{
    $('loanDocumentStatus').textContent='Kreditdokument angehängt und in den Projektbackups enthalten.';
  }catch(e){$('loanDocumentStatus').textContent=e.message;}
  finally{btn.disabled=false;}
+};
+$('loanDrawdownProfileForm').onsubmit=async event=>{
+ event.preventDefault();const lid=Number($('loanForm').elements.namedItem('id').value);
+ if(!lid)return;
+ const button=event.submitter,status=$('loanDrawdownProfileStatus');button.disabled=true;
+ status.textContent='Auszahlungsvorlage wird gespeichert …';
+ try{
+  const profile=Object.fromEntries(new FormData(event.currentTarget));
+  await api('/api/financing/loans/'+lid+'/drawdown-profile','PATCH',profile);
+  await reload();status.textContent='Vorlage gespeichert. Neue Mittelabrufe werden damit vorausgefüllt.';
+ }catch(error){status.textContent=error.message;}finally{button.disabled=false;}
 };
 
 $('loanDialog').addEventListener('cancel',event=>{
@@ -313,11 +330,17 @@ function renderDrawdownOptions(){
  $('drawdownReceiptList').querySelectorAll('input[type=checkbox]').forEach(input=>input.onchange=updateDrawdownTotal);
  updateDrawdownTotal();
 }
+function applySavedDrawdownProfile(loanId){
+ const profile=state.loans.find(loan=>loan.id===Number(loanId))?.drawdown_profile||{};
+ for(const name of ['borrower_names','property_address','recipient_name','recipient_iban','location','notes']){
+  const field=$('drawdownForm').elements.namedItem(name);if(field)field.value=profile[name]||'';
+ }
+}
 async function loadDrawdownOptions(){
  const loanId=Number($('drawdownLoan').value);
  if(!loanId){drawdownOptions=null;renderDrawdownOptions();return;}
  $('drawdownReceiptList').innerHTML='<p class="hint">Belege und Zahlungsquellen werden geladen …</p>';
- try{drawdownOptions=await api('/api/financing/drawdowns/options?loan_id='+loanId);renderDrawdownOptions();}
+ try{drawdownOptions=await api('/api/financing/drawdowns/options?loan_id='+loanId);applySavedDrawdownProfile(loanId);renderDrawdownOptions();}
  catch(error){drawdownOptions=null;$('drawdownStatus').textContent=error.message;renderDrawdownOptions();}
 }
 async function openDrawdown(){

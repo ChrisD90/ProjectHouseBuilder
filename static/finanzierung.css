@@ -34,6 +34,13 @@
 }
 
 .phb-page-finanzierung .loan-document-list{display:grid;gap:8px;margin-top:16px}
+.phb-page-finanzierung .loan-drawdown-profile-details{margin:16px 0;border:1px solid var(--ui-line,#d8e6e8);border-radius:10px;background:var(--ui-surface,#fff);padding:12px 14px}
+.phb-page-finanzierung .loan-drawdown-profile-details>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ui-accent,#235e68)}
+.phb-page-finanzierung .loan-drawdown-profile-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:15px}
+.phb-page-finanzierung .loan-drawdown-profile-form label{display:grid;gap:5px;font-size:12px;color:var(--ui-muted,#4f6971)}
+.phb-page-finanzierung .loan-drawdown-profile-form input,.phb-page-finanzierung .loan-drawdown-profile-form textarea{width:100%;min-width:0;padding:9px;border:1px solid var(--ui-line,#c8d7da);border-radius:8px;background:var(--ui-surface,#fff);color:var(--ui-ink,#183740)}
+.phb-page-finanzierung .loan-drawdown-profile-form .wide{grid-column:1/-1}
+.phb-page-finanzierung .loan-drawdown-profile-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .phb-page-finanzierung .loan-doc-row{
   display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;
   padding:12px 14px;border:1px solid #dce7e9;border-radius:10px;background:white;
@@ -47,6 +54,8 @@
   .phb-page-finanzierung .loan-ai-actions,.phb-page-finanzierung .loan-doc-form{
     grid-template-columns:minmax(0,1fr);
   }
+  .phb-page-finanzierung .loan-drawdown-profile-form{grid-template-columns:1fr}
+  .phb-page-finanzierung .loan-drawdown-profile-form .wide{grid-column:auto}
   .phb-page-finanzierung .loan-documents{padding:18px}
   .phb-page-finanzierung .loan-ai-actions button,
   .phb-page-finanzierung .loan-doc-form button{width:100%}

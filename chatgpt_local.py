@@ -158,6 +158,50 @@ class ChatGPTLocal:
         profile = _read_secret('profile.json')
         return profile if isinstance(profile, dict) else None
 
+    def _usage(self, profile):
+        empty={'available':False,'last_request':None,'cumulative_tokens':0,
+               'rate_limits':{},'plan_remaining_available':False,
+               'notice':'ChatGPT stellt der App kein gesamtes verbleibendes Plan-Kontingent bereit.'}
+        if not profile:return empty
+        record=_read_secret('usage.json')
+        if not isinstance(record,dict) or record.get('subject')!=profile.get('subject'):
+            return empty
+        return {**empty,**{key:record.get(key,empty[key]) for key in empty}}
+
+    @staticmethod
+    def _rate_limit_headers(headers):
+        result={}
+        for output,name in (
+            ('token_limit','x-ratelimit-limit-tokens'),
+            ('token_remaining','x-ratelimit-remaining-tokens'),
+            ('token_reset','x-ratelimit-reset-tokens'),
+            ('request_limit','x-ratelimit-limit-requests'),
+            ('request_remaining','x-ratelimit-remaining-requests'),
+            ('request_reset','x-ratelimit-reset-requests')):
+            try:value=headers.get(name) if headers is not None else None
+            except Exception:value=None
+            if isinstance(value,(str,int,float)) and str(value).strip():result[output]=str(value).strip()[:80]
+        return result
+
+    def _record_usage(self, model, usage, limits):
+        profile=self._profile()
+        if not profile or not profile.get('subject'):return
+        previous=_read_secret('usage.json')
+        if not isinstance(previous,dict) or previous.get('subject')!=profile['subject']:previous={}
+        clean={}
+        if isinstance(usage,dict):
+            for key in ('input_tokens','output_tokens','total_tokens'):
+                value=usage.get(key)
+                if isinstance(value,int) and value>=0:clean[key]=value
+        total=clean.get('total_tokens',clean.get('input_tokens',0)+clean.get('output_tokens',0))
+        record={'subject':profile['subject'],'available':bool(clean or limits),
+                'last_request':({'model':model,'at':int(time.time()),**clean} if clean else None),
+                'cumulative_tokens':int(previous.get('cumulative_tokens',0) or 0)+total,
+                'rate_limits':limits or previous.get('rate_limits',{}),
+                'plan_remaining_available':False,
+                'notice':'ChatGPT stellt der App kein gesamtes verbleibendes Plan-Kontingent bereit.'}
+        _write_secret('usage.json',record)
+
     def status(self):
         record = self._profile()
         scopes = set(record.get('scopes', [])) if record else set()
@@ -166,6 +210,7 @@ class ChatGPTLocal:
                 'credits_acknowledged': bool(record and record.get('credits_acknowledged')),
                 'email': record.get('email', '') if record else '',
                 'usage_url': USAGE_URL,
+                'usage':self._usage(record),
                 'local_only': True, 'api_keys_supported': False,
                 'credits_warning': 'Credits in ChatGPT Einstellungen → Nutzung für Apps deaktivieren. Die App kann dies nicht auslesen.'}
 
@@ -360,7 +405,7 @@ class ChatGPTLocal:
         if web_search:
             payload['tools']=[{'type':'web_search'}]
             payload['tool_choice']='required'
-        output=[];total=0;complete=False;first_delta=False;searched=False
+        output=[];total=0;complete=False;first_delta=False;searched=False;usage={};limits={}
         progress=getattr(_background_hooks,'progress',None)
         def phase(message):
             if callable(progress):
@@ -379,6 +424,7 @@ class ChatGPTLocal:
                     err=detail.get('error',detail) if isinstance(detail,dict) else {}
                     code=err.get('code',err.get('detail','ChatGPT nicht verfügbar')) if isinstance(err,dict) else 'ChatGPT nicht verfügbar'
                     raise AIError('ChatGPT-Anfrage abgelehnt: '+str(code)[:150])
+                limits=self._rate_limit_headers(getattr(response,'headers',None))
                 phase('ChatGPT prüft die hochgeladene Datei …')
                 for raw in response.iter_lines(decode_unicode=True):
                     if isinstance(raw,bytes):raw=raw.decode('utf-8','replace')
@@ -398,6 +444,8 @@ class ChatGPTLocal:
                         output.append(delta)
                     elif typ=='response.completed':
                         complete=True
+                        if isinstance(event.get('response',{}).get('usage'),dict):
+                            usage=event['response']['usage']
                         searched=searched or any(x.get('type')=='web_search_call' and x.get('status')=='completed' for x in event.get('response',{}).get('output',[]))
                         phase('ChatGPT-Antwort vollständig – der Entwurf wird angelegt …')
                     elif typ in ('response.failed','error','response.incomplete'):
@@ -411,6 +459,7 @@ class ChatGPTLocal:
             raise AIError('ChatGPT hat keine abgeschlossene Webrecherche bestätigt. Es wurden keine Firmendaten übernommen.')
         result=''.join(output).strip()
         if not result:raise AIError('ChatGPT hat keine auswertbare Antwort zurückgegeben.')
+        self._record_usage(model,usage,limits)
         return result
 
 

@@ -171,6 +171,18 @@
 }
 
 /* Compact offer tiles. Actions never require opening the details panel. */
+.phb-page-angebote .offers-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.phb-page-angebote .offers-stats .offers-total{background:#eef8f5;border-color:#c7e3d8}
+.phb-page-angebote .offers-stats .offers-total strong{color:#17664f;font-size:22px}
+.phb-page-angebote .rejected-offers-section{padding:0;overflow:hidden}
+.phb-page-angebote .rejected-offers-section>summary{display:flex;align-items:center;gap:12px;cursor:pointer;padding:18px 22px;color:#334f58}
+.phb-page-angebote .rejected-offers-section>summary span{font-weight:750;font-size:16px}
+.phb-page-angebote .rejected-offers-section>summary strong{display:grid;place-items:center;min-width:28px;height:24px;padding:0 8px;border-radius:99px;background:#f1e7e5;color:#8a443c;font-size:12px}
+.phb-page-angebote .rejected-offers-section>summary small{margin-left:auto;color:#72858b}
+.phb-page-angebote .rejected-offers-section[open]>summary{border-bottom:1px solid #e4ecee}
+.phb-page-angebote .rejected-offers-section .offer-cards{padding:14px 22px 22px;display:grid;gap:12px}
+@media(max-width:760px){.phb-page-angebote .offers-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.phb-page-angebote .rejected-offers-section>summary{padding:15px 16px}.phb-page-angebote .rejected-offers-section .offer-cards{padding:12px 16px 16px}}
+
 .phb-page-angebote #offerList{
   display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,310px),1fr));
   gap:14px;align-items:start;padding:18px

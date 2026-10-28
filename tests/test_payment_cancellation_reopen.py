@@ -95,6 +95,7 @@ class PaymentCancellationTest(unittest.TestCase):
         for suffix in ('book','unbook'):
             self.assertEqual(self.client.post(f'/api/receipts/{self.rid}/'+suffix).status_code,409)
         self.assertEqual(self.client.delete(f'/api/receipts/{self.rid}').status_code,409)
+        self.assertEqual(self.client.patch(f'/api/receipts/{self.rid}',json={'gross_amount':120}).status_code,200)
         self.assertEqual(self.client.patch(f'/api/receipts/{self.rid}',json={'gross_amount':1}).status_code,409)
         self.assertEqual(self.state()['receipts'],[])
 

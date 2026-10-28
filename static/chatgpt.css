@@ -62,3 +62,5 @@
 }
 
 .phb-ai-confirm[hidden]{display:none!important}
+.phb-ai-usage{margin:12px 0;padding:13px 14px;border:1px solid var(--ui-line,#cfe0e3);border-radius:10px;background:var(--ui-soft,#f4f9fa);color:var(--ui-ink-soft,#34545d)}
+.phb-ai-usage[hidden]{display:none}.phb-ai-usage strong{display:block;margin-bottom:7px}.phb-ai-usage p{margin:4px 0;font-size:12px;line-height:1.5}.phb-ai-usage-note{color:var(--ui-muted,#60767d)}.phb-ai-usage a{font-weight:650}

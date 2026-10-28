@@ -11,6 +11,7 @@ from pathlib import Path
 from uuid import uuid4
 from io import BytesIO
 import base64
+import json
 import re
 from flask import send_file
 from decimal import Decimal, InvalidOperation
@@ -84,6 +85,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         interest_free_until = db.Column(db.String(10), nullable=False, default='')
         commitment_interest_rate = db.Column(db.Numeric(6, 3), nullable=False, default=0)
         notes = db.Column(db.Text, nullable=False, default='')
+        drawdown_profile_json = db.Column(db.Text, nullable=False, default='{}', server_default='{}')
 
     class LoanDocument(db.Model):
         __tablename__ = 'finance_loan_document'
@@ -287,6 +289,27 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                 'document_type':d.document_type or 'attachment','notes':d.notes,
                 'uploaded_at':d.uploaded_at.isoformat() if d.uploaded_at else ''}
 
+    def drawdown_profile(raw):
+        fields=(('borrower_names',500),('property_address',500),('recipient_name',200),
+                ('recipient_iban',34),('location',160),('notes',2000))
+        source=raw if isinstance(raw,dict) else {}
+        result={}
+        for key,limit in fields:
+            value=str(source.get(key,'') or '').strip()
+            if len(value)>limit or any(ord(char)<32 and char not in '\n\r\t' for char in value):
+                raise ValueError('Auszahlungsvorlage enthält ungültige oder zu lange Angaben.')
+            result[key]=value
+        result['recipient_iban']=re.sub(r'\s+','',result['recipient_iban']).upper()
+        if result['recipient_iban'] and not re.fullmatch(r'[A-Z]{2}[0-9A-Z]{13,32}',result['recipient_iban']):
+            raise ValueError('IBAN in der Auszahlungsvorlage ist ungültig.')
+        return result
+
+    def saved_drawdown_profile(loan):
+        try:value=json.loads(loan.drawdown_profile_json or '{}')
+        except (TypeError,json.JSONDecodeError):value={}
+        try:return drawdown_profile(value)
+        except ValueError:return drawdown_profile({})
+
     @app.post('/api/financing/loans/ai/extract')
     def loan_ai_extract():
         # Explicit ChatGPT plan consent; processing only, no loan or document stored.
@@ -437,8 +460,20 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                 'extra_repayment_pct':float(r.extra_repayment_pct),'contract_date':r.contract_date,
                 'fixed_until':r.fixed_until,'interest_free_until':r.interest_free_until,
                 'commitment_interest_rate':float(r.commitment_interest_rate),'notes':r.notes,
+                'drawdown_profile':saved_drawdown_profile(r),
                 'documents':[document_json(d) for d in db.session.scalars(select(LoanDocument).where(LoanDocument.loan_id==r.id).order_by(LoanDocument.id.desc()))],
                 'balance':{k:float(v) for k,v in loan_account(r).items()}}
+
+    @app.patch('/api/financing/loans/<int:lid>/drawdown-profile')
+    def loan_drawdown_profile_update(lid):
+        loan=db.session.get(Loan,lid)
+        if not loan:return jsonify(error='Kredit nicht gefunden.'),404
+        try:
+            profile=drawdown_profile(request.get_json(silent=True) or {})
+            loan.drawdown_profile_json=json.dumps(profile,ensure_ascii=False)
+            db.session.commit();return jsonify(profile=profile)
+        except (ValueError,TypeError) as exc:
+            db.session.rollback();return jsonify(error=str(exc)),400
 
     def equity_json(r):
         return {'id':r.id,'name':r.name,'opening_balance':float(r.opening_balance),
