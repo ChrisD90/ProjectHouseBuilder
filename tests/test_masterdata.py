@@ -3,7 +3,7 @@ import os
 import unittest
 
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import app,db,initialize,Contractor,Trade,Task,_get_or_add_contractor
+from app import app,db,initialize,Contractor,Trade,Task,_get_or_add_contractor,add_parsed_offer
 
 
 class MasterDataTest(unittest.TestCase):
@@ -56,6 +56,23 @@ class MasterDataTest(unittest.TestCase):
         self.assertEqual(task.trade,'Mauerwerksarbeiten')
         self.assertEqual(self.client.delete('/api/trades/'+str(tid)).status_code,409)
         self.assertEqual(self.client.get('/api/trades').status_code,200)
+
+    def test_offer_analysis_never_silently_creates_masterdata_company(self):
+        parsed={'vendor':'Neue OCR Firma GmbH','family':'Andere','number':'A-1',
+            'issued':'','expires':'','gross':1000,'net':None,'vat':None,'tax_rate':None,
+            'reconciled':False,'warnings':[],'filename':'angebot.pdf','groups':[],
+            'positions':[]}
+        offer=add_parsed_offer(parsed,'a'*64)
+        db.session.commit()
+        self.assertIsNone(offer.contractor_id)
+        self.assertEqual(db.session.query(Contractor).count(),0)
+        existing=Contractor(name='Bestehende Firma GmbH',trade='Elektro')
+        db.session.add(existing);db.session.commit()
+        parsed['vendor']='bestehende firma gmbh'
+        linked=add_parsed_offer(parsed,'b'*64)
+        db.session.commit()
+        self.assertEqual(linked.contractor_id,existing.id)
+        self.assertEqual(db.session.query(Contractor).count(),1)
 
     def test_legacy_contacts_can_be_deleted_only_when_unused(self):
         firm=self.client.post('/api/contractors',json={

@@ -2053,11 +2053,20 @@ def _get_or_add_contractor(name, family):
     db.session.add(obj);db.session.flush();return obj
 
 
+def _find_contractor(name):
+    value=str(name or '').strip()
+    if not value:return None
+    return db.session.scalar(select(Contractor).where(
+        db.func.lower(Contractor.name)==value.lower()).limit(1))
+
+
 def add_parsed_offer(parsed, digest, source_document=None, category='Sonstiges'):
     """Persist a non-binding analysis draft. Its PDF is stored in private/documents."""
     if db.session.scalar(select(Offer.id).where(Offer.digest==digest)):
         raise ValueError('Dieses PDF-Angebot wurde bereits hochgeladen.')
-    contractor=_get_or_add_contractor(parsed['vendor'],parsed['family']) if parsed['vendor']!='Firma nicht erkannt' else None
+    # OCR may suggest a name, but creating master data requires an explicit
+    # decision in the review UI. Exact existing names are linked immediately.
+    contractor=_find_contractor(parsed['vendor']) if parsed['vendor']!='Firma nicht erkannt' else None
     offer=Offer(digest=digest,document_id=source_document.id if source_document else None,
                 contractor_id=contractor.id if contractor else None, vendor=parsed['vendor'],
                 number=parsed['number'],issued=parsed['issued'],expires=parsed['expires'],
@@ -2605,6 +2614,17 @@ def _apply_offer_fields(offer, values):
             if not line or not line.active or line.is_group:
                 raise ValueError('Bitte eine aktive Kostenplanposition wählen.')
             offer.budget_line_id = line_id
+    if 'contractor_id' in values:
+        candidate=values['contractor_id']
+        if candidate in ('',None):
+            offer.contractor_id=None
+        else:
+            try:contractor_id=int(candidate)
+            except (ValueError,TypeError):raise ValueError('Bitte eine Firma aus den Stammdaten auswählen.') from None
+            contractor=db.session.get(Contractor,contractor_id)
+            if not contractor:raise ValueError('Die ausgewählte Firma ist nicht mehr vorhanden.')
+            offer.contractor_id=contractor.id
+            offer.vendor=contractor.name
     if offer.gross and offer.net:
         offer.tax_rate = round((offer.gross / offer.net - 1) * 100, 2)
 
@@ -3668,11 +3688,13 @@ def contractor_edit(item_id=None):
             if db.session.scalar(select(CostItem.id).where(CostItem.contractor_id==item_id).limit(1)) or db.session.scalar(select(Document.id).where(Document.contractor_id==item_id).limit(1)) or db.session.scalar(select(Task.id).where(Task.contractor_id==item_id).limit(1)) or db.session.scalar(select(Receipt.id).where(Receipt.contractor_id==item_id).limit(1)):
                 return jsonify(error='Firma ist mit Kostenpositionen verknüpft.'),409
             db.session.delete(obj)
+            db.session.commit();return jsonify(ok=True)
         else:
             update_record(obj,request.get_json(force=True),CONTACT_FIELDS)
             _ensure_trade(obj.trade)
             db.session.add(obj)
-        db.session.commit();return jsonify(ok=True)
+        db.session.commit()
+        return jsonify(ok=True,contractor=as_dict(obj,CONTACT_FIELDS)|{'id':obj.id})
     except (ValueError,TypeError) as exc:
         db.session.rollback();return jsonify(error=str(exc)),400
 

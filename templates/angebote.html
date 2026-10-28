@@ -24,7 +24,7 @@
      <label>Analyseart<select name="analysis_mode" id="offerAnalysisMode"><option value="local">Lokal analysieren (keine Datenübertragung)</option><option value="ai">Mit ChatGPT analysieren (nach Freigabe)</option></select></label>
      <button type="submit" class="primary">Dateien analysieren</button><p class="offer-import-status" id="offerImportStatus" role="status">Die Dateien werden nacheinander analysiert. Im Vordergrund öffnet sich danach die Prüfung automatisch. Im Hintergrund kannst du weiterarbeiten und später über die Warteschlange prüfen.</p></form>
    <form id="offerManualForm" class="offer-entry-form offer-manual-form" hidden>
-    <label>Firma / Anbieter <input name="vendor" maxlength="200" required placeholder="z. B. Elektro Mustermann"></label>
+    <label>Firma / Anbieter <select name="contractor_id" id="offerManualContractor" data-offer-company required><option value="">Firma aus Stammdaten auswählen</option></select><small>Fehlt die Firma, kannst du sie hier ausdrücklich neu anlegen.</small></label>
     <label>Bruttogesamtsumme (€) <input name="gross" inputmode="decimal" required placeholder="z. B. 8.500,00"></label>
     <label>Gewerk / Kategorie <select name="category" id="offerManualCategory" required></select></label>
     <label>Kostenplanposition (optional) <select name="budget_line_id" id="offerManualBudget"></select></label>
@@ -42,6 +42,16 @@
   </section>
   <section class="panel budget-panel offer-review-section" id="angebote-pruefen"><div class="panelbar"><div><h2>Angebotsentwürfe und neue Versionen prüfen <span id="offersDraftBadge" class="offers-counter"></span></h2><p>Prüfe eingelesene Angebote und neue Versionsentwürfe, bevor sie sichtbar aktuell werden.</p></div><a class="mini" href="/belege">Kategorien verwalten ↗</a></div><div class="offer-review-layout"><div id="offerDrafts" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div><aside id="offerPdfPane" class="phb-inline-pdf" hidden><header><strong>Angebots-PDF parallel prüfen</strong><a id="offerPdfDownload" class="mini" target="_blank" rel="noopener">Original herunterladen</a></header><iframe id="offerPdfFrame" title="Vorschau des zu prüfenden Angebots" loading="lazy"></iframe></aside></div></section>
    </div></dialog>
+  <dialog id="offerCompanyDialog" class="phb-messagebox" aria-labelledby="offerCompanyTitle">
+    <form id="offerCompanyForm">
+      <h2 id="offerCompanyTitle">Firma für das Angebot anlegen?</h2>
+      <p id="offerCompanyHint">Die Firma wird in den Stammdaten gespeichert und anschließend diesem Angebot zugeordnet.</p>
+      <label>Firmenname<input id="offerCompanyName" name="name" maxlength="200" required autocomplete="organization"></label>
+      <label>Gewerk<input id="offerCompanyTrade" name="trade" maxlength="140"></label>
+      <p id="offerCompanyStatus" role="alert"></p>
+      <div class="phb-messagebox-actions"><button id="cancelOfferCompany" type="button" class="subtle">Abbrechen</button><button type="submit" class="primary">Firma anlegen und auswählen</button></div>
+    </form>
+  </dialog>
   <dialog id="offerEditDialog" class="phb-workflow-dialog phb-offer-edit-dialog" aria-labelledby="offerEditTitle">
   <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebote / Bearbeitung</span><h2 id="offerEditTitle">Angebot bearbeiten</h2><p>Werte mit dem Original-PDF prüfen und anschließend speichern.</p></div><button id="closeOfferEdit" type="button" class="subtle">Abbrechen</button></div>
   <div class="phb-workflow-body">

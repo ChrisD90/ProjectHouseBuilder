@@ -4,7 +4,7 @@
   const $ = id => document.getElementById(id);
   const icon = name => `<svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#${name}"></use></svg>`;
   if (!$('offerImportForm') || !$('offerList')) return;
-  let offers = [], categories = [], budgets = [], versionDrafts = [];
+  let offers = [], categories = [], budgets = [], contractors = [], versionDrafts = [];
   let comparingOffers = false;
   let offerUploading = false;
   let currentPreviewDocument=null;
@@ -211,6 +211,15 @@
   const option = (value,label,selected) => `<option value="${esc(value)}" ${String(value)===String(selected??'')?'selected':''}>${esc(label)}</option>`;
   const categoryOptions = selected => categories.map(c => option(c,c,selected)).join('');
   const budgetOptions = selected => option('','Keine Zuordnung (zusätzlicher Auftrag)',selected) + budgets.map(b => option(b.id,b.category+' · '+b.title,selected)).join('');
+  const companyOptions = (selected,recognized='') => {
+    const hint=recognized&&recognized!=='Firma nicht erkannt'
+      ? `Erkannt: ${recognized} – Firma auswählen oder anlegen`
+      : 'Keine Firma erkannt – Firma auswählen oder anlegen';
+    const rows=[option('',hint,selected)];
+    rows.push(...[...contractors].sort((a,b)=>a.name.localeCompare(b.name,'de')).map(c=>option(c.id,c.name+(c.trade?' · '+c.trade:''),selected)));
+    rows.push(option('__new__','+ Neue Firma in den Stammdaten anlegen …',selected));
+    return rows.join('');
+  };
   const offerUrl = id => '/api/offers/'+encodeURIComponent(id);
   const sourceLabel = o => o.document_id
     ? `<button type="button" class="mini offer-preview-action" data-preview-doc="${o.document_id}">PDF rechts anzeigen</button> <a class="offer-document" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Herunterladen</a>`
@@ -222,7 +231,8 @@
   const parsedPositions = o => (o.positions||[]).length ? `<details class="offer-details"><summary>Einzelpositionen (${o.positions.length}) – geprüft / ergänzt</summary><div class="tablewrap"><table><thead><tr><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td>${esc(p.number)}</td><td>${esc(p.description)}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div></details>` : '';
 
   function fields(o) {
-    return `<label>Anbieter / Firma<input name="vendor" maxlength="200" value="${esc(o.vendor==='Firma nicht erkannt'?'':o.vendor)}" required placeholder="Name des Handwerkers"></label>
+    const recognized=o.vendor==='Firma nicht erkannt'?'':o.vendor;
+    return `<label>Anbieter / Firma<select name="contractor_id" data-offer-company data-recognized-name="${esc(recognized)}" required>${companyOptions(o.contractor_id,recognized)}</select><small>${o.contractor_id?'Mit den Stammdaten verknüpft.':'Bitte eine vorhandene Firma wählen oder den erkannten Anbieter ausdrücklich neu anlegen.'}</small></label>
       <label>Bruttogesamtbetrag (€)<input name="gross" inputmode="decimal" value="${o.gross==null?'':esc(o.gross)}" required placeholder="z. B. 12.450,00"></label>
       <label>Kategorie / Gewerk<select name="category" required>${categoryOptions(o.category)}</select></label>
       <label>Kostenplanposition <select name="budget_line_id">${budgetOptions(o.budget_line_id)}</select></label>
@@ -496,6 +506,8 @@
     cat.innerHTML=categoryOptions(categories.includes(oldcat)?oldcat:'Sonstiges');
     const bud=$('offerManualBudget'), oldbudget=bud.value;
     bud.innerHTML=budgetOptions(oldbudget);
+    const company=$('offerManualContractor'), oldcompany=company.value;
+    company.innerHTML=companyOptions(oldcompany,'');
   }
 
   async function request(url,{method='GET',data=null,formData=null,ai=false}={}) {
@@ -511,7 +523,7 @@
   }
   async function reload() {
     const [o,c] = await Promise.all([request('/api/offers'),request('/api/costs')]);
-    offers=o.offers||[]; categories=o.categories||[]; versionDrafts=o.draft_versions||[];
+    offers=o.offers||[]; categories=o.categories||[]; contractors=c.contractors||[]; versionDrafts=o.draft_versions||[];
     budgets=(c.budget_lines||[]).filter(b=>b.active&&!b.is_group);
     refreshUI();
   }
@@ -587,6 +599,52 @@
       inform('offerManualStatus','Angebot gespeichert. Es wird erst mit deiner Annahme beauftragt.');
     } catch(err) {inform('offerManualStatus','Fehler: '+err.message,true)}
     finally{offerUploading=false;submit.disabled=false;}
+  });
+  let companyTarget=null,companyCreating=false;
+  const companyDialog=$('offerCompanyDialog');
+  function openCompanyDialog(select){
+    companyTarget=select;
+    const recognized=select.dataset.recognizedName||'';
+    $('offerCompanyForm').reset();
+    $('offerCompanyName').value=recognized;
+    $('offerCompanyTrade').value=select.closest('form')?.elements.namedItem('category')?.value||'';
+    $('offerCompanyHint').textContent=recognized
+      ? `„${recognized}“ ist noch nicht mit den Stammdaten verknüpft. Soll diese Firma jetzt angelegt und dem Angebot zugeordnet werden?`
+      : 'Es wurde keine Firma erkannt. Du kannst abbrechen und eine vorhandene Firma auswählen oder jetzt eine neue Firma anlegen.';
+    $('offerCompanyStatus').textContent='';
+    companyDialog.showModal();
+    $('offerCompanyName').focus();
+  }
+  document.addEventListener('change',event=>{
+    const select=event.target.closest('[data-offer-company]');
+    if(!select)return;
+    if(select.value==='__new__'){
+      select.value='';
+      openCompanyDialog(select);
+    }
+  });
+  $('cancelOfferCompany').addEventListener('click',()=>{if(!companyCreating)companyDialog.close();});
+  companyDialog.addEventListener('cancel',event=>{if(companyCreating)event.preventDefault();});
+  $('offerCompanyForm').addEventListener('submit',async event=>{
+    event.preventDefault();if(companyCreating||!companyTarget)return;
+    companyCreating=true;
+    const submit=event.currentTarget.querySelector('button[type=submit]');submit.disabled=true;
+    $('offerCompanyStatus').textContent='Firma wird angelegt …';
+    try{
+      const data=Object.fromEntries(new FormData(event.currentTarget).entries());
+      const existing=contractors.find(c=>c.name.trim().localeCompare(data.name.trim(),'de',{sensitivity:'accent'})===0);
+      const result=existing?{contractor:existing}:await request('/api/contractors',{method:'POST',data});
+      contractors=contractors.filter(c=>Number(c.id)!==Number(result.contractor.id));
+      contractors.push(result.contractor);
+      const target=companyTarget;
+      document.querySelectorAll('[data-offer-company]').forEach(select=>{
+        const selected=select===target?result.contractor.id:select.value;
+        select.innerHTML=companyOptions(selected,select.dataset.recognizedName||'');
+        select.value=String(selected);
+      });
+      companyDialog.close();companyTarget=null;
+    }catch(error){$('offerCompanyStatus').textContent='Fehler: '+error.message;}
+    finally{companyCreating=false;submit.disabled=false;}
   });
   document.addEventListener('click',async e=>{
     const add=e.target.closest('[data-position-add]');

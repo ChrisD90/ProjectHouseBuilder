@@ -43,12 +43,6 @@
         <div class="phb-breadcrumb"><span>Sanierung Gartenstraße</span><span aria-hidden="true">/</span><strong>{{ phb_title }}</strong></div>
       </div>
       <div class="phb-topbar-right">
-        <section id="phbImportCenter" class="phb-import-center" aria-label="Warteschlange">
-          <button type="button" id="phbImportToggle" class="phb-import-toggle" aria-expanded="false" aria-controls="phbImportFeed" title="Warteschlange öffnen">
-            <span class="phb-import-toggle-icon" aria-hidden="true">⇪</span>
-            <span class="phb-import-toggle-copy"><strong>Warteschlange</strong><small id="phbImportCount">Keine Aufträge</small></span>
-          </button>
-        </section>
         <label class="phb-theme-control" for="phbThemeMode">
           <svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#sun"></use></svg>
           <span>Darstellung</span>
@@ -58,11 +52,16 @@
             <option value="dark">Dunkel</option>
           </select>
         </label>
-        <span class="phb-topbar__status">{{ icon('shield') }} <span>Privater Betrieb</span></span>
         <button id="phbChatGPTButton" class="phb-ai-topbar" type="button" title="Mit ChatGPT verbinden" aria-label="ChatGPT-Verbindung verwalten">
           <img id="phbChatGPTLogo" class="phb-ai-logo" src="/static/icons/chatgpt-mark.svg" alt="ChatGPT" hidden>
           <span id="phbChatGPTLabel">ChatGPT verbinden</span><span class="phb-ai-status-dot" id="phbChatGPTDot"></span>
         </button>
+        <section id="phbImportCenter" class="phb-import-center" aria-label="Warteschlange">
+          <button type="button" id="phbImportToggle" class="phb-import-toggle" aria-expanded="false" aria-controls="phbImportFeed" title="Warteschlange öffnen">
+            <span class="phb-import-toggle-icon" aria-hidden="true">⇪</span>
+            <span class="phb-import-toggle-copy"><strong>Warteschlange</strong><small id="phbImportCount">Keine Aufträge</small></span>
+          </button>
+        </section>
       </div>
     </header>
 

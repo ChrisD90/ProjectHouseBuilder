@@ -344,7 +344,9 @@ class SidebarUITest(unittest.TestCase):
                 self.assertEqual(html.count('src="/static/import_jobs.js"'),1)
                 topbar=html.index('class="phb-topbar-right"')
                 self.assertLess(topbar,html.index('id="phbImportCenter"'))
-                self.assertLess(html.index('id="phbImportCenter"'),html.index('id="phbThemeMode"'))
+                self.assertLess(html.index('id="phbThemeMode"'),html.index('id="phbChatGPTButton"'))
+                self.assertLess(html.index('id="phbChatGPTButton"'),html.index('id="phbImportCenter"'))
+                self.assertNotIn('Privater Betrieb',html)
         for page,element in (
             ('angebote','offerImportForm'),
             ('belege','upload'),

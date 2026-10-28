@@ -8,7 +8,7 @@ import unittest
 from sqlalchemy import select
 
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import app, db, initialize, Offer, CostItem, BudgetLine, Category,Document
+from app import app, db, initialize, Offer, CostItem, BudgetLine, Category, Contractor, Document
 
 
 class ManualOfferTests(unittest.TestCase):
@@ -110,6 +110,20 @@ class ManualOfferTests(unittest.TestCase):
                 self.assertEqual(resp.status_code,400,resp.json)
         self.assertEqual(db.session.scalar(db.select(db.func.count(Offer.id))),0)
 
+    def test_selected_masterdata_company_controls_offer_vendor(self):
+        company=Contractor(name='Elektro Stammdaten GmbH',trade='Elektro')
+        db.session.add(company);db.session.commit()
+        response=self.client.post('/api/offers/manual',json={
+            'vendor':'Nicht maßgeblicher Freitext','contractor_id':company.id,
+            'gross':'7500','category':'Elektro'})
+        self.assertEqual(response.status_code,201,response.json)
+        offer=db.session.get(Offer,response.json['id'])
+        self.assertEqual(offer.contractor_id,company.id)
+        self.assertEqual(offer.vendor,company.name)
+        invalid=self.client.post('/api/offers/manual',json={
+            'contractor_id':999999,'gross':'100','category':'Elektro'})
+        self.assertEqual(invalid.status_code,400,invalid.json)
+
     def test_manual_offers_remain_editable_after_acceptance(self):
         oid=self.create().json['id']
         self.assertEqual(self.client.patch(f'/api/offers/{oid}/draft',json={'vendor':'Sanitär Neu','gross':'9.100,00'}).status_code,200)
@@ -124,6 +138,8 @@ class ManualOfferTests(unittest.TestCase):
         offers=self.client.get('/angebote').get_data(as_text=True)
         costs=self.client.get('/kosten').get_data(as_text=True)
         self.assertIn('id="offerManualForm"',offers)
+        self.assertIn('id="offerManualContractor"',offers)
+        self.assertIn('id="offerCompanyDialog"',offers)
         self.assertIn('id="offerImportForm"',offers)
         self.assertIn('id="offersAcceptedTotal"',offers)
         self.assertIn('id="rejectedOffersSection"',offers)

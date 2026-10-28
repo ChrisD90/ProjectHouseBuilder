@@ -377,6 +377,7 @@ body.phb-app.phb-page-stammdaten .master-panel-head{align-items:flex-start;gap:1
 .phb-messagebox h2{margin:0 0 12px;font-size:18px;}
 .phb-messagebox p{line-height:1.5;font-size:14px;white-space:pre-line;}
 .phb-messagebox input{width:100%;padding:10px;margin:6px 0;border:1px solid #ccdce1;border-radius:8px;}
+.phb-messagebox label{display:grid;gap:6px;margin-top:12px;font-size:13px;font-weight:650}
 .phb-messagebox-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
 
 
@@ -417,6 +418,15 @@ body.phb-app .receipt-payment-badge{display:inline-block;margin:4px 0;padding:4p
 body.phb-app #receiptCancelForm{display:grid;gap:14px}
 body.phb-app #receiptCancelForm label{display:grid;gap:6px}
 body.phb-app .receipt-payment-history-row>div{display:flex;gap:8px;flex-wrap:wrap}
+
+/* One alignment contract across page headers, toolbars, cards, forms and tables. */
+body.phb-app main.phb-main :is(.panelbar,.panel-title,.master-panel-head,.receipt-list-head){align-items:center}
+body.phb-app main.phb-main :is(.phb-header-actions,.master-reference-actions,.inline-actions,.actions,.offer-actions,.offer-form-actions,.offer-manual-actions,.offer-ai-actions){display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+body.phb-app main.phb-main :is(.panelbar,.panel-title,.master-panel-head,.receipt-list-head)>:first-child{min-width:0}
+body.phb-app main.phb-main :is(.offer-entry-form,.offer-review-form,.fields,.formgrid,.dialog-grid,.master-fields)>label{min-width:0;align-self:start}
+body.phb-app main.phb-main :is(.cards,.offer-cards,.tiles,.metrics,.kpi-grid)>*{min-width:0}
+body.phb-app main.phb-main table :is(th,td){vertical-align:middle}
+body.phb-app .phb-topbar-right>*{flex:0 0 auto}
 
 /* Shared metrics: geometry belongs here; finance/cost pages only arrange sections. */
 body.phb-app .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:14px;margin:20px 0}
