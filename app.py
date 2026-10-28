@@ -12,7 +12,7 @@ import tempfile
 import shutil
 import ipaddress
 import zipfile
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from json import JSONDecodeError
 from financials import effective_offer, forecast_lines, monetary_totals
 from offer_parser import parse_pdf, pdf_to_pages, parse_offer
@@ -128,10 +128,22 @@ def category_names():
     return [row.name for row in db.session.scalars(select(Category).order_by(Category.sort_order, Category.name)).all()]
 
 
+class BuildPhase(db.Model):
+    __tablename__ = 'build_phase'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(140), unique=True, nullable=False)
+    description = db.Column(db.String(1000), nullable=False, default='')
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date)
+    position = db.Column(db.Integer, nullable=False, default=0)
+
+
 class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(30), unique=True, nullable=False)
     phase = db.Column(db.String(140), nullable=False, default='Allgemein')
+    phase_id = db.Column(db.Integer, db.ForeignKey('build_phase.id'), nullable=True)
+    phase_record = db.relationship('BuildPhase')
     trade = db.Column(db.String(140), nullable=False, default='Sonstiges')
     execution_type = db.Column(db.String(24), nullable=False, default='Noch offen', server_default='Noch offen')
     name = db.Column(db.String(300), nullable=False)
@@ -140,6 +152,7 @@ class Task(db.Model):
     duration = db.Column(db.Integer, nullable=False, default=1)
     lag_days = db.Column(db.Integer, nullable=False, default=0)
     earliest_start = db.Column(db.Date)
+    planned_end = db.Column(db.Date)
     actual_start = db.Column(db.Date)
     actual_end = db.Column(db.Date)
     status = db.Column(db.String(40), nullable=False, default='Offen')
@@ -419,15 +432,35 @@ def parse_date(value):
     if not value: return None
     return date.fromisoformat(str(value)[:10])
 
+
+def _phase_id_for_title(title,start_date=None):
+    value=str(title or '').strip()
+    if not value:return None
+    row=next((item for item in db.session.scalars(select(BuildPhase)).all()
+              if item.title.casefold()==value.casefold()),None)
+    if row:return row.id
+    row=BuildPhase(title=value,start_date=start_date or parse_date(setting('start','2027-03-01')),
+                   position=db.session.scalar(select(db.func.count(BuildPhase.id))) or 0)
+    db.session.add(row);db.session.flush();return row.id
+
 def serialize(tasks):
     start = parse_date(setting('start', '2027-03-01'))
     sched = schedule(tasks, start)
     by_id = {t.id:t for t in tasks}
+    phases = {p.id:p for p in db.session.scalars(select(BuildPhase)).all()}
+    today = date.today()
     output = []
     for t in tasks:
         s,e = sched[t.id]
-        output.append({'id':t.id,'code':t.code,'phase':t.phase,'trade':t.trade,'execution_type':t.execution_type,'name':t.name,'company':t.company,'contractor_id':t.contractor_id,
+        phase=phases.get(t.phase_id)
+        planned=t.planned_end
+        deadline=('overdue' if planned and t.status!='Erledigt' and planned<today else
+                  'due-soon' if planned and t.status!='Erledigt' and planned<=today+timedelta(days=7) else '')
+        output.append({'id':t.id,'code':t.code,'phase_id':t.phase_id,
+                       'phase':phase.title if phase else (t.phase or ''),
+                       'trade':t.trade,'execution_type':t.execution_type,'name':t.name,'company':t.company,'contractor_id':t.contractor_id,
                        'duration':t.duration,'lag_days':t.lag_days,'earliest_start':t.earliest_start.isoformat() if t.earliest_start else '',
+                       'planned_end':planned.isoformat() if planned else '', 'deadline_status':deadline,
                        'actual_start':t.actual_start.isoformat() if t.actual_start else '',
                        'actual_end':t.actual_end.isoformat() if t.actual_end else '',
                        'status':t.status,'progress':t.progress,'notes':t.notes,'position':t.position,
@@ -438,6 +471,12 @@ def serialize(tasks):
 
 def all_tasks():
     return db.session.scalars(select(Task).order_by(Task.position, Task.id)).all()
+
+
+def phase_dict(row):
+    return {'id':row.id,'title':row.title,'description':row.description,
+            'start_date':row.start_date.isoformat(),'end_date':row.end_date.isoformat() if row.end_date else '',
+            'position':row.position}
 
 def initialize():
     # Additive migration for existing SQLite/PostgreSQL user databases (never drop old entries).
@@ -452,6 +491,10 @@ def initialize():
         db.session.execute(text('ALTER TABLE task ADD COLUMN contractor_id INTEGER'))
     if 'execution_type' not in task_columns:
         db.session.execute(text("ALTER TABLE task ADD COLUMN execution_type VARCHAR(24) NOT NULL DEFAULT 'Noch offen'"))
+    if 'phase_id' not in task_columns:
+        db.session.execute(text('ALTER TABLE task ADD COLUMN phase_id INTEGER'))
+    if 'planned_end' not in task_columns:
+        db.session.execute(text('ALTER TABLE task ADD COLUMN planned_end DATE'))
     old_columns={col['name'] for col in sa_inspect(db.engine).get_columns('cost_item')}
     if 'budget_line_id' not in old_columns:
         db.session.execute(text('ALTER TABLE cost_item ADD COLUMN budget_line_id INTEGER'))
@@ -473,6 +516,22 @@ def initialize():
         db.session.add_all(Trade(name=name) for name in DEFAULT_TRADES
                            if name.casefold() not in existing)
         db.session.add(Setting(key='trades_initialized',value='1'))
+    if db.session.get(Setting,'build_phases_initialized') is None:
+        phase_start=parse_date(setting('start','2027-03-01'))
+        names=[]
+        for task in all_tasks():
+            value=(task.phase or '').strip()
+            if value and value.casefold() not in {name.casefold() for name in names}:names.append(value)
+        records=db.session.scalars(select(BuildPhase)).all()
+        known={row.title.casefold() for row in records}
+        for index,name in enumerate(names):
+            if name.casefold() in known:continue
+            row=BuildPhase(title=name,start_date=phase_start,position=index)
+            db.session.add(row);records.append(row);known.add(name.casefold())
+        db.session.flush()
+        by_name={row.title.casefold():row.id for row in records}
+        for task in all_tasks():task.phase_id=by_name.get((task.phase or '').strip().casefold())
+        db.session.add(Setting(key='build_phases_initialized',value='1'))
     # Intentionally no automatic schedule seed. The user can import the
     # curated template explicitly after reviewing it; never silently refill
     # an empty or previously reset project.
@@ -824,7 +883,7 @@ def ai_schedule_apply():
     finally:Path(path).unlink(missing_ok=True)
     try:
         for i,t in enumerate(checked):
-            db.session.add(Task(code=t['code'],name=t['name'],phase=t['phase'],trade=t['trade'],
+            db.session.add(Task(code=t['code'],name=t['name'],phase=t['phase'],phase_id=_phase_id_for_title(t['phase']),trade=t['trade'],
                 execution_type=t['execution_type'],duration=t['duration'],lag_days=t['lag_days'],
                 notes=t['notes'],status='Offen',progress=0,position=i))
         db.session.flush()
@@ -1310,7 +1369,7 @@ def schedule_chat_resolve(history_id):
                                          if k!='predecessors'})
             elif op['action']=='add':
                 task=Task(code=op['code'],name=op['fields']['name'],
-                          position=len(by_code),phase='Allgemein',trade='Sonstiges',
+                          position=len(by_code),phase='',trade='Sonstiges',
                           duration=7,lag_days=0,execution_type='Noch offen',
                           status='Offen',progress=0,notes='')
                 db.session.add(task)
@@ -1473,10 +1532,65 @@ def project():
     tasks=serialize(all_tasks())
     contractors=db.session.scalars(select(Contractor).order_by(Contractor.name)).all()
     return jsonify({'start':setting('start'), 'tasks':tasks, 'plan_digest':_schedule_fingerprint(tasks),
+                    'phases':[phase_dict(x) for x in db.session.scalars(select(BuildPhase).order_by(BuildPhase.position,BuildPhase.start_date,BuildPhase.id))],
                     'contractor_suggestions':contractor_suggestions(),
                     'contracted_companies':contracted_companies(),
                     'trades':[x.name for x in db.session.scalars(select(Trade).order_by(Trade.name))],
                     'contractors':[{'id':x.id,'name':x.name,'trade':x.trade,'phone':x.phone,'email':x.email} for x in contractors]})
+
+
+def _apply_phase_fields(row,body):
+    if not isinstance(body,dict):raise ValueError('Bauphase muss ein Objekt sein.')
+    if 'title' in body:row.title=str(body['title'] or '').strip()
+    if 'description' in body:row.description=str(body['description'] or '').strip()
+    if 'start_date' in body:row.start_date=parse_date(body['start_date'])
+    if 'end_date' in body:row.end_date=parse_date(body['end_date'])
+    if not row.title or len(row.title)>140:raise ValueError('Titel der Bauphase fehlt oder ist zu lang.')
+    if len(row.description or '')>1000:raise ValueError('Beschreibung darf maximal 1000 Zeichen enthalten.')
+    if not row.start_date:raise ValueError('Anfangsdatum der Bauphase fehlt.')
+    if row.end_date and row.end_date<row.start_date:raise ValueError('Das Enddatum darf nicht vor dem Anfangsdatum liegen.')
+    duplicate=next((item.id for item in db.session.scalars(select(BuildPhase)).all()
+                    if item.id!=row.id and item.title.casefold()==row.title.casefold()),None)
+    if duplicate:raise ValueError('Eine Bauphase mit diesem Titel existiert bereits.')
+
+
+@app.post('/api/phases')
+def create_phase():
+    try:
+        row=BuildPhase(title='',description='',start_date=parse_date(setting('start')),
+                       position=db.session.scalar(select(db.func.count(BuildPhase.id))) or 0)
+        _apply_phase_fields(row,request.get_json(silent=True))
+        db.session.add(row);db.session.flush()
+        _schedule_audit('Manuell','Bauphase '+row.title+' erstellt.',[{'action':'add','phase':row.title}])
+        db.session.commit();return jsonify(ok=True,phase=phase_dict(row)),201
+    except (ValueError,TypeError) as exc:
+        db.session.rollback();return jsonify(error=str(exc)),400
+
+
+@app.put('/api/phases/<int:phase_id>')
+def update_phase(phase_id):
+    row=db.session.get(BuildPhase,phase_id)
+    if not row:return jsonify(error='Bauphase nicht gefunden.'),404
+    try:
+        old=row.title;_apply_phase_fields(row,request.get_json(silent=True))
+        for task in db.session.scalars(select(Task).where(Task.phase_id==row.id)):task.phase=row.title
+        _schedule_audit('Manuell','Bauphase '+old+' bearbeitet.',[{'action':'update','phase':old,'after':row.title}])
+        db.session.commit();return jsonify(ok=True,phase=phase_dict(row))
+    except (ValueError,TypeError) as exc:
+        db.session.rollback();return jsonify(error=str(exc)),400
+
+
+@app.delete('/api/phases/<int:phase_id>')
+def delete_phase(phase_id):
+    row=db.session.get(BuildPhase,phase_id)
+    if not row:return jsonify(error='Bauphase nicht gefunden.'),404
+    title=row.title
+    tasks=db.session.scalars(select(Task).where(Task.phase_id==row.id)).all()
+    for task in tasks:task.phase_id=None;task.phase=''
+    db.session.delete(row)
+    _schedule_audit('Manuell','Bauphase '+title+' gelöscht; Arbeitspakete sind jetzt ohne Bauphase.',
+                    [{'action':'remove','phase':title,'unassigned_tasks':len(tasks)}])
+    db.session.commit();return jsonify(ok=True,unassigned_tasks=len(tasks))
 
 @app.get('/api/tasks/template')
 def tasks_template_preview():
@@ -1508,7 +1622,7 @@ def tasks_initialize_from_template():
         # committing any of the draft tasks.
         start=parse_date(setting('start','2027-03-01'))
         for i,row in enumerate(steps):
-            db.session.add(Task(code=row['code'], phase=row['phase'],trade=row['trade'],
+            db.session.add(Task(code=row['code'], phase=row['phase'],phase_id=_phase_id_for_title(row['phase'],start),trade=row['trade'],
                    name=row['name'],execution_type=row['execution_type'],company='',
                    duration=row['duration'],lag_days=row['lag_days'],status='Offen',
                    progress=0,notes=row['notes'],position=i))
@@ -1597,7 +1711,7 @@ def update_project():
     except (ValueError,TypeError) as err:
         db.session.rollback();return jsonify(error=str(err)),400
 
-FIELDS={'code','phase','trade','execution_type','name','company','contractor_id','duration','lag_days','earliest_start','actual_start','actual_end','status','progress','notes','position'}
+FIELDS={'code','phase','phase_id','trade','execution_type','name','company','contractor_id','duration','lag_days','earliest_start','planned_end','actual_start','actual_end','status','progress','notes','position'}
 
 def update_task_fields(t,body):
     if not isinstance(body,dict):raise ValueError('Arbeitspaket muss ein Objekt sein.')
@@ -1605,8 +1719,8 @@ def update_task_fields(t,body):
     for f in FIELDS:
         if f not in body:continue
         v=body[f]
-        if f in ('earliest_start','actual_start','actual_end'):v=parse_date(v)
-        elif f=='contractor_id':v=int(v) if v not in ('',None) else None
+        if f in ('earliest_start','planned_end','actual_start','actual_end'):v=parse_date(v)
+        elif f in ('contractor_id','phase_id'):v=int(v) if v not in ('',None) else None
         elif f in ('duration','lag_days','progress','position'):v=int(v)
         else:v=str(v or '')
         if completed and f!='notes' and getattr(t,f)!=v:
@@ -1618,7 +1732,21 @@ def update_task_fields(t,body):
     if t.duration<1 or t.lag_days<0 or t.progress<0 or t.progress>100:raise ValueError('Ungültige Dauer, Abstand oder Fortschritt.')
     if t.status not in ('Offen','In Arbeit','Erledigt','Pausiert'):raise ValueError('Ungültiger Status.')
     if t.execution_type not in ('Eigenleistung','Fremdleistung','Noch offen'):raise ValueError('Ungültige Ausführungsart.')
-    if t.contractor_id and not db.session.get(Contractor,t.contractor_id):raise ValueError('Firma existiert nicht.')
+    if ('phase' in body and ('phase_id' not in body or
+            (body.get('phase_id') in ('',None) and str(body.get('phase') or '').strip()))):
+        t.phase_id=_phase_id_for_title(t.phase)
+    if t.phase_id:
+        phase=db.session.get(BuildPhase,t.phase_id)
+        if not phase:raise ValueError('Bauphase existiert nicht.')
+        t.phase=phase.title
+    else:t.phase=''
+    if t.execution_type=='Eigenleistung':t.contractor_id=None;t.company=''
+    elif t.contractor_id:
+        contractor=db.session.get(Contractor,t.contractor_id)
+        if not contractor:raise ValueError('Firma existiert nicht.')
+        if 'contractor_id' in body and contractor.trade and contractor.trade.casefold()!=t.trade.casefold():
+            raise ValueError('Die ausgewählte Firma gehört nicht zum gewählten Gewerk.')
+        t.company=''
 
 def set_predecessors(t,codes):
     if not isinstance(codes,list) or any(not isinstance(c,str) for c in codes):raise ValueError('Ungültige Vorgängerliste.')
@@ -1653,7 +1781,7 @@ def set_successors(task,codes):
 def create_task():
     body=request.get_json(force=True)
     try:
-        task=Task(code='',name='',position=len(all_tasks()),phase='Allgemein',trade='Sonstiges',execution_type='Noch offen',duration=1,lag_days=0,status='Offen',progress=0,notes='',company='')
+        task=Task(code='',name='',position=len(all_tasks()),phase='',trade='Sonstiges',execution_type='Noch offen',duration=1,lag_days=0,status='Offen',progress=0,notes='',company='')
         db.session.add(task)
         update_task_fields(task,body)
         db.session.flush()
@@ -1683,9 +1811,9 @@ def update_task(task_id):
         schedule(all_tasks(),parse_date(setting('start')))
         current=next(x for x in _schedule_snapshot() if x['id']==task_id)
         differences=[{'field':k,'before':previous[k],'after':current[k]}
-                     for k in ('code','name','phase','trade','execution_type','duration',
+                     for k in ('code','name','phase','phase_id','trade','execution_type','duration',
                                'lag_days','predecessors','successors','status','progress','notes',
-                               'earliest_start','actual_start','actual_end')
+                               'earliest_start','planned_end','actual_start','actual_end')
                      if previous[k]!=current[k]]
         if differences:
             _schedule_audit('Manuell','Arbeitspaket '+previous['code']+' angepasst.',
@@ -1851,14 +1979,14 @@ def move_task(task_id):
 
 @app.get('/api/export.csv')
 def export_csv():
-    data=serialize(all_tasks());buf=io.StringIO();fields=['code','phase','trade','execution_type','name','company','predecessors','lag_days','duration','earliest_start','start','end','status','progress','actual_start','actual_end','notes']
+    data=serialize(all_tasks());buf=io.StringIO();fields=['code','phase','trade','execution_type','name','company','predecessors','duration','start','end','planned_end','status','actual_start','actual_end','notes']
     writer=csv.DictWriter(buf,fieldnames=fields,extrasaction='ignore',delimiter=';');writer.writeheader()
     for row in data:writer.writerow({**row,'predecessors':', '.join(row['predecessors'])})
     return Response('\ufeff'+buf.getvalue(),mimetype='text/csv; charset=utf-8',headers={'Content-Disposition':'attachment; filename=Sanierungsprojekt_Plan.csv'})
 
 @app.get('/api/backup.json')
 def backup():
-    return Response(json.dumps({'start':setting('start'),'tasks':serialize(all_tasks()),'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))], 'budget_lines':[budget_dict(x) for x in all_budget_lines()], 'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))], 'contractors':[as_dict(x,CONTACT_FIELDS) for x in db.session.scalars(select(Contractor))], 'documents':[document_dict(x) for x in db.session.scalars(select(Document))], 'offers':[offer_dict(x) for x in db.session.scalars(select(Offer))]},ensure_ascii=False,indent=2),mimetype='application/json',headers={'Content-Disposition':'attachment; filename=Sanierungsprojekt_Backup.json'})
+    return Response(json.dumps({'start':setting('start'),'phases':[phase_dict(x) for x in db.session.scalars(select(BuildPhase).order_by(BuildPhase.position,BuildPhase.id))],'tasks':serialize(all_tasks()),'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))], 'budget_lines':[budget_dict(x) for x in all_budget_lines()], 'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))], 'contractors':[as_dict(x,CONTACT_FIELDS) for x in db.session.scalars(select(Contractor))], 'documents':[document_dict(x) for x in db.session.scalars(select(Document))], 'offers':[offer_dict(x) for x in db.session.scalars(select(Offer))]},ensure_ascii=False,indent=2),mimetype='application/json',headers={'Content-Disposition':'attachment; filename=Sanierungsprojekt_Backup.json'})
 
 COST_FIELDS={'category','title','contractor_id','task_id','budget_line_id','selected','kind','state','estimate','offer','committed','paid','own_hours','own_hourly','source_ref','notes'}
 CONTACT_FIELDS={'trade','name','contact','contact_secondary','phone','mobile','phone_other','email','website','address','notes'}
@@ -3838,6 +3966,7 @@ def project_archive():
                 if document.is_file():
                     archive.write(document, arcname=document.relative_to(ROOT).as_posix())
         archive.writestr('export.json',json.dumps({
+            'phases':[phase_dict(x) for x in db.session.scalars(select(BuildPhase).order_by(BuildPhase.position,BuildPhase.id))],
             'tasks':serialize(all_tasks()),
             'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))],
             'budget_lines':[budget_dict(x) for x in all_budget_lines()],

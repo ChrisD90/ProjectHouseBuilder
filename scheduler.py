@@ -25,7 +25,12 @@ def schedule(tasks, start):
         task = by_id[task_id]
         if task.duration < 1 or task.lag_days < 0:
             raise ValueError('Dauer muss mindestens ein Tag sein und der Abstand nicht negativ.')
-        beginning = max(start, task.earliest_start) if task.earliest_start else start
+        phase=getattr(task,'phase_record',None)
+        phase_start=getattr(phase,'start_date',None)
+        candidates=[start]
+        if task.earliest_start:candidates.append(task.earliest_start)
+        if phase_start:candidates.append(phase_start)
+        beginning=max(candidates)
         for dependency_id in deps[task_id]:
             _, end = calc(dependency_id)
             beginning = max(beginning, end + timedelta(days=1 + task.lag_days))

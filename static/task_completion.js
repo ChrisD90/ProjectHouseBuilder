@@ -41,7 +41,7 @@
  document.getElementById('reopenTask').onclick=async()=>{
   if(!id||taskBusy)return;
   const target=id;if(!await save())return;
-  if(!await PHBUI.confirm('Abschluss zurücknehmen und das Arbeitspaket wieder bearbeiten? Der vorherige Status und Fortschritt werden soweit dokumentiert wiederhergestellt.'))return;
+  if(!await PHBUI.confirm('Abschluss zurücknehmen und das Arbeitspaket wieder bearbeiten? Der vorherige Status wird soweit dokumentiert wiederhergestellt.'))return;
   taskBusy=true;const button=document.getElementById('reopenTask');button.disabled=true;
   try{
    await api('/api/tasks/'+target+'/reopen',{method:'POST',body:JSON.stringify({confirm:true})});
