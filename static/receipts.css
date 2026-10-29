@@ -21,13 +21,25 @@
 .phb-page-belege #review .actions{gap:10px;margin-top:22px}
 .phb-page-belege #review>.note{margin:15px 0 0;line-height:1.6}
 .phb-page-belege .panel{min-width:0}
-.phb-page-belege .receipt-list-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.phb-page-belege .receipt-list-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}
 .phb-page-belege .receipt-list-head h2{margin:0 0 3px}
 .phb-page-belege .receipt-list-head .note{margin:0}
-.phb-page-belege .receipt-search{position:relative;display:block;flex:0 1 430px;min-width:260px;margin:0;color:var(--ui-ink)}
-.phb-page-belege .receipt-search .phb-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--ui-muted);pointer-events:none}
-.phb-page-belege .receipt-search input{display:block;width:100%;height:42px;margin:0;padding:9px 40px 9px 39px;background:var(--ui-surface);color:var(--ui-ink);border:1px solid var(--ui-line);border-radius:9px;box-shadow:none;appearance:none}
-.phb-page-belege .receipt-search input:focus{outline:3px solid color-mix(in srgb,var(--ui-accent) 18%,transparent);outline-offset:1px;border-color:var(--ui-accent)}
+.phb-page-belege .receipt-list-tools{display:grid;grid-template-columns:minmax(260px,430px) minmax(130px,165px) minmax(105px,125px);align-items:end;justify-content:end;gap:10px;flex:1}
+.phb-page-belege .receipt-search{position:relative;display:block;min-width:0;margin:0;color:var(--ui-ink)}
+.phb-page-belege .receipt-search .phb-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);z-index:1;width:18px;height:18px;color:var(--ui-muted);pointer-events:none}
+.phb-page-belege .receipt-search input{display:block;width:100%;height:42px;min-height:42px;margin:0;padding:9px 38px 9px 41px!important;background:var(--ui-surface)!important;color:var(--ui-ink)!important;border:1px solid var(--ui-line-strong)!important;border-radius:10px!important;box-shadow:none!important;appearance:none}
+.phb-page-belege .receipt-search input::-webkit-search-cancel-button{cursor:pointer;opacity:.7}
+.phb-page-belege .receipt-search input:focus{outline:0!important;box-shadow:0 0 0 3px var(--ui-ring)!important;border-color:var(--ui-accent)!important}
+.phb-page-belege .receipt-filter{display:grid;gap:5px;min-width:0;margin:0}
+.phb-page-belege .receipt-filter>span{font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--ui-muted);text-transform:uppercase}
+.phb-page-belege .receipt-filter select{height:42px;min-height:42px!important;padding-block:8px!important}
+.phb-page-belege .receipt-labor-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:-2px 0 14px;padding:13px 15px;border:1px solid var(--ui-line);border-radius:11px;background:var(--ui-soft)}
+.phb-page-belege .receipt-labor-summary>div{display:grid;grid-template-columns:auto auto;align-items:baseline;gap:2px 12px;min-width:0}
+.phb-page-belege .receipt-labor-summary span{font-size:12px;color:var(--ui-muted)}
+.phb-page-belege .receipt-labor-summary strong{font-size:18px;color:var(--ui-ink)}
+.phb-page-belege .receipt-labor-summary small{grid-column:1/-1;color:var(--ui-muted)}
+.phb-page-belege .receipt-labor-summary .button-link{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 13px;flex:0 0 auto;border:1px solid var(--ui-line-strong);border-radius:9px;background:var(--ui-surface);color:var(--ui-accent);font-size:12px;font-weight:700;text-decoration:none}
+.phb-page-belege .receipt-labor-summary .button-link[aria-disabled="true"]{opacity:.55;cursor:not-allowed;pointer-events:none}
 .phb-page-belege .entry>strong{display:block;margin-top:7px;padding-right:8px}
 .phb-page-belege .entry .status{margin:0 0 8px 14px}
 @media(max-width:1080px){
@@ -39,7 +51,10 @@
  .phb-page-belege #upload button{width:100%}
  .phb-page-belege .receipt-assignment{padding:14px}
  .phb-page-belege .receipt-list-head{display:grid}
- .phb-page-belege .receipt-search{min-width:0;width:100%;max-width:none}
+ .phb-page-belege .receipt-list-tools{grid-template-columns:1fr 1fr;width:100%;justify-content:stretch}
+ .phb-page-belege .receipt-search{grid-column:1/-1;width:100%}
+ .phb-page-belege .receipt-labor-summary{align-items:stretch;flex-direction:column}
+ .phb-page-belege .receipt-labor-summary .button-link{text-align:center}
 }
 
 /* Separately reviewable gross labor share: not a tax eligibility decision. */

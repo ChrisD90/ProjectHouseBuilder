@@ -3,6 +3,7 @@ import io
 import json
 import os
 import unittest
+import zipfile
 from unittest.mock import patch
 os.environ['DATABASE_URL']='sqlite:///:memory:'
 from app import app,db,initialize,Receipt,CostItem,BudgetLine,Contractor,Offer
@@ -164,6 +165,33 @@ class ReceiptWebappTest(unittest.TestCase):
         wrong=self.client.patch(f'/api/receipts/{rid}',json={'gross_amount':'20'})
         self.assertEqual(wrong.status_code,400,wrong.json)
         self.assertEqual(self.client.get(f'/api/receipts/{rid}').json['gross_amount'],120.0)
+
+    def test_annual_labor_export_contains_summary_and_only_booked_originals(self):
+        invoice=('=Elektro Muster GmbH\nRechnungsnummer +2026-99\nRechnungsdatum 21.10.2026\n'
+                 'Lohnkosten brutto 357,00 EUR\nMaterial 833,00 EUR\nGesamtbetrag 1.190,00 EUR')
+        booked=self.upload(name='lohn-2026.pdf',text=invoice);rid=booked.json['id']
+        edited=self.client.patch(f'/api/receipts/{rid}',json={
+            'supplier':'=Elektro Muster GmbH','invoice_number':'+2026-99'})
+        self.assertEqual(edited.status_code,200,edited.json)
+        self.assertEqual(self.client.post(f'/api/receipts/{rid}/book').status_code,200)
+        with patch('app.extract_text',return_value=(invoice.replace('357,00','50,00').replace('1.190,00','883,00'),'PDF-Text')):
+            draft=self.client.post('/api/receipts',data={
+                'file':(io.BytesIO(b'%PDF-1.4\nDRAFT'),'entwurf.pdf')},content_type='multipart/form-data')
+        self.assertEqual(draft.status_code,201,draft.json)
+        response=self.client.get('/api/receipts/labor-export.zip?year=2026')
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertEqual(response.mimetype,'application/zip')
+        with zipfile.ZipFile(io.BytesIO(response.data)) as archive:
+            names=archive.namelist();self.assertIn('Lohnkosten_2026.csv',names)
+            self.assertIn('Hinweis.txt',names)
+            originals=[name for name in names if name.startswith('Belege/')]
+            self.assertEqual(len(originals),1);self.assertTrue(originals[0].endswith('lohn-2026.pdf'))
+            report=archive.read('Lohnkosten_2026.csv').decode('utf-8-sig')
+            self.assertIn('SUMME;;;;;357,00;',report)
+            self.assertIn("'=Elektro Muster GmbH",report)
+            self.assertIn("'+2026-99",report)
+        self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2025').status_code,404)
+        self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=26').status_code,400)
 
     def test_exclusive_assignment_to_contractor_or_own_work(self):
         contractor=Contractor(name='Sanitärbetrieb Beispiel',trade='Sanitär')

@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id);
 const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
 let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;
-let receiptSearchText='';
+let receiptSearchText='',receiptLaborFilter='all',receiptYearFilter='';
 const receiptDialog=$('receiptWorkflowDialog');
 function showReceiptPreview(item){
  const pane=$('receiptPdfPane'),frame=$('receiptPdfFrame'),image=$('receiptImagePreview');
@@ -81,6 +81,8 @@ function normalizedSearch(value){
  return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('de-DE').trim();
 }
 function receiptMatchesSearch(receipt){
+ if(receiptLaborFilter==='labor'&&!(Number(receipt.labor_amount)>0))return false;
+ if(receiptYearFilter&&String(receipt.document_date||'').slice(0,4)!==receiptYearFilter)return false;
  if(!receiptSearchText)return true;
  const values=[receipt.supplier,receipt.invoice_number,receipt.filename,receipt.document_date,
   receipt.due_date,receipt.category,receipt.kind,receipt.billing_type,receipt.status,
@@ -89,18 +91,41 @@ function receiptMatchesSearch(receipt){
  const haystack=normalizedSearch(values.join(' '));
  return receiptSearchText.split(/\s+/).every(term=>haystack.includes(term));
 }
+function renderReceiptFilters(){
+ const select=$('receiptYearFilter'),previous=receiptYearFilter;
+ const years=[...new Set(list.map(row=>String(row.document_date||'').slice(0,4)).filter(value=>/^\d{4}$/.test(value)))].sort().reverse();
+ select.innerHTML='<option value="">Alle Jahre</option>'+years.map(year=>`<option value="${year}">${year}</option>`).join('');
+ if(years.includes(previous))select.value=previous;else receiptYearFilter='';
+}
+function renderLaborSummary(){
+ const panel=$('receiptLaborSummary');panel.hidden=receiptLaborFilter!=='labor';
+ if(panel.hidden)return;
+ const rows=list.filter(row=>Number(row.labor_amount)>0&&row.status==='Gebucht'&&(!receiptYearFilter||String(row.document_date||'').slice(0,4)===receiptYearFilter));
+ const total=rows.reduce((sum,row)=>sum+Number(row.labor_amount),0),link=$('receiptLaborExport');
+ $('receiptLaborTotal').textContent=money(total);
+ $('receiptLaborCount').textContent=rows.length===1?'1 gebuchter Beleg':rows.length+' gebuchte Belege';
+ const available=Boolean(receiptYearFilter&&rows.length);
+ link.setAttribute('aria-disabled',String(!available));link.tabIndex=available?0:-1;
+ link.href=available?'/api/receipts/labor-export.zip?year='+encodeURIComponent(receiptYearFilter):'#';
+ link.textContent=receiptYearFilter?'Steuerunterlagen '+receiptYearFilter+' als ZIP':'Jahr für Export wählen';
+}
 function renderReceiptList(){
  const visible=list.filter(receiptMatchesSearch);
- $('receiptSearchResult').textContent=receiptSearchText
+ const filtered=Boolean(receiptSearchText||receiptLaborFilter!=='all'||receiptYearFilter);
+ $('receiptSearchResult').textContent=filtered
   ?`${visible.length} von ${list.length} Belegen gefunden`
   :`${list.length} Belege insgesamt`;
- $('list').innerHTML=visible.map(x=>`<button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span>${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}<strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>`).join('')||(receiptSearchText?'<p>Keine Belege entsprechen der Suche.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
+ $('list').innerHTML=visible.map(x=>`<button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span>${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}<strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
  $('list').querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
+ renderLaborSummary();
 }
 $('receiptSearch').addEventListener('input',event=>{
  receiptSearchText=normalizedSearch(event.currentTarget.value);
  renderReceiptList();
 });
+$('receiptLaborFilter').addEventListener('change',event=>{receiptLaborFilter=event.currentTarget.value;renderReceiptList();});
+$('receiptYearFilter').addEventListener('change',event=>{receiptYearFilter=event.currentTarget.value;renderReceiptList();});
+$('receiptLaborExport').addEventListener('click',event=>{if(event.currentTarget.getAttribute('aria-disabled')==='true')event.preventDefault();});
 function grossToTaxParts(gross,rate){
   const cents=Math.round(Number(gross)*100);
   if(!Number.isSafeInteger(cents)||cents<0)return null;
@@ -222,6 +247,7 @@ async function reload(keepId=selected){
  $('categories').innerHTML=r.categories.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');
  fillSelect($('budgetLines'),c.budget_lines.filter(x=>x.active&&!x.is_group),x=>x.category+' · '+x.title);
  renderCostItems();
+ renderReceiptFilters();
  if(keepId&&list.some(x=>x.id===keepId))selected=keepId;
  renderReceiptList();
  if(keepId&&list.some(x=>x.id===keepId))await open(keepId);

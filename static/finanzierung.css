@@ -232,3 +232,38 @@
  .phb-page-finanzierung .usage-fields .wide{grid-column:auto}
  .phb-page-finanzierung .usage-history-row{align-items:flex-start;flex-direction:column}
 }
+
+/* Finance-specific dark surfaces override remaining legacy light colors. */
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.panel,.tile,.smallcard,.record,
+ .drawdown-history-row,.usage-history-row,.usage-kind-picker label,.drawdown-receipt,
+ .drawdown-position,.drawdown-position-panel,.drawdown-no-preview,.loan-documents,
+ .loan-doc-row,.backup-status,.month){background:var(--ui-surface);border-color:var(--ui-line);color:var(--ui-ink)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.loan-key-values>div,.finance-booking-details,
+ .drawdown-template-state,.drawdown-booking-note,.drawdown-position-panel,
+ .drawdown-pdf-panel,.usage-history-row.is-reversed){background:var(--ui-soft);border-color:var(--ui-line)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(p,.hint,.meta,.record span,
+ .drawdown-history-row span,.usage-history-row span,.drawdown-section-head p,
+ .drawdown-receipt small,.drawdown-position header,.usage-kind-picker small,
+ .usage-fields small,.inline-actions .loan-doc-count){color:var(--ui-muted)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(h1,h2,h3,.smallcard h3,
+ .loan-key-values b,.usage-kind-picker strong,.drawdown-position strong){color:var(--ui-ink)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.fields input,.fields select,.fields textarea,
+ .drawdown-fields input,.drawdown-fields select,.drawdown-fields textarea,
+ .drawdown-total-field input,.drawdown-position input,.usage-fields input,
+ .usage-fields select,.usage-fields textarea){background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-line-strong)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .usage-kind-picker label:has(input:checked),
+:root[data-phb-theme="dark"] .phb-page-finanzierung .drawdown-receipt:has(input:checked){background:var(--ui-soft-accent);border-color:var(--ui-accent)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .drawdown-receipt.disabled{background:var(--ui-soft)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .usage-available{background:var(--ui-soft-accent);color:var(--ui-success)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .loan-progress{background:var(--ui-line)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .loan-save-status,
+:root[data-phb-theme="dark"] .phb-page-finanzierung .notice{background:var(--ui-soft-accent);border-color:var(--ui-line);color:var(--ui-success)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .button-link{background:var(--ui-raised);border-color:var(--ui-line-strong);color:var(--ui-accent)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.loan-save-status.error,.notice.error){background:#402629;border-color:#694044;color:var(--ui-danger)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .loan-pending{background:#493a22;color:var(--ui-warning)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .status-entwurf{background:var(--ui-soft);color:var(--ui-ink-soft)!important}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .status-eingereicht{background:#493a22;color:var(--ui-warning)!important}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.status-ausgezahlt,.status-bestätigt){background:#183c35;color:var(--ui-success)!important}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .status-abgelehnt{background:#46272a;color:var(--ui-danger)!important}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .status-zurückgenommen{background:#303b47;color:var(--ui-muted)!important}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.drawdown-ai,#drawdownStatus:not(:empty)){background:var(--ui-soft-accent);border-color:var(--ui-line);color:var(--ui-ink-soft)}

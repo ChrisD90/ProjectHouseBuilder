@@ -12,6 +12,7 @@ import tempfile
 import shutil
 import ipaddress
 import zipfile
+import re
 from datetime import date, datetime, timedelta
 from json import JSONDecodeError
 from financials import effective_offer, forecast_lines, monetary_totals
@@ -3439,6 +3440,51 @@ def receipt_list():
                    booked_gross=round(sum(float(r.gross_amount or 0) for r in rows if r.status=='Gebucht'),2),
                    paid=round(sum(float(r.paid_amount or 0) for r in rows if r.status=='Gebucht'),2),
                    drafts=sum(r.status=='Entwurf' for r in rows))
+
+@app.get('/api/receipts/labor-export.zip')
+def receipt_labor_export():
+    """Create one annual tax-support package without making an eligibility claim."""
+    from decimal import Decimal
+    raw_year=str(request.args.get('year') or '').strip()
+    if not raw_year.isdigit() or len(raw_year)!=4 or not 2000<=int(raw_year)<=2100:
+        return jsonify(error='Bitte ein gültiges Jahr zwischen 2000 und 2100 auswählen.'),400
+    rows=db.session.scalars(select(Receipt).where(
+        Receipt.status=='Gebucht',Receipt.labor_amount.is_not(None),Receipt.labor_amount>0,
+        Receipt.document_date.like(raw_year+'-%')).order_by(Receipt.document_date,Receipt.id)).all()
+    if not rows:return jsonify(error='Für dieses Jahr sind keine gebuchten Belege mit Lohnkosten vorhanden.'),404
+    def csv_value(value):
+        return format(Decimal(value or 0),'.2f').replace('.',',')
+    def csv_text(value):
+        value=str(value or '')
+        return "'"+value if value[:1] in ('=','+','-','@') else value
+    csv_stream=io.StringIO(newline='');writer=csv.writer(csv_stream,delimiter=';',lineterminator='\r\n')
+    writer.writerow(['Belegdatum','Firma','Rechnungsnummer','Datei','Rechnungsbetrag brutto (EUR)','Lohnkosten brutto inkl. USt (EUR)','Erfassung'])
+    total=Decimal('0')
+    for row in rows:
+        total+=Decimal(row.labor_amount)
+        writer.writerow([row.document_date,csv_text(row.supplier),csv_text(row.invoice_number),csv_text(row.original_name),
+                         csv_value(row.gross_amount),csv_value(row.labor_amount),row.labor_source])
+    writer.writerow([]);writer.writerow(['SUMME','','','','',csv_value(total),''])
+    originals=[]
+    for index,row in enumerate(rows,1):
+        path=RECEIPT_ROOT/row.stored_name
+        if not path.is_file():return jsonify(error='Originaldatei fehlt: '+row.original_name),409
+        clean=re.sub(r'[^A-Za-z0-9ÄÖÜäöüß._ -]+','_',Path(row.original_name).name).strip(' ._') or 'Beleg'
+        originals.append((path,'Belege/'+str(index).zfill(3)+'_'+clean[:180]))
+    archive_stream=io.BytesIO()
+    with zipfile.ZipFile(archive_stream,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
+        archive.writestr('Lohnkosten_'+raw_year+'.csv','\ufeff'+csv_stream.getvalue())
+        archive.writestr('Hinweis.txt',(
+            'ProjectHouseBuilder – Lohnkostenübersicht '+raw_year+'\n\n'
+            'Enthalten sind gebuchte Belege mit einem positiv erfassten Arbeits-/Lohnkostenanteil.\n'
+            'Summe Lohnkosten brutto inklusive zugehöriger Umsatzsteuer: '+csv_value(total)+' EUR\n\n'
+            'Diese Zusammenstellung ist eine Arbeitshilfe und keine steuerliche Prüfung. '
+            'Voraussetzungen wie unbare Zahlung, Haushaltsbezug, Förderungen und § 35a EStG bitte selbst oder steuerlich prüfen.\n'))
+        for path,name in originals:archive.write(path,name)
+    archive_stream.seek(0)
+    response=send_file(archive_stream,mimetype='application/zip',as_attachment=True,
+                       download_name='Steuerunterlagen_Lohnkosten_'+raw_year+'.zip')
+    response.headers['Cache-Control']='no-store';return response
 
 @app.get('/api/receipts/<int:rid>')
 def receipt_get(rid):
