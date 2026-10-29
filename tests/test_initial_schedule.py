@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import app,db,initialize,ScheduleHistory
+from app import app,db,initialize,ScheduleHistory,ImportJob,_run_import_job
 from chatgpt_local import chatgpt
 
 
@@ -23,6 +23,18 @@ class InitialScheduleDialogTest(unittest.TestCase):
             result=self.client.post(path,headers=self.headers,json={'model':'m1','plan_only':True,**payload},
                                     base_url='http://127.0.0.1:5055')
         return result,runner
+
+    def generate(self,response):
+        with patch.object(chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}), \
+             patch('app._start_import_worker'):
+            queued=self.client.post('/api/ai/schedule/suggest',headers=self.headers,
+                json={'model':'m1','plan_only':True},base_url='http://127.0.0.1:5055')
+        self.assertEqual(queued.status_code,202,queued.json)
+        job_id=queued.json['job']['id']
+        with patch.object(chatgpt,'run',return_value=json.dumps(response,ensure_ascii=False)):
+            _run_import_job(job_id)
+        db.session.expire_all()
+        return queued,db.session.get(ImportJob,job_id)
 
     def test_questions_block_generation_until_user_and_ai_are_ready(self):
         first,_=self.call_ai('/api/ai/schedule/intake',{
@@ -62,9 +74,10 @@ class InitialScheduleDialogTest(unittest.TestCase):
             'tasks':[{'code':'D01','name':'Dach prüfen','phase':'Dach','trade':'Dachdecker',
                       'execution_type':'Fremdleistung','duration':5,'planned_end':'',
                       'notes':'Fachbetrieb','predecessors':[]}]}
-        result,_=self.call_ai('/api/ai/schedule/suggest',proposal,{})
-        self.assertEqual(result.status_code,403,result.json)
-        self.assertIn('Unbekannte Bauphase',result.json['error'])
+        result,job=self.generate(proposal)
+        self.assertEqual(result.status_code,202,result.json)
+        self.assertEqual(job.status,'Fehler')
+        self.assertIn('Unbekannte Bauphase',job.error)
         self.assertEqual(self.client.get('/api/project').json['tasks'],[])
 
     def test_new_conversation_turn_invalidates_an_older_preview(self):
@@ -77,15 +90,15 @@ class InitialScheduleDialogTest(unittest.TestCase):
             'tasks':[{'code':'R01','name':'Entkernen','phase':'Rückbau','trade':'Abbruch',
                       'execution_type':'Eigenleistung','duration':5,'planned_end':'',
                       'notes':'Schadstoffe prüfen','predecessors':[]}]}
-        generated,_=self.call_ai('/api/ai/schedule/suggest',proposal,{})
-        self.assertEqual(generated.status_code,200,generated.json)
+        generated,job=self.generate(proposal)
+        self.assertEqual(job.status,'Fertig')
         changed,_=self.call_ai('/api/ai/schedule/intake',{
             'answer':'Dann muss der Ablauf neu erstellt werden.','questions':['Welcher Bereich bleibt bewohnt?'],
             'summary':'Teilbewohnter Rückbau','ready':False,
         },{'message':'Ein Gebäudeteil bleibt währenddessen bewohnt.','user_ready':False})
         self.assertFalse(changed.json['can_generate'])
         stale=self.client.post('/api/ai/schedule/apply',headers=self.headers,json={
-            'confirm':True,'phases':generated.json['phases'],'tasks':generated.json['tasks']},
+            'confirm':True,'schedule_job_id':job.id},
             base_url='http://127.0.0.1:5055')
         self.assertEqual(stale.status_code,409)
         self.assertEqual(self.client.get('/api/project').json['tasks'],[])

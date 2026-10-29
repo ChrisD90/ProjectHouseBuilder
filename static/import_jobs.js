@@ -70,7 +70,7 @@
  }
  document.addEventListener('click',e=>{syncLocks();if(e.target.closest('[data-import-busy]')){e.preventDefault();e.stopImmediatePropagation();}},true);
  document.addEventListener('submit',e=>{if(e.target.dataset.importBusy==='true'){e.preventDefault();e.stopImmediatePropagation();}},true);
- const labels={costplans:'Kostenplanung',offers:'Angebot',receipts:'Rechnung',documents:'Projektdokument',loans:'Kreditunterlage'};
+ const labels={costplans:'Kostenplanung',offers:'Angebot',receipts:'Rechnung',documents:'Projektdokument',loans:'Kreditunterlage',schedules:'Bauzeitenplan'};
  const finishedState=j=>['Fertig','Fehler','Unterbrochen'].includes(j.status);
  const alive=j=>j.status==='Wartend'||j.status==='Läuft';
  function remember(id){
@@ -80,8 +80,9 @@
  function displayToast(j){
    if(panelOpen)return;
    const toast=$('phbImportToast');toast.replaceChildren();
+   const subject=labels[j.kind]||'Dokument';
    const title=document.createElement('strong');title.textContent=j.status==='Fertig'
-     ?'Dokument fertig eingelesen':'Dokumentimport benötigt Aufmerksamkeit';
+     ?subject+' fertig':'Verarbeitung von '+subject+' benötigt Aufmerksamkeit';
    const info=document.createElement('p');
    info.textContent=j.filename+(j.status==='Fertig'?' – bereit zur Prüfung.':' – '+(j.error||j.stage));
    const controls=document.createElement('div');controls.className='phb-import-toast-actions';
@@ -92,7 +93,7 @@
    close.onclick=()=>{toast.hidden=true;};
    controls.append(review,close);toast.append(title,info,controls);toast.hidden=false;
    if(j.status==='Fertig'&&document.hidden&&'Notification' in window&&Notification.permission==='granted'){
-     try{const note=new Notification('ProjectHouseBuilder: Datei fertig',{body:j.filename+' – jetzt prüfen',tag:'phb-import-'+j.id});
+     try{const note=new Notification('ProjectHouseBuilder: '+subject+' fertig',{body:j.filename+' – jetzt prüfen',tag:'phb-import-'+j.id});
        note.onclick=()=>{window.focus();if(j.review_url)location.assign(j.review_url);};}catch(_){}
    }
  }

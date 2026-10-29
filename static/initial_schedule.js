@@ -7,6 +7,7 @@
   if(!dialog||!opener)return;
   let state={turns:[],ai_ready:false,user_ready:false,can_generate:false,summary:''};
   let proposal=null;
+  let proposalJobId=null;
   let busy=false;
   const flow=PHBFlow.manage({dialog:'initialScheduleDialog',forms:['initialScheduleForm'],
     dismiss:['closeInitialSchedule'],isBusy:()=>busy});
@@ -64,7 +65,7 @@
   async function reset(force=false){
     if(!force&&state.turns.length&&!await PHBUI.confirm('Das bisherige Planungsgespräch verwerfen und neu beginnen?'))return;
     state=await request('/api/ai/schedule/intake/reset',{method:'POST',body:{}});
-    proposal=null;$('initialSchedulePreview').hidden=true;$('initialScheduleInput').value='';
+    proposal=null;proposalJobId=null;$('initialSchedulePreview').hidden=true;$('initialScheduleInput').value='';
     renderConversation();flow.snapshot();status('Neues Planungsgespräch gestartet.');
   }
 
@@ -73,7 +74,7 @@
     let message=$('initialScheduleInput').value.trim();
     if(userReady&&!message)message='Ich halte meine bisherigen Angaben für vollständig. Bitte prüfe, ob noch eine wesentliche Information fehlt.';
     if(message.length<3){status('Bitte beschreibe dein Vorhaben oder beantworte die Rückfragen.');return;}
-    proposal=null;$('initialSchedulePreview').hidden=true;
+    proposal=null;proposalJobId=null;$('initialSchedulePreview').hidden=true;
     busy=true;flow.setBusy(true);$('initialScheduleSend').disabled=true;$('initialScheduleReady').disabled=true;
     status(userReady?'ChatGPT prüft, ob die Angaben ausreichen …':'ChatGPT prüft deine Angaben und mögliche Rückfragen …');
     try{
@@ -86,6 +87,7 @@
 
   function renderProposal(data){
     proposal={phases:data.phases||[],tasks:data.tasks||[]};
+    proposalJobId=Number(data.job_id)||null;
     $('initialScheduleOverview').textContent=data.overview||'';
     $('initialPhaseCount').textContent=proposal.phases.length+' Bauphase'+(proposal.phases.length===1?'':'n');
     $('initialTaskCount').textContent=proposal.tasks.length+' Arbeitspaket'+(proposal.tasks.length===1?'':'e');
@@ -116,19 +118,35 @@
   $('initialScheduleGenerate').addEventListener('click',async()=>{
     if(busy||!state.can_generate)return;
     busy=true;flow.setBusy(true);$('initialScheduleGenerate').disabled=true;status('Bauphasen und Arbeitspakete werden als prüfbarer Vorschlag erzeugt …');
-    try{const data=await request('/api/ai/schedule/suggest',{method:'POST',ai:true,body:{}});renderProposal(data);status(data.notice||'Planvorschlag erstellt.');}
+    try{
+      await request('/api/ai/schedule/suggest',{method:'POST',ai:true,body:{}});
+      flow.finish();
+      await window.PHBImports?.refresh?.();window.PHBImports?.open?.();
+    }
     catch(error){status(error.message);}
     finally{busy=false;flow.setBusy(false);$('initialScheduleGenerate').disabled=false;}
   });
   $('initialScheduleApply').addEventListener('click',async()=>{
-    if(busy||!proposal)return;
+    if(busy||!proposal||!proposalJobId)return;
     if(!await PHBUI.confirm('Die angezeigten Bauphasen und Arbeitspakete wirklich in den leeren Bauzeitenplan übernehmen?'))return;
     busy=true;flow.setBusy(true);$('initialScheduleApply').disabled=true;status('Geprüfter Plan wird übernommen …');
     try{
-      const data=await request('/api/ai/schedule/apply',{method:'POST',body:{confirm:true,...proposal}});
-      proposal=null;flow.finish();await window.reloadSchedule();
+      const data=await request('/api/ai/schedule/apply',{method:'POST',body:{confirm:true,schedule_job_id:proposalJobId}});
+      proposal=null;proposalJobId=null;flow.finish();await window.reloadSchedule();
       await PHBUI.alert(`${data.phases} Bauphasen und ${data.created} Arbeitspakete wurden übernommen.`);
     }catch(error){status(error.message);}
     finally{busy=false;flow.setBusy(false);$('initialScheduleApply').disabled=false;}
   });
+
+  async function openQueuedProposal(){
+    const url=new URL(location.href);const id=url.searchParams.get('schedule_job');
+    if(!id)return;
+    url.searchParams.delete('schedule_job');history.replaceState({},'',url.pathname+url.search+url.hash);
+    flow.open();status('Erstellten Planvorschlag laden …');
+    try{
+      const [data]=await Promise.all([request('/api/import-jobs/'+encodeURIComponent(id)+'/schedule-review'),loadState()]);
+      renderProposal(data);status(data.notice||'Planvorschlag erstellt. Bitte vor der Übernahme prüfen.');flow.snapshot();
+    }catch(error){status(error.message);}
+  }
+  void openQueuedProposal();
 })();

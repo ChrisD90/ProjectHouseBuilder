@@ -9,7 +9,7 @@ from unittest.mock import patch
 from urllib.parse import parse_qs,urlsplit
 
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
-from app import app,db,initialize,Offer,Task
+from app import app,db,initialize,Offer,Task,ImportJob,_run_import_job
 from chatgpt_local import chatgpt, AIError, _write_secret, _read_secret
 from sqlalchemy import select
 
@@ -411,19 +411,21 @@ class ChatGPTLocalTests(unittest.TestCase):
                 'user_ready':True,'model':'m1','plan_only':True})
         self.assertEqual(clarified.status_code,200,clarified.json)
         self.assertTrue(clarified.json['can_generate'])
+        with patch('app._start_import_worker'):
+            result=self.client.post('/api/ai/schedule/suggest',headers=self.headers(),json={'model':'m1','plan_only':True})
+        self.assertEqual(result.status_code,202,result.json)
+        job_id=result.json['job']['id']
         with patch.object(chatgpt,'run',return_value=json.dumps({
                 'overview':'Eigenleistung prüfen','phases':phases,'tasks':steps})):
-            result=self.client.post('/api/ai/schedule/suggest',headers=self.headers(),json={'model':'m1','plan_only':True})
-        self.assertEqual(result.status_code,200,result.json)
-        self.assertTrue(result.json['can_apply'])
-        self.assertEqual(len(result.json['phases']),2)
+            _run_import_job(job_id)
+        review=self.client.get('/api/import-jobs/'+str(job_id)+'/schedule-review')
+        self.assertEqual(review.status_code,200,review.json)
+        self.assertTrue(review.json['can_apply'])
+        self.assertEqual(len(review.json['phases']),2)
         self.assertEqual(self.client.get('/api/project').json['tasks'],[])
         tampered=[dict(x) for x in steps];tampered[0]['duration']=99
-        no=self.client.post('/api/ai/schedule/apply',headers=self.headers(),json={
-            'confirm':True,'phases':phases,'tasks':tampered})
-        self.assertEqual(no.status_code,409,no.json)
         good=self.client.post('/api/ai/schedule/apply',headers=self.headers(),json={
-            'confirm':True,'phases':result.json['phases'],'tasks':result.json['tasks']})
+            'confirm':True,'schedule_job_id':job_id,'phases':phases,'tasks':tampered})
         self.assertEqual(good.status_code,201,good.json)
         self.assertEqual(good.json['created'],2)
         self.assertEqual(good.json['phases'],2)
@@ -431,9 +433,10 @@ class ChatGPTLocalTests(unittest.TestCase):
         project=self.client.get('/api/project').json
         self.assertEqual(len(project['phases']),2)
         self.assertTrue(all(task['phase_id'] for task in project['tasks']))
+        self.assertEqual(next(task for task in project['tasks'] if task['code']=='KI01')['duration'],12)
         self.assertEqual(next(task for task in project['tasks'] if task['code']=='KI02')['earliest_start'],'2027-03-21')
         self.assertEqual(self.client.post('/api/ai/schedule/apply',headers=self.headers(),json={
-            'confirm':True,'phases':phases,'tasks':steps}).status_code,409)
+            'confirm':True,'schedule_job_id':job_id}).status_code,409)
 
     def test_background_pdf_progress_reports_real_stream_milestones(self):
         from chatgpt_local import ChatGPTLocal, _background_hooks
