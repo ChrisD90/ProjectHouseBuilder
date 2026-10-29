@@ -4,15 +4,20 @@
 
 <main id="phbMain" class="phb-main"><div class="phb-page-intro"><div><span class="phb-page-kicker">Organisation &amp; Ablauf</span><h1>Bauzeitenplan</h1><p>Gewerke, Termine und Abhängigkeiten im Blick behalten.</p></div><div class="phb-page-actions"><label>Projektstart <input id="projectStart" type="date"></label><button id="saveStart" class="subtle" type="button">Start speichern</button><button id="companySuggestions" class="subtle" type="button">Firmen &amp; Arbeitspakete <span id="suggestionCount"></span></button><button id="managePhases" class="subtle" type="button">Bauphasen</button><button id="newTask" class="primary" type="button">+ Arbeitspaket</button></div></div><section class="metrics schedule-metrics"><article><span>Arbeitspakete</span><b id="count">–</b></article><article><span>Planende</span><b id="end">–</b></article><article><span>In Arbeit</span><b id="ongoing">–</b></article><article><span>Eigenleistungen</span><b id="selfCount">–</b></article><article><span>Fremdleistungen</span><b id="externalCount">–</b></article></section>
 <section class="panel phb-ai-schedule" id="aiSchedulePanel" hidden>
-  <h2>Bauzeitenplan mit ChatGPT erstellen</h2>
-  <p>Nur bei einem leeren Bauzeitenplan: Lass aus deinen Anforderungen einen individuellen Plan erstellen, prüfe jede Aufgabe und bestätige die Übernahme.</p>
-  <label>Deine Wünsche / Rahmenbedingungen <textarea id="aiScheduleNeeds" rows="3" maxlength="2200" placeholder="Zum Beispiel: Eigenleistungen nur am Wochenende, Dämmarbeiten vor Heizung …"></textarea></label>
-  <button type="button" id="aiScheduleSuggest" class="subtle">Mit ChatGPT einen Ablauf vorschlagen</button>
-  <p id="aiScheduleStatus" role="status"></p><p id="aiScheduleOverview"></p>
-  <details id="aiScheduleDetails" hidden><summary>KI-Arbeitsschritte ansehen</summary><div id="aiScheduleList" class="template-list"></div></details>
-  <button type="button" id="aiScheduleApply" class="primary" hidden>Geprüften KI-Vorschlag in leeren Plan übernehmen</button>
-  <p class="template-note">Ein vorhandener Bauzeitenplan wird nie automatisch verändert. Vorschläge ersetzen keine Bauleitung oder Freigaben durch Fachbetriebe.</p>
+  <div><span class="phb-page-kicker">ChatGPT / Erstplanung</span><h2>Bauzeitenplan gemeinsam vorbereiten</h2><p>ChatGPT klärt dein Vorhaben zunächst im Gespräch. Erst wenn du und die KI die Angaben für ausreichend halten, wird ein Vorschlag mit Bauphasen und Arbeitspaketen erzeugt.</p></div>
+  <button type="button" id="openInitialSchedule" class="primary">Planungsgespräch öffnen</button>
 </section>
+<dialog id="initialScheduleDialog" class="initial-schedule-dialog" aria-labelledby="initialScheduleTitle">
+  <div class="initial-schedule-head"><div><span class="phb-page-kicker">ChatGPT / Neuer Bauzeitenplan</span><h2 id="initialScheduleTitle">Projekt gemeinsam klären</h2><p>Rückfragen zuerst, Planvorschlag danach. Bis zur abschließenden Übernahme wird nichts gespeichert.</p></div><button type="button" id="closeInitialSchedule" class="subtle">Schließen</button></div>
+  <div class="initial-schedule-body">
+    <div class="initial-readiness" aria-label="Bereitschaft zur Planerstellung"><span id="initialUserReady">Deine Angaben: offen</span><span id="initialAIReady">KI-Prüfung: offen</span></div>
+    <div id="initialScheduleMessages" class="initial-schedule-messages" role="log" aria-live="polite"><p class="schedule-chat-intro">Beschreibe zunächst das Gebäude, den geplanten Umfang, Eigenleistungen und wichtige Termin- oder Reihenfolgevorgaben.</p></div>
+    <form id="initialScheduleForm" class="initial-schedule-form"><label for="initialScheduleInput">Deine Antwort oder weitere Information</label><textarea id="initialScheduleInput" rows="4" maxlength="2500" required placeholder="Zum Beispiel: Kernsanierung eines Einfamilienhauses, Einzug bis …"></textarea><div class="initial-compose-actions"><button type="button" id="initialScheduleReset" class="subtle">Neu beginnen</button><span class="push"></span><button type="button" id="initialScheduleReady" class="subtle">Meine Angaben sind vollständig</button><button type="submit" id="initialScheduleSend" class="primary">Antwort senden</button></div></form>
+    <div id="initialGeneratePanel" class="initial-generate-panel" hidden><div><strong>Beide Seiten sind bereit</strong><p id="initialScheduleSummary"></p></div><button type="button" id="initialScheduleGenerate" class="primary">Planvorschlag erzeugen</button></div>
+    <section id="initialSchedulePreview" class="initial-schedule-preview" hidden><div class="initial-preview-head"><div><h3>Planvorschlag prüfen</h3><p id="initialScheduleOverview"></p></div><div><strong id="initialPhaseCount">0 Bauphasen</strong><span id="initialTaskCount">0 Arbeitspakete</span></div></div><div id="initialPhaseList" class="initial-phase-list"></div><details open><summary>Arbeitspakete ansehen</summary><div id="initialTaskList" class="template-list"></div></details><button type="button" id="initialScheduleApply" class="primary">Bauphasen und Arbeitspakete übernehmen</button></section>
+    <p id="initialScheduleStatus" class="schedule-chat-status" role="status"></p>
+  </div>
+</dialog>
 <section class="panel schedule-conversation schedule-chat-popover" id="aiScheduleChatPanel" hidden
   role="dialog" aria-modal="false" aria-labelledby="scheduleChatTitle" tabindex="-1">
   <div class="schedule-section-header">
@@ -99,7 +104,7 @@ title="ChatGPT-Planungsdialog bei Bedarf öffnen">
     <button type="button" id="companyProposalsCancel" class="subtle">Abbrechen</button>
     <button type="button" id="companyProposalsApply" class="primary">Auswahl übernehmen</button>
   </div>
-</dialog><div id="toast" role="status"></div><script src="/static/app.js"></script><script src="/static/task_completion.js"></script><script src="/static/gantt_drag.js"></script><script src="/static/schedule_chat.js"></script><script>if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js").catch(console.warn);</script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+</dialog><div id="toast" role="status"></div><script src="/static/app.js"></script><script src="/static/task_completion.js"></script><script src="/static/gantt_drag.js"></script><script src="/static/initial_schedule.js"></script><script src="/static/schedule_chat.js"></script><script>if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js").catch(console.warn);</script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
   <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
   <h2 id="phbAITitle">ChatGPT verbinden</h2>
   <p id="phbAIConnection">Verbindung wird geprüft …</p>

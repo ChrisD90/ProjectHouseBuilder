@@ -23,6 +23,7 @@ class WorkflowArchitectureTests(unittest.TestCase):
         source={
             'app.js':('taskListDialog','companyProposalsDialog'),
             'schedule_chat.js':('scheduleHistoryDialog',),
+            'initial_schedule.js':('initialScheduleDialog',),
             'offers.js':('offerWorkflowDialog','offerEditDialog','offerAcceptanceDialog'),
             'receipts.js':('receiptWorkflowDialog',),
             'finanzierung.js':('loanDialog','equityDialog'),

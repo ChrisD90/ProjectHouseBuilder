@@ -91,7 +91,8 @@ class ScheduleTemplateTests(TestCase):
         html=self.client.get('/').data.decode('utf-8')
         self.assertNotIn('id="initializeTemplate"',html)
         self.assertIn('id="aiSchedulePanel"',html)
-        self.assertIn('Bauzeitenplan mit ChatGPT erstellen',html)
+        self.assertIn('Bauzeitenplan gemeinsam vorbereiten',html)
+        self.assertIn('id="initialScheduleDialog"',html)
         self.assertIn('name="execution_type"',html)
         self.assertIn('id="workType"',html)
 

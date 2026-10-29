@@ -7,7 +7,7 @@ from collections import Counter
 import json
 from pathlib import Path
 
-EXECUTION_TYPES = frozenset({'Eigenleistung', 'Fremdleistung'})
+EXECUTION_TYPES = frozenset({'Eigenleistung', 'Fremdleistung', 'Noch offen'})
 
 
 def load_schedule_template(path):

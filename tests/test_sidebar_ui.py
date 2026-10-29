@@ -90,6 +90,10 @@ class SidebarUITest(unittest.TestCase):
         page=self.render('index')
         for marker in (
             'id="aiSchedulePanel" hidden',
+            'id="initialScheduleDialog"',
+            'id="openInitialSchedule"',
+            'id="initialScheduleReady"',
+            'id="initialScheduleGenerate"',
             'id="aiScheduleChatPanel" hidden',
             'id="scheduleHistoryDialog"',
             'id="scheduleChatApprove"',
@@ -97,9 +101,16 @@ class SidebarUITest(unittest.TestCase):
             '/static/schedule_chat.js'
         ):
             self.assertIn(marker,page)
+        self.assertIn('/static/initial_schedule.js',page)
         js=(STATIC/'app.js').read_text()
         self.assertIn("project.tasks.length===0",js)
         self.assertIn("window.PHBAI?.connected()",js)
+        initial=(STATIC/'initial_schedule.js').read_text()
+        self.assertIn("'/api/ai/schedule/intake'",initial)
+        self.assertIn("'/api/ai/schedule/suggest'",initial)
+        self.assertIn('user_ready:userReady',initial)
+        self.assertIn("dialog:'initialScheduleDialog'",initial)
+        self.assertNotIn('id="aiScheduleNeeds"',page)
         assistant=(STATIC/'schedule_chat.js').read_text()
         self.assertIn("selection()",assistant)
         self.assertIn("confirm:approve",assistant)

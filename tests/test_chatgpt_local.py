@@ -395,23 +395,45 @@ class ChatGPTLocalTests(unittest.TestCase):
 
     def test_ai_schedule_preview_mutation_guard_and_confirmed_apply(self):
         self.profile()
+        phases=[{'title':'Rückbau','description':'Bestand vorbereiten',
+                 'start_date':'2027-03-01','end_date':'2027-03-20'},
+                {'title':'Dach','description':'Tragwerk und Dachausbau',
+                 'start_date':'2027-03-21','end_date':''}]
         steps=[{'code':'KI01','name':'Haus entkernen','phase':'Rückbau','trade':'Rückbau','execution_type':'Eigenleistung',
-               'duration':12,'lag_days':0,'notes':'Schadstoffe prüfen','predecessors':[]},
+               'duration':12,'lag_days':0,'planned_end':'2027-03-20','notes':'Schadstoffe prüfen','predecessors':[]},
               {'code':'KI02','name':'Dach statisch prüfen','phase':'Dach','trade':'Statik','execution_type':'Fremdleistung',
-               'duration':5,'lag_days':0,'notes':'Statiker','predecessors':['KI01']}]
-        with patch.object(chatgpt,'run',return_value=json.dumps({'overview':'Eigenleistung prüfen','tasks':steps})):
-            result=self.client.post('/api/ai/schedule/suggest',headers=self.headers(),json={'requirements':'Dachausbau','model':'m1','plan_only':True})
+               'duration':5,'lag_days':0,'planned_end':'','notes':'Statiker','predecessors':['KI01']}]
+        intake={'answer':'Die Angaben reichen für einen ersten Ablauf.','questions':[],
+                'summary':'Dachausbau nach Rückbau','ready':True}
+        with patch.object(chatgpt,'run',return_value=json.dumps(intake)):
+            clarified=self.client.post('/api/ai/schedule/intake',headers=self.headers(),json={
+                'message':'Dachausbau nach Rückbau; Eigenleistung bei Entkernung.',
+                'user_ready':True,'model':'m1','plan_only':True})
+        self.assertEqual(clarified.status_code,200,clarified.json)
+        self.assertTrue(clarified.json['can_generate'])
+        with patch.object(chatgpt,'run',return_value=json.dumps({
+                'overview':'Eigenleistung prüfen','phases':phases,'tasks':steps})):
+            result=self.client.post('/api/ai/schedule/suggest',headers=self.headers(),json={'model':'m1','plan_only':True})
         self.assertEqual(result.status_code,200,result.json)
         self.assertTrue(result.json['can_apply'])
+        self.assertEqual(len(result.json['phases']),2)
         self.assertEqual(self.client.get('/api/project').json['tasks'],[])
         tampered=[dict(x) for x in steps];tampered[0]['duration']=99
-        no=self.client.post('/api/ai/schedule/apply',headers=self.headers(),json={'confirm':True,'tasks':tampered})
+        no=self.client.post('/api/ai/schedule/apply',headers=self.headers(),json={
+            'confirm':True,'phases':phases,'tasks':tampered})
         self.assertEqual(no.status_code,409,no.json)
-        good=self.client.post('/api/ai/schedule/apply',headers=self.headers(),json={'confirm':True,'tasks':result.json['tasks']})
+        good=self.client.post('/api/ai/schedule/apply',headers=self.headers(),json={
+            'confirm':True,'phases':result.json['phases'],'tasks':result.json['tasks']})
         self.assertEqual(good.status_code,201,good.json)
         self.assertEqual(good.json['created'],2)
+        self.assertEqual(good.json['phases'],2)
         self.assertEqual(len(self.client.get('/api/project').json['tasks']),2)
-        self.assertEqual(self.client.post('/api/ai/schedule/apply',headers=self.headers(),json={'confirm':True,'tasks':steps}).status_code,409)
+        project=self.client.get('/api/project').json
+        self.assertEqual(len(project['phases']),2)
+        self.assertTrue(all(task['phase_id'] for task in project['tasks']))
+        self.assertEqual(next(task for task in project['tasks'] if task['code']=='KI02')['earliest_start'],'2027-03-21')
+        self.assertEqual(self.client.post('/api/ai/schedule/apply',headers=self.headers(),json={
+            'confirm':True,'phases':phases,'tasks':steps}).status_code,409)
 
     def test_background_pdf_progress_reports_real_stream_milestones(self):
         from chatgpt_local import ChatGPTLocal, _background_hooks

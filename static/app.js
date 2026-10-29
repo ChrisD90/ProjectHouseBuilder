@@ -10,6 +10,7 @@ const firstMonday=d=>addDays(d,-((new Date(d+'T12:00:00Z').getUTCDay()+6)%7));
 function message(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',3000)}
 async function api(path,options={}){const res=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const data=await res.json();if(!res.ok)throw Error(data.error||'Serverfehler');return data}
 async function reload(){try{project=await api('/api/project');render();document.dispatchEvent(new CustomEvent('phb-schedule-updated',{detail:{taskCount:project.tasks.length}}))}catch(e){message(e.message)}}
+window.reloadSchedule=reload;
 function renderScheduleStart(){
  const empty=project.tasks.length===0;
  $('aiSchedulePanel').hidden=!empty||!Boolean(window.PHBAI?.connected());
@@ -206,47 +207,3 @@ $('delete').onclick=async()=>{
 $('today').onclick=()=>{let container=document.querySelector('.ganttwrap');let origin=firstMonday(project.start);let n=diff(origin,new Date().toISOString().slice(0,10));container.scrollLeft=Math.max(0,n*($('scale').value==='week'?26:7)-320)};
 reload().then(()=>{if(new URLSearchParams(location.search).get('firmenvorschlaege')==='1')$('companySuggestions').click();});
 document.addEventListener('phb-ai-status',renderScheduleStart);
-
-/* ChatGPT plan-funded schedule suggestions: preview-only until explicit import. */
-(() => {
-  let preview=null;
-  const button=document.getElementById('aiScheduleSuggest');
-  if(!button)return;
-  const $=id=>document.getElementById(id);
-  const report=msg=>{$('aiScheduleStatus').textContent=msg;};
-  button.onclick=async()=>{
-    try{
-      const perm=window.PHBAI?.selection();
-      if(!perm)throw Error('ChatGPT ist nicht verbunden.');
-      button.disabled=true;preview=null;$('aiScheduleApply').hidden=true;$('aiScheduleDetails').hidden=true;
-      report('Bauzeitenvorschlag wird erstellt …');
-      const response=await fetch('/api/ai/schedule/suggest',{method:'POST',headers:{'Content-Type':'application/json','X-PHB-AI':'1'},
-        body:JSON.stringify({...perm,requirements:$('aiScheduleNeeds').value})});
-      const data=await response.json();if(!response.ok)throw Error(data.error||'KI nicht verfügbar.');
-      $('aiScheduleOverview').textContent=data.overview;
-      preview=data.can_apply?data.tasks:null;
-      $('aiScheduleApply').hidden=!preview;
-      $('aiScheduleDetails').hidden=!preview;
-      $('aiScheduleList').replaceChildren();
-      for(const t of (data.tasks||[])){
-        const row=document.createElement('div');row.className='template-step';
-        row.textContent=`${t.code} · ${t.name} · ${t.execution_type} · ${t.duration} Tage · Vorgänger: ${(t.predecessors||[]).join(', ')}`;
-        $('aiScheduleList').append(row);
-      }
-      report(data.notice||'Vorschlag erstellt.');
-    }catch(e){report(e.message);}finally{button.disabled=false;}
-  };
-  $('aiScheduleApply').onclick=async()=>{
-    if(!preview)return;
-    if(!await PHBUI.confirm('Alle geprüften KI-Aufgaben wirklich in den LEEREN Bauzeitenplan übernehmen? Bestehende Aufgaben werden nicht überschrieben.'))return;
-    const button=$('aiScheduleApply');button.disabled=true;
-    try{
-      const res=await fetch('/api/ai/schedule/apply',{method:'POST',
-        headers:{'Content-Type':'application/json','X-PHB-AI':'1'},
-        body:JSON.stringify({confirm:true,tasks:preview})});
-      const data=await res.json();if(!res.ok)throw Error(data.error||'Übernahme fehlgeschlagen.');
-      preview=null;button.hidden=true;$('aiScheduleDetails').hidden=true;
-      await reload();report(data.created+' KI-Arbeitspakete übernommen.');
-    }catch(e){report(e.message);}finally{button.disabled=false;}
-  };
-})();
