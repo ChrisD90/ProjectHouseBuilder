@@ -159,7 +159,8 @@ class PlanningTest(unittest.TestCase):
         self.assertIn(b'energyFundingForm',page.data)
         costs=self.client.get('/kosten').data
         self.assertNotIn(b'id="fundingrows"',costs)
-        self.assertIn(b'planUploadForm',costs)
+        self.assertNotIn(b'planUploadForm',costs)
+        self.assertIn(b'costOverviewRows',costs)
         self.assertIn(b'tradeSearch',self.client.get('/stammdaten').data)
 
     def test_company_research_needs_connection_and_explicit_consent(self):

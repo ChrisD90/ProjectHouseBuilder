@@ -73,7 +73,7 @@ class SidebarUITest(unittest.TestCase):
     def test_existing_interactive_form_ids_are_unchanged(self):
         for page, identifiers in {
             'index': ('projectStart', 'saveStart', 'newTask', 'taskForm', 'gantt'),
-            'kosten': ('budgetrows', 'costrows', 'editForm'),
+            'kosten': ('costPipeline', 'costOverviewRows', 'costDetailsDialog'),
             'angebote': ('offerImportForm', 'offerManualForm', 'offerDrafts', 'offerList', 'offerCategoryFilter'),
             'belege': ('upload', 'review'),
             'stammdaten': ('companyForm', 'tradeCreate', 'categoryCreate', 'companyRows'),
@@ -223,19 +223,15 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("kind:'documents'",docs)
         self.assertIn('edit(documentId)',docs)
 
-    def test_cost_attachment_management_is_in_costs_and_read_only_in_documents(self):
+    def test_costs_is_read_only_and_document_library_stays_separate(self):
         costs=self.render('kosten')
         page=self.render('dokumente')
-        self.assertIn('id="openCostUpload"',costs)
-        self.assertIn('id="costDocumentDialog"',costs)
-        self.assertIn('id="closeCostUpload"',costs)
-        self.assertIn('id="uploadForm"',costs)
-        self.assertIn('id="documents"',costs)
-        self.assertIn('id="kosten-unterlagen"',costs)
-        start=costs.index('id="costDocumentDialog"')
-        end=costs.index('</dialog>',start)
-        self.assertIn('name="contractor_id"',costs[start:end])
-        self.assertIn('name="budget_line_id"',costs[start:end])
+        for marker in ('id="openCostUpload"','id="costDocumentDialog"','id="uploadForm"',
+                       'id="documents"','id="kosten-unterlagen"','planUploadForm'):
+            self.assertNotIn(marker,costs)
+        self.assertIn('Automatische Gesamtsicht',costs)
+        self.assertIn('id="costOverviewRows"',costs)
+        self.assertIn('id="costGroup"',costs)
         self.assertNotIn('id="costDocumentDialog"',page)
         self.assertNotIn('id="uploadForm"',page)
         self.assertNotIn('id="documents"',page)
@@ -245,9 +241,9 @@ class SidebarUITest(unittest.TestCase):
         self.assertNotIn('data-delete-doc',js)
         self.assertNotIn("api('/api/documents/'+",js)
         cost_js=(STATIC/'costs.js').read_text()
-        self.assertIn('attachmentFlow.open()',cost_js)
-        self.assertIn('data-delete-cost-document',cost_js)
-        self.assertIn("api('/api/document-library')",cost_js)
+        self.assertNotIn('attachmentFlow.open()',cost_js)
+        self.assertNotIn('data-delete-cost-document',cost_js)
+        self.assertIn("fetch('/api/cost-dashboard')",cost_js)
 
     def test_company_assignment_searchable_accordion_without_close_x(self):
         page=self.render('index')
@@ -365,7 +361,6 @@ class SidebarUITest(unittest.TestCase):
         for page,button in (('angebote','openOfferWorkflow'),
                             ('belege','openReceiptWorkflow'),
                             ('dokumente','openDocUpload'),
-                            ('kosten','openCostUpload'),
                             ('finanzierung','newDrawdown')):
             html=self.render(page)
             header=html.index('phb-action-header')
@@ -477,7 +472,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertNotIn('id="paymentForm"',finance)
         self.assertNotIn('Liquiditätsvorschau',finance)
         self.assertNotIn('id="editBudget"',costs)
-        self.assertIn('Kreditrahmen + Eigenkapital',costs)
+        self.assertIn('Kredite und eingebrachtes Eigenkapital',costs)
         self.assertIn('id="payReceipt"',receipts)
         self.assertIn('id="receiptPaymentForm"',receipts)
         self.assertIn('id="receiptPaymentSource"',receipts)

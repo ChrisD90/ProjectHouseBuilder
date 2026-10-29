@@ -232,7 +232,8 @@ print('RESTORED')
             self.assertNotIn(removed,code)
         self.assertFalse((ROOT/'data'/'initial_budget.example.json').exists())
         self.assertNotIn('excel-original', (ROOT/'templates'/'kosten.html').read_text())
-        self.assertIn('planUploadForm', (ROOT/'templates'/'kosten.html').read_text())
+        self.assertNotIn('planUploadForm', (ROOT/'templates'/'kosten.html').read_text())
+        self.assertIn('costOverviewRows', (ROOT/'templates'/'kosten.html').read_text())
 
 if __name__ == '__main__':
     unittest.main()

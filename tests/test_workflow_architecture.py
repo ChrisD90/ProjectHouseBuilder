@@ -26,7 +26,7 @@ class WorkflowArchitectureTests(unittest.TestCase):
             'offers.js':('offerWorkflowDialog','offerEditDialog','offerAcceptanceDialog'),
             'receipts.js':('receiptWorkflowDialog',),
             'finanzierung.js':('loanDialog','equityDialog'),
-            'costs.js':('editor','costDocumentDialog'),
+            'costs.js':('costDetailsDialog',),
             'dokumente.js':('docUploadDialog','docEditDialog'),
             'stammdaten.js':('companyDialog',),
             'daten.js':('backupConfigDialog','backupRestoreDialog'),

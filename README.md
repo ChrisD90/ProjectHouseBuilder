@@ -47,9 +47,9 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 ## Funktionen
 
 - **Bauzeitenplan (`/`):** Arbeitspakete und Bauphasen können manuell gepflegt werden. Bei leerem Plan kann ChatGPT aus der Projektbeschreibung einen prüfbaren Erstvorschlag mit Abhängigkeiten erstellen; übernommen wird er erst nach ausdrücklicher Freigabe. Aufgaben können danach bearbeitet, gelöscht und nach Eigen-/Fremdleistung gefiltert werden.
-- **Kosten & Budget:** eigene Budgetpositionen und Schätzwerte, Beauftragungen, Förderungen und Kostenprognose.
+- **Kosten & Budget:** automatisch aggregierte Kostenprognose mit Finanzierungsrahmen, Auftrags-, Rechnungs- und Zahlungsstand.
 - **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, jederzeit korrigieren, annehmen oder ablehnen. Abgelehnte Angebote liegen in einer eingeklappten Liste; die Übersicht zeigt die Gesamtsumme aller angenommenen Aufträge. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.
-- **Kosten & Budget (`/kosten`):** Ausschließlich Kostenschätzungen und zusätzliche Ausgaben planen; keine zweite Angebotsverwaltung. Angenommene Angebote werden automatisch eingerechnet, aber nicht nochmals bearbeitbar als manuelle Kostenposition angezeigt.
+- **Kosten & Budget (`/kosten`):** Schlanke, nur lesbare Projektauswertung. Sie gruppiert dieselben Quelldaten nach Gewerk/Kategorie, Ausführungsart, Bauphase, Arbeitspaket oder Firma und verweist bei Prüffällen direkt zu Angeboten oder Belegen.
 - **Belege:** Rechnungen/Kassenzettel als PDF oder Foto importieren und wahlweise **lokal** (PDF-Text/Tesseract OCR) oder nach ausdrücklicher Freigabe mit **ChatGPT** analysieren. Belege anschließend prüfen und **genau einer Zuordnungsart** zuweisen: angenommenes Angebot, Betrieb oder Eigenleistung. Die Budgetposition bleibt separat auswählbar; keine automatische Buchung.
 - **Finanzierung:** Kredite manuell erfassen oder Kreditunterlagen ausdrücklich mit ChatGPT auslesen. Die kompakte Übersicht trennt Darlehensrahmen, ausgezahlte, verwendete und verfügbare Beträge. Mittelabrufe unterstützen das eigene Konto, Direktzahlungen an Firmen und Eigenkapitalerstattungen. Ausgezahlte Beträge können Rechnungen zugeordnet oder als sonstige, rücknehmbare Projektverwendung mit Nachweis dokumentiert werden.
 - **Stammdaten (`/stammdaten`):** Firmen und automatisch aus PDF-Angeboten übernommene Betriebe zentral pflegen: Ansprechpartner, weitere Kontakte, Telefonnummern, E-Mail, Website, Adresse und Notizen. Separate Gewerke und gemeinsam genutzte Rechnungs-/Kostenkategorien anlegen, umbenennen und – falls unverknüpft – löschen.
@@ -124,7 +124,7 @@ Stehen bereits nur 5.000 € Restbetrag auf dem Beleg, bleibt die Verrechnung be
 1. In der **linken Sidebar → Angebote** öffnen (`http://127.0.0.1:5055/angebote`).
 2. **PDF hochladen** → die App liest lokal aus und legt einen prüfbaren Entwurf an. Vor der Übernahme kannst du **jede erkannte Einzelposition aufklappen, ändern oder löschen** und **weitere Positionen etwa aus gesonderten Beiblättern hinzufügen**. Mengen, Einzelpreise, Netto-Positionsbeträge, Leistungsgruppen, optionale Positionen und PDF-Seiten lassen sich korrigieren. „Aus Menge × Einzelpreis berechnen“ schlägt auf Wunsch einen Betrag vor. Eine leere Positionsliste ist bei nicht lesbaren Scans erlaubt. Die Summe der nicht-optionalen Positionen wird mit dem geprüften Angebotsnetto verglichen; Differenzen und fehlende Beträge werden angezeigt, der **Bruttogesamtbetrag nie automatisch überschrieben**. Den Entwurf bei Bedarf zwischenspeichern und erst dann „Geprüft – in Liste übernehmen“ wählen. **Oder:** **Manuell erfassen** → Anbieter, Bruttosumme und Kategorie eintragen; direkt „Angebot speichern“ drücken.
 3. Alle Angebote in einer Liste nach Gewerk und Gesamtbetrag vergleichen. Die Liste zeigt höchstens sechs Kacheln gleichzeitig und scrollt bei weiteren Angeboten innerhalb des Bereichs. Stift und Mülleimer oben rechts öffnen die Bearbeitung beziehungsweise – soweit fachlich zulässig – das Löschen. Bei angenommenen Angeboten öffnet das Rechnungssymbol mit Zähler die zugeordneten Belege samt Abrechnungsstand in einem Dialog. **„Arbeitspaket zuordnen“** führt zur Zuordnung im Bauzeitenplan. **Annehmen** überträgt den Preis als beauftragten Wert in die Kostenprognose; Ablehnen behält das Angebot zum Vergleich ohne Kostenwirkung. Offene Entwürfe erscheinen nur bei Bedarf als kleines Symbol links neben **„Angebot erfassen“**.
-4. **Kosten & Budget** dient nur für Schätzungen, zusätzliche Ausgaben und die Gesamtübersicht. Wenn ein Angebot einer Planposition zugeordnet ist, ersetzt der angenommene Preis deren Schätzwert; ohne Zuordnung gilt es als zusätzlicher Auftrag.
+4. **Kosten & Budget** fasst Finanzierung, Prognose, Beauftragungen, gebuchte Rechnungen und Zahlungen zusammen. Die Daten werden dort nicht nochmals gepflegt. Wenn ein Angebot einer vorhandenen Planposition zugeordnet ist, ersetzt der angenommene Preis deren Schätzwert; ohne Zuordnung gilt es als zusätzlicher Auftrag.
 5. **Rechnungen & Belege** erfasst tatsächliche Rechnungen, Zahlungen und Finanzierung.
 
 Es ist **keine zusätzliche Datenbankmigration** für die einfache Bedienung oder den Positionseditor nötig. Bereits gespeicherte PDF-Einzelpositionen liegen in der bestehenden Angebotstabelle und bleiben erhalten. Nach der Übernahme in die Angebotsliste sind die Positionen gegen nachträgliche Änderungen gesperrt; zunächst ggf. vor der Annahme den PDF-Entwurf korrigieren. Vollständige Sicherungen umfassen weiterhin alle Angebote und privaten PDFs.
@@ -323,13 +323,13 @@ Die separate Projektdokumentation verändert keine vorhandenen Angebots-PDFs, Re
 
 ## Dezente Upload-Einstiege und durchgängige Bearbeitungsdialoge (Oktober 2026)
 
-Datei-Uploads sind auf den Arbeitsseiten nicht mehr als dauerhaft große Formulare sichtbar. Für **Angebote**, **Rechnungen & Belege**, **Projektdokumente** und zugeordnete **Kostenunterlagen** gibt es einen kurzen Upload-Button. Der einheitliche, responsive Dialogstil liegt in `static/workflow-dialogs.css` und unterstützt Hell/Dunkel. Die bereits vorhandenen Kreditdialoge verwenden für optionale ChatGPT-Kreditdokumente und Kredit-Anhänge standardmäßig geschlossene, aufklappbare Abschnitte.
+Datei-Uploads sind auf den Arbeitsseiten nicht mehr als dauerhaft große Formulare sichtbar. Für **Angebote**, **Rechnungen & Belege** und **Projektdokumente** gibt es einen kurzen Upload-Button. Der einheitliche, responsive Dialogstil liegt in `static/workflow-dialogs.css` und unterstützt Hell/Dunkel. Die bereits vorhandenen Kreditdialoge verwenden für optionale ChatGPT-Kreditdokumente und Kredit-Anhänge standardmäßig geschlossene, aufklappbare Abschnitte.
 
 Bei **Angeboten** bleibt nach lokaler oder ChatGPT-PDF-Analyse derselbe Dialog geöffnet und zeigt den importierten Entwurf mit Korrekturen der Angebotsdaten und sämtlichen Einzelpositionen. Speichern, Prüfen, Freigeben und Hochladen überarbeiteter Versionen gehören zum bestehenden Ablauf; die Angebotsliste und das KI-Vergleichswerkzeug bleiben auf der Hauptseite. Über „Offene Entwürfe prüfen“ lässt sich der Bearbeitungsdialog erneut öffnen. Neue Versionen können an vorhandene Angebote angehängt und anschließend im Dialog geprüft werden.
 
 Bei **Rechnungen** öffnet die Analyse den vollständigen Prüfschritt **im selben Modal**: Rechnungsbeträge, USt, Lohnkosten, Zuordnung zu Angebot/Betrieb/Eigenleistung, Notizen, Originalbeleg, Speichern und verbindliches Buchen funktionieren dort weiter. Klicks auf bestehende Belege in der Übersicht öffnen ebenfalls den Bearbeitungsdialog. Entwürfe, gebuchte und stornierte Rechnungen bleiben bearbeitbar; bestehende Zahlungen, Stornohistorien und Angebotsabrechnungen werden serverseitig geprüft, damit eine Korrektur keine inkonsistente Buchung erzeugt.
 
-Bei **Projektdokumenten** folgt auf den Upload unmittelbar der Bearbeitungsdialog für Titel, Klassifikation, Schlagworte und aktuellen Dokumentstatus. Die zentrale Bibliothek bleibt ohne Uploadformular sichtbar. Bei **Kosten & Budget** wurden die bestehenden Dokumenten-Zuordnungsfelder zusammen mit dem Dateiupload in einen Dialog verlegt. Dateien werden nur nach der bisherigen bewussten Benutzeraktion verarbeitet.
+Bei **Projektdokumenten** folgt auf den Upload unmittelbar der Bearbeitungsdialog für Titel, Klassifikation, Schlagworte und aktuellen Dokumentstatus. Die zentrale Bibliothek bleibt ohne Uploadformular sichtbar. **Kosten & Budget** enthält keine Upload- oder Bearbeitungsdialoge mehr; vorhandene Kostenplan- und Altdaten bleiben erhalten und fließen weiterhin in die Prognose ein.
 
 Alle Uploaddialoge behalten Lade- und Fehlermeldungen sichtbar, während ein Vorgang läuft; die Schließen-Aktion wird während eines aktiven Uploads blockiert. Es wurden keine Datenbanktabellen, Endpunkte, Backups oder fachlichen Beleg-/Angebots-Freigaberegeln verändert. Die vorhandene UI-Bibliothek musste nicht gewechselt werden.
 
@@ -340,8 +340,8 @@ Unter **Angebote**, **Rechnungen & Belege** und **Projektdokumente** können jet
 
 Angebote und Rechnungen unterstützen die Wahl **lokal / ChatGPT** wie bisher. ChatGPT wird ausschließlich nach expliziter Freigabe der Plannutzung und mit dem gewählten Modell gestartet. Keine API-Schlüssel, kein kostenpflichtiger Fallback, keine automatische Buchung. Die Hintergrundaufträge verwenden dieselben bestehenden geprüften Importfunktionen, sodass PDF-Entwürfe, Einzelpositionen, Lohnkosten und Rechnungszuordnungen nach Abschluss **unverändert manuell geprüft** werden können.
 
-In allen Bereichen mit automatischer Analyse – Angebote, Angebotsversionen, Rechnungen,
-Kostenplanung, Projektdokumente und Kreditanalyse – wählst du **Verarbeitung**:
+In allen sichtbaren Bereichen mit automatischer Analyse – Angebote, Angebotsversionen,
+Rechnungen, Projektdokumente und Kreditanalyse – wählst du **Verarbeitung**:
 
 - **Im Vordergrund – direkt prüfen** (Voreinstellung): Ein modaler Busy-Zustand sperrt
   Seite und Dialog bis zum endgültigen Ergebnis. Danach öffnet sich die Prüfung automatisch.
@@ -380,7 +380,7 @@ Die Importübersicht zeigt nur noch offene, laufende, fehlerhafte und **noch nic
 
 „Deine Angebote“ zeigt kompakte, responsive Kacheln mit Anbieter, Gewerk, Status und Bruttosumme. Annehmen, Ablehnen und Bearbeiten bleiben direkte Schnellaktionen, sofern der fachliche Status dies erlaubt. Ein Klick auf den Kachelkopf öffnet zusätzliche Angaben, Positionsübersicht, Versionshistorie und – bei beauftragten Angeboten – den Rechnungsfortschritt. Bestehende Regeln zum Schutz angenommener Angebote gelten unverändert.
 
-Die primären Upload-/Erfassungsbuttons befinden sich bei Angeboten, Rechnungen, Kostenunterlagen und Projektdokumenten sowie „+ Kredit erfassen“ in der **rechten Ecke des jeweiligen Seiten-Headers** (gemeinsame Klasse `phb-action-header`); sekundäre Aktionen bleiben verfügbar.
+Die primären Upload-/Erfassungsbuttons befinden sich bei Angeboten, Rechnungen und Projektdokumenten in der **rechten Ecke des jeweiligen Seiten-Headers** (gemeinsame Klasse `phb-action-header`); sekundäre Aktionen bleiben verfügbar. Die Kostenübersicht besitzt bewusst keine Erfassungsaktion.
 
 Beim ersten Initialisieren der Stammdaten werden die üblichen Renovierungsgewerke genau **einmal** angelegt. Manuelle Änderungen oder Löschungen erscheinen nicht beim Neustart wieder. Unter Stammdaten gibt es für **Gewerke** und für **Rechnungs-/Kostenkategorien** jeweils eine ausdrücklich bestätigte Schaltfläche zur Wiederherstellung der Standards. Die bestehenden Anfangskategorien stammen unverändert aus `receipt_parser.CATEGORIES`. Die Rücksetzung fügt fehlende Standardbezeichnungen hinzu und entfernt nur unbenutzte eigene Einträge. Bereits mit Firmen, Bauzeitenplanaufgaben, Rechnungen, Angeboten oder Kostenpositionen verknüpfte Bezeichnungen werden nicht entfernt, sondern im Ergebnis als erhalten ausgewiesen. Bestehende Zuordnungen, Buchungen und Beträge bleiben erhalten.
 
@@ -393,27 +393,17 @@ Der Bereich **„Rechnungen bezahlen“** liegt jetzt im bestehenden Belegbearbe
 
 Die globale **Importwarteschlange** bietet pro abgeschlossenem/fehlgeschlagenem/unterbrochenem Auftrag „Ausblenden“ sowie die Sammelaktion „Erledigte ausblenden“. Offene und gerade laufende Aufträge sind geschützt. Die Jobs bleiben für die technische Nachvollziehbarkeit als archivierte Datensätze erhalten, verschwinden aber aus der aktiven Übersicht; Originaldokumente, Angebote und Rechnungen werden **nicht** gelöscht. Für fehlgeschlagene Aufträge wird die temporäre Warteschlangendatei beim endgültigen manuellen Ausblenden entfernt; eine erneute Analyse erfordert dann einen neuen Upload. Bereits fachlich übernommene Aufträge verschwinden ebenfalls aus der aktiven Liste.
 
-## Kostenplan importieren, energetische Planung und Firmenergänzung (Migration 0015)
+## Bestehende Kostenpläne, energetische Planung und Firmenergänzung (Migration 0015)
 
-Unter **Kosten & Budget → Kostenplanung** kannst du weiterhin Positionen manuell
-anlegen oder eine Kostenaufstellung aus PDF, XLSX, CSV, DOCX, TXT oder Bildern
-hochladen. Bis zu acht Dateien werden über dieselbe serielle Hintergrundwarteschlange
-wie Angebote und Rechnungen analysiert: lokal oder ausdrücklich mit ChatGPT.
-Excel-/CSV-Tabellen sollten Spalten wie **Position**, **Gewerk**, **Schätzung** oder
-**Gesamtpreis** besitzen. XLSX-Formeln brauchen gespeicherte Ergebniswerte; alte
-`.xls`-Dateien bitte vorher als `.xlsx` oder CSV speichern.
+Früher angelegte oder importierte Kostenplanpositionen bleiben unverändert in der
+Datenbank und bilden weiterhin die Schätzbasis der Prognose. Die aktuelle Oberfläche
+von **Kosten & Budget** ist eine reine Auswertung und bietet deshalb keine eigene
+manuelle Erfassung und keinen Kostenplan-Upload mehr. Neue Angebote, Rechnungen,
+Zahlungen und Finanzierungsdaten werden in ihren jeweiligen Fachbereichen gepflegt.
 
-Nach der Analyse führt **Prüfen und bearbeiten** zum Entwurf. Beträge, Gewerke,
-Leistungsart, Firmenhinweise und Notizen lassen sich ändern; Zeilen lassen sich
-entfernen und ergänzen. Summen-/Gruppenzeilen zählen nicht zur Prognose.
-Vollständigkeit und **Bruttobeträge** ausdrücklich prüfen. Entwürfe können ohne
-Kostenwirkung gespeichert werden. Erst die bestätigte Übernahme ergänzt die
-bestehende Planung um neue **Schätzungen**, ohne alte Positionen zu überschreiben.
-Bereits manuell erfasste Positionen vorher aus dem Entwurf entfernen, um doppelte
-Ansätze zu vermeiden. Das Original bleibt geschützt in der Dokumentenbibliothek
-und im Komplettbackup erhalten. Ein identisches Dokument wird nicht erneut importiert.
-Die lokale Extraktion ist ein Hilfsmittel; beliebige Architektenlayouts können
-nicht zuverlässig automatisch rekonstruiert werden.
+In der Auswertung ersetzt ein angenommener Auftrag den verknüpften Schätzwert.
+Gebuchte Rechnungen erhöhen den Ausblick, sobald sie den bisherigen Plan- oder
+Auftragsstand übersteigen. Entwürfe bleiben bis zur Buchung ohne Kostenwirkung.
 
 **Energetische Planung** ist ein eigener Sidebar-Bereich. Bestehende Förderungen
 bleiben erhalten. Fördergeber, Programm, Status, Fristen, Quellen und Verknüpfungen

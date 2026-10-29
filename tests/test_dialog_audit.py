@@ -51,11 +51,12 @@ class DialogAuditTests(unittest.TestCase):
         self.assertIn("receiptDialog.addEventListener('cancel'",js)
         self.assertIn("if(uploading||receiptBusy)event.preventDefault()",js)
 
-    def test_cost_and_quote_dialogs_cannot_close_mid_save(self):
+    def test_cost_dashboard_has_no_save_and_quote_dialog_cannot_close_mid_save(self):
         cost=(STATIC/'costs.js').read_text(encoding='utf-8')
         quote=(STATIC/'offers.js').read_text(encoding='utf-8')
-        self.assertIn('editorBusy=true',cost)
-        self.assertIn("el('editor').addEventListener('cancel'",cost)
+        self.assertNotIn("method:'POST'",cost)
+        self.assertNotIn("method:'PUT'",cost)
+        self.assertIn("dialog:'costDetailsDialog'",cost)
         self.assertIn('offerEditBusy=true',quote)
         self.assertIn("editDialog.addEventListener('cancel'",quote)
 

@@ -1,81 +1,25 @@
 <!doctype html>
-<html lang="de"><head><link rel="stylesheet" href="/static/vendor-bootstrap-5.3.6.min.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Kosten & Budget · Sanierungsprojekt</title><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/kosten.css"><meta name="theme-color" content="#0e7782"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="apple-touch-icon" href="/static/icons/icon-192.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/static/shell.css"><link rel="stylesheet" href="/static/chatgpt.css"><link rel="stylesheet" href="/static/ui.css"><link rel="stylesheet" href="/static/workflow-dialogs.css"><script src="/static/ui.js"></script><link rel="stylesheet" href="/static/phb-workflow.css"><script src="/static/phb-workflow.js"></script><link rel="stylesheet" href="/static/planung.css"><link rel="stylesheet" href="/static/buttons.css"></head>
+<html lang="de"><head><link rel="stylesheet" href="/static/vendor-bootstrap-5.3.6.min.css"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Kosten & Budget · Sanierungsprojekt</title><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/kosten.css"><meta name="theme-color" content="#0e7782"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="apple-touch-icon" href="/static/icons/icon-192.png"><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/static/shell.css"><link rel="stylesheet" href="/static/chatgpt.css"><link rel="stylesheet" href="/static/ui.css"><link rel="stylesheet" href="/static/buttons.css"><link rel="stylesheet" href="/static/phb-workflow.css"><script src="/static/ui.js"></script><script src="/static/phb-workflow.js"></script></head>
 <body class="phb-app phb-page-kosten">
 {% set phb_active = 'kosten' %}{% set phb_title = 'Kosten & Budget' %}{% include '_shell_open.html' %}
-
-
 <main id="phbMain" class="budget-main phb-main">
-<div class="heading phb-action-header"><div><span class="phb-page-kicker">Finanzen / Projektbudget</span><h1>Kosten & Budget</h1><p>Hier siehst du dein Budget, die geplanten Kosten und die Auswirkungen angenommener Angebote. <a href="/angebote">Angebote erfassen und vergleichen →</a></p></div><div class="phb-header-actions"><button id="openCostUpload" type="button" class="primary phb-cost-doc-link">+ Dokument zuordnen</button></div></div>
-<div class="kpi-grid">
-<article class="kpi"><span>Projektbudget</span><strong id="budget">–</strong><small>Kreditrahmen + Eigenkapital aus Finanzierung</small></article>
-<article class="kpi main-kpi"><span>Aktuelle Gesamtkostenprognose</span><strong id="planned">–</strong><small>Schätzung oder ausgewählte/bestellte Leistung</small></article>
-<article class="kpi"><span>Abweichung vom Budget</span><strong id="overrun">–</strong><small>Positiv = über Budget</small></article>
-<article class="kpi"><span>Bereits beauftragt</span><strong id="committed">–</strong><small>Aus eingetragenen Aufträgen</small></article>
-<article class="kpi"><span>Bereits bezahlt</span><strong id="paid">–</strong><small>Aus tatsächlichen Zahlungen</small></article>
-<article class="kpi"><span>Offener Finanzbedarf</span><strong id="remaining">–</strong><small>Prognose minus bisher bezahlt</small></article>
-<article class="kpi"><span>Eigenleistungsbudget</span><strong id="ownbudget">–</strong><small>Material/Fremdkosten der Eigenleistungspositionen</small></article>
-<article class="kpi"><span>Erfasste Eigenleistungszeit</span><strong id="hours">–</strong><small id="ownvalue">Kalkulatorischer Arbeitswert separat</small></article>
-</div>
-<div class="alert" id="budgetNotice">Schätzungen sind keine Beauftragungen. Nur ausdrücklich angenommene Angebote wirken sich als Auftrag auf die Prognose aus.</div>
-<section class="panel budget-panel"><div class="panelbar"><div><h2>Kosten nach Gewerk</h2><p>Schätzung und aktuelle Prognose im Vergleich · Förderungen nicht vorab abgezogen</p></div></div><div class="tablewrap"><table><thead><tr><th>Gewerk</th><th class="amount">Ursprüngliche Schätzung</th><th class="amount">Aktuelle Prognose</th><th class="amount">Bereits bezahlt</th><th class="amount">Differenz</th></tr></thead><tbody id="categories"></tbody></table></div></section>
-<section class="panel budget-panel"><div class="panelbar"><div><h2>Kostenplanung</h2><p>Welche Arbeiten stehen an und was werden sie ungefähr kosten? Kostenaufstellungen vom Architekten hochladen oder eigene Schätzungen manuell anlegen. Alle Beträge vor der Übernahme prüfen.</p></div></div><div class="budget-tools"><input id="budgetSearch" type="search" aria-label="Kostenplan durchsuchen" placeholder="Position oder Gewerk suchen"><div class="budget-actions"><button id="openPlanUpload" data-import-kind="costplans" type="button" class="primary">Kostenplanung hochladen</button><button id="addLine" type="button">+ Planposition manuell</button></div></div><div class="tablewrap"><table><thead><tr><th>Gewerk / Position</th><th>Art</th><th>Firmenhinweis</th><th class="amount">Schätzung</th><th class="amount">Aktuelle Prognose</th><th>Basis</th><th></th></tr></thead><tbody id="budgetrows"></tbody></table></div><p class="section-note">Ein Angebot für eine dieser Positionen legst du unter <a href="/angebote">Angebote</a> an. Erst die Annahme ersetzt deine Schätzung durch den angebotenen Preis.</p></section>
-<section class="panel budget-panel"><div class="panelbar"><h2>Kostenplan-Importe prüfen</h2><button id="refreshPlanImports" type="button">Aktualisieren</button></div><p id="planImportNotice" role="status"></p><div id="planImportList"></div></section>
-<section class="panel budget-panel" id="eigenleistungen"><div class="panelbar"><div><h2>Eigenleistungen</h2><p>Material- und Fremdkosten bleiben in der Gesamtprognose, eigene Arbeitsstunden werden separat dokumentiert.</p></div><button id="addOwnWork" class="primary">+ Eigenleistung erfassen</button></div>
-<div class="tablewrap"><table><thead><tr><th>Eigenleistung</th><th class="amount">Planansatz Material / Fremdkosten</th><th class="amount">Aktuelle Prognose</th><th class="amount">Erfasste Stunden</th><th class="amount">Kalk. Arbeitswert</th><th class="amount">Verknüpfte Einträge</th><th></th></tr></thead><tbody id="ownworkrows"></tbody></table></div><p class="section-note">Die kalkulatorische Bewertung der eigenen Zeit ist keine Auszahlung und erhöht die Projektkosten nicht. Für Materialausgaben kannst du einen Kosteneintrag direkt dieser Eigenleistung zuordnen.</p></section>
-<section class="panel budget-panel" id="extra-expenses"><div class="panelbar"><div><h2>Weitere Kosten & Eigenleistungen</h2><p>Hier erfasst du zusätzliche Kosten, die <strong>kein Angebot</strong> sind. Angenommene Handwerkerangebote verwaltest du ausschließlich unter <a href="/angebote">Angebote</a>.</p></div><button id="addCost" class="primary">+ Weitere Kosten erfassen</button></div><div class="tablewrap"><table><thead><tr><th>Gewerk</th><th>Leistung</th><th>Status</th><th>Zuordnung</th><th>Firma</th><th class="amount">Schätzung / Preis</th><th class="amount">Beauftragt</th><th class="amount">Bezahlt</th><th>Ausgewählt</th><th></th></tr></thead><tbody id="costrows"></tbody></table></div><p class="section-note">Angenommene Angebote fließen bereits in die Kennzahlen ein und werden nicht nochmals als weitere Kostenposition angezeigt. Rechnungen und Zahlungen erfasst du im Belegbereich.</p></section>
-<section class="panel budget-panel" id="kosten-unterlagen">
-  <div class="panelbar"><div><h2>Weitere Kostenunterlagen</h2><p>Verträge, Auftragsbestätigungen und sonstige zugeordnete Belege. Hochladen, zuordnen oder löschen nur hier; in „Projektdokumente“ erscheinen die Originale schreibgeschützt.</p></div></div>
-  <div class="tablewrap"><table><thead><tr><th>Dokument</th><th>Art</th><th>Firma</th><th>Zuordnung</th><th>Hinweis</th><th>Datum</th><th></th></tr></thead><tbody id="documents"></tbody></table></div>
-</section>
-<p class="section-note">Förderungen verwaltest du unter <a href="/energieplanung">Energetische Planung →</a>. Die Bruttokosten bleiben hier vollständig sichtbar.</p>
-
-</main>
-  </div>
-</div>
-<dialog id="planUploadDialog" class="phb-workflow-dialog" aria-labelledby="planUploadTitle">
- <div class="phb-workflow-head"><h2 id="planUploadTitle">Kostenplanung hochladen</h2><button id="closePlanUpload" type="button">Schließen</button></div>
- <form id="planUploadForm" data-import-kind="costplans" class="phb-workflow-body">
-  <p>1. Dateien auswählen → 2. analysieren → 3. Positionen prüfen und anpassen → 4. als Schätzungen übernehmen. Bestehende Planpositionen bleiben erhalten.</p>
-  <label>Dateien (bis zu 8, je 15 MB)<input name="files" type="file" multiple required accept=".pdf,.xlsx,.csv,.txt,.docx,.jpg,.jpeg,.png,.webp"></label>
-  <label>Analyseart<select name="analysis_mode"><option value="local">Lokal analysieren</option><option value="ai">Mit ChatGPT analysieren</option></select></label>
-  <p>Excel/CSV: Spalten „Position“, „Gewerk“, „Schätzung“ oder „Gesamtpreis“. Für PDF/Scans werden Text und lokale OCR verwendet. ChatGPT erhält nur die gewählten Dateien.</p>
-  <p id="planUploadMessage" role="status"></p><button class="primary" type="submit">Analyse starten</button>
- </form>
-</dialog>
-<dialog id="planReviewDialog" class="phb-plan-review" aria-labelledby="planReviewTitle">
- <div class="phb-workflow-head"><h2 id="planReviewTitle">Kostenplanung prüfen</h2><button id="closePlanReview" type="button">Schließen</button></div>
- <div class="phb-workflow-body"><p id="planWarnings"></p><a id="planOriginal" target="_blank" rel="noopener">Original herunterladen</a>
- <iframe id="planPreview" title="Original der Kostenplanung" hidden></iframe>
- <form id="planReviewForm"><div class="tablewrap"><table><thead><tr><th>Position / Notiz</th><th>Gewerk</th><th>Schätzung (€)</th><th>Art</th><th>Firmenhinweis</th><th>Nur Gruppe</th><th></th></tr></thead><tbody id="planReviewRows"></tbody></table></div>
- <button id="addPlanReviewRow" type="button">+ Position ergänzen</button><p id="planReviewTotal"></p>
- <label><input id="planGrossConfirmed" type="checkbox"> Ich habe Vollständigkeit, Bruttobeträge und Summenzeilen geprüft. Nur Einzelpositionen werden summiert.</label>
- <p id="planReviewMessage" role="alert"></p><div class="dialog-actions"><button id="savePlanDraft" type="button">Entwurf speichern</button><button type="submit" class="primary">Geprüfte Positionen zur Kostenplanung hinzufügen</button></div></form></div>
-</dialog>
-<dialog id="costDocumentDialog" class="phb-workflow-dialog phb-cost-workflow" aria-labelledby="costDocumentTitle">
-  <div class="phb-workflow-head"><div><h2 id="costDocumentTitle">Dokument einer Kostenposition zuordnen</h2><p>Firma und Position prüfen und die Datei anschließend lokal speichern.</p></div><button id="closeCostUpload" type="button" class="subtle">Schließen</button></div>
-  <div class="phb-workflow-body">
-<form id="uploadForm" class="upload-form"><label>Datei auswählen <input type="file" name="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt" required></label><label>Typ <select name="kind"><option>Auftragsbestätigung</option><option>Vertrag</option><option>Rechnung</option><option>Sonstiges</option></select></label><label>Firma <select name="contractor_id" id="fileContractor"></select></label><label>Planposition <select name="budget_line_id" id="fileBudget"></select></label><label>Kostenposition <select name="cost_item_id" id="fileCost"></select></label><label>Notiz <input name="notes" placeholder="Optional"></label><button class="primary" type="submit">Datei speichern</button></form>
-<p class="section-note" id="uploadMessage" role="status">Die Datei wird lokal abgelegt und in den Komplettbackups mitgesichert.</p></div></dialog>
-<dialog id="editor" aria-labelledby="editTitle"><div class="dialog-head"><h2 id="editTitle"></h2><button type="button" id="closeDialog" class="subtle">Schließen</button></div><form id="editForm"><div class="dialog-grid" id="editFields"></div><p id="formError" role="alert"></p><div class="dialog-actions"><button type="button" id="remove" class="danger">Löschen</button><span style="flex:1"></span><button type="button" id="cancelDialog" class="subtle">Abbrechen</button><button type="submit" class="primary">Speichern</button></div></form></dialog>
-<script src="/static/costs.js"></script><script src="/static/cost_plan_imports.js"></script><script>if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js").catch(console.warn);</script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
-  <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
-  <h2 id="phbAITitle">ChatGPT verbinden</h2>
-  <p id="phbAIConnection">Verbindung wird geprüft …</p>
-  <div class="phb-ai-controls">
-    <button type="button" id="phbAIConnect" class="phb-ai-primary">Mit ChatGPT anmelden</button>
-    <button type="button" id="phbAIDisconnect" hidden>Verbindung trennen</button>
-    <label id="phbAIModelWrap" hidden>ChatGPT-Modell <select id="phbAIModel"></select></label>
-  </div>
-  <div class="phb-ai-warning">
-    <strong>Keine API-Schlüssel und kein kostenpflichtiger Fallback.</strong>
-    <p>Wichtig: ChatGPT kann nach Erreichen des Plankontingents zusätzliche Credits verwenden,
-       falls du dies in deinem ChatGPT-Konto für Apps erlaubt hast. ProjectHouseBuilder kann
-       diese Kontoeinstellung nicht auslesen und daher keine absolute Kostensperre garantieren.</p>
-    <p><a href="https://chatgpt.com/#settings/usage" target="_blank" rel="noopener noreferrer">ChatGPT Einstellungen → Nutzung / App-Limits öffnen ↗</a></p>
-    <label class="phb-ai-confirm"><input type="checkbox" id="phbAINoCredits"> Ich habe die Nutzung kostenpflichtiger Credits für Apps in ChatGPT deaktiviert und erlaube ausdrücklich KI-Anfragen aus dieser Anwendung.</label>
-  </div>
-  <p class="phb-ai-disclosure">Nur mit KI gestartete Anfragen übertragen ausgewählte PDF- oder Projektinformationen an OpenAI. Ergebnisse bleiben Vorschläge, bis du sie prüfst und übernimmst. Zugangstokens bleiben lokal außerhalb der Projektbackups.</p>
-  <p id="phbAIMessage" role="status"></p>
-</dialog>
-<script src="/static/chatgpt.js"></script>
-<script src="/static/shell.js"></script></body></html>
+  <div class="heading phb-action-header"><div><span class="phb-page-kicker">Finanzen / Projektsteuerung</span><h1>Kosten & Budget</h1><p>Automatische Gesamtsicht aus Angeboten, Aufträgen, Rechnungen und Finanzierung. Änderungen nimmst du direkt im jeweiligen Quellbereich vor.</p></div></div>
+  <section class="cost-kpis" aria-label="Kostenkennzahlen">
+    <article class="cost-kpi"><span>Finanzierungsrahmen</span><strong id="budget">–</strong><small>Kredite und eingebrachtes Eigenkapital</small></article>
+    <article class="cost-kpi cost-kpi-primary"><span>Kostenprognose</span><strong id="forecast">–</strong><small>Planwerte, Aufträge und ungeplante Belege</small></article>
+    <article class="cost-kpi"><span>Bezahlt</span><strong id="paid">–</strong><small>Tatsächlich erfasste Zahlungen</small></article>
+    <article class="cost-kpi"><span id="bufferLabel">Puffer</span><strong id="buffer">–</strong><small id="bufferHint">Finanzierungsrahmen minus Prognose</small></article>
+  </section>
+  <section class="panel cost-pipeline-panel" aria-labelledby="pipelineTitle"><div class="cost-panel-head"><div><h2 id="pipelineTitle">Kostenkette</h2><p>Vom aktuellen Ausblick bis zur tatsächlichen Zahlung.</p></div></div><div id="costPipeline" class="cost-pipeline"></div></section>
+  <section id="costIssuesPanel" class="panel cost-issues-panel" aria-labelledby="issuesTitle" hidden><div class="cost-panel-head"><div><h2 id="issuesTitle">Zu prüfen</h2><p>Diese Punkte brauchen eine Entscheidung im jeweiligen Quellbereich.</p></div></div><div id="costIssues" class="cost-issues"></div></section>
+  <section class="panel cost-overview-panel" aria-labelledby="overviewTitle">
+    <div class="cost-panel-head"><div><h2 id="overviewTitle">Kostenauswertung</h2><p>Gruppiere dieselben Projektdaten nach dem Blickwinkel, den du gerade brauchst.</p></div><div class="cost-view-tools"><label class="cost-search"><span class="visually-hidden">Kostenauswertung durchsuchen</span><svg class="phb-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#search"></use></svg><input id="costSearch" type="search" placeholder="Position, Firma, Gewerk …" autocomplete="off"></label><label class="cost-group"><span>Gruppieren nach</span><select id="costGroup"><option value="category">Gewerk / Kategorie</option><option value="kind">Ausführungsart</option><option value="phase">Bauphase</option><option value="task">Arbeitspaket</option><option value="company">Firma</option></select></label></div></div>
+    <p id="costResultCount" class="cost-result-count" aria-live="polite"></p>
+    <div class="tablewrap"><table><thead><tr><th id="costGroupHeading">Gewerk / Kategorie</th><th class="amount">Prognose</th><th class="amount">Beauftragt</th><th class="amount">Abgerechnet</th><th class="amount">Bezahlt</th><th class="amount">Noch offen</th><th><span class="visually-hidden">Details</span></th></tr></thead><tbody id="costOverviewRows"></tbody></table></div>
+  </section>
+  <section class="cost-source-note" aria-label="Datenquellen"><strong>Wo werden die Daten gepflegt?</strong><span><a href="/angebote">Angebote und Aufträge</a>, <a href="/belege">Rechnungen und Zahlungen</a>, <a href="/finanzierung">Kredite und Eigenkapital</a> sowie <a href="/">Bauphasen und Arbeitspakete</a>.</span></section>
+</main></div></div>
+<dialog id="costDetailsDialog" class="cost-details-dialog" aria-labelledby="costDetailsTitle"><div class="cost-dialog-head"><div><span class="phb-page-kicker">Zusammensetzung</span><h2 id="costDetailsTitle">Details</h2></div><button type="button" id="closeCostDetails" class="subtle">Schließen</button></div><div class="cost-dialog-body"><p id="costDetailsSummary"></p><div class="tablewrap"><table><thead><tr><th>Position</th><th>Basis</th><th class="amount">Prognose</th><th class="amount">Abgerechnet</th><th class="amount">Bezahlt</th><th></th></tr></thead><tbody id="costDetailsRows"></tbody></table></div></div></dialog>
+<script src="/static/costs.js"></script><script>if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js").catch(console.warn);</script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+  <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form><h2 id="phbAITitle">ChatGPT verbinden</h2><p id="phbAIConnection">Verbindung wird geprüft …</p><div class="phb-ai-controls"><button type="button" id="phbAIConnect" class="phb-ai-primary">Mit ChatGPT anmelden</button><button type="button" id="phbAIDisconnect" hidden>Verbindung trennen</button><label id="phbAIModelWrap" hidden>ChatGPT-Modell <select id="phbAIModel"></select></label></div><div class="phb-ai-warning"><strong>Keine API-Schlüssel und kein kostenpflichtiger Fallback.</strong><p>Wichtig: ChatGPT kann nach Erreichen des Plankontingents zusätzliche Credits verwenden, falls du dies in deinem ChatGPT-Konto für Apps erlaubt hast. ProjectHouseBuilder kann diese Kontoeinstellung nicht auslesen und daher keine absolute Kostensperre garantieren.</p><p><a href="https://chatgpt.com/#settings/usage" target="_blank" rel="noopener noreferrer">ChatGPT Einstellungen → Nutzung / App-Limits öffnen ↗</a></p><label class="phb-ai-confirm"><input type="checkbox" id="phbAINoCredits"> Ich habe die Nutzung kostenpflichtiger Credits für Apps in ChatGPT deaktiviert und erlaube ausdrücklich KI-Anfragen aus dieser Anwendung.</label></div><p class="phb-ai-disclosure">Nur mit KI gestartete Anfragen übertragen ausgewählte PDF- oder Projektinformationen an OpenAI. Ergebnisse bleiben Vorschläge, bis du sie prüfst und übernimmst. Zugangstokens bleiben lokal außerhalb der Projektbackups.</p><p id="phbAIMessage" role="status"></p>
+</dialog><script src="/static/chatgpt.js"></script><script src="/static/shell.js"></script></body></html>

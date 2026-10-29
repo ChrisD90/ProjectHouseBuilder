@@ -2112,11 +2112,15 @@ def budget_summary(items):
     previews,basis,extras=forecast_lines(lines,items)
     # Reviewed receipts are tracked separately from quotations and contracts.
     booked=db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht')).all()
-    receipt_by_line={};unplanned_receipts=[]
+    receipt_by_line={};receipt_line={};unplanned_receipts=[]
     for receipt in booked:
-        if receipt.budget_line_id in previews:
-            receipt_by_line.setdefault(receipt.budget_line_id,[]).append(receipt)
-        elif receipt.cost_item_id and db.session.get(CostItem,receipt.cost_item_id):
+        item=db.session.get(CostItem,receipt.cost_item_id) if receipt.cost_item_id else None
+        line_id=(receipt.budget_line_id if receipt.budget_line_id in previews else
+                 item.budget_line_id if item and item.budget_line_id in previews else None)
+        if line_id:
+            receipt_by_line.setdefault(line_id,[]).append(receipt)
+            receipt_line[receipt.id]=line_id
+        elif item:
             # An already forecast unlinked contractor item is not a second new expense.
             pass
         else:
@@ -2153,7 +2157,7 @@ def budget_summary(items):
         group=grouped.setdefault(x.category,{'category':x.category,'estimate':0,'planned':0,'paid':0})
         group['planned']+=max(effective_offer(x),booked_by_item.get(x.id,0));group['paid']+=x.paid
     for r in booked:
-        category=next((line.category for line in active if line.id==r.budget_line_id),r.category)
+        category=next((line.category for line in active if line.id==receipt_line.get(r.id)),r.category)
         group=grouped.setdefault(category,{'category':category,'estimate':0,'planned':0,'paid':0})
         group['paid']+=float(r.paid_amount or 0)
     for r in unplanned_receipts:
@@ -2171,6 +2175,117 @@ def budget_summary(items):
             'receipt_drafts':db.session.scalar(select(db.func.count(Receipt.id)).where(Receipt.status=='Entwurf')) or 0,
             'categories':[{'category':k,'estimate':round(v['estimate'],2),'planned':round(v['planned'],2),'paid':round(v['paid'],2)} for k,v in grouped.items()],
             'line_forecasts':previews,'line_basis':basis,'additional_items':len(extras)}
+
+
+def cost_dashboard(items, summary):
+    """Build read-only, de-duplicated rows for the cost overview."""
+    lines={x.id:x for x in all_budget_lines() if x.active and not x.is_group}
+    tasks={x.id:x for x in all_tasks()}
+    phases={x.id:x for x in db.session.scalars(select(BuildPhase)).all()}
+    contractors={x.id:x for x in db.session.scalars(select(Contractor)).all()}
+    offers={x.id:x for x in db.session.scalars(select(Offer)).all()}
+    valid=[x for x in items if x.state not in ('Alternative','Abgelehnt')]
+    rows={}
+
+    def task_values(item=None):
+        task=tasks.get(item.task_id) if item and item.task_id else None
+        phase=phases.get(task.phase_id) if task and task.phase_id else None
+        contractor=contractors.get(item.contractor_id) if item and item.contractor_id else None
+        offer=offers.get(item.offer_id) if item and item.offer_id else None
+        return {
+            'trade':task.trade if task else '',
+            'kind':(item.kind if item else '') or (task.execution_type if task else ''),
+            'phase':phase.title if phase else (task.phase if task else ''),
+            'task':f'{task.code} · {task.name}' if task else '',
+            'company':contractor.name if contractor else (offer.vendor if offer else ''),
+        }
+
+    for line in lines.values():
+        rows[f'line:{line.id}']={
+            'id':f'line:{line.id}','title':line.title,'category':line.category,
+            'trade':'','kind':line.kind,'phase':'','task':'','company':line.company_hint or '',
+            'forecast':float(summary['line_forecasts'].get(line.id,0)),
+            'committed':0.0,'invoiced':0.0,'paid':0.0,
+            'basis':summary['line_basis'].get(line.id,'Schätzung'),
+            'source':'Kostenplan','url':'/angebote',
+        }
+
+    for item in valid:
+        target=rows.get(f'line:{item.budget_line_id}') if item.budget_line_id else None
+        if target is None and item.budget_line_id is None:
+            target={
+                'id':f'item:{item.id}','title':item.title,'category':item.category,
+                **task_values(item),'forecast':float(effective_offer(item)),
+                'committed':0.0,'invoiced':0.0,'paid':0.0,
+                'basis':'Beauftragt' if item.state in ('Beauftragt','Abgeschlossen') else 'Zusätzliche Position',
+                'source':'Angebot' if item.offer_id else 'Kostenposition',
+                'url':'/angebote' if item.offer_id else '/belege',
+            }
+            rows[target['id']]=target
+        if target is None:
+            continue
+        values=task_values(item)
+        for key in ('trade','phase','task','company'):
+            if values[key] and not target[key]:target[key]=values[key]
+        if item.kind:target['kind']=item.kind
+        if item.state in ('Beauftragt','Abgeschlossen'):
+            target['committed']+=float(item.committed or 0)
+        target['paid']+=float(item.paid or 0)
+
+    booked=db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht').order_by(Receipt.id)).all()
+    item_by_id={x.id:x for x in items}
+    for receipt in booked:
+        item=item_by_id.get(receipt.cost_item_id)
+        line_id=receipt.budget_line_id or (item.budget_line_id if item else None)
+        target=rows.get(f'line:{line_id}') if line_id else rows.get(f'item:{receipt.cost_item_id}')
+        amount=float(_receipt_increment(receipt))
+        if target is None:
+            contractor=contractors.get(receipt.contractor_id)
+            kind='Eigenleistung' if receipt.assignment_type=='Eigenleistung' else 'Fremdleistung'
+            target={
+                'id':f'receipt:{receipt.id}','title':receipt.invoice_number or receipt.original_name or 'Beleg',
+                'category':receipt.category or 'Sonstiges','trade':'','kind':kind,
+                'phase':'','task':'','company':contractor.name if contractor else (receipt.supplier or ''),
+                'forecast':amount,'committed':0.0,'invoiced':0.0,'paid':0.0,
+                'basis':'Nicht eingeplanter Beleg','source':'Rechnung','url':f'/belege?receipt_id={receipt.id}',
+            }
+            rows[target['id']]=target
+        target['invoiced']+=amount
+        target['paid']+=float(receipt.paid_amount or 0)
+        if target['invoiced']>target['forecast']:
+            target['forecast']=target['invoiced']
+            target['basis']='Belege über Planansatz'
+        if not target['company']:
+            contractor=contractors.get(receipt.contractor_id)
+            target['company']=contractor.name if contractor else (receipt.supplier or '')
+
+    result=[]
+    for row in rows.values():
+        for key in ('forecast','committed','invoiced','paid'):
+            row[key]=round(row[key],2)
+        row['open']=round(max(row['forecast']-row['paid'],0),2)
+        result.append(row)
+
+    issues=[]
+    drafts=int(summary.get('receipt_drafts') or 0)
+    if drafts:
+        issues.append({'kind':'drafts','count':drafts,'title':'Rechnungsentwürfe prüfen',
+                       'text':'Noch nicht gebuchte Belege wirken sich nicht auf die Auswertung aus.','url':'/belege'})
+    unassigned=[r for r in booked if not r.budget_line_id and not r.cost_item_id]
+    if unassigned:
+        issues.append({'kind':'unassigned','count':len(unassigned),'title':'Rechnungen fachlich zuordnen',
+                       'text':'Diese gebuchten Belege sind keiner Planposition oder keinem Auftrag zugeordnet.','url':'/belege'})
+    without_task=[x for x in valid if x.offer_id and x.state in ('Beauftragt','Abgeschlossen') and not x.task_id]
+    if without_task:
+        issues.append({'kind':'schedule','count':len(without_task),'title':'Aufträge ohne Arbeitspaket',
+                       'text':'Die Bauphase und das Gewerk können erst nach Zuordnung ausgewertet werden.','url':'/angebote'})
+    overruns=[x for x in result if x['invoiced']>x['committed']>0]
+    if overruns:
+        issues.append({'kind':'overrun','count':len(overruns),'title':'Rechnungsstand über Auftragssumme',
+                       'text':'Die gebuchten Rechnungen übersteigen bei diesen Positionen den beauftragten Betrag.','url':'/belege'})
+    return {'rows':result,'issues':issues,
+            'totals':{'forecast':summary['planned'],'committed':summary['committed'],
+                      'invoiced':summary['receipt_booked'],'paid':summary['paid']}}
 
 
 def _ensure_trade(name):
@@ -3821,14 +3936,21 @@ def costs_page():return render_template('kosten.html')
 @app.get('/angebote')
 def offers_page():return render_template('angebote.html')
 
+@app.get('/api/cost-dashboard')
+def get_cost_dashboard():
+    items=db.session.scalars(select(CostItem).order_by(CostItem.category,CostItem.id)).all()
+    summary=budget_summary(items)
+    return jsonify(summary=summary,dashboard=cost_dashboard(items,summary))
+
 @app.get('/api/costs')
 def get_costs():
     items=db.session.scalars(select(CostItem).order_by(CostItem.category,CostItem.id)).all()
     contacts=db.session.scalars(select(Contractor).order_by(Contractor.name)).all()
+    summary=budget_summary(items)
     return jsonify({'items':[as_dict(x,COST_FIELDS)|{'offer_id':x.offer_id} for x in items],
                     'contractors':[as_dict(x,CONTACT_FIELDS) for x in contacts],
                     'tasks':[{'id':x.id,'code':x.code,'name':x.name} for x in all_tasks()],
-                    'summary':budget_summary(items),
+                    'summary':summary,
                     'budget_lines':[budget_dict(x) for x in all_budget_lines()],
                     'funding':[funding_dict(x) for x in db.session.scalars(select(Funding).order_by(Funding.id))],
                     'documents':[document_dict(x) for x in db.session.scalars(select(Document).order_by(Document.id.desc()))],
