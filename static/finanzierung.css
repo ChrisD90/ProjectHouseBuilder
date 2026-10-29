@@ -82,6 +82,9 @@
 .phb-page-finanzierung .inline-actions .loan-doc-count{
   font-size:12px;color:#677e85;white-space:nowrap;margin-right:auto;
 }
+.phb-page-finanzierung .loan-card-counts{display:grid;gap:2px;margin-right:auto;align-self:center}
+.phb-page-finanzierung .loan-card-counts .loan-doc-count{margin:0}
+.phb-page-finanzierung .loan-drawdown-count{font-size:10px;color:#71868d;white-space:nowrap}
 .phb-page-finanzierung .loan-dialog .modal-actions{
   flex-wrap:wrap;gap:12px;margin-top:18px;
 }
@@ -94,6 +97,9 @@
 .phb-page-finanzierung .finance-events>.panel{width:100%;margin-bottom:18px}
 .phb-page-finanzierung .finance-events .fields{max-width:900px}
 .phb-page-finanzierung .phb-header-actions{gap:10px}
+.phb-page-finanzierung .finance-add-button{display:grid;place-items:center;width:34px;height:34px;min-width:34px;padding:0;border:1px solid var(--ui-line-strong,#c8d7da);border-radius:9px;background:var(--ui-surface,#fff);color:var(--ui-accent,#087e83);box-shadow:none}
+.phb-page-finanzierung .finance-add-button:hover{background:var(--ui-soft-accent,#e8f5f2);border-color:var(--ui-accent,#087e83)}
+.phb-page-finanzierung .finance-add-button .phb-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .phb-page-finanzierung .manual-drawdown-document small{font-size:11px;color:#687d83;line-height:1.45}
 .phb-page-finanzierung .manual-drawdown-document[hidden]{display:none}
 
@@ -244,7 +250,7 @@
 :root[data-phb-theme="dark"] .phb-page-finanzierung :is(p,.hint,.meta,.record span,
  .drawdown-history-row span,.usage-history-row span,.drawdown-section-head p,
  .drawdown-receipt small,.drawdown-position header,.usage-kind-picker small,
- .usage-fields small,.inline-actions .loan-doc-count){color:var(--ui-muted)}
+ .usage-fields small,.inline-actions .loan-doc-count,.loan-drawdown-count){color:var(--ui-muted)}
 :root[data-phb-theme="dark"] .phb-page-finanzierung :is(h1,h2,h3,.smallcard h3,
  .loan-key-values b,.usage-kind-picker strong,.drawdown-position strong){color:var(--ui-ink)}
 :root[data-phb-theme="dark"] .phb-page-finanzierung :is(.fields input,.fields select,.fields textarea,

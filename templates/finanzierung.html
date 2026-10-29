@@ -6,13 +6,13 @@
 {% set phb_active = 'finanzierung' %}{% set phb_title = 'Finanzierung' %}{% include '_shell_open.html' %}
 
 <main id="phbMain" class="phb-main">
-<section class="intro phb-action-header"><div><span class="phb-page-kicker">Finanzen / Finanzierung</span><h1>Kredite &amp; Eigenkapital</h1><p>Auszahlungen, Verwendungen und Restbeträge nachvollziehbar steuern.</p></div><div class="phb-header-actions"><button type="button" id="newDrawdown" class="primary">+ Mittelabruf</button><button type="button" id="newUsage">Verwendung erfassen</button><button type="button" id="newLoan">+ Kredit</button><button type="button" id="newEquity">+ Eigenkapital</button></div></section>
+<section class="intro phb-action-header"><div><span class="phb-page-kicker">Finanzen / Finanzierung</span><h1>Kredite &amp; Eigenkapital</h1><p>Auszahlungen, Verwendungen und Restbeträge nachvollziehbar steuern.</p></div><div class="phb-header-actions"><button type="button" id="newDrawdown" class="primary">+ Mittelabruf</button><button type="button" id="newUsage">Verwendung erfassen</button></div></section>
 <div id="notice" role="status" class="notice" hidden></div>
 <section class="tiles" id="totals"><p>Lade Finanzierungsübersicht …</p></section>
 <section id="warnings" class="alerts" aria-live="polite"></section>
 <section class="columns">
-<div class="panel"><div class="panel-title"><div><h2>Kredite</h2><p>Rahmen, Auszahlung und Verwendung auf einen Blick.</p></div></div><div id="loanList" class="cards"></div></div>
-<div class="panel"><div class="panel-title"><div><h2>Eigenkapital</h2><p>Kontostand und gewünschte Sicherheitsreserve verwalten.</p></div></div><div id="equityList" class="cards"></div></div>
+<div class="panel"><div class="panel-title"><div><h2>Kredite</h2><p>Rahmen, Auszahlung und Verwendung auf einen Blick.</p></div><button type="button" id="newLoan" class="finance-add-button" title="Kredit hinzufügen" aria-label="Kredit hinzufügen"><svg class="phb-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div><div id="loanList" class="cards"></div></div>
+<div class="panel"><div class="panel-title"><div><h2>Eigenkapital</h2><p>Kontostand und gewünschte Sicherheitsreserve verwalten.</p></div><button type="button" id="newEquity" class="finance-add-button" title="Eigenkapital hinzufügen" aria-label="Eigenkapital hinzufügen"><svg class="phb-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div><div id="equityList" class="cards"></div></div>
 </section>
 <section class="panel drawdown-history-panel"><div class="panel-title"><div><h2>Mittelabrufe</h2><p>Vom Entwurf bis zur tatsächlich eingegangenen Auszahlung.</p></div></div><div id="drawdownHistory" class="drawdown-history"><p>Noch keine Mittelabrufe erstellt.</p></div></section>
 <section class="panel usage-history-panel"><div class="panel-title"><div><h2>Verwendungen</h2><p>Rechnungszahlungen, Erstattungen und manuell erfasste Projektverwendungen.</p></div></div><div id="usageHistory" class="usage-history"><p>Noch keine Kreditverwendung erfasst.</p></div></section>

@@ -366,7 +366,7 @@ class SidebarUITest(unittest.TestCase):
                             ('belege','openReceiptWorkflow'),
                             ('dokumente','openDocUpload'),
                             ('kosten','openCostUpload'),
-                            ('finanzierung','newLoan')):
+                            ('finanzierung','newDrawdown')):
             html=self.render(page)
             header=html.index('phb-action-header')
             button_index=html.index('id="'+button+'"')
@@ -465,10 +465,15 @@ class SidebarUITest(unittest.TestCase):
 
     def test_finance_budget_and_invoice_payment_workflows_are_on_correct_pages(self):
         finance=self.render('finanzierung')
+        finance_js=(STATIC/'finanzierung.js').read_text()
         costs=self.render('kosten')
         receipts=self.render('belege')
         self.assertIn('id="newLoan"',finance)
         self.assertIn('id="newEquity"',finance)
+        self.assertIn('title="Kredit hinzufügen"',finance)
+        self.assertIn('title="Eigenkapital hinzufügen"',finance)
+        self.assertIn('loan-drawdown-count',finance_js)
+        self.assertIn("['Eingereicht','Ausgezahlt','Bestätigt']",finance_js)
         self.assertNotIn('id="paymentForm"',finance)
         self.assertNotIn('Liquiditätsvorschau',finance)
         self.assertNotIn('id="editBudget"',costs)
