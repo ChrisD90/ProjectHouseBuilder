@@ -6,20 +6,41 @@
 {% set phb_active = 'finanzierung' %}{% set phb_title = 'Finanzierung' %}{% include '_shell_open.html' %}
 
 <main id="phbMain" class="phb-main">
-<section class="intro phb-action-header"><div><span class="phb-page-kicker">Finanzen / Finanzierung</span><h1>Finanzierung & Eigenkapital</h1><p>Jede Zahlung erhält eine nachvollziehbare Finanzierungsquelle. Projektkosten werden dabei nicht doppelt berechnet.</p></div><div class="phb-header-actions"><button type="button" id="newDrawdown" class="primary">+ Mittelabruf</button><button type="button" id="newLoan">+ Kredit erfassen</button><button type="button" id="newEquity">+ Konto</button></div></section>
+<section class="intro phb-action-header"><div><span class="phb-page-kicker">Finanzen / Finanzierung</span><h1>Kredite &amp; Eigenkapital</h1><p>Auszahlungen, Verwendungen und Restbeträge nachvollziehbar steuern.</p></div><div class="phb-header-actions"><button type="button" id="newDrawdown" class="primary">+ Mittelabruf</button><button type="button" id="newUsage">Verwendung erfassen</button><button type="button" id="newLoan">+ Kredit</button><button type="button" id="newEquity">+ Eigenkapital</button></div></section>
 <div id="notice" role="status" class="notice" hidden></div>
 <section class="tiles" id="totals"><p>Lade Finanzierungsübersicht …</p></section>
 <section id="warnings" class="alerts" aria-live="polite"></section>
 <section class="columns">
-<div class="panel"><div class="panel-title"><div><h2>Darlehen</h2><p>Vertragskonditionen und tatsächliche Abrufe getrennt erfassen.</p></div></div><div id="loanList" class="cards"></div></div>
+<div class="panel"><div class="panel-title"><div><h2>Kredite</h2><p>Rahmen, Auszahlung und Verwendung auf einen Blick.</p></div></div><div id="loanList" class="cards"></div></div>
 <div class="panel"><div class="panel-title"><div><h2>Eigenkapital</h2><p>Kontostand und gewünschte Sicherheitsreserve verwalten.</p></div></div><div id="equityList" class="cards"></div></div>
 </section>
-<section class="finance-events">
-<div class="panel"><h2>Kreditabrufe & Geldbewegungen</h2><p class="hint">Hier kannst du eine bereits erfolgte Auszahlung direkt buchen. Für einen Abruf mit Rechnungen, PDF-Vorschau und Bankbestätigung nutze „+ Mittelabruf“ oben.</p><form id="eventForm" class="fields"><label>Vorgang<select name="kind" id="eventKind"><option value="loan_drawdown">Kreditabruf manuell buchen</option><option value="loan_repayment">Tilgung</option><option value="loan_interest">Gezahlte Zinsen</option><option value="loan_fee">Bankgebühren</option><option value="equity_deposit">Eigenkapital aufstocken</option><option value="equity_withdrawal">Eigenkapital entnehmen</option></select></label>
-<label>Quelle<select id="eventSource" required></select></label><label>Betrag (€)<input required name="amount" type="number" min="0.01" step="0.01"></label><label>Datum<input required name="event_date" type="date"></label><label class="wide">Notiz<input name="notes" maxlength="2000" placeholder="Optional"></label><label class="wide manual-drawdown-document" id="manualDrawdownDocumentWrap">Auszahlungsformular (optional)<input id="manualDrawdownDocument" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"><small>Das eingereichte oder bestätigte Formular wird als Nachweis an der Geldbewegung gespeichert.</small></label><button type="submit" class="primary wide">Geldbewegung speichern</button></form><p class="hint">Tilgungen und Zinsen sind Finanzierungsvorgänge und keine erneuten Baukosten. Kreditabrufe sind kein Ertrag.</p><div id="events" class="records"></div></div>
+<section class="panel drawdown-history-panel"><div class="panel-title"><div><h2>Mittelabrufe</h2><p>Vom Entwurf bis zur tatsächlich eingegangenen Auszahlung.</p></div></div><div id="drawdownHistory" class="drawdown-history"><p>Noch keine Mittelabrufe erstellt.</p></div></section>
+<section class="panel usage-history-panel"><div class="panel-title"><div><h2>Verwendungen</h2><p>Rechnungszahlungen, Erstattungen und manuell erfasste Projektverwendungen.</p></div></div><div id="usageHistory" class="usage-history"><p>Noch keine Kreditverwendung erfasst.</p></div></section>
 
-</section>
-<section class="panel drawdown-history-panel"><div class="panel-title"><div><h2>Mittelabrufe bei der Bank</h2><p>Entwürfe, Einreichungen, Bankentscheidungen und Buchungen bleiben als Historie erhalten.</p></div></div><div id="drawdownHistory" class="drawdown-history"><p>Noch keine Mittelabrufe erstellt.</p></div></section>
+<details class="panel finance-booking-details"><summary>Weitere Buchungen und Kontobewegungen</summary><section class="finance-events">
+<div><p class="hint">Bereits erfolgte Auszahlung, Tilgung, Zinsen, Gebühren oder Eigenkapitalbewegung manuell nachtragen.</p><form id="eventForm" class="fields"><label>Vorgang<select name="kind" id="eventKind"><option value="loan_drawdown">Kreditauszahlung manuell nachtragen</option><option value="loan_repayment">Tilgung</option><option value="loan_interest">Gezahlte Zinsen</option><option value="loan_fee">Bankgebühren</option><option value="equity_deposit">Eigenkapital aufstocken</option><option value="equity_withdrawal">Eigenkapital entnehmen</option></select></label>
+<label>Quelle<select id="eventSource" required></select></label><label>Betrag (€)<input required name="amount" type="number" min="0.01" step="0.01"></label><label>Datum<input required name="event_date" type="date"></label><label class="wide">Notiz<input name="notes" maxlength="2000" placeholder="Optional"></label><label class="wide manual-drawdown-document" id="manualDrawdownDocumentWrap">Auszahlungsformular (optional)<input id="manualDrawdownDocument" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"><small>Das eingereichte oder ausgezahlte Formular wird als Nachweis an der Geldbewegung gespeichert.</small></label><button type="submit" class="primary wide">Geldbewegung speichern</button></form><p class="hint">Tilgungen und Zinsen sind Finanzierungsvorgänge und keine erneuten Baukosten. Kreditauszahlungen sind kein Ertrag.</p><div id="events" class="records"></div></div>
+</section></details>
+
+<dialog id="usageDialog" class="usage-dialog" aria-labelledby="usageDialogTitle"><form id="usageForm" class="modal">
+  <div class="modal-head"><div><h2 id="usageDialogTitle">Kredit verwenden</h2><p>Wähle, wofür eine bereits ausgezahlte Kreditsumme verwendet wurde.</p></div><button type="button" id="closeUsage" class="secondary">Schließen</button></div>
+  <div class="usage-kind-picker" role="radiogroup" aria-label="Art der Kreditverwendung">
+    <label><input type="radio" name="action" value="pay" checked><span><strong>Rechnung bezahlen</strong><small>Offenen Rechnungsbetrag aus dem Kredit bezahlen.</small></span></label>
+    <label><input type="radio" name="action" value="reimburse"><span><strong>Eigenkapital erstatten</strong><small>Eine vorfinanzierte Rechnung auf den Kredit umbuchen.</small></span></label>
+    <label><input type="radio" name="action" value="manual"><span><strong>Sonstige Verwendung</strong><small>Projektverwendung ohne vorhandene Rechnung dokumentieren.</small></span></label>
+  </div>
+  <div class="usage-fields">
+    <label>Kredit<select name="loan_id" id="usageLoan" required></select></label>
+    <label id="usageReceiptWrap">Rechnung<select name="receipt_id" id="usageReceipt"></select><small id="usageReceiptHelp"></small></label>
+    <label>Betrag (€)<input name="amount" id="usageAmount" type="number" min="0.01" step="0.01" required></label>
+    <label>Datum<input name="usage_date" type="date" required></label>
+    <label class="wide" id="usagePurposeWrap" hidden>Verwendungszweck<input name="purpose" maxlength="240" placeholder="z. B. direkte Zahlung für Baustelleneinrichtung"></label>
+    <label class="wide">Notiz (optional)<textarea name="notes" maxlength="2000" rows="2"></textarea></label>
+    <label class="wide" id="usageFileWrap" hidden>Nachweis (optional)<input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"><small>PDF oder Bild, maximal 15 MB.</small></label>
+  </div>
+  <p id="usageAvailable" class="usage-available"></p><p id="usageStatus" class="hint" role="status"></p>
+  <div class="modal-actions"><button type="button" id="cancelUsage" class="secondary">Abbrechen</button><span class="push"></span><button type="submit" id="saveUsage" class="primary">Verwendung buchen</button></div>
+</form></dialog>
 
 <dialog id="loanDialog" class="loan-dialog" aria-labelledby="loanDialogTitle">
 <form id="loanForm" class="modal">
@@ -84,6 +105,7 @@
   <div class="drawdown-fields">
     <label>Kredit<select name="loan_id" id="drawdownLoan" required></select></label>
     <label>Gewünschtes Auszahlungsdatum<input name="requested_date" type="date" required></label>
+    <label class="wide">Auszahlungsziel<select name="payout_type" id="drawdownPayoutType"><option value="own_account">Eigenes Konto – zunächst als verfügbar führen</option><option value="direct">Firma direkt – offene Rechnungen bei Auszahlung als bezahlt buchen</option><option value="reimbursement">Eigenkapital erstatten – nur vorfinanzierte Beträge</option></select></label>
     <label class="wide">Darlehensnehmer<input name="borrower_names" maxlength="500" placeholder="Namen laut Kreditvertrag"></label>
     <label class="wide">Finanziertes Objekt / Anschrift<input name="property_address" maxlength="500"></label>
     <label>Auszahlung an / Kontoinhaber<input name="recipient_name" maxlength="200"></label>
@@ -94,7 +116,7 @@
   <div id="drawdownTemplateState" class="drawdown-template-state" role="status">Kredit auswählen, um die Abrufvorlage zu prüfen.</div>
   <label id="drawdownAiWrap" class="drawdown-ai" hidden><input type="checkbox" id="drawdownAiPrefill"> Hinterlegte PDF-Vorlage mit ChatGPT vorausfüllen <small>Die ausgefüllte Datei kommt in das ZIP. Vor Einreichung selbst prüfen und unterschreiben.</small></label>
   <section class="drawdown-receipts" aria-labelledby="drawdownReceiptsTitle"><div class="drawdown-section-head"><div><h3 id="drawdownReceiptsTitle">Einzureichende Rechnungen und Kassenzettel</h3><p>Einreichbar sind offene Rechnungsanteile sowie Beträge, die du aus Eigenkapital oder ohne Finanzierungsquelle vorfinanziert hast.</p></div><strong id="drawdownSelectedTotal">0,00 € ausgewählt</strong></div><div id="drawdownReceiptList" class="drawdown-receipt-list"><p>Bitte Kredit auswählen.</p></div></section>
-  <p class="drawdown-booking-note">Das Erstellen der Vorschau erzeugt noch keine Buchung. Erst nach „Bank bestätigt“ wird die Auszahlung gebucht: Vorfinanzierte Beträge werden auf den Kredit umgebucht; Beträge für offene Rechnungen stehen anschließend im Kredit zur Bezahlung bereit.</p>
+  <p class="drawdown-booking-note">Das Erstellen der Vorschau erzeugt noch keine Buchung. Erst mit „Auszahlung eingegangen“ wird der Betrag gebucht. Das Auszahlungsziel bestimmt, ob er zunächst verfügbar bleibt oder direkt als verwendet gilt.</p>
   <p id="drawdownStatus" class="hint" role="status" aria-live="polite"></p>
   <div class="modal-actions"><span id="drawdownCapacity">Noch abrufbar: –</span><button type="submit" id="createDrawdownPackage" class="primary">PDF-Vorschau erstellen</button></div>
   </div>

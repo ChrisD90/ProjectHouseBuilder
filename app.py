@@ -1008,6 +1008,14 @@ def document_library():
                         'date':ld.uploaded_at.isoformat() if ld.uploaded_at else '',
                         'download_url':f'/api/financing/loans/{ld.loan_id}/documents/{ld.id}/download',
                         'view_url':None,'module_url':f'/finanzierung?loan_id={ld.loan_id}'})
+    for usage in db.session.scalars(select(LoanUsage).where(LoanUsage.stored_name!='')).all():
+        entries.append({'source':'Finanzierung','id':'loan-usage-'+str(usage.id),
+                        'title':usage.purpose,'filename':usage.original_name,
+                        'type':'Verwendungsnachweis','status':usage.status,
+                        'description':usage.notes or '',
+                        'date':usage.created_at.isoformat() if usage.created_at else '',
+                        'download_url':f'/api/financing/usages/{usage.id}/document',
+                        'view_url':None,'module_url':'/finanzierung'})
     entries.sort(key=lambda entry:(entry['date'],entry['id']),reverse=True)
     response=jsonify(documents=entries,total=len(entries))
     response.headers['Cache-Control']='no-store'
@@ -4053,7 +4061,7 @@ def server_error(err):
 
 # Shared application code: finance models and routes live in a separate module.
 from financing import register_financing
-(Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument, finance_services) = register_financing(
+(Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument, LoanUsage, finance_services) = register_financing(
     app, db, Receipt, CostItem, BudgetLine, budget_summary,
     root=ROOT, ai_request_required=_ai_request_required,
     chatgpt=chatgpt, extract_json=extract_json,

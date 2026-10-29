@@ -45,7 +45,8 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         location=db.Column(db.String(160),nullable=False,default='')
         notes=db.Column(db.Text,nullable=False,default='')
         ai_prefilled=db.Column(db.Boolean,nullable=False,default=False)
-        status=db.Column(db.String(24),nullable=False,default='Entwurf',server_default='Bestätigt')
+        status=db.Column(db.String(24),nullable=False,default='Entwurf',server_default='Ausgezahlt')
+        payout_type=db.Column(db.String(24),nullable=False,default='own_account',server_default='own_account')
         data_json=db.Column(db.Text,nullable=False,default='{}',server_default='{}')
         mapping_json=db.Column(db.Text,nullable=False,default='{}',server_default='{}')
         submitted_at=db.Column(db.DateTime,nullable=True)
@@ -122,7 +123,8 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         loan=db.session.get(Loan,row.loan_id);items=items_for(row.id);data=load_json(row.data_json,{})
         result={'id':row.id,'loan_id':row.loan_id,'loan_name':loan.name if loan else 'Gelöschter Kredit',
                 'requested_amount':float(row.requested_amount),'requested_date':row.requested_date,
-                'status':row.status,'ai_prefilled':bool(row.ai_prefilled),
+                'status':'Ausgezahlt' if row.status=='Bestätigt' else row.status,
+                'payout_type':row.payout_type or 'own_account','ai_prefilled':bool(row.ai_prefilled),
                 'created_at':row.created_at.isoformat(),'updated_at':row.updated_at.isoformat() if row.updated_at else None,
                 'submitted_at':row.submitted_at.isoformat() if row.submitted_at else None,
                 'confirmed_at':row.confirmed_at.isoformat() if row.confirmed_at else None,
@@ -147,7 +149,10 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         receipts=db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht')
             .order_by(Receipt.document_date.desc(),Receipt.id.desc())).all()
         grouped=payment_rows([row.id for row in receipts]) if receipts else {};template=template_for(loan_id)
-        return jsonify(loan_id=loan_id,loan_name=loan.name,undrawn=float(loan_account(loan)['undrawn']),
+        pending=sum((dec(row.requested_amount) for row in db.session.scalars(select(LoanDrawdown).where(
+            LoanDrawdown.loan_id==loan_id,LoanDrawdown.status=='Eingereicht')).all()),ZERO)
+        available=max(ZERO,loan_account(loan)['undrawn']-pending)
+        return jsonify(loan_id=loan_id,loan_name=loan.name,undrawn=float(available),pending=float(pending),
             template={'id':template.id,'filename':template.original_name} if template else None,
             receipts=[receipt_option(row,loan_id,grouped.get(row.id,[])) for row in receipts])
 
@@ -295,6 +300,12 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
                 'document_date':iso_date(raw.get('document_date'),optional=True),'amount':float(amount),
                 'filename':option['filename']}
 
+    def clean_payout_type(value):
+        value=str(value or 'own_account')
+        if value not in ('own_account','direct','reimbursement'):
+            raise ValueError('Bitte ein gültiges Auszahlungsziel auswählen.')
+        return value
+
     def selected_options(loan_id,receipt_ids):
         if not isinstance(receipt_ids,list) or not receipt_ids or len(receipt_ids)>100:
             raise ValueError('Bitte mindestens eine und höchstens 100 Rechnungen auswählen.')
@@ -322,9 +333,12 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
             if not loan:raise ValueError('Kredit nicht gefunden.')
             ids,by_id,_grouped,options=selected_options(loan_id,body.get('receipt_ids'))
             if any(not options[rid]['eligible'] for rid in ids):raise ValueError('Mindestens eine Rechnung besitzt keinen einreichbaren Zahlungsanteil.')
+            target=clean_payout_type(body.get('payout_type'))
+            if target=='reimbursement' and any(dec(options[rid]['rebookable'])<=ZERO for rid in ids):
+                raise ValueError('Für eine Eigenkapitalerstattung dürfen nur vorfinanzierte Rechnungen ausgewählt werden.')
             positions=[position_data({'receipt_id':rid,'supplier':options[rid]['supplier'],
                 'invoice_number':options[rid]['invoice_number'],'document_date':options[rid]['document_date'],
-                'amount':options[rid]['submittable']},options[rid]) for rid in ids]
+                'amount':options[rid]['rebookable'] if target=='reimbursement' else options[rid]['submittable']},options[rid]) for rid in ids]
             body=apply_loan_profile(loan,body)
             data=base_data(body,positions);template=template_for(loan_id);ai=body.get('ai_prefill') is True
             if ai and not template:raise ValueError('Bitte zuerst beim gewählten Kredit eine PDF-Abrufvorlage hinterlegen.')
@@ -338,7 +352,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
                 stored_name=uuid4().hex+'.zip',preview_name=uuid4().hex+'.pdf' if template else None,
                 requested_date=data['requested_date'],borrower_names=data['borrower_names'],property_address=data['property_address'],
                 recipient_iban=data['recipient_iban'],recipient_name=data['recipient_name'],location=data['location'],notes=data['notes'],
-                template_document_id=template.id if template else None,ai_prefilled=ai,status='Entwurf',
+                template_document_id=template.id if template else None,ai_prefilled=ai,status='Entwurf',payout_type=target,
                 data_json=json.dumps(data,ensure_ascii=False),mapping_json=json.dumps(mapping,ensure_ascii=False))
             db.session.add(row);db.session.flush()
             for position in positions:
@@ -372,6 +386,9 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
             supplied={int(value.get('receipt_id') or 0):value for value in raw_positions if isinstance(value,dict)}
             if set(supplied)!=set(ids):raise ValueError('Rechnungspositionen fehlen oder sind doppelt.')
             positions=[position_data(supplied[rid],options[rid]) for rid in ids];data=base_data(body,positions)
+            if row.payout_type=='reimbursement' and any(
+                    dec(position['amount'])>dec(options[position['receipt_id']]['rebookable']) for position in positions):
+                raise ValueError('Eine Eigenkapitalerstattung darf den vorfinanzierten Anteil nicht überschreiten.')
             old=load_json(row.data_json,{})
             if old.get('warnings'):data['warnings']=old['warnings']
             row.requested_amount=Decimal(str(data['requested_amount']));row.requested_date=data['requested_date']
@@ -394,8 +411,10 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         response.headers['Cache-Control']='private, no-store';response.headers['Content-Security-Policy']='sandbox';return response
 
     def overview_text(loan,row,data):
+        payout={'own_account':'Eigenes Konto','direct':'Direkt an Firma','reimbursement':'Eigenkapitalerstattung'}
         lines=['ProjectHouseBuilder – Mittelabruf #'+str(row.id),'Status: '+row.status,'Kredit: '+loan.name,
                'Bank: '+(loan.bank or '–'),'Darlehensreferenz: '+(loan.reference or '–'),
+               'Auszahlungsziel: '+payout.get(row.payout_type,'Eigenes Konto'),
                'Beantragte Gesamtsumme: '+format(dec(row.requested_amount),'.2f')+' EUR',
                'Gewünschtes Auszahlungsdatum: '+row.requested_date,'','Rechnungspositionen:']
         for index,item in enumerate(data.get('positions',[]),1):
@@ -464,6 +483,12 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
             remaining-=used
         open_amount=max(ZERO,dec(receipt.gross_amount)-dec(getattr(receipt,'advance_deduction',0))-dec(receipt.paid_amount))
         if remaining>open_amount:raise ValueError('Der offene oder vorfinanzierte Rechnungsanteil hat sich seit der Einreichung geändert.')
+        if remaining>ZERO and row.payout_type=='direct':
+            new=Payment(receipt_id=receipt.id,source='loan',loan_id=row.loan_id,amount=remaining,
+                payment_date=confirmed_date,notes='Direktzahlung der Bank über Mittelabruf #'+str(row.id))
+            db.session.add(new);receipt.paid_amount=dec(receipt.paid_amount)+remaining;db.session.flush()
+            created.append({'payment_id':new.id,'amount':format(remaining,'.2f'),'increased_paid':True})
+            remaining=ZERO
         item.snapshot_json=json.dumps({'version':2,'full':full,'splits':splits,'created':created,
             'receipt':{'supplier':receipt.supplier,'invoice_number':receipt.invoice_number,
                        'document_date':receipt.document_date,'filename':receipt.original_name}},ensure_ascii=False)
@@ -472,7 +497,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
     def drawdown_confirm(drawdown_id):
         row=db.session.scalar(select(LoanDrawdown).where(LoanDrawdown.id==drawdown_id).with_for_update())
         if not row:return jsonify(error='Mittelabruf nicht gefunden.'),404
-        if row.status!='Eingereicht':return jsonify(error='Nur ein eingereichter Mittelabruf kann bestätigt werden.'),409
+        if row.status!='Eingereicht':return jsonify(error='Nur ein eingereichter Mittelabruf kann als ausgezahlt gebucht werden.'),409
         body=request.get_json(silent=True) or {}
         try:
             confirmed_date=iso_date(body.get('confirmed_date'));loan=db.session.get(Loan,row.loan_id)
@@ -481,13 +506,16 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
             if total!=dec(row.requested_amount):raise ValueError('Gesamtsumme und Positionen stimmen nicht überein.')
             if any(dec(item.claimed_amount)>dec(options[item.receipt_id]['submittable']) for item in items):
                 raise ValueError('Ein Rechnungsbetrag ist nicht mehr vollständig einreichbar.')
-            if total>loan_account(loan)['undrawn']:raise ValueError('Der bestätigte Betrag übersteigt den Darlehensrahmen.')
+            if row.payout_type=='reimbursement' and any(
+                    dec(item.claimed_amount)>dec(options[item.receipt_id]['rebookable']) for item in items):
+                raise ValueError('Ein vorfinanzierter Anteil hat sich seit der Einreichung geändert.')
+            if total>loan_account(loan)['undrawn']:raise ValueError('Der ausgezahlte Betrag übersteigt den Darlehensrahmen.')
             event=FinancingEvent(kind='loan_drawdown',loan_id=loan.id,amount=total,event_date=confirmed_date,
-                                 notes='Mittelabruf #'+str(row.id)+' · Bank bestätigt')
+                                 notes='Mittelabruf #'+str(row.id)+' · Auszahlung eingegangen')
             db.session.add(event);db.session.flush();row.event_id=event.id
             for item in items:
                 apply_claim(row,item,by_id[item.receipt_id],grouped.get(item.receipt_id,[]),dec(item.claimed_amount),confirmed_date)
-            row.status='Bestätigt';row.confirmed_at=datetime.utcnow();db.session.flush();validate_ledger();db.session.commit()
+            row.status='Ausgezahlt';row.confirmed_at=datetime.utcnow();db.session.flush();validate_ledger();db.session.commit()
             return jsonify(drawdown_json(row,True))
         except (ValueError,TypeError,OverflowError) as exc:
             db.session.rollback();return jsonify(error=str(exc)),409
@@ -530,6 +558,10 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
             payment=db.session.get(Payment,created_data.get('payment_id'))
             if not payment or payment.source!='loan' or payment.loan_id!=row.loan_id or dec(payment.amount)!=dec(created_data.get('amount')):
                 raise ValueError('Eine erzeugte Zahlungszuordnung wurde inzwischen verändert.')
+            if created_data.get('increased_paid'):
+                receipt=db.session.get(Receipt,payment.receipt_id)
+                if not receipt or dec(receipt.paid_amount)<dec(payment.amount):raise ValueError('Der Rechnungszahlbetrag wurde inzwischen verändert.')
+                receipt.paid_amount=dec(receipt.paid_amount)-dec(payment.amount)
             db.session.delete(payment)
 
     def reverse_legacy(row,snapshot):
@@ -550,7 +582,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         if not row:return jsonify(error='Mittelabruf nicht gefunden.'),404
         if row.status in ('Abgelehnt','Zurückgenommen'):return jsonify(error='Dieser Mittelabruf ist bereits abgeschlossen.'),409
         try:
-            if row.status=='Bestätigt':
+            if row.status in ('Ausgezahlt','Bestätigt'):
                 for item in items_for(row.id):
                     snapshot=load_json(item.snapshot_json,{})
                     reverse_v2(row,snapshot) if snapshot.get('version')==2 else reverse_legacy(row,snapshot)
@@ -566,14 +598,14 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
     def receipt_has_drawdown(receipt_id):
         return db.session.scalar(select(LoanDrawdownItem.id).join(LoanDrawdown,
             LoanDrawdown.id==LoanDrawdownItem.drawdown_id).where(
-            LoanDrawdownItem.receipt_id==receipt_id,LoanDrawdown.status=='Bestätigt').limit(1)) is not None
+            LoanDrawdownItem.receipt_id==receipt_id,LoanDrawdown.status.in_(('Ausgezahlt','Bestätigt'))).limit(1)) is not None
 
     def payment_lock_reason(payment_id):
         payment=db.session.get(Payment,payment_id)
         if not payment:return ''
         items=db.session.scalars(select(LoanDrawdownItem).join(LoanDrawdown,
             LoanDrawdown.id==LoanDrawdownItem.drawdown_id).where(
-            LoanDrawdownItem.receipt_id==payment.receipt_id,LoanDrawdown.status=='Bestätigt')).all()
+            LoanDrawdownItem.receipt_id==payment.receipt_id,LoanDrawdown.status.in_(('Ausgezahlt','Bestätigt')))).all()
         for item in items:
             snapshot=load_json(item.snapshot_json,{});ids=set()
             if snapshot.get('version')==2:
@@ -583,7 +615,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
             else:
                 ids|={entry.get('payment_id') for entry in snapshot.get('transitions',[]) if isinstance(entry,dict)}
                 ids.add(snapshot.get('created_payment_id'))
-            if payment_id in ids:return 'Diese Zahlungsquelle gehört zu einem bestätigten Mittelabruf. Bitte zuerst den Mittelabruf gemeinsam zurücknehmen.'
+            if payment_id in ids:return 'Diese Zahlungsquelle gehört zu einem ausgezahlten Mittelabruf. Bitte zuerst die Auszahlung gemeinsam zurücknehmen.'
         return ''
 
     services['payment_lock_reason']=payment_lock_reason;services['receipt_has_drawdown']=receipt_has_drawdown

@@ -11,7 +11,7 @@ from unittest.mock import patch
 import zipfile
 
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
-from app import app, db, initialize, Receipt, Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDrawdown
+from app import app, db, initialize, Receipt, Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDrawdown, LoanUsage
 
 
 class FinanceWorkflowTest(unittest.TestCase):
@@ -353,7 +353,7 @@ class FinanceWorkflowTest(unittest.TestCase):
         confirmed=self.client.post(f'/api/financing/drawdowns/{drawdown_id}/confirm',
                                    json={'confirmed_date':'2026-10-30'})
         self.assertEqual(confirmed.status_code,200,confirmed.json)
-        self.assertEqual(confirmed.json['status'],'Bestätigt')
+        self.assertEqual(confirmed.json['status'],'Ausgezahlt')
         state=self.state()
         self.assertEqual(state['summary']['loan_drawn'],150)
         self.assertEqual(state['summary']['paid_loan'],150)
@@ -516,6 +516,94 @@ class FinanceWorkflowTest(unittest.TestCase):
                 res=self.client.post('/api/backup/create',json={})
         self.assertEqual(res.status_code,201,res.json)
         self.assertTrue(res.json['verified'])
+
+
+    def test_manual_loan_usage_reduces_available_funds_without_adding_costs(self):
+        loan=self.loan('1000','Sanierungskredit')
+        self.assertEqual(self.event('loan_drawdown','500',loan_id=loan).status_code,201)
+        before=self.state()['summary']['project_paid']
+        created=self.client.post('/api/financing/usages',data={
+            'loan_id':str(loan),'amount':'175.50','usage_date':'2026-10-29',
+            'purpose':'Direkte Projektzahlung','notes':'Außerhalb der Belegverwaltung'},
+            content_type='multipart/form-data')
+        self.assertEqual(created.status_code,201,created.json)
+        state=self.state()
+        self.assertEqual(state['summary']['loan_unallocated'],324.5)
+        self.assertEqual(state['summary']['paid_loan'],175.5)
+        self.assertEqual(state['summary']['project_paid'],before)
+        rejected=self.client.post('/api/financing/usages',data={
+            'loan_id':str(loan),'amount':'400','usage_date':'2026-10-29','purpose':'Zu viel'},
+            content_type='multipart/form-data')
+        self.assertEqual(rejected.status_code,400,rejected.json)
+        reversed_=self.client.delete(f"/api/financing/usages/{created.json['id']}")
+        self.assertEqual(reversed_.status_code,200,reversed_.json)
+        self.assertEqual(self.state()['summary']['loan_unallocated'],500)
+        self.assertEqual(db.session.get(LoanUsage,created.json['id']).status,'Zurückgenommen')
+
+    def test_usage_can_pay_invoice_and_reverse_payment_together(self):
+        loan=self.loan('1000');self.assertEqual(self.event('loan_drawdown','500',loan_id=loan).status_code,201)
+        receipt_id=self.receipt('300')
+        created=self.client.post('/api/financing/usages/receipt',json={
+            'action':'pay','loan_id':loan,'receipt_id':receipt_id,'amount':'200',
+            'usage_date':'2026-10-29','notes':'Teilzahlung'})
+        self.assertEqual(created.status_code,201,created.json)
+        payment=db.session.scalar(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==receipt_id))
+        self.assertEqual((payment.source,payment.loan_id,float(payment.amount)),('loan',loan,200))
+        self.assertEqual(float(db.session.get(Receipt,receipt_id).paid_amount),200)
+        self.assertEqual(self.client.delete(f'/api/financing/payments/{payment.id}').status_code,409)
+        reversed_=self.client.delete(f"/api/financing/usages/{created.json['id']}")
+        self.assertEqual(reversed_.status_code,200,reversed_.json)
+        self.assertEqual(float(db.session.get(Receipt,receipt_id).paid_amount),0)
+        self.assertIsNone(db.session.get(ReceiptFinancingPayment,payment.id))
+
+    def test_usage_can_reimburse_equity_and_reverse_atomically(self):
+        loan=self.loan('1000');equity=self.equity('500','0')
+        self.assertEqual(self.event('loan_drawdown','500',loan_id=loan).status_code,201)
+        receipt_id=self.receipt('300');paid=self.pay(receipt_id,'200','equity',equity)
+        self.assertEqual(paid.status_code,201,paid.json)
+        created=self.client.post('/api/financing/usages/receipt',json={
+            'action':'reimburse','loan_id':loan,'receipt_id':receipt_id,'amount':'150','usage_date':'2026-10-29'})
+        self.assertEqual(created.status_code,201,created.json)
+        payments=db.session.scalars(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==receipt_id)).all()
+        self.assertEqual(sum(float(row.amount) for row in payments if row.source=='loan'),150)
+        self.assertEqual(sum(float(row.amount) for row in payments if row.source=='equity'),50)
+        reversed_=self.client.delete(f"/api/financing/usages/{created.json['id']}")
+        self.assertEqual(reversed_.status_code,200,reversed_.json)
+        restored=db.session.scalars(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==receipt_id)).all()
+        self.assertEqual([(row.source,float(row.amount)) for row in restored],[('equity',200)])
+
+    def test_reimbursement_option_does_not_count_explicit_unassigned_payment_twice(self):
+        loan=self.loan('1000');self.assertEqual(self.event('loan_drawdown','500',loan_id=loan).status_code,201)
+        receipt_id=self.receipt('300');paid=self.pay(receipt_id,'120','unassigned',None)
+        self.assertEqual(paid.status_code,201,paid.json)
+        finance=self.state();receipt=next(row for row in finance['receipts'] if row['id']==receipt_id)
+        explicit=sum(row['amount'] for row in finance['payments'] if row['receipt_id']==receipt_id and row['source']=='unassigned')
+        self.assertEqual(receipt['unassigned'],0)
+        self.assertEqual(explicit+receipt['unassigned'],120)
+        rejected=self.client.post('/api/financing/usages/receipt',json={
+            'action':'reimburse','loan_id':loan,'receipt_id':receipt_id,'amount':'121','usage_date':'2026-10-29'})
+        self.assertEqual(rejected.status_code,400,rejected.json)
+
+    def test_direct_drawdown_marks_open_invoice_paid_on_payout(self):
+        loan=self.loan('1000');receipt_id=self.receipt('300')
+        receipt=db.session.get(Receipt,receipt_id);path=Path(app.root_path)/'private'/'receipts'/receipt.stored_name
+        path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'%PDF-1.4\nDirektzahlung')
+        self.addCleanup(path.unlink,missing_ok=True)
+        created=self.client.post('/api/financing/drawdowns/drafts',json={
+            'loan_id':loan,'receipt_ids':[receipt_id],'requested_date':'2026-10-29','payout_type':'direct'})
+        self.assertEqual(created.status_code,201,created.json);drawdown_id=created.json['id']
+        drawdown=db.session.get(LoanDrawdown,drawdown_id)
+        self.addCleanup((Path(app.root_path)/'private'/'loan-drawdowns'/drawdown.stored_name).unlink,missing_ok=True)
+        self.assertEqual(self.client.post(f'/api/financing/drawdowns/{drawdown_id}/submit').status_code,200)
+        paid=self.client.post(f'/api/financing/drawdowns/{drawdown_id}/confirm',json={'confirmed_date':'2026-10-29'})
+        self.assertEqual(paid.status_code,200,paid.json)
+        self.assertEqual(paid.json['status'],'Ausgezahlt')
+        self.assertEqual(float(db.session.get(Receipt,receipt_id).paid_amount),300)
+        self.assertEqual(self.state()['summary']['loan_unallocated'],0)
+        reversed_=self.client.delete(f'/api/financing/drawdowns/{drawdown_id}')
+        self.assertEqual(reversed_.status_code,200,reversed_.json)
+        self.assertEqual(float(db.session.get(Receipt,receipt_id).paid_amount),0)
+
 
 
 if __name__=='__main__':unittest.main()

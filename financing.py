@@ -6,7 +6,7 @@ one aggregate independent of the number of financing sources.
 """
 from __future__ import annotations
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 from io import BytesIO
@@ -134,6 +134,29 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         payment_date = db.Column(db.String(10), nullable=False)
         notes = db.Column(db.Text, nullable=False, default='')
 
+    class LoanUsage(db.Model):
+        """Auditable use of paid-out loan funds.
+
+        Manual rows reduce the available paid-out balance directly. Receipt
+        payments and reimbursements are represented by their payment rows and
+        use this record only as a reversible workflow/audit entry.
+        """
+        __tablename__ = 'finance_loan_usage'
+        id = db.Column(db.Integer, primary_key=True)
+        loan_id = db.Column(db.Integer, db.ForeignKey('finance_loan.id', ondelete='RESTRICT'), nullable=False)
+        receipt_id = db.Column(db.Integer, db.ForeignKey('receipt.id', ondelete='RESTRICT'))
+        kind = db.Column(db.String(30), nullable=False)
+        amount = db.Column(db.Numeric(14, 2), nullable=False)
+        usage_date = db.Column(db.String(10), nullable=False)
+        purpose = db.Column(db.String(240), nullable=False)
+        notes = db.Column(db.Text, nullable=False, default='')
+        status = db.Column(db.String(24), nullable=False, default='Aktiv', server_default='Aktiv')
+        snapshot_json = db.Column(db.Text, nullable=False, default='{}', server_default='{}')
+        original_name = db.Column(db.String(240), nullable=False, default='', server_default='')
+        stored_name = db.Column(db.String(80), nullable=False, default='', server_default='')
+        created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
+        reversed_at = db.Column(db.DateTime, nullable=True)
+
     def all_rows(model):
         return db.session.scalars(select(model).order_by(model.id)).all()
 
@@ -148,15 +171,20 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         except (TypeError, ValueError):
             raise ValueError('Bitte eine gültige Finanzierungsquelle auswählen.')
 
-    def loan_account(loan, events=None, payments=None):
+    def loan_account(loan, events=None, payments=None, usages=None):
         events = all_rows(FinancingEvent) if events is None else events
         payments = all_rows(ReceiptFinancingPayment) if payments is None else payments
+        usages = all_rows(LoanUsage) if usages is None else usages
         draw = sum((dec(x.amount) for x in events if x.loan_id == loan.id and x.kind == 'loan_drawdown'), ZERO)
         repaid = sum((dec(x.amount) for x in events if x.loan_id == loan.id and x.kind == 'loan_repayment'), ZERO)
-        spent = sum((dec(x.amount) for x in payments if x.loan_id == loan.id), ZERO)
+        receipt_spent = sum((dec(x.amount) for x in payments if x.loan_id == loan.id), ZERO)
+        manual_spent = sum((dec(x.amount) for x in usages
+                            if x.loan_id == loan.id and x.kind == 'manual' and x.status == 'Aktiv'), ZERO)
+        spent = receipt_spent + manual_spent
         interest = sum((dec(x.amount) for x in events if x.loan_id == loan.id and x.kind == 'loan_interest'), ZERO)
         fees = sum((dec(x.amount) for x in events if x.loan_id == loan.id and x.kind == 'loan_fee'), ZERO)
         return {'drawn': draw, 'repaid': repaid, 'paid_for_project': spent,
+                'receipt_spent':receipt_spent,'manual_spent':manual_spent,
                 'unallocated_drawn': draw - spent, 'undrawn': dec(loan.principal) - draw,
                 'outstanding_principal': draw - repaid, 'interest_paid': interest, 'fees_paid': fees}
 
@@ -173,8 +201,9 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
     def validate_ledger():
         events = all_rows(FinancingEvent)
         payments = all_rows(ReceiptFinancingPayment)
+        usages = all_rows(LoanUsage)
         for loan in all_rows(Loan):
-            a = loan_account(loan, events, payments)
+            a = loan_account(loan, events, payments, usages)
             if min(a['unallocated_drawn'], a['undrawn'], a['outstanding_principal']) < ZERO:
                 raise ValueError('Darlehen '+loan.name+': Abrufe, Projektzahlungen oder Tilgungen überschreiten die verfügbaren Mittel.')
         for account in all_rows(EquityAccount):
@@ -198,7 +227,8 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         equity = all_rows(EquityAccount)
         events = all_rows(FinancingEvent)
         payments = all_rows(ReceiptFinancingPayment)
-        ls = [loan_account(x, events, payments) for x in loans]
+        usages = all_rows(LoanUsage)
+        ls = [loan_account(x, events, payments, usages) for x in loans]
         es = [equity_account(x, events, payments) for x in equity]
         loan_total = sum((dec(x.principal) for x in loans), ZERO)
         drawn = sum((x['drawn'] for x in ls), ZERO)
@@ -256,6 +286,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
 
     LOAN_DOCUMENT_ROOT = Path(root) / 'private' / 'loans'
     EVENT_DOCUMENT_ROOT = Path(root) / 'private' / 'financing-events'
+    USAGE_DOCUMENT_ROOT = Path(root) / 'private' / 'loan-usages'
     LOAN_FILE_TYPES = {'.pdf', '.jpg', '.jpeg', '.png', '.webp'}
     MAX_LOAN_FILE_BYTES = 15 * 1024 * 1024
 
@@ -494,6 +525,17 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                 'source':r.source,'loan_id':r.loan_id,'equity_id':r.equity_id,
                 'amount':float(r.amount),'payment_date':r.payment_date,'notes':r.notes}
 
+    def usage_json(r):
+        loan=db.session.get(Loan,r.loan_id);receipt=db.session.get(Receipt,r.receipt_id) if r.receipt_id else None
+        return {'id':r.id,'loan_id':r.loan_id,'loan_name':loan.name if loan else 'Kredit fehlt',
+                'receipt_id':r.receipt_id,'receipt_name':(receipt.supplier or receipt.original_name) if receipt else '',
+                'kind':r.kind,'amount':float(r.amount),'usage_date':r.usage_date,
+                'purpose':r.purpose,'notes':r.notes,'status':r.status,
+                'created_at':r.created_at.isoformat() if r.created_at else None,
+                'reversed_at':r.reversed_at.isoformat() if r.reversed_at else None,
+                'document':{'filename':r.original_name,
+                    'download_url':f'/api/financing/usages/{r.id}/document'} if r.stored_name else None}
+
     @app.get('/finanzierung')
     def finance_page():
         return render_template('finanzierung.html')
@@ -504,11 +546,12 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                        equity=[equity_json(x) for x in all_rows(EquityAccount)],
                        events=[event_json(x) for x in reversed(all_rows(FinancingEvent))],
                        payments=[payment_json(x) for x in reversed(all_rows(ReceiptFinancingPayment))],
+                       usages=[usage_json(x) for x in reversed(all_rows(LoanUsage))],
                        receipts=[{'id':r.id,'name':r.supplier or r.original_name,'invoice_number':r.invoice_number,
                                   'gross':float(r.gross_amount or 0),'paid':float(r.paid_amount or 0),
                                   'open':float(max(ZERO,dec(r.gross_amount)-dec(r.advance_deduction)-dec(r.paid_amount))),
                                   'due_date':r.due_date,'category':r.category,
-                                  'unassigned':float(max(ZERO,dec(r.paid_amount)-sum((dec(p.amount) for p in all_rows(ReceiptFinancingPayment) if p.receipt_id==r.id and p.source in ('loan','equity')),ZERO)))}
+                                  'unassigned':float(max(ZERO,dec(r.paid_amount)-sum((dec(p.amount) for p in all_rows(ReceiptFinancingPayment) if p.receipt_id==r.id),ZERO)))}
                                  for r in db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht').order_by(Receipt.id.desc()))],
                        summary=summary())
 
@@ -566,7 +609,9 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         if lock_reason:return jsonify(error=lock_reason),409
         if db.session.scalar(select(LoanDocument.id).where(LoanDocument.loan_id==lid).limit(1)):
             return jsonify(error='Kredit hat noch Dokumente. Diese vor dem Löschen einzeln entfernen.'),409
-        if db.session.scalar(select(FinancingEvent.id).where(FinancingEvent.loan_id==lid).limit(1)) or db.session.scalar(select(ReceiptFinancingPayment.id).where(ReceiptFinancingPayment.loan_id==lid).limit(1)):
+        if (db.session.scalar(select(FinancingEvent.id).where(FinancingEvent.loan_id==lid).limit(1))
+                or db.session.scalar(select(ReceiptFinancingPayment.id).where(ReceiptFinancingPayment.loan_id==lid).limit(1))
+                or db.session.scalar(select(LoanUsage.id).where(LoanUsage.loan_id==lid).limit(1))):
             return jsonify(error='Kredit besitzt Buchungen. Bitte nicht löschen; zuerst Buchungen korrigieren.'),409
         db.session.delete(l);db.session.commit();return jsonify(ok=True)
 
@@ -597,6 +642,167 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         if db.session.scalar(select(FinancingEvent.id).where(FinancingEvent.equity_id==eid).limit(1)) or db.session.scalar(select(ReceiptFinancingPayment.id).where(ReceiptFinancingPayment.equity_id==eid).limit(1)):
             return jsonify(error='Eigenkapitalkonto enthält Buchungen.'),409
         db.session.delete(a);db.session.commit();return jsonify(ok=True)
+
+    def usage_purpose(value):
+        value=str(value or '').strip()
+        if not value or len(value)>240:raise ValueError('Verwendungszweck muss zwischen 1 und 240 Zeichen haben.')
+        return value
+
+    def usage_snapshot(row):
+        try:value=json.loads(row.snapshot_json or '{}')
+        except (TypeError,json.JSONDecodeError):value={}
+        return value if isinstance(value,dict) else {}
+
+    def usage_payment_ids(row):
+        snapshot=usage_snapshot(row);ids=set()
+        for key in ('full','splits','created'):
+            for item in snapshot.get(key,[]):
+                for field in ('payment_id','created_payment_id'):
+                    if item.get(field):ids.add(int(item[field]))
+        return ids
+
+    def usage_payment_lock_reason(payment_id):
+        for usage in db.session.scalars(select(LoanUsage).where(LoanUsage.status=='Aktiv')).all():
+            if payment_id in usage_payment_ids(usage):
+                return 'Diese Zahlungszuordnung gehört zu einer aktiven Kreditverwendung. Bitte zuerst die Verwendung zurücknehmen.'
+        return ''
+
+    @app.post('/api/financing/usages')
+    def loan_usage_manual_create():
+        target=None
+        try:
+            loan_id=model_id(request.form.get('loan_id'));loan=db.session.get(Loan,loan_id)
+            if not loan:raise ValueError('Kredit nicht gefunden.')
+            amount=money(request.form.get('amount'),positive=True)
+            if amount>loan_account(loan)['unallocated_drawn']:
+                raise ValueError('Der Betrag übersteigt die ausgezahlte, noch verfügbare Kreditsumme.')
+            stored='';original='';upload=request.files.get('file')
+            if upload and upload.filename:
+                original=Path(upload.filename).name[:240];ext=Path(original).suffix.lower()
+                if ext not in LOAN_FILE_TYPES:raise ValueError('Nachweis muss PDF, JPG, PNG oder WEBP sein.')
+                raw=upload.read(MAX_LOAN_FILE_BYTES+1)
+                if not raw or len(raw)>MAX_LOAN_FILE_BYTES:raise ValueError('Nachweis ist leer oder größer als 15 MB.')
+                USAGE_DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True);stored=uuid4().hex+ext;target=USAGE_DOCUMENT_ROOT/stored
+                with target.open('xb') as output:output.write(raw)
+            row=LoanUsage(loan_id=loan_id,kind='manual',amount=amount,
+                usage_date=iso_date(request.form.get('usage_date')),
+                purpose=usage_purpose(request.form.get('purpose')),notes=note(request.form.get('notes')),
+                status='Aktiv',snapshot_json='{}',original_name=original,stored_name=stored)
+            db.session.add(row);db.session.flush();validate_ledger();result=usage_json(row);db.session.commit()
+            return jsonify(result),201
+        except (ValueError,TypeError) as exc:
+            db.session.rollback()
+            if target:target.unlink(missing_ok=True)
+            return jsonify(error=str(exc)),400
+        except Exception:
+            db.session.rollback()
+            if target:target.unlink(missing_ok=True)
+            app.logger.exception('Kreditverwendung konnte nicht gespeichert werden')
+            return jsonify(error='Kreditverwendung konnte nicht sicher gespeichert werden.'),500
+
+    @app.post('/api/financing/usages/receipt')
+    def loan_usage_receipt_create():
+        body=request.get_json(silent=True) or {}
+        try:
+            loan_id=model_id(body.get('loan_id'));loan=db.session.get(Loan,loan_id)
+            receipt=db.session.scalar(select(Receipt).where(Receipt.id==model_id(body.get('receipt_id'))).with_for_update())
+            if not loan or not receipt or receipt.status!='Gebucht':raise ValueError('Kredit oder gebuchte Rechnung wurde nicht gefunden.')
+            amount=money(body.get('amount'),positive=True)
+            if amount>loan_account(loan)['unallocated_drawn']:
+                raise ValueError('Der Betrag übersteigt die ausgezahlte, noch verfügbare Kreditsumme.')
+            action=str(body.get('action') or '')
+            snapshot={'full':[],'splits':[],'created':[]}
+            usage_date=iso_date(body.get('usage_date'))
+            if action=='pay':
+                available=max(ZERO,dec(receipt.gross_amount)-dec(receipt.advance_deduction)-dec(receipt.paid_amount))
+                if amount>available:raise ValueError('Der Betrag übersteigt den offenen Rechnungsbetrag.')
+                payment=ReceiptFinancingPayment(receipt_id=receipt.id,source='loan',loan_id=loan.id,
+                    amount=amount,payment_date=usage_date,notes=note(body.get('notes')) or 'Über Kreditverwendung bezahlt')
+                db.session.add(payment);receipt.paid_amount=dec(receipt.paid_amount)+amount;db.session.flush()
+                snapshot['created'].append({'payment_id':payment.id,'amount':format(amount,'.2f'),'increased_paid':True})
+                kind='receipt_payment';purpose='Rechnung bezahlt: '+(receipt.supplier or receipt.original_name)
+            elif action=='reimburse':
+                payments=db.session.scalars(select(ReceiptFinancingPayment).where(
+                    ReceiptFinancingPayment.receipt_id==receipt.id).order_by(ReceiptFinancingPayment.id)).all()
+                recorded=sum((dec(payment.amount) for payment in payments),ZERO)
+                legacy=max(ZERO,dec(receipt.paid_amount)-recorded)
+                eligible=legacy+sum((dec(payment.amount) for payment in payments if payment.source in ('equity','unassigned')),ZERO)
+                if amount>eligible:raise ValueError('Der Betrag übersteigt den aus Eigenkapital oder nicht zugewiesen vorfinanzierten Anteil.')
+                remaining=amount
+                for payment in payments:
+                    if remaining<=ZERO:break
+                    if payment.source not in ('equity','unassigned'):continue
+                    available=dec(payment.amount);used=min(available,remaining)
+                    old={'payment_id':payment.id,'source':payment.source,'loan_id':payment.loan_id,
+                         'equity_id':payment.equity_id,'old_amount':format(available,'.2f')}
+                    if used==available:
+                        payment.source='loan';payment.loan_id=loan.id;payment.equity_id=None
+                        old['amount']=format(used,'.2f');snapshot['full'].append(old)
+                    else:
+                        payment.amount=available-used
+                        created=ReceiptFinancingPayment(receipt_id=receipt.id,source='loan',loan_id=loan.id,
+                            amount=used,payment_date=payment.payment_date,
+                            notes='Teilweise Eigenkapitalerstattung')
+                        db.session.add(created);db.session.flush();old.update(used=format(used,'.2f'),created_payment_id=created.id)
+                        snapshot['splits'].append(old)
+                    remaining-=used
+                if remaining>ZERO:
+                    if remaining>legacy:raise ValueError('Der vorfinanzierte Anteil hat sich geändert.')
+                    created=ReceiptFinancingPayment(receipt_id=receipt.id,source='loan',loan_id=loan.id,
+                        amount=remaining,payment_date=usage_date,notes='Erstattung einer nicht zugewiesenen Zahlung')
+                    db.session.add(created);db.session.flush();snapshot['created'].append(
+                        {'payment_id':created.id,'amount':format(remaining,'.2f'),'increased_paid':False})
+                kind='reimbursement';purpose='Eigenkapital erstattet: '+(receipt.supplier or receipt.original_name)
+            else:raise ValueError('Bitte Rechnung bezahlen oder Eigenkapital erstatten auswählen.')
+            row=LoanUsage(loan_id=loan.id,receipt_id=receipt.id,kind=kind,amount=amount,
+                usage_date=usage_date,purpose=purpose,notes=note(body.get('notes')),status='Aktiv',
+                snapshot_json=json.dumps(snapshot,ensure_ascii=False))
+            db.session.add(row);db.session.flush();validate_ledger();result=usage_json(row);db.session.commit()
+            return jsonify(result),201
+        except (ValueError,TypeError) as exc:
+            db.session.rollback();return jsonify(error=str(exc)),400
+
+    @app.get('/api/financing/usages/<int:usage_id>/document')
+    def loan_usage_document(usage_id):
+        row=db.session.get(LoanUsage,usage_id)
+        if not row or not row.stored_name:return jsonify(error='Verwendungsnachweis nicht gefunden.'),404
+        path=USAGE_DOCUMENT_ROOT/row.stored_name
+        if not path.is_file():return jsonify(error='Gespeicherter Verwendungsnachweis fehlt.'),404
+        response=send_file(path,as_attachment=True,download_name=row.original_name);response.headers['Cache-Control']='no-store';return response
+
+    @app.delete('/api/financing/usages/<int:usage_id>')
+    def loan_usage_reverse(usage_id):
+        row=db.session.scalar(select(LoanUsage).where(LoanUsage.id==usage_id).with_for_update())
+        if not row:return jsonify(error='Kreditverwendung nicht gefunden.'),404
+        if row.status!='Aktiv':return jsonify(error='Diese Verwendung wurde bereits zurückgenommen.'),409
+        try:
+            snapshot=usage_snapshot(row);receipt=db.session.get(Receipt,row.receipt_id) if row.receipt_id else None
+            for old in snapshot.get('full',[]):
+                payment=db.session.get(ReceiptFinancingPayment,old.get('payment_id'))
+                if (not payment or payment.source!='loan' or payment.loan_id!=row.loan_id
+                        or dec(payment.amount)!=dec(old.get('amount'))):
+                    raise ValueError('Eine Zahlungszuordnung wurde inzwischen verändert.')
+                payment.source=old['source'];payment.loan_id=old.get('loan_id');payment.equity_id=old.get('equity_id')
+            for old in snapshot.get('splits',[]):
+                original=db.session.get(ReceiptFinancingPayment,old.get('payment_id'));created=db.session.get(ReceiptFinancingPayment,old.get('created_payment_id'))
+                if (not original or dec(original.amount)!=dec(old.get('old_amount'))-dec(old.get('used'))
+                        or not created or created.source!='loan' or created.loan_id!=row.loan_id
+                        or dec(created.amount)!=dec(old.get('used'))):
+                    raise ValueError('Eine Teilzuordnung wurde inzwischen verändert.')
+                original.amount=dec(old['old_amount']);db.session.delete(created)
+            for old in snapshot.get('created',[]):
+                payment=db.session.get(ReceiptFinancingPayment,old.get('payment_id'))
+                if (not payment or payment.source!='loan' or payment.loan_id!=row.loan_id
+                        or dec(payment.amount)!=dec(old.get('amount'))):
+                    raise ValueError('Eine erzeugte Zahlungszuordnung wurde verändert.')
+                if old.get('increased_paid'):
+                    if not receipt or dec(receipt.paid_amount)<dec(payment.amount):raise ValueError('Der Rechnungszahlbetrag wurde inzwischen verändert.')
+                    receipt.paid_amount=dec(receipt.paid_amount)-dec(payment.amount)
+                db.session.delete(payment)
+            row.status='Zurückgenommen';row.reversed_at=datetime.utcnow();db.session.flush();validate_ledger();db.session.commit()
+            return jsonify(usage_json(row))
+        except (ValueError,TypeError) as exc:
+            db.session.rollback();return jsonify(error=str(exc)),409
 
     EVENT_LOAN={'loan_drawdown','loan_repayment','loan_interest','loan_fee'}
     EVENT_EQUITY={'equity_deposit','equity_withdrawal'}
@@ -757,7 +963,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
     def finance_payment_unassign(pid):
         payment=db.session.get(ReceiptFinancingPayment,pid)
         if not payment:return jsonify(error='Zahlung nicht gefunden.'),404
-        lock_reason=services.get('payment_lock_reason',lambda _pid:'')(pid)
+        lock_reason=usage_payment_lock_reason(pid) or services.get('payment_lock_reason',lambda _pid:'')(pid)
         if lock_reason:return jsonify(error=lock_reason),409
         payment.source='unassigned';payment.loan_id=None;payment.equity_id=None
         db.session.flush();validate_ledger();db.session.commit()
@@ -767,7 +973,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
     def finance_payment_delete(pid):
         p=db.session.get(ReceiptFinancingPayment,pid)
         if not p:return jsonify(error='Zahlung nicht gefunden.'),404
-        lock_reason=services.get('payment_lock_reason',lambda _pid:'')(pid)
+        lock_reason=usage_payment_lock_reason(pid) or services.get('payment_lock_reason',lambda _pid:'')(pid)
         if lock_reason:return jsonify(error=lock_reason),409
         receipt=db.session.get(Receipt,p.receipt_id)
         receipt.paid_amount=dec(receipt.paid_amount)-dec(p.amount)
@@ -780,4 +986,4 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
               'event_document_model':FinancingEventDocument,
               'payment_source_exists':lambda source,ref:db.session.get(
                   Loan if source=='loan' else EquityAccount,ref) is not None}
-    return Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument, services
+    return Loan, EquityAccount, FinancingEvent, ReceiptFinancingPayment, LoanDocument, LoanUsage, services

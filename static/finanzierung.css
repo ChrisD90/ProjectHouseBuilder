@@ -181,3 +181,54 @@
  .phb-page-finanzierung .drawdown-position header{grid-column:auto}
  .phb-page-finanzierung .drawdown-preview-actions>*{width:100%}
 }
+
+/* Compact credit cockpit and guided usage workflow. */
+.phb-page-finanzierung #totals{grid-template-columns:repeat(3,minmax(0,1fr));max-width:900px}
+.phb-page-finanzierung .status-ausgezahlt{background:#def3e9;color:#17603f!important}
+.phb-page-finanzierung .loan-overview-card{padding:17px;display:grid;gap:13px}
+.phb-page-finanzierung .loan-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.phb-page-finanzierung .loan-card-head h3,.phb-page-finanzierung .equity-overview-card h3{margin:0 0 4px}
+.phb-page-finanzierung .loan-card-head .meta,.phb-page-finanzierung .equity-overview-card .meta{margin:0}
+.phb-page-finanzierung .loan-pending{font-size:11px;color:#795713;background:#fff1cf;border-radius:999px;padding:5px 9px;white-space:nowrap}
+.phb-page-finanzierung .loan-progress{height:9px;border-radius:999px;background:#e9eff0;display:flex;overflow:hidden}
+.phb-page-finanzierung .loan-progress-used{background:#13786f}
+.phb-page-finanzierung .loan-progress-available{background:#62b8ad}
+.phb-page-finanzierung .loan-key-values{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.phb-page-finanzierung .loan-key-values>div{padding:9px 10px;border-radius:9px;background:#f4f8f8;min-width:0}
+.phb-page-finanzierung .loan-key-values span{display:block;font-size:10px;color:#6a7d82;margin-bottom:3px}
+.phb-page-finanzierung .loan-key-values b{display:block;font-size:13px;color:#174b55;overflow-wrap:anywhere}
+.phb-page-finanzierung .equity-overview-card{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.phb-page-finanzierung .equity-overview-card .meta strong{color:#155c65}
+.phb-page-finanzierung .finance-booking-details>summary{cursor:pointer;font-weight:700;color:#315a63}
+.phb-page-finanzierung .finance-booking-details .finance-events{margin-top:18px}
+.phb-page-finanzierung .usage-history{display:grid;gap:8px}
+.phb-page-finanzierung .usage-history-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 14px;border:1px solid #dce8ea;border-radius:10px;background:#fff}
+.phb-page-finanzierung .usage-history-row>div{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.phb-page-finanzierung .usage-history-row>div:first-child{display:grid;gap:4px}
+.phb-page-finanzierung .usage-history-row span{font-size:12px;color:#60747b}
+.phb-page-finanzierung .usage-history-row.is-reversed{opacity:.65;background:#f5f6f6}
+.phb-page-finanzierung .usage-dialog{width:min(820px,calc(100vw - 24px));max-height:92dvh;overflow:auto}
+.phb-page-finanzierung .usage-dialog .modal{padding:24px}
+.phb-page-finanzierung .usage-dialog .modal-head{align-items:flex-start}
+.phb-page-finanzierung .usage-dialog .modal-head h2{margin:0 0 4px}
+.phb-page-finanzierung .usage-dialog .modal-head p{margin:0;font-size:13px}
+.phb-page-finanzierung .usage-kind-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:18px 0}
+.phb-page-finanzierung .usage-kind-picker label{display:flex;align-items:flex-start;gap:9px;border:1px solid #d7e4e6;border-radius:11px;padding:12px;background:#fff;cursor:pointer}
+.phb-page-finanzierung .usage-kind-picker label:has(input:checked){border-color:#278b80;background:#eff9f6;box-shadow:0 0 0 2px #278b801a}
+.phb-page-finanzierung .usage-kind-picker input{width:16px;height:16px;margin:2px 0 0;flex:0 0 auto}
+.phb-page-finanzierung .usage-kind-picker strong,.phb-page-finanzierung .usage-kind-picker small{display:block}
+.phb-page-finanzierung .usage-kind-picker strong{font-size:13px;color:#244e57}
+.phb-page-finanzierung .usage-kind-picker small{font-size:11px;color:#687c82;line-height:1.45;margin-top:3px}
+.phb-page-finanzierung .usage-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.phb-page-finanzierung .usage-fields label{display:grid;gap:6px;font-size:13px;color:#45626c;min-width:0}
+.phb-page-finanzierung .usage-fields .wide{grid-column:1/-1}
+.phb-page-finanzierung .usage-fields :is(input,select,textarea){width:100%;min-width:0;padding:10px;border:1px solid #c8d7da;border-radius:8px;background:#fff}
+.phb-page-finanzierung .usage-fields small{font-size:11px;color:#697d83}
+.phb-page-finanzierung .usage-available{padding:11px 13px;border-radius:9px;background:#edf7f5;color:#205f56;font-size:13px;font-weight:700;margin:15px 0 0}
+@media(max-width:760px){
+ .phb-page-finanzierung #totals{grid-template-columns:1fr}
+ .phb-page-finanzierung .loan-key-values{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .phb-page-finanzierung .usage-kind-picker,.phb-page-finanzierung .usage-fields{grid-template-columns:1fr}
+ .phb-page-finanzierung .usage-fields .wide{grid-column:auto}
+ .phb-page-finanzierung .usage-history-row{align-items:flex-start;flex-direction:column}
+}

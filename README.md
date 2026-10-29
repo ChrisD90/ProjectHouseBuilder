@@ -40,7 +40,7 @@ Die alten Excel-Kostenplanvorlagen und ihr automatischer Import sind **entfernt*
 
 ## Datenbankschema und Updates
 
-`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung, `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung und `0008` die explizite Rechnungszuordnung. `0018` ergänzt Kreditabrufvorlagen und nachvollziehbare Mittelabrufpakete; `0019` protokolliert zurückgenommene Rechnungsstornos; `0020` ergänzt Entwurf, Einreichung, Bankentscheidung, PDF-Vorschau und manuelle Abrufnachweise; `0021` ergänzt wiederverwendbare Auszahlungsdaten pro Kredit. Bereits bestehende Rechnungen bleiben erhalten; bisherige Zuordnungen zu Kostenpositionen werden übernommen und nicht automatisch als Eigenleistung deklariert. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
+`start_mac_linux.sh` richtet `.venv` ein, installiert ggf. Abhängigkeiten und führt vor dem Programmstart die **Alembic-Migrationen** aus. Beim Update einer bestehenden SQLite-Datenbank wird **vor jeder nötigen Schemaänderung** ein geprüftes Komplettbackup erzwungen; ohne Backup wird nicht migriert. Die Migrationen bis `0006` erhalten ältere Daten. `0004` entfernt Excel-Metadaten, `0005` ergänzt die Angebots-/Rechnungsüberwachung, `0006` die Zuordnung von Aufgaben zu Eigen-, Fremd- oder noch unbestimmter Ausführung und `0008` die explizite Rechnungszuordnung. `0018` ergänzt Kreditabrufvorlagen und nachvollziehbare Mittelabrufpakete; `0019` protokolliert zurückgenommene Rechnungsstornos; `0020` ergänzt Entwurf, Einreichung, Bankentscheidung, PDF-Vorschau und manuelle Abrufnachweise; `0021` ergänzt wiederverwendbare Auszahlungsdaten pro Kredit; `0023` ergänzt Auszahlungsziele und rücknehmbare Kreditverwendungen. Bereits bestehende Rechnungen bleiben erhalten; bisherige Zuordnungen zu Kostenpositionen werden übernommen und nicht automatisch als Eigenleistung deklariert. Echte Kosten-, Beleg-, Kontakt-, Kredit- und Angebotsdaten bleiben davon unberührt. `python schema_manager.py --check` zeigt den Datenbankstand.
 
 Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.db-shm`, `private/`, `backups/`, `.env`, `instance/` aus. Diese Dateien niemals in GitHub einchecken. Die Datenbank nie in einem Cloud-Sync-Ordner betreiben; nur vollständige Backups synchronisieren.
 
@@ -51,7 +51,7 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 - **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, jederzeit korrigieren, annehmen oder ablehnen. Abgelehnte Angebote liegen in einer eingeklappten Liste; die Übersicht zeigt die Gesamtsumme aller angenommenen Aufträge. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.
 - **Kosten & Budget (`/kosten`):** Ausschließlich Kostenschätzungen und zusätzliche Ausgaben planen; keine zweite Angebotsverwaltung. Angenommene Angebote werden automatisch eingerechnet, aber nicht nochmals bearbeitbar als manuelle Kostenposition angezeigt.
 - **Belege:** Rechnungen/Kassenzettel als PDF oder Foto importieren und wahlweise **lokal** (PDF-Text/Tesseract OCR) oder nach ausdrücklicher Freigabe mit **ChatGPT** analysieren. Belege anschließend prüfen und **genau einer Zuordnungsart** zuweisen: angenommenes Angebot, Betrieb oder Eigenleistung. Die Budgetposition bleibt separat auswählbar; keine automatische Buchung.
-- **Finanzierung:** Kredite manuell erfassen oder Kreditunterlagen ausdrücklich mit ChatGPT auslesen und Vertragsfelder vor dem Speichern prüfen. Briefe, Vertrags-PDFs und gescannte Dokumente lassen sich am einzelnen Kredit anhängen. Für jeden Kredit können eine Bankvorlage und wiederverwendbare Angaben wie Kreditnehmer, Objekt, Auszahlungskonto und Ort hinterlegt werden. Daraus lässt sich ein Mittelabruf-ZIP aus ausgewählten Rechnungen erzeugen. Entwurf und Einreichung bleiben ungebucht; erst die erfasste Bankbestätigung bucht den Abruf und die gewählten Eigenkapitalanteile um. Alternativ kann eine bereits bestätigte Auszahlung direkt mit optionalem Auszahlungsformular gebucht werden.
+- **Finanzierung:** Kredite manuell erfassen oder Kreditunterlagen ausdrücklich mit ChatGPT auslesen. Die kompakte Übersicht trennt Darlehensrahmen, ausgezahlte, verwendete und verfügbare Beträge. Mittelabrufe unterstützen das eigene Konto, Direktzahlungen an Firmen und Eigenkapitalerstattungen. Ausgezahlte Beträge können Rechnungen zugeordnet oder als sonstige, rücknehmbare Projektverwendung mit Nachweis dokumentiert werden.
 - **Stammdaten (`/stammdaten`):** Firmen und automatisch aus PDF-Angeboten übernommene Betriebe zentral pflegen: Ansprechpartner, weitere Kontakte, Telefonnummern, E-Mail, Website, Adresse und Notizen. Separate Gewerke und gemeinsam genutzte Rechnungs-/Kostenkategorien anlegen, umbenennen und – falls unverknüpft – löschen.
 - **Backup, Export & Datenverwaltung (`/daten`):** geprüfte vollständige Sicherungen einschließlich PDFs und Bildern, CSV-/JSON-Exporte, ZIP-Projektarchiv, Wiederherstellungshinweise. Der vollständige Reset ist hinter „Erweiterte Aktionen“ verborgen und bleibt nur nach Pflichtbackup möglich.
 
@@ -521,48 +521,16 @@ Kredit- und Eigenkapitaldaten werden nicht umgeschrieben.
 Beim lokalen SQLite-Update erstellt der Starter zuvor wie bisher ein verifiziertes
 Komplettbackup; bei NAS/Docker wird die neue Tabelle beim Initialisieren angelegt.
 
-## Kredit-Mittelabrufe und Bankpakete (Migrationen 0018, 0020 und 0021)
+## Kredit-Mittelabrufe, Auszahlungen und Verwendungen (Migrationen 0018, 0020, 0021 und 0023)
 
-Im Bereich **Finanzierung** startet **„+ Mittelabruf“** einen eigenen Ablauf. Zuerst wird
-der Zielkredit gewählt; dadurch bleiben mehrere parallel laufende Darlehen eindeutig
-getrennt. Die Liste zeigt gebuchte und bezahlte Rechnungen sowie Kassenzettel mit ihrer
-aktuellen Finanzierungsquelle. Auswählbar sind die Anteile, die bisher aus Eigenkapital
-oder ohne Finanzierungsquelle bezahlt wurden. Bereits dem Zielkredit zugeordnete Beträge
-werden angezeigt, aber weder erneut abgerufen noch doppelt verbucht. Zahlungen eines
-anderen Kredits werden nicht automatisch verschoben.
+Die Finanzierungsübersicht zeigt bewusst nur die zentralen Gesamtwerte **offener Finanzbedarf**, **verfügbare Finanzierung** und **Finanzierungslücke**. Jede Kreditkarte stellt **Rahmen**, **ausgezahlt**, **verwendet** und **verfügbar** gegenüber. Eingereichte, noch nicht ausgezahlte Abrufe erscheinen zusätzlich als „in Prüfung“, ohne bereits eine Buchung auszulösen.
 
-Der dokumentgestützte Weg besitzt die Status **Entwurf**, **Eingereicht**, **Bestätigt**,
-**Abgelehnt** und **Zurückgenommen**. Im Entwurf sind Gesamtsumme, Rechnungsdatum,
-Rechnungsnummer, Firma und Positionsbetrag bearbeitbar. Die PDF-Vorschau wird aus diesen
-Werten neu erzeugt. Beim Einreichen entsteht das ZIP, aber noch keine Finanzbuchung. Erst
-nach der erfassten Bestätigung der Bank werden der Kreditabruf und die Umbuchungen in
-einer Datenbanktransaktion gespeichert. Der bezahlte Rechnungsbetrag bleibt dabei
-unverändert; auch Teilbeträge einer Eigenkapitalzahlung werden korrekt aufgeteilt.
+**„+ Mittelabruf“** führt durch Kredit, Auszahlungsziel und Belegauswahl. Die Auszahlungsziele sind eigenes Konto, direkte Firmenzahlung und Eigenkapitalerstattung. Entwurf und Einreichung bleiben ungebucht. Erst **„Auszahlung eingegangen“** erzeugt die Kreditbuchung. Bei einer Direktzahlung werden offene Belegbeträge zugleich als bezahlt und kreditfinanziert erfasst. Bei einer Eigenkapitalerstattung werden nur tatsächlich vorfinanzierte Beträge umgebucht. Eine Auszahlung aufs eigene Konto bleibt zunächst als verfügbarer Kreditbetrag stehen.
 
-Das erzeugte ZIP enthält eine Übersicht, die ausgefüllte Bankvorlage und die
-Originaldateien aller ausgewählten Belege. Es wird unter
-`private/loan-drawdowns/` gespeichert, gehört damit zum vollständigen Backup und kann in
-der Mittelabrufhistorie erneut geladen werden. Die Historie bleibt auch nach Ablehnung
-oder Rücknahme erhalten. **„Buchung zurücknehmen“** stellt bei einem bestätigten Abruf
-Kreditabruf und alle zugehörigen Zahlungsquellen gemeinsam wieder her; wenn eine dieser
-Buchungen inzwischen anderweitig verändert wurde, wird die automatische Rücknahme
-abgelehnt.
+Der dokumentgestützte Weg besitzt die Status **Entwurf**, **Eingereicht**, **Ausgezahlt**, **Abgelehnt** und **Zurückgenommen**. Im Entwurf sind Gesamtsumme und Rechnungspositionen bearbeitbar. Das ZIP enthält Übersicht, ausgefüllte Bankvorlage und Originalbelege. Es liegt unter `private/loan-drawdowns/`, gehört zum vollständigen Backup und bleibt in der Historie verfügbar. Die Rücknahme stellt Kreditbuchung, Direktzahlungen und Umbuchungen gemeinsam wieder her.
 
-In **Kredit bearbeiten → Kreditunterlagen** kann die Dokumentart **„Vorlage für
-Kreditabruf“** gewählt werden. Pro Kredit ist eine aktive PDF-Vorlage vorgesehen; eine
-neue Auswahl stuft die bisherige Vorlage zur normalen Kreditunterlage zurück, ohne die
-Datei zu löschen. Das Originalformular wird auch ohne ChatGPT in das ZIP aufgenommen.
-Im selben Kreditdialog lassen sich unter **„Wiederverwendbare Angaben für Auszahlungen“**
-Kreditnehmer, Objektadresse, Zahlungsempfänger, IBAN, Ort und Standardhinweise speichern.
-Neue Mittelabrufe übernehmen diese Angaben automatisch; sie bleiben im einzelnen Entwurf
-änderbar und werden getrennt je Kredit geführt.
-Wenn die lokale ChatGPT-Verbindung aktiv ist und die Plannutzung bestätigt wurde, kann
-ChatGPT die ausfüllbaren PDF-Felder anhand der geprüften Kredit-, Abruf- und Belegdaten
-den Formularpositionen zuordnen und vorausfüllen. Das Ergebnis bleibt eine zu prüfende,
-gegebenenfalls zu unterschreibende Bankvorlage; unbekannte Angaben und Unterschriften
-werden nicht erfunden. Anweisungen innerhalb einer PDF werden nicht ausgeführt.
+**„Verwendung erfassen“** bietet drei Wege: eine offene Rechnung aus dem Kredit bezahlen, eine aus Eigenkapital oder ohne Quelle vorfinanzierte Rechnung erstatten oder eine sonstige Projektverwendung dokumentieren. Sonstige Verwendungen reduzieren den verfügbaren Kreditbetrag, erzeugen aber keine zweite Projektkostenbuchung. Betrag, Datum, Zweck und optionaler PDF-/Bildnachweis werden in der Historie gespeichert. Jede Verwendung kann gemeinsam mit ihren Zahlungszuordnungen zurückgenommen werden.
 
-Der zweite Weg liegt unter **Kreditabrufe & Geldbewegungen → Kreditabruf manuell
-buchen**. Er ist für eine bereits erfolgte oder bestätigte Auszahlung gedacht und bucht
-den Betrag sofort. Das bei der Bank eingereichte Auszahlungsformular kann dort als PDF
-oder Bild angehängt werden und bleibt zusammen mit der Buchung im Projektbackup.
+In **Kredit verwalten → Kreditunterlagen** kann pro Kredit eine aktive PDF-Vorlage für den Mittelabruf hinterlegt werden. Wiederverwendbare Angaben wie Kreditnehmer, Objektadresse, Zahlungsempfänger, IBAN, Ort und Standardhinweis werden in neue Abrufe übernommen. Bei aktiver ChatGPT-Verbindung kann die Anwendung ausfüllbare Formularfelder den geprüften Abruf- und Belegdaten zuordnen; das Ergebnis bleibt eine zu prüfende Bankvorlage.
+
+Bereits erfolgte Auszahlungen, Tilgungen, Zinsen, Gebühren und Eigenkapitalbewegungen können unter **„Weitere Buchungen und Kontobewegungen“** nachgetragen werden. Nachweise und Verwendungsdokumente liegen unter `private/` und sind Bestandteil des vollständigen Projektbackups.
