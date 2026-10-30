@@ -6,7 +6,7 @@ import unittest
 import zipfile
 from unittest.mock import patch
 os.environ['DATABASE_URL']='sqlite:///:memory:'
-from app import app,db,initialize,Receipt,CostItem,BudgetLine,Contractor,Offer
+from app import app,db,initialize,Receipt,CostItem,BudgetLine,Contractor,Offer,Trade
 
 class ReceiptWebappTest(unittest.TestCase):
     def setUp(self):
@@ -17,6 +17,29 @@ class ReceiptWebappTest(unittest.TestCase):
     def upload(self,name='example.pdf',text='Elektro Muster GmbH\nRechnungsnummer 2026-99\nDatum 21.10.2026\nGesamtbetrag 120,00 EUR'):
         with patch('app.extract_text',return_value=(text,'PDF-Text')):
             return self.client.post('/api/receipts',data={'file':(io.BytesIO(b'%PDF-1.4\nTEST'),name)},content_type='multipart/form-data')
+    def test_trade_is_independent_of_company_and_survives_master_rename(self):
+        company=Contractor(name='Firma Hems',trade='Elektro')
+        trade=Trade(name='Testgewerk')
+        db.session.add_all([company,trade]);db.session.commit()
+        rid=self.upload().json['id']
+        result=self.client.patch(f'/api/receipts/{rid}',json={
+            'trade':trade.name,'assignment_type':'Betrieb','contractor_id':company.id,
+            'book_now':True})
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(result.json['trade'],'Testgewerk')
+        self.assertEqual(result.json['contractor_id'],company.id)
+        renamed=self.client.patch(f'/api/trades/{trade.id}',json={'name':'Neues Testgewerk'})
+        self.assertEqual(renamed.status_code,200)
+        self.assertEqual(self.client.get(f'/api/receipts/{rid}').json['trade'],'Neues Testgewerk')
+        self.assertEqual(self.client.delete(f'/api/trades/{trade.id}').status_code,409)
+        changed=self.client.patch(f'/api/receipts/{rid}',json={
+            'assignment_type':'','contractor_id':None,'trade':'Neues Testgewerk'})
+        self.assertEqual(changed.status_code,200,changed.json)
+        self.assertIsNone(changed.json['contractor_id'])
+        self.assertEqual(changed.json['status'],'Gebucht')
+        invalid=self.client.patch(f'/api/receipts/{rid}',json={'trade':'Unbekanntes Gewerk'})
+        self.assertEqual(invalid.status_code,400)
+
     def test_upload_review_book_paid_and_undo(self):
         start=self.client.get('/api/costs').json['summary']
         response=self.upload();self.assertEqual(response.status_code,201,response.json)

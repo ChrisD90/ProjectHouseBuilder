@@ -75,6 +75,7 @@ function renderCostItems(){
   const contractors=overview?.contractors||[];
   $('receiptContractor').innerHTML='<option value="">Betrieb wählen</option>'+
     contractors.map(x=>`<option value="${x.id}">${safe(x.name)} · ${safe(x.trade||'Betrieb')}</option>`).join('');
+  $('receiptSupplierCompany').innerHTML='<option value="">Lieferant manuell eingeben</option>'+contractors.map(x=>`<option value="${x.id}">${safe(x.name)}</option>`).join('');
   linkedCostItem=offered.find(x=>x.offer_id===linkOffer)?.id||null;
 }
 function normalizedSearch(value){
@@ -84,12 +85,12 @@ function receiptMatchesSearch(receipt){
  if(receiptLaborFilter==='labor'&&!(Number(receipt.labor_amount)>0))return false;
  if(receiptYearFilter&&String(receipt.document_date||'').slice(0,4)!==receiptYearFilter)return false;
  if(!receiptSearchText)return true;
- const values=[receipt.supplier,receipt.invoice_number,receipt.filename,receipt.document_date,
-  receipt.due_date,receipt.category,receipt.kind,receipt.billing_type,receipt.status,
-  receipt.notes,assignmentLabel(receipt),receipt.gross_amount,receipt.counted_amount,
+ const values=[receipt.supplier,receipt.invoice_number,receipt.document_date,
+  receipt.due_date,receipt.trade,receipt.category,receipt.kind,receipt.billing_type,receipt.status,
+  assignmentLabel(receipt),receipt.gross_amount,receipt.counted_amount,
   receipt.paid_amount,money(receipt.gross_amount),money(receipt.counted_amount)];
- const haystack=normalizedSearch(values.join(' '));
- return receiptSearchText.split(/\s+/).every(term=>haystack.includes(term));
+ const fields=values.map(normalizedSearch);
+ return receiptSearchText.split(/\s+/).every(term=>fields.some(field=>field.includes(term)));
 }
 function renderReceiptFilters(){
  const select=$('receiptYearFilter'),previous=receiptYearFilter;
@@ -115,7 +116,7 @@ function renderReceiptList(){
  $('receiptSearchResult').textContent=filtered
   ?`${visible.length} von ${list.length} Belegen gefunden`
   :`${list.length} Belege insgesamt`;
- $('list').innerHTML=visible.map(x=>`<button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':''}">${safe(x.status)}</span>${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}<strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
+ $('list').innerHTML=visible.map(x=>`<button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':x.status==='Storniert'?'cancelled':'draft'}">${safe(x.status)}</span>${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}<strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
  $('list').querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
  renderLaborSummary();
 }
@@ -179,15 +180,19 @@ function updateInvoiceControls(){
  const mode=$('receiptAssignmentType').value;
  const frozen=false;
  $('receiptOfferWrap').hidden=mode!=='Angebot'&&mode!=='Kostenposition';
- $('receiptContractorWrap').hidden=mode!=='Betrieb';
+ $('receiptContractorWrap').hidden=true;
  $('receiptContractorHint').hidden=mode!=='Betrieb';
  $('costItems').disabled=frozen||(mode!=='Angebot'&&mode!=='Kostenposition');
  $('receiptContractor').disabled=frozen||mode!=='Betrieb';
+ $('receiptSupplierCompany').disabled=mode==='Angebot';
+ if(mode!=='Angebot')$('receiptSupplierCompany').value=$('receiptContractor').value;
  $('receiptAssignmentType').disabled=frozen;
  const cost=overview?.items?.find(x=>x.id===Number($('costItems').value));
  const offer=(overview?.offers||[]).find(o=>o.id===cost?.offer_id);
  const isAccepted=mode==='Angebot'&&!!(offer&&['Angenommen','Beauftragt'].includes(offer.status));
  if(isAccepted&&!frozen){
+   $('receiptSupplierCompany').value=offer.contractor_id||'';
+   $('review').elements.namedItem('supplier').value=(overview?.contractors||[]).find(c=>c.id===offer.contractor_id)?.name||offer.vendor;
    $('budgetLines').value=cost.budget_line_id||'';
    $('categories').value=cost.category;
  }
@@ -206,12 +211,27 @@ function updateInvoiceControls(){
    : mode==='Betrieb'?'Direkt einem Betrieb zugeordnet; keine automatische Verknüpfung zu einem Angebot. Die Rechnung wird nur einmal als Ausgabe berücksichtigt.'
    : mode==='Eigenleistung'?'Eigenleistung/Material: Keine Verknüpfung zu einem Handwerker oder Angebot. Falls vorhanden, die passende Budgetposition auswählen.'
    : mode==='Kostenposition'?'Historische Kostenpositionszuordnung. Für Änderungen kann ein regulärer Zuordnungstyp ausgewählt werden.'
-   : 'Wähle Angebot, Betrieb oder Eigenleistung. Nur angenommene Angebote erscheinen in der Angebotsauswahl.';
+   : 'Firma und Kostenkategorie lassen sich unabhängig zuordnen. Bei einem Angebot wird die Firma automatisch übernommen.';
 }
 $('receiptAssignmentType').addEventListener('change',()=>{
   if($('receiptAssignmentType').value!=='Angebot'&&$('receiptAssignmentType').value!=='Kostenposition'){$('costItems').value='';$('advanceDeduction').value='0';}
   if($('receiptAssignmentType').value!=='Betrieb')$('receiptContractor').value='';
   updateInvoiceControls();
+});
+$('receiptSupplierCompany').addEventListener('change',()=>{
+ const company=(overview?.contractors||[]).find(c=>String(c.id)===$('receiptSupplierCompany').value);
+ $('receiptContractor').value=company?String(company.id):'';
+ if(company){$('review').elements.namedItem('supplier').value=company.name;$('receiptAssignmentType').value='Betrieb';}
+ else if($('receiptAssignmentType').value==='Betrieb')$('receiptAssignmentType').value='';
+ updateInvoiceControls();
+});
+$('review').elements.namedItem('supplier').addEventListener('input',event=>{
+ const company=(overview?.contractors||[]).find(c=>String(c.id)===$('receiptSupplierCompany').value);
+ if(company&&normalizedSearch(event.target.value)!==normalizedSearch(company.name)&&$('receiptAssignmentType').value!=='Angebot'){
+  $('receiptSupplierCompany').value='';$('receiptContractor').value='';
+  if($('receiptAssignmentType').value==='Betrieb')$('receiptAssignmentType').value='';
+  updateInvoiceControls();
+ }
 });
 $('costItems').addEventListener('change',updateInvoiceControls);
 $('billingType').addEventListener('change',()=>{if($('billingType').value!=='Schlussrechnung')$('advanceDeduction').value='0';updateInvoiceControls();});
@@ -228,9 +248,9 @@ function inputs({booking=false}={}){
   const result=Object.fromEntries(new FormData($('review')));
   // Payment is always recorded separately after booking.
   delete result.paid_amount;
- if($('book').hidden)return result;
+
  const mode=$('receiptAssignmentType').value;
- if(booking&&!mode)throw Error('Bitte die Rechnung einem Angebot, Betrieb oder der Eigenleistung zuordnen.');
+
  if(booking&&mode==='Angebot'&&!$('costItems').value)throw Error('Bitte ein angenommenes Angebot auswählen.');
  if(booking&&mode==='Betrieb'&&!$('receiptContractor').value)throw Error('Bitte einen Betrieb auswählen.');
  result.assignment_type=mode;
@@ -243,6 +263,7 @@ function inputs({booking=false}={}){
 function fillSelect(node,values,getTitle){node.innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${safe(getTitle(x))}</option>`).join('')}
 async function reload(keepId=selected){
  const [r,c]=await Promise.all([api('/api/receipts'),api('/api/costs')]);overview=c;list=r.receipts;
+ $('receiptTrade').innerHTML='<option value="">Ohne Gewerk</option>'+(r.trades||[]).map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('');
  $('stats').innerHTML=`<span>Entwürfe: <b>${r.drafts}</b></span><span>Gebucht brutto: <b>${money(r.booked_gross)}</b></span><span>Bezahlt: <b>${money(r.paid)}</b></span><span>Lohnanteil erfasst: <b>${list.filter(x=>x.labor_amount!==null).length} Belege</b></span>`;
  $('categories').innerHTML=r.categories.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');
  fillSelect($('budgetLines'),c.budget_lines.filter(x=>x.active&&!x.is_group),x=>x.category+' · '+x.title);

@@ -324,6 +324,7 @@ class Receipt(db.Model):
     vat_amount=db.Column(db.Numeric(12,2),nullable=True)
     labor_amount=db.Column(db.Numeric(12,2),nullable=True)
     labor_source=db.Column(db.String(20),nullable=False,default='',server_default='')
+    trade=db.Column(db.String(120),nullable=False,default='',server_default='')
     category=db.Column(db.String(120),default='Sonstiges')
     kind=db.Column(db.String(30),default='Rechnung')
     # A final invoice may state the full contract amount including prior invoices.
@@ -2431,7 +2432,7 @@ def cost_dashboard(items, summary):
             kind='Eigenleistung' if receipt.assignment_type=='Eigenleistung' else 'Fremdleistung'
             target={
                 'id':f'receipt:{receipt.id}','title':receipt.invoice_number or receipt.original_name or 'Beleg',
-                'category':receipt.category or 'Sonstiges','trade':'','kind':kind,
+                'category':receipt.category or 'Sonstiges','trade':receipt.trade or '','kind':kind,
                 'phase':'','task':'','company':contractor.name if contractor else (receipt.supplier or ''),
                 'forecast':amount,'committed':0.0,'invoiced':0.0,'paid':0.0,
                 'basis':'Nicht eingeplanter Beleg','source':'Rechnung','url':f'/belege?receipt_id={receipt.id}',
@@ -3511,7 +3512,7 @@ def _receipt_json(r, include_text=False):
          'kind':r.kind,'billing_type':r.billing_type,'advance_deduction':float(r.advance_deduction or 0),
          'counted_amount':float(_receipt_increment(r)),'notes':r.notes,'status':r.status,'paid_amount':float(r.paid_amount or 0),
          'budget_line_id':r.budget_line_id,'cost_item_id':r.cost_item_id,
-         'contractor_id':r.contractor_id,'assignment_type':r.assignment_type or ('Angebot' if _accepted_receipt_offer(r) else 'Kostenposition' if r.cost_item_id else ''),
+         'trade':r.trade,'contractor_id':r.contractor_id,'assignment_type':r.assignment_type or ('Angebot' if _accepted_receipt_offer(r) else 'Kostenposition' if r.cost_item_id else ''),
          'offer_id':_accepted_receipt_offer(r).id if _accepted_receipt_offer(r) else None,
          'warnings':json.loads(r.warnings or '[]'),'created_at':r.created_at.isoformat()}
     obj.update(assigned_amount=round(assigned,2),unassigned_amount=unassigned,
@@ -3739,6 +3740,7 @@ def categories_remove(cid):
 def receipt_list():
     rows=db.session.scalars(select(Receipt).order_by(Receipt.id.desc())).all()
     return jsonify(receipts=[_receipt_json(r) for r in rows],categories=category_names(),
+                   trades=[t.name for t in db.session.scalars(select(Trade).order_by(Trade.name))],
                    booked_gross=round(sum(float(r.gross_amount or 0) for r in rows if r.status=='Gebucht'),2),
                    paid=round(sum(float(r.paid_amount or 0) for r in rows if r.status=='Gebucht'),2),
                    drafts=sum(r.status=='Entwurf' for r in rows))
@@ -3825,6 +3827,11 @@ def receipt_edit(rid):
     if data.get('book_now') is True and r.status!='Entwurf':
         return jsonify(error='Nur ein noch nicht gebuchter Entwurf kann verbindlich gebucht werden.'),409
     try:
+        if 'trade' in data:
+            trade=str(data['trade'] or '').strip()
+            if trade and not db.session.scalar(select(Trade.id).where(Trade.name==trade)):
+                raise ValueError('Gewerk nicht in den Stammdaten vorhanden.')
+            r.trade=trade
         for f in ('supplier','invoice_number','document_date','due_date','category','kind','billing_type','notes'):
             if f in data:
                 value=str(data[f] or '')
@@ -4052,6 +4059,8 @@ def trades_rename(tid):
                 contractor.trade=value
             for task in db.session.scalars(select(Task).where(Task.trade==old)):
                 task.trade=value
+            for receipt in db.session.scalars(select(Receipt).where(Receipt.trade==old)):
+                receipt.trade=value
             item.name=value
         db.session.commit()
         return jsonify(id=item.id,name=item.name)
@@ -4063,7 +4072,7 @@ def trades_rename(tid):
 def trades_delete(tid):
     item=db.session.get(Trade,tid)
     if not item:return jsonify(error='Gewerk nicht gefunden.'),404
-    if db.session.scalar(select(Contractor.id).where(Contractor.trade==item.name).limit(1)) or db.session.scalar(select(Task.id).where(Task.trade==item.name).limit(1)):
+    if db.session.scalar(select(Contractor.id).where(Contractor.trade==item.name).limit(1)) or db.session.scalar(select(Task.id).where(Task.trade==item.name).limit(1)) or db.session.scalar(select(Receipt.id).where(Receipt.trade==item.name).limit(1)):
         return jsonify(error='Gewerk wird von Firmen oder Arbeitspaketen verwendet; bitte zunächst umbenennen oder neu zuordnen.'),409
     db.session.delete(item);db.session.commit()
     return jsonify(ok=True)
@@ -4089,7 +4098,8 @@ def _restore_defaults(kind):
         if is_trade:
             used=bool(db.session.scalar(select(Contractor.id).where(
                 Contractor.trade==record.name).limit(1)) or db.session.scalar(
-                select(Task.id).where(Task.trade==record.name).limit(1)))
+                select(Task.id).where(Task.trade==record.name).limit(1)) or db.session.scalar(
+                select(Receipt.id).where(Receipt.trade==record.name).limit(1)))
         else:
             used=any(db.session.scalar(select(m.id).where(
                 m.category==record.name).limit(1)) is not None
