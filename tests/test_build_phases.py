@@ -32,6 +32,25 @@ class BuildPhaseTests(unittest.TestCase):
         body.update(changes)
         return self.client.post('/api/tasks',json=body)
 
+    def test_project_start_shift_moves_plan_dates_but_preserves_actual_dates(self):
+        phase=self.phase(end_date='2027-04-20').json['phase']['id']
+        self.task(phase_id=phase,planned_end='2027-04-15',actual_start='2026-10-01')
+        before=self.client.get('/api/project').json
+        start=date.fromisoformat(before['start']);delta=timedelta(days=12)
+        result=self.client.patch('/api/project',json={'start':(start+delta).isoformat(),'shift_plan':True})
+        self.assertEqual(result.status_code,200,result.json)
+        after=self.client.get('/api/project').json
+        for field in ('start_date','end_date'):
+            self.assertEqual(after['phases'][0][field],(date.fromisoformat(before['phases'][0][field])+delta).isoformat())
+        for field in ('start','end','planned_end'):
+            self.assertEqual(after['tasks'][0][field],(date.fromisoformat(before['tasks'][0][field])+delta).isoformat())
+        self.assertEqual(after['tasks'][0]['actual_start'],'2026-10-01')
+        returned=self.client.patch('/api/project',json={'start':start.isoformat(),'shift_plan':True})
+        self.assertEqual(returned.status_code,200,returned.json)
+        final=self.client.get('/api/project').json
+        self.assertEqual(final['tasks'][0]['start'],before['tasks'][0]['start'])
+        self.assertEqual(final['phases'][0]['end_date'],before['phases'][0]['end_date'])
+
     def test_phase_completion_finishes_only_its_tasks_and_keeps_old_dates(self):
         phase=self.phase().json['phase']['id']
         first=self.task(phase_id=phase).json['id']

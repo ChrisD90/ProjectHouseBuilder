@@ -105,7 +105,7 @@ function openTask(id){if(taskBusy||ganttBusy)return;editing=id;let t=project.tas
  $('delete').disabled=completed;$('delete').style.display=completed||!id?'none':'block';$('complete').hidden=!id||completed;
  $('reopenTask').hidden=!completed;$('taskForm').querySelector('button[type=submit]').hidden=completed;
  $('cancel').textContent=completed?'Schließen':'Abbrechen';taskFlow.open();document.dispatchEvent(new CustomEvent('phb-task-opened',{detail:{id,completed}}))}
-const taskFlow=PHBFlow.manage({dialog:'overlay',forms:['taskForm'],dismiss:['cancel'],isBusy:()=>taskBusy,onClose:()=>{window.PHBTaskCompletion?.closed();if(phaseFlow.dialog.open)renderPhaseTaskDetails(Number($('phaseForm').elements.id.value))}});
+const taskFlow=PHBFlow.manage({dialog:'overlay',forms:['taskForm'],dismiss:['cancel','closeTask'],isBusy:()=>taskBusy,onClose:()=>{window.PHBTaskCompletion?.closed();if(phaseFlow.dialog.open)renderPhaseTaskDetails(Number($('phaseForm').elements.id.value))}});
 function closeModal(){taskFlow.finish();}
 $('newTask').onclick=()=>openTask(null);$('filter').oninput=()=>{renderGantt();renderTable()};$('phase').onchange=()=>{renderGantt();renderTable()};$('scale').onchange=renderGantt;$('workType').onchange=()=>{renderGantt();renderTable()};$('taskForm').elements.namedItem('trade').onchange=()=>refreshTaskContractors();$('taskForm').elements.namedItem('execution_type').onchange=()=>refreshTaskContractors($('taskForm').elements.namedItem('contractor_id').value);
 $('clearSchedule').onclick=async()=>{
@@ -119,14 +119,14 @@ $('clearSchedule').onclick=async()=>{
  finally{$('clearSchedule').disabled=false;renderScheduleStart()}
 };
 let projectStartBusy=false;
-$('projectStart').onchange=async()=>{
+$('projectStart').onblur=async()=>{
  const input=$('projectStart'),before=project.start,next=input.value;
  if(projectStartBusy)return;
  if(!next||next===before){input.value=before;return;}
  projectStartBusy=true;input.disabled=true;
  try{
-  if(!await PHBUI.confirm(`Projektstart von ${fmt(before)} auf ${fmt(next)} ändern? Die Termine der Arbeitspakete werden wie bisher neu berechnet.`)){input.value=before;return;}
-  await api('/api/project',{method:'PATCH',body:JSON.stringify({start:next})});
+  if(!await PHBUI.confirm(`Projektstart von ${fmt(before)} auf ${fmt(next)} ändern? Alle geplanten Start- und Endtermine der Bauphasen und Arbeitspakete werden um denselben Zeitraum verschoben. Ist-Termine und Abschlussdaten bleiben erhalten.`)){input.value=before;return;}
+  await api('/api/project',{method:'PATCH',body:JSON.stringify({start:next,shift_plan:true})});
   await reload();$('projectStartStatus').textContent='Projektstart gespeichert.';
  }catch(error){input.value=before;$('projectStartStatus').textContent=error.message;}
  finally{projectStartBusy=false;input.disabled=false;}

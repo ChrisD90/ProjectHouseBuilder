@@ -24,3 +24,14 @@ body:is(.phb-app,.login-screen) .phb-button.phb-ai-close{min-width:32px;min-heig
 @media(prefers-reduced-motion:reduce){body:is(.phb-app,.login-screen) .phb-button{transition:none}}
 
 @media(max-width:600px){body:is(.phb-app,.login-screen) .phb-button:is(.mini,.phb-button--compact){min-height:40px}}
+
+/* Dialog contract: dismiss in the header at right, commit at the footer's right. */
+body.phb-app dialog :is(.modalhead,.modal-head,.master-dialog-head,.docs-dialog-head,.phb-workflow-head,.phb-data-dialog-head){display:flex;align-items:center;gap:12px;justify-content:space-between}
+body.phb-app dialog :is(.modalhead,.modal-head,.master-dialog-head,.docs-dialog-head,.phb-workflow-head,.phb-data-dialog-head)>button:last-child{margin-left:auto;flex-shrink:0}
+body.phb-app dialog :is(.phb-dialog-actions,.actions,.phb-messagebox-actions){display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px;width:100%}
+body.phb-app dialog :is(.phb-dialog-actions,.actions)>button[type=submit]{order:20;margin-left:auto}
+body.phb-app dialog :is(.phb-dialog-actions,.actions)>button.danger{margin-right:auto}
+body.phb-app dialog .phb-dialog-actions>button.subtle{order:10}
+body.phb-app #overlay .modalhead #closeTask{order:30;margin-left:auto}
+body.phb-app #overlay .modalhead h2{margin-right:auto}
+body.phb-app dialog form>button[type=submit]:not(.phb-ai-close){display:block;width:max-content;max-width:100%;justify-self:end;margin:16px 0 0 auto}

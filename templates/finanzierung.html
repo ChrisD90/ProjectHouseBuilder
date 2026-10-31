@@ -39,7 +39,7 @@
     <label class="wide" id="usageFileWrap" hidden>Nachweis (optional)<input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"><small>PDF oder Bild, maximal 15 MB.</small></label>
   </div>
   <p id="usageAvailable" class="usage-available"></p><p id="usageStatus" class="hint" role="status"></p>
-  <div class="modal-actions"><button type="button" id="cancelUsage" class="secondary">Abbrechen</button><span class="push"></span><button type="submit" id="saveUsage" class="primary">Verwendung buchen</button></div>
+  <div class="modal-actions phb-dialog-actions"><button type="button" id="cancelUsage" class="secondary">Abbrechen</button><span class="push"></span><button type="submit" id="saveUsage" class="primary">Verwendung buchen</button></div>
 </form></dialog>
 
 <dialog id="loanDialog" class="loan-dialog" aria-labelledby="loanDialogTitle">
@@ -63,7 +63,7 @@
   <input type="hidden" name="id"><div class="fields">
 <label>Bezeichnung<input name="name" required maxlength="160" placeholder="Kredit A"></label><label>Bank<input name="bank" maxlength="160"></label><label>Vertragsreferenz<input name="reference" maxlength="120"></label><label>Darlehensrahmen (€)<input name="principal" type="number" required min="0.01" step="0.01"></label><label>Sollzins p. a. (%)<input name="interest_rate" type="number" required min="0" max="100" step="0.001" value="0"></label><label>Monatliche Rate (€)<input name="monthly_payment" type="number" required min="0" step="0.01" value="0"></label><label>Anfängliche Tilgung (%)<input name="initial_repayment_rate" type="number" min="0" max="100" step="0.001" value="0"></label><label>Sondertilgung p. a. (%)<input name="extra_repayment_pct" type="number" min="0" max="100" step="0.001" value="0"></label><label>Vertragsdatum<input name="contract_date" type="date"></label><label>Zinsbindung bis<input name="fixed_until" type="date"></label><label>Bereitstellungszins ab<input name="interest_free_until" type="date"></label><label>Bereitstellungszins p. a. (%)<input name="commitment_interest_rate" type="number" min="0" max="100" step="0.001" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div>
   <p id="loanSaveStatus" class="hint loan-save-status" role="status" aria-live="polite"></p>
-  <div class="modal-actions">
+  <div class="modal-actions phb-dialog-actions">
     <button type="button" id="deleteLoan" class="danger">Kredit löschen</button>
     <button type="submit" id="loanSaveButton" class="primary">Kredit speichern</button>
   </div>
@@ -118,7 +118,7 @@
   <section class="drawdown-receipts" aria-labelledby="drawdownReceiptsTitle"><div class="drawdown-section-head"><div><h3 id="drawdownReceiptsTitle">Einzureichende Rechnungen und Kassenzettel</h3><p>Einreichbar sind offene Rechnungsanteile sowie Beträge, die du aus Eigenkapital oder ohne Finanzierungsquelle vorfinanziert hast.</p></div><strong id="drawdownSelectedTotal">0,00 € ausgewählt</strong></div><div id="drawdownReceiptList" class="drawdown-receipt-list"><p>Bitte Kredit auswählen.</p></div></section>
   <p class="drawdown-booking-note">Das Erstellen der Vorschau erzeugt noch keine Buchung. Erst mit „Auszahlung eingegangen“ wird der Betrag gebucht. Das Auszahlungsziel bestimmt, ob er zunächst verfügbar bleibt oder direkt als verwendet gilt.</p>
   <p id="drawdownStatus" class="hint" role="status" aria-live="polite"></p>
-  <div class="modal-actions"><span id="drawdownCapacity">Noch abrufbar: –</span><button type="submit" id="createDrawdownPackage" class="primary">PDF-Vorschau erstellen</button></div>
+  <div class="modal-actions phb-dialog-actions"><span id="drawdownCapacity">Noch abrufbar: –</span><button type="submit" id="createDrawdownPackage" class="primary">PDF-Vorschau erstellen</button></div>
   </div>
   <section id="drawdownPreviewStage" class="drawdown-preview-stage" hidden>
     <div class="drawdown-preview-head"><div><span class="drawdown-status-badge status-entwurf">Entwurf</span><h3>Formular und Rechnungspositionen prüfen</h3><p>Änderungen an Summe und Positionen werden in die PDF-Vorschau übertragen.</p></div><button type="button" id="backToDrawdownSetup" class="secondary">Neue Auswahl</button></div>
@@ -134,7 +134,7 @@
   </section>
 </form>
 </dialog>
-<dialog id="equityDialog" aria-labelledby="equityDialogTitle"><form id="equityForm" class="modal"><div class="modal-head"><h2 id="equityDialogTitle">Eigenkapitalkonto</h2><button type="button" class="secondary" id="closeEquity">Schließen</button></div><input type="hidden" name="id"><div class="fields"><label>Bezeichnung<input name="name" maxlength="160" required placeholder="Eigenkapital Sanierung"></label><label>Startbestand (€)<input name="opening_balance" type="number" min="0" step="0.01" required></label><label>Sicherheitsreserve (€)<input name="reserve" type="number" min="0" step="0.01" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div><div class="modal-actions"><button type="button" id="deleteEquity" class="danger">Konto löschen</button><button type="submit" class="primary">Konto speichern</button></div></form></dialog>
+<dialog id="equityDialog" aria-labelledby="equityDialogTitle"><form id="equityForm" class="modal"><div class="modal-head"><h2 id="equityDialogTitle">Eigenkapitalkonto</h2><button type="button" class="secondary" id="closeEquity">Schließen</button></div><input type="hidden" name="id"><div class="fields"><label>Bezeichnung<input name="name" maxlength="160" required placeholder="Eigenkapital Sanierung"></label><label>Startbestand (€)<input name="opening_balance" type="number" min="0" step="0.01" required></label><label>Sicherheitsreserve (€)<input name="reserve" type="number" min="0" step="0.01" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div><div class="modal-actions phb-dialog-actions"><button type="button" id="deleteEquity" class="danger">Konto löschen</button><button type="submit" class="primary">Konto speichern</button></div></form></dialog>
 </main>
   </div>
 </div><script src="/static/finanzierung.js"></script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">

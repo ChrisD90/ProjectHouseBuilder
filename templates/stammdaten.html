@@ -57,8 +57,8 @@
       <div id="categoryRows" class="master-tag-list"></div>
     </section>
   </div>
-  <dialog id="tradeCreateDialog" class="master-dialog" aria-labelledby="tradeCreateTitle"><form id="tradeCreate" class="master-dialog-inner"><div class="master-dialog-head"><h2 id="tradeCreateTitle">Gewerk hinzufügen</h2><button type="button" id="tradeCreateClose">Schließen</button></div><label for="tradeNew">Name</label><input id="tradeNew" maxlength="140" required><p id="tradeCreateStatus" role="alert"></p><button class="primary" type="submit">Hinzufügen</button></form></dialog>
-  <dialog id="categoryCreateDialog" class="master-dialog" aria-labelledby="categoryCreateTitle"><form id="categoryCreate" class="master-dialog-inner"><div class="master-dialog-head"><h2 id="categoryCreateTitle">Kategorie hinzufügen</h2><button type="button" id="categoryCreateClose">Schließen</button></div><label for="categoryNew">Name</label><input id="categoryNew" maxlength="120" required><p id="categoryCreateStatus" role="alert"></p><button class="primary" type="submit">Hinzufügen</button></form></dialog>
+  <dialog id="tradeCreateDialog" class="master-dialog" aria-labelledby="tradeCreateTitle"><form id="tradeCreate" class="master-dialog-inner"><div class="master-dialog-head"><h2 id="tradeCreateTitle">Gewerk hinzufügen</h2><button type="button" id="tradeCreateClose">Schließen</button></div><label for="tradeNew">Name</label><input id="tradeNew" maxlength="140" required><p id="tradeCreateStatus" role="alert"></p><div class="phb-dialog-actions"><button class="primary" type="submit">Hinzufügen</button></div></form></dialog>
+  <dialog id="categoryCreateDialog" class="master-dialog" aria-labelledby="categoryCreateTitle"><form id="categoryCreate" class="master-dialog-inner"><div class="master-dialog-head"><h2 id="categoryCreateTitle">Kategorie hinzufügen</h2><button type="button" id="categoryCreateClose">Schließen</button></div><label for="categoryNew">Name</label><input id="categoryNew" maxlength="120" required><p id="categoryCreateStatus" role="alert"></p><div class="phb-dialog-actions"><button class="primary" type="submit">Hinzufügen</button></div></form></dialog>
   <dialog id="companyDialog" class="master-dialog" aria-labelledby="companyTitle">
     <form id="companyForm" class="master-dialog-inner">
       <div class="master-dialog-head"><h2 id="companyTitle">Firma erfassen</h2>
@@ -84,7 +84,7 @@
         <div class="master-tag-actions"><button id="researchCompany" type="button">Ja, mit ChatGPT recherchieren</button><button id="skipCompanyResearch" type="button" class="subtle">Manuell fortfahren</button></div>
         <p id="companyResearchStatus" role="status"></p><div id="companyResearchResults"></div>
       </section>
-      <div class="master-dialog-actions">
+      <div class="master-dialog-actions phb-dialog-actions">
         <button id="deleteCompany" type="button" class="danger">Firma löschen</button>
         <button class="primary" type="submit" id="saveCompany">Änderungen speichern</button>
       </div>

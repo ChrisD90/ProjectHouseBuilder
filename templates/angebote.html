@@ -37,7 +37,7 @@
       <label>MwSt. (€) <input name="vat" inputmode="decimal"></label>
       <label class="offer-wide">Notizen <textarea name="notes" rows="2" maxlength="2000"></textarea></label>
     </div></details>
-    <div class="offer-manual-actions"><button class="primary" type="submit">Angebot speichern</button><span id="offerManualStatus" class="offer-import-status" role="status">Das Angebot erscheint direkt in der Liste. Es wird noch nicht beauftragt.</span></div>
+    <div class="offer-manual-actions phb-dialog-actions"><button class="primary" type="submit">Angebot speichern</button><span id="offerManualStatus" class="offer-import-status" role="status">Das Angebot erscheint direkt in der Liste. Es wird noch nicht beauftragt.</span></div>
    </form>
   </section>
   <section class="panel budget-panel offer-review-section" id="angebote-pruefen"><div class="panelbar"><div><h2>Angebotsentwürfe und neue Versionen prüfen <span id="offersDraftBadge" class="offers-counter"></span></h2><p>Prüfe eingelesene Angebote und neue Versionsentwürfe, bevor sie sichtbar aktuell werden.</p></div><a class="mini" href="/belege">Kategorien verwalten ↗</a></div><div class="offer-review-layout"><div id="offerDrafts" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div><aside id="offerPdfPane" class="phb-inline-pdf" hidden><header><strong>Angebots-PDF parallel prüfen</strong><a id="offerPdfDownload" class="mini" target="_blank" rel="noopener">Original herunterladen</a></header><iframe id="offerPdfFrame" title="Vorschau des zu prüfenden Angebots" loading="lazy"></iframe></aside></div></section>
@@ -53,13 +53,13 @@
     </form>
   </dialog>
   <dialog id="offerEditDialog" class="phb-workflow-dialog phb-offer-edit-dialog" aria-labelledby="offerEditTitle">
-  <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebote / Bearbeitung</span><h2 id="offerEditTitle">Angebot bearbeiten</h2><p>Werte mit dem Original-PDF prüfen und anschließend speichern.</p></div><button id="closeOfferEdit" type="button" class="subtle">Abbrechen</button></div>
+  <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebote / Bearbeitung</span><h2 id="offerEditTitle">Angebot bearbeiten</h2><p>Werte mit dem Original-PDF prüfen und anschließend speichern.</p></div><button id="closeOfferEdit" type="button" class="subtle">Schließen</button></div>
   <div class="phb-workflow-body">
     <div class="phb-offer-edit-layout">
       <form id="offerEditForm" class="offer-review-form">
         <div id="offerEditFields" class="offer-edit-fields"></div>
         <p id="offerEditError" role="alert" class="offer-wide"></p>
-        <div class="offer-form-actions offer-wide"><button type="submit" class="primary">Änderungen speichern</button><button id="cancelOfferEdit" type="button" class="subtle">Abbrechen</button></div>
+        <div class="offer-form-actions offer-wide phb-dialog-actions"><button type="submit" class="primary">Änderungen speichern</button><button id="cancelOfferEdit" type="button" class="subtle">Abbrechen</button></div>
       </form>
       <aside id="offerEditPdfPane" class="phb-inline-pdf" hidden>
         <header><strong>Originalangebot parallel prüfen</strong><a id="offerEditPdfDownload" class="mini" target="_blank" rel="noopener">Original-PDF</a></header>
@@ -90,7 +90,7 @@
         <p class="muted">Bitte den Betrag mit der Auftragsbestätigung vergleichen. Der Angebotspreis bleibt im Original erhalten.</p>
       </div>
       <p id="offerAcceptanceError" role="alert"></p>
-      <div class="offer-form-actions"><button type="button" id="offerAcceptanceBack" class="subtle">Abbrechen</button><button id="offerAcceptanceSubmit" type="submit" class="primary">Auftrag verbindlich annehmen</button></div>
+      <div class="offer-form-actions phb-dialog-actions"><button type="button" id="offerAcceptanceBack" class="subtle">Abbrechen</button><button id="offerAcceptanceSubmit" type="submit" class="primary">Auftrag verbindlich annehmen</button></div>
     </form>
   </dialog>
   <section class="panel budget-panel offer-compare-section" id="angebotsliste"><div class="panelbar"><div><h2>Deine Angebote</h2><p>Nur die jeweils aktuelle Version wird angezeigt. Frühere PDFs, Summen und Positionen findest du über „Versionshistorie“.</p></div><label class="offers-filter">Gewerk <select id="offerCategoryFilter"><option value="">Alle Kategorien</option></select></label></div>

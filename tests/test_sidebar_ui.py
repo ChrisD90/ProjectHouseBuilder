@@ -92,7 +92,7 @@ class SidebarUITest(unittest.TestCase):
         header=page.split('class="gantt-panel-header"',1)[1].split('class="gantt-panel-actions"',1)[0]
         self.assertIn('id="projectStart"',header)
         script=(STATIC/'app.js').read_text()
-        self.assertIn("$('projectStart').onchange=async",script)
+        self.assertIn("$('projectStart').onblur=async",script)
         self.assertIn('input.value=before',script)
         self.assertNotIn('!await phaseFlow.cancel()',script)
 

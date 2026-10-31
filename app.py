@@ -1924,16 +1924,38 @@ def update_project():
         if not start: raise ValueError('Projektstart fehlt.')
         obj=db.session.get(Setting,'start')
         old=obj.value
+        changes=[]
+        shift=body.get('shift_plan',False)
+        if type(shift) is not bool:raise ValueError('Ungültige Terminverschiebung.')
+        delta=start-parse_date(old)
+        if shift and delta.days:
+            for phase in db.session.scalars(select(BuildPhase)):
+                diff=[]
+                for field in ('start_date','end_date'):
+                    value=getattr(phase,field)
+                    if value:
+                        shifted=value+delta;setattr(phase,field,shifted)
+                        diff.append({'field':field,'before':value.isoformat(),'after':shifted.isoformat()})
+                changes.append({'action':'update','phase':phase.title,'changes':diff})
+            for task in all_tasks():
+                diff=[]
+                for field in ('earliest_start','planned_end'):
+                    value=getattr(task,field)
+                    if value:
+                        shifted=value+delta;setattr(task,field,shifted)
+                        diff.append({'field':field,'before':value.isoformat(),'after':shifted.isoformat()})
+                if diff:changes.append({'action':'update','code':task.code,'name':task.name,'changes':diff})
         obj.value=start.isoformat()
+        db.session.flush()
         schedule(all_tasks(), start)
         if old!=start.isoformat():
             _schedule_audit('Manuell','Projektstart geändert.',
                             [{'action':'update','code':'PROJEKTSTART',
                               'changes':[{'field':'start','before':old,
-                                          'after':start.isoformat()}]}])
+                                          'after':start.isoformat()}]}]+changes)
         db.session.commit()
         return jsonify({'start':start.isoformat()})
-    except (ValueError,TypeError) as err:
+    except (ValueError,TypeError,OverflowError) as err:
         db.session.rollback();return jsonify(error=str(err)),400
 
 FIELDS={'code','phase','phase_id','trade','execution_type','name','company','contractor_id','duration','lag_days','earliest_start','planned_end','actual_start','actual_end','status','progress','notes','position'}

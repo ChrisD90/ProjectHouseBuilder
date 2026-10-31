@@ -93,7 +93,7 @@ docker compose -f compose.synology.yaml exec app sh -c 'command -v tesseract; co
       <p id="backupRootDescription">Wähle einen für die Anwendung erreichbaren Ordner. Auf der Synology werden nur Verzeichnisse innerhalb des eingebundenen Backup-Speichers angeboten.</p>
       <label for="backupFolder">Ausgewählter Backup-Zielordner</label>
       <input id="backupFolder" name="folder" required readonly placeholder="Bitte über den Ordnerbrowser auswählen">
-      <div class="phb-data-dialog-actions"><button id="backupNativeFolder" type="button" class="subtle" hidden>System-Ordnerauswahl öffnen …</button><button id="backupNewSubfolder" type="button" class="subtle" hidden>+ Neuen Unterordner anlegen</button></div>
+      <div class="phb-data-dialog-actions phb-dialog-actions"><button id="backupNativeFolder" type="button" class="subtle" hidden>System-Ordnerauswahl öffnen …</button><button id="backupNewSubfolder" type="button" class="subtle" hidden>+ Neuen Unterordner anlegen</button></div>
       <div id="backupFolderBrowser" hidden>
         <p id="backupBrowseCurrent" class="phb-data-footnote"></p>
         <div id="backupBrowseList" class="phb-folder-list"></div>
@@ -102,7 +102,7 @@ docker compose -f compose.synology.yaml exec app sh -c 'command -v tesseract; co
       <input id="backupKeep" name="keep" type="number" min="2" max="1000" value="30" required>
       <p class="phb-data-footnote">Existierende Backups werden beim Wechsel nicht verschoben. Neue Sicherungen landen ausschließlich im neuen Zielordner.</p>
       <p id="backupConfigMessage" role="status"></p>
-      <div class="phb-data-dialog-actions"><button type="button" id="backupConfigCancel" class="subtle">Abbrechen</button><button type="submit" class="primary">Ziel speichern</button></div>
+      <div class="phb-data-dialog-actions phb-dialog-actions"><button type="button" id="backupConfigCancel" class="subtle">Abbrechen</button><button type="submit" class="primary">Ziel speichern</button></div>
     </form>
   </dialog>
   <dialog id="backupRestoreDialog" class="phb-data-dialog phb-restore-dialog" aria-labelledby="backupRestoreTitle">
@@ -117,7 +117,7 @@ docker compose -f compose.synology.yaml exec app sh -c 'command -v tesseract; co
     <label for="restorePhrase">Zur endgültigen Bestätigung exakt <strong>BACKUP WIEDERHERSTELLEN</strong> eingeben:</label>
     <input id="restorePhrase" type="text" autocomplete="off" spellcheck="false" placeholder="BACKUP WIEDERHERSTELLEN">
     <p id="restoreProgress" role="status" aria-live="polite"></p>
-    <div class="phb-data-dialog-actions"><button id="cancelRestore" type="button" class="subtle">Schließen</button><button id="performRestore" type="button" class="danger" disabled>Geprüftes Backup wiederherstellen</button></div>
+    <div class="phb-data-dialog-actions phb-dialog-actions"><button id="cancelRestore" type="button" class="subtle">Schließen</button><button id="performRestore" type="button" class="danger" disabled>Geprüftes Backup wiederherstellen</button></div>
   </dialog>
 </main>
 </div></div>
