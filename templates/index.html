@@ -91,6 +91,7 @@ title="ChatGPT-Planungsdialog bei Bedarf öffnen">
   <div class="phase-dialog-layout"><div id="phaseList" class="phase-list"></div>
     <form id="phaseForm" class="phase-form"><input type="hidden" name="id"><h3 id="phaseFormTitle">Neue Bauphase</h3>
       <label>Titel<input name="title" maxlength="140" required></label><label>Anfangsdatum<input name="start_date" type="date" required></label><label>Enddatum (optional)<input name="end_date" type="date"></label><label>Beschreibung (optional)<textarea name="description" maxlength="1000" rows="3"></textarea></label>
+      <details id="phaseTaskDetails" hidden><summary id="phaseTaskSummary">Arbeitspakete</summary><div id="phaseTaskItems" class="phase-task-items"></div></details><p id="phaseCompletionState" role="status"></p><button id="completePhase" type="button" class="primary" hidden>Bauphase abschließen</button>
       <p id="phaseFormError" role="alert"></p><div class="actions"><button id="deletePhase" type="button" class="danger" hidden>Löschen</button><span class="push"></span><button id="resetPhaseForm" type="button" class="subtle">Neue Bauphase</button><button type="submit" class="primary">Speichern</button></div>
     </form></div>
 </dialog>

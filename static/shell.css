@@ -115,3 +115,8 @@ body.phb-app .phb-main .layout{max-width:none;}
  body.phb-app .phb-page-actions button{flex:0 0 auto}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}body.phb-app .phb-sidebar{transition:none;}}
+
+/* Keep the current document visible while same-origin navigation prepares the next. */
+@view-transition{navigation:auto}
+::view-transition-old(root){animation:none;opacity:1}
+::view-transition-new(root){animation:none}

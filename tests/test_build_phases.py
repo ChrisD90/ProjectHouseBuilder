@@ -3,6 +3,7 @@ import os
 import unittest
 from datetime import date, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 os.environ['DATABASE_URL']='sqlite:///:memory:'
 from app import app, db, initialize, Task, Contractor
@@ -30,6 +31,36 @@ class BuildPhaseTests(unittest.TestCase):
               'execution_type':'Fremdleistung','duration':5,'status':'Offen'}
         body.update(changes)
         return self.client.post('/api/tasks',json=body)
+
+    def test_phase_completion_finishes_only_its_tasks_and_keeps_old_dates(self):
+        phase=self.phase().json['phase']['id']
+        first=self.task(phase_id=phase).json['id']
+        second=self.task(code='T-2',phase_id=phase).json['id']
+        other=self.task(code='T-3').json['id']
+        self.client.post(f'/api/tasks/{first}/complete')
+        original=self.client.get('/api/project').json['tasks'][0]['actual_end']
+        blocked=self.client.post(f'/api/phases/{phase}/complete',json={})
+        self.assertEqual(blocked.status_code,400)
+        result=self.client.post(f'/api/phases/{phase}/complete',json={'confirm':True})
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertTrue(result.json['phase']['completed'])
+        rows={t['id']:t for t in self.client.get('/api/project').json['tasks']}
+        self.assertEqual(rows[first]['actual_end'],original)
+        self.assertEqual(rows[second]['status'],'Erledigt')
+        self.assertEqual(rows[second]['progress'],100)
+        self.assertEqual(rows[other]['status'],'Offen')
+        self.client.post(f'/api/tasks/{second}/reopen',json={'confirm':True})
+        self.assertFalse(self.client.get('/api/project').json['phases'][0]['completed'])
+
+    def test_failed_phase_completion_rolls_back_every_task(self):
+        phase=self.phase().json['phase']['id']
+        self.task(phase_id=phase)
+        with patch('app._schedule_audit',side_effect=RuntimeError('Storage failed')):
+            result=self.client.post(f'/api/phases/{phase}/complete',json={'confirm':True})
+        self.assertEqual(result.status_code,409)
+        project=self.client.get('/api/project').json
+        self.assertFalse(project['phases'][0]['completed'])
+        self.assertEqual(project['tasks'][0]['status'],'Offen')
 
     def test_phases_are_crud_entities_and_deletion_unassigns_tasks(self):
         created=self.phase();self.assertEqual(created.status_code,201,created.json)

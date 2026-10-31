@@ -131,6 +131,7 @@ def category_names():
 
 class BuildPhase(db.Model):
     __tablename__ = 'build_phase'
+    completed_at=db.Column(db.Date,nullable=True)
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(140), unique=True, nullable=False)
     description = db.Column(db.String(1000), nullable=False, default='')
@@ -478,7 +479,8 @@ def all_tasks():
 def phase_dict(row):
     return {'id':row.id,'title':row.title,'description':row.description,
             'start_date':row.start_date.isoformat(),'end_date':row.end_date.isoformat() if row.end_date else '',
-            'position':row.position}
+            'position':row.position,'completed_at':row.completed_at.isoformat() if row.completed_at else '',
+            'completed':bool(row.completed_at and not db.session.scalar(select(Task.id).where(Task.phase_id==row.id,Task.status!='Erledigt').limit(1)))}
 
 def initialize():
     # Additive migration for existing SQLite/PostgreSQL user databases (never drop old entries).
@@ -1775,6 +1777,32 @@ def update_phase(phase_id):
         db.session.commit();return jsonify(ok=True,phase=phase_dict(row))
     except (ValueError,TypeError) as exc:
         db.session.rollback();return jsonify(error=str(exc)),400
+
+
+@app.post('/api/phases/<int:phase_id>/complete')
+def complete_phase(phase_id):
+    row=db.session.get(BuildPhase,phase_id)
+    if not row:return jsonify(error='Bauphase nicht gefunden.'),404
+    if (request.get_json(silent=True) or {}).get('confirm') is not True:
+        return jsonify(error='Bitte den Abschluss der Bauphase und aller Arbeitspakete bestätigen.'),400
+    try:
+        changes=[]
+        tasks=db.session.scalars(select(Task).where(Task.phase_id==phase_id)).all()
+        for task in tasks:
+            before={'status':task.status,'progress':task.progress,'actual_end':task.actual_end.isoformat() if task.actual_end else ''}
+            if task.status!='Erledigt':task.status='Erledigt';task.actual_end=date.today()
+            if not task.actual_end:task.actual_end=date.today()
+            task.progress=100
+            after={'status':task.status,'progress':task.progress,'actual_end':task.actual_end.isoformat()}
+            diff=[{'field':k,'before':before[k],'after':after[k]} for k in before if before[k]!=after[k]]
+            if diff:changes.append({'action':'update','code':task.code,'name':task.name,'changes':diff})
+        if not row.completed_at:row.completed_at=date.today()
+        db.session.flush();schedule(all_tasks(),parse_date(setting('start')))
+        _schedule_audit('Manuell','Bauphase '+row.title+' und zugehörige Arbeitspakete abgeschlossen.',changes)
+        db.session.commit();return jsonify(ok=True,completed_tasks=len(changes),phase=phase_dict(row))
+    except Exception:
+        db.session.rollback();app.logger.exception('Bauphasenabschluss fehlgeschlagen')
+        return jsonify(error='Bauphase konnte nicht abgeschlossen werden. Keine Änderungen gespeichert.'),409
 
 
 @app.delete('/api/phases/<int:phase_id>')

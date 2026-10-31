@@ -70,3 +70,11 @@ body.phb-app.phb-page-zeitplan .task-bulk-editor{display:flex;align-items:end;fl
 body.phb-app.phb-page-zeitplan .task-bulk-editor[hidden]{display:none}
 body.phb-app.phb-page-zeitplan .task-bulk-editor label{display:grid;gap:5px;font-size:12px;min-width:160px}
 body.phb-app.phb-page-zeitplan .task-bulk-editor p{flex-basis:100%;font-size:12px;margin:0;color:var(--ui-muted)}
+body.phb-app.phb-page-zeitplan .phase-dialog.is-phase-detail{width:min(680px,calc(100vw - 24px))}
+body.phb-app.phb-page-zeitplan .phase-dialog.is-phase-detail .phase-dialog-layout{display:block;min-height:0}
+body.phb-app.phb-page-zeitplan .phase-dialog.is-phase-detail .phase-list{display:none}
+body.phb-app.phb-page-zeitplan .phase-task-items{display:grid;gap:8px;margin-top:12px}
+body.phb-app.phb-page-zeitplan .phase-task-items button{display:grid;text-align:left;gap:4px;padding:10px 12px}
+body.phb-app.phb-page-zeitplan .phase-task-items small{color:var(--ui-muted);font-size:11px}
+body.phb-app.phb-page-zeitplan #phaseCompletionState{font-size:12px;color:var(--ui-accent);margin:0}
+body.phb-app.phb-page-zeitplan #phaseTaskDetails summary{cursor:pointer;font-size:13px;font-weight:650}
