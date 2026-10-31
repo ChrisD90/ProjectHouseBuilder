@@ -29,6 +29,34 @@ class TaskControlsTest(unittest.TestCase):
     def edit(self,code,data):return self.client.put('/api/tasks/'+str(self.ids[code]),json=data)
     def complete(self,code):return self.client.post('/api/tasks/'+str(self.ids[code])+'/complete')
 
+    def test_bulk_complete_is_idempotent_and_reopen_uses_history(self):
+        ids=[self.ids['A'],self.ids['B']]
+        result=self.client.post('/api/tasks/bulk',json={'ids':ids,'action':'complete'})
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(result.json['changed'],2)
+        self.assertEqual(self.task('A')['status'],'Erledigt')
+        self.assertEqual(self.task('B')['progress'],100)
+        again=self.client.post('/api/tasks/bulk',json={'ids':ids,'action':'complete'})
+        self.assertEqual(again.json['changed'],0)
+        reopened=self.client.post('/api/tasks/'+str(ids[0])+'/reopen',json={'confirm':True})
+        self.assertEqual(reopened.status_code,200,reopened.json)
+        self.assertEqual(self.task('A')['status'],'Offen')
+
+    def test_bulk_edits_roll_back_on_locked_or_invalid_task(self):
+        self.complete('B')
+        result=self.client.post('/api/tasks/bulk',json={
+            'ids':[self.ids['A'],self.ids['B']],'changes':{'status':'Pausiert'}})
+        self.assertEqual(result.status_code,400)
+        self.assertEqual(self.task('A')['status'],'Offen')
+        self.assertEqual(self.task('B')['status'],'Erledigt')
+        forbidden=self.client.post('/api/tasks/bulk',json={
+            'ids':[self.ids['A']],'changes':{'duration':20}})
+        self.assertEqual(forbidden.status_code,400)
+        good=self.client.post('/api/tasks/bulk',json={
+            'ids':[self.ids['A'],self.ids['C']],'changes':{'status':'Pausiert'}})
+        self.assertEqual(good.status_code,200,good.json)
+        self.assertEqual(self.task('C')['status'],'Pausiert')
+
     def test_completed_fields_cannot_change_even_in_full_payload(self):
         self.complete('B');before=self.task('B')
         payload={k:v for k,v in before.items() if k in backend.FIELDS}

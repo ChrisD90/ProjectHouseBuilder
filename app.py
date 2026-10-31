@@ -2024,6 +2024,50 @@ def update_task(task_id):
         db.session.rollback();return jsonify(error='ID bereits vergeben oder Eingabe ungültig.'),400
 
 
+@app.post('/api/tasks/bulk')
+def tasks_bulk():
+    """Apply a limited set of common changes atomically; never partially save."""
+    body=request.get_json(silent=True) or {}
+    try:
+        ids=body.get('ids')
+        if not isinstance(ids,list) or not 1<=len(ids)<=500 or any(type(i) is not int for i in ids):
+            raise ValueError('Bitte 1 bis 500 Arbeitspakete auswählen.')
+        ids=list(dict.fromkeys(ids))
+        rows=[db.session.get(Task,i) for i in ids]
+        if any(t is None for t in rows):raise ValueError('Ein ausgewähltes Arbeitspaket existiert nicht mehr.')
+        changes=body.get('changes',{})
+        completing=body.get('action')=='complete'
+        allowed={'phase_id','trade','execution_type','contractor_id','status'}
+        if not isinstance(changes,dict) or set(changes)-allowed or (not completing and not changes):
+            raise ValueError('Diese Eigenschaften können nicht gemeinsam geändert werden.')
+        if completing and changes:raise ValueError('Abschließen und Bearbeiten bitte getrennt ausführen.')
+        if not completing and changes.get('status')=='Erledigt':raise ValueError('Bitte die Aktion Abschließen verwenden.')
+        audit=[]
+        for task in rows:
+            before={k:(getattr(task,k).isoformat() if isinstance(getattr(task,k),date) else getattr(task,k))
+                    for k in ('phase_id','trade','execution_type','contractor_id','status','progress','actual_end')}
+            if completing:
+                if task.status!='Erledigt':task.status='Erledigt';task.actual_end=date.today()
+                if not task.actual_end:task.actual_end=date.today()
+                task.progress=100
+            else:
+                if task.status=='Erledigt':raise ValueError('Abgeschlossene Pakete zuerst aus der Auswahl entfernen oder einzeln wieder öffnen.')
+                update_task_fields(task,changes)
+                if task.contractor_id:
+                    company=db.session.get(Contractor,task.contractor_id)
+                    if company.trade and company.trade.casefold()!=task.trade.casefold():
+                        raise ValueError('Firma und Gewerk passen bei '+task.code+' nicht zusammen. Firma ebenfalls ändern oder entfernen.')
+            after={k:(getattr(task,k).isoformat() if isinstance(getattr(task,k),date) else getattr(task,k)) for k in before}
+            diff=[{'field':k,'before':before[k],'after':after[k]} for k in before if before[k]!=after[k]]
+            if diff:audit.append({'action':'update','code':task.code,'name':task.name,'changes':diff})
+        db.session.flush();schedule(all_tasks(),parse_date(setting('start')))
+        if audit:_schedule_audit('Manuell','Mehrfachaktion: '+str(len(audit))+' Arbeitspakete '+('abgeschlossen.' if completing else 'angepasst.'),audit)
+        db.session.commit()
+        return jsonify(ok=True,changed=len(audit))
+    except (ValueError,TypeError) as exc:
+        db.session.rollback();return jsonify(error=str(exc)),400
+
+
 @app.post('/api/tasks/<int:task_id>/complete')
 def task_complete(task_id):
     """Finish a work package atomically, preserving its original completion date."""

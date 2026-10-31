@@ -1,5 +1,6 @@
 {# Shared app chrome. phb_active, phb_title, phb_kicker are set in each page. #}
 {% macro icon(name) -%}<svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#{{ name }}"></use></svg>{%- endmacro %}
+<script>try{if(localStorage.getItem('phb-sidebar-collapsed')==='1')document.body.classList.add('phb-sidebar-collapsed');}catch(_){}</script>
 <a href="#phbMain" class="phb-skip">Zum Inhalt springen</a>
 <div class="phb-appshell" id="phbAppShell">
   <aside class="phb-sidebar" id="phbSidebar" aria-label="Seitennavigation">

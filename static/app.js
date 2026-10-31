@@ -1,3 +1,4 @@
+const selectedTasks=new Set(),collapsedPhases=new Set();
 let project={tasks:[],phases:[],start:'',contractors:[],contractor_suggestions:{}};let editing=null,taskBusy=false,ganttBusy=false;
 const proposals=id=>(project.contractor_suggestions||{})[id]||[];
 const assignedCompany=t=>(project.contractors||[]).find(c=>c.id===t.contractor_id)?.name||t.company||'';
@@ -38,16 +39,16 @@ $('deletePhase').onclick=async()=>{const id=$('phaseForm').elements.id.value;if(
 $('openTaskList').onclick=()=>taskListFlow.open();
 $('closeTaskList').onclick=()=>$('taskListDialog').close();
 function deadlineText(t){return t.deadline_status==='overdue'?'Überfällig':t.deadline_status==='due-soon'?'Endet bald':''}
-function renderTable(){let rows=visible().map(t=>`<tr data-id="${t.id}" class="task-deadline-${t.deadline_status||'none'}"><td>${escapeHtml(t.code)}</td><td>${escapeHtml(t.phase||'Ohne Bauphase')}</td><td>${escapeHtml(t.trade)}</td><td class="tasktitle">${escapeHtml(t.name)}${deadlineText(t)?`<small class="deadline-label">${deadlineText(t)}</small>`:''}</td><td><span class="work-chip ${t.execution_type==='Eigenleistung'?'self':t.execution_type==='Fremdleistung'?'external':'unknown'}">${escapeHtml(t.execution_type||'Noch offen')}</span></td><td>${escapeHtml(assignedCompany(t)||'–')}</td><td>${escapeHtml(t.predecessors.join(', ')||'–')}</td><td>${fmt(t.start)}</td><td>${fmt(t.end)}</td><td>${fmt(t.planned_end)}</td><td><span class="status ${t.status.replace(' ','-')}">${escapeHtml(t.status)}</span></td></tr>`).join('');$('taskRows').innerHTML=rows||'<tr><td colspan="11">Keine passenden Aufgaben</td></tr>';document.querySelectorAll('#taskRows tr[data-id]').forEach(el=>el.onclick=()=>openTask(Number(el.dataset.id)))}
+function renderTable(){let rows=visible().map(t=>`<tr data-id="${t.id}" class="task-deadline-${t.deadline_status||'none'}"><td><input type="checkbox" class="task-select" data-select-task="${t.id}" aria-label="${escapeHtml(t.code)} markieren" ${selectedTasks.has(t.id)?'checked':''}></td><td>${escapeHtml(t.code)}</td><td>${escapeHtml(t.phase||'Ohne Bauphase')}</td><td>${escapeHtml(t.trade)}</td><td class="tasktitle">${escapeHtml(t.name)}${deadlineText(t)?`<small class="deadline-label">${deadlineText(t)}</small>`:''}</td><td><span class="work-chip ${t.execution_type==='Eigenleistung'?'self':t.execution_type==='Fremdleistung'?'external':'unknown'}">${escapeHtml(t.execution_type||'Noch offen')}</span></td><td>${escapeHtml(assignedCompany(t)||'–')}</td><td>${escapeHtml(t.predecessors.join(', ')||'–')}</td><td>${fmt(t.start)}</td><td>${fmt(t.end)}</td><td>${fmt(t.planned_end)}</td><td><span class="status ${t.status.replace(' ','-')}">${escapeHtml(t.status)}</span></td></tr>`).join('');$('taskRows').innerHTML=rows||'<tr><td colspan="12">Keine passenden Aufgaben</td></tr>';document.querySelectorAll('#taskRows tr[data-id]').forEach(el=>el.onclick=e=>{if(e.target.closest('input'))return;openTask(Number(el.dataset.id))});syncBulkSelection()}
 function renderGantt(){
  const list=visible(),selectedPhase=$('phase').value;
  const phases=(project.phases||[]).filter(p=>!selectedPhase||String(p.id)===selectedPhase);
- const isMonth=$('scale').value==='month',size=isMonth?7:26;
+ const overviewMode=$('scale').value==='overview',isMonth=$('scale').value!=='week',size=overviewMode?2:isMonth?7:26;
  const dates=[project.start,...list.map(t=>t.start),...phases.map(p=>p.start_date)].filter(Boolean);
  const ends=[addDays(project.start,365),...list.map(t=>t.planned_end||t.end),...phases.map(p=>p.end_date||p.start_date)].filter(Boolean);
  let origin=firstMonday(dates.sort()[0]||project.start);if(isMonth)origin=origin.slice(0,8)+'01';
  const latest=ends.sort().at(-1)||addDays(project.start,365),days=Math.min(2200,Math.max(120,diff(origin,latest)+35));
- const width=days*size,step=isMonth?30:7,axis=[];
+ const width=days*size,step=overviewMode?90:isMonth?30:7,axis=[];
  for(let d=0;d<days;d+=step){const current=addDays(origin,d);const label=isMonth?new Date(current+'T12:00:00Z').toLocaleDateString('de-DE',{month:'short',year:'2-digit',timeZone:'UTC'}):fmt(current).slice(0,5);axis.push(`<span class="axis" style="left:${d*size}px">${label}</span>`)}
  const timelineStyle=`width:${width}px;background-size:${step*size}px 100%`;
  let html=`<div class="gantt-header"><div class="gantt-label">Bauphasen und Arbeitspakete</div><div class="gantt-timeline" style="${timelineStyle}">${axis.join('')}</div></div>`;
@@ -56,14 +57,15 @@ function renderGantt(){
  if(selectedPhase!=='unassigned')for(const p of phases){
   const assigned=list.filter(t=>t.phase_id===p.id);if(filtersActive&&!assigned.length)continue;
   const displayEnd=p.end_date||assigned.reduce((end,t)=>t.end>end?t.end:end,p.start_date),left=diff(origin,p.start_date)*size,w=Math.max(size,(diff(p.start_date,displayEnd)+1)*size);
-  html+=`<div class="gantt-row gantt-phase-row" data-phase-group="${p.id}"><button class="gantt-label" type="button" data-phase-id="${p.id}"><span class="phase-title"><strong>${escapeHtml(p.title)}</strong><span class="phase-task-count">${assigned.length}</span></span><small>${fmt(p.start_date)}${p.end_date?' – '+fmt(p.end_date):' · offenes Ende'}</small></button><div class="gantt-timeline" style="${timelineStyle}"><div class="phase-bar" style="left:${left}px;width:${w}px" title="${escapeHtml(p.title)} · ${fmt(p.start_date)}${p.end_date?'–'+fmt(p.end_date):' · offenes Ende'}"></div></div></div>`;
-  assigned.forEach(t=>{html+=taskRow(t,p.id)});
+  html+=`<div class="gantt-row gantt-phase-row" data-phase-group="${p.id}"><div class="gantt-label"><button class="phase-toggle" type="button" data-toggle-phase="${p.id}" aria-expanded="${!collapsedPhases.has(String(p.id))}" aria-label="${escapeHtml(p.title)} ${collapsedPhases.has(String(p.id))?'ausklappen':'einklappen'}">${collapsedPhases.has(String(p.id))?'▸':'▾'}</button><span class="phase-title"><button class="phase-edit" type="button" data-phase-id="${p.id}">${escapeHtml(p.title)}</button><span class="phase-task-count">${assigned.length}</span></span><small>${fmt(p.start_date)}${p.end_date?' – '+fmt(p.end_date):' · offenes Ende'}</small></div><div class="gantt-timeline" style="${timelineStyle}"><div class="phase-bar" style="left:${left}px;width:${w}px" title="${escapeHtml(p.title)} · ${fmt(p.start_date)}${p.end_date?'–'+fmt(p.end_date):' · offenes Ende'}"></div></div></div>`;
+  if(!collapsedPhases.has(String(p.id)))assigned.forEach(t=>{html+=taskRow(t,p.id)});
  }
  const unassigned=list.filter(t=>!t.phase_id);
- if((!selectedPhase||selectedPhase==='unassigned')&&unassigned.length){html+=`<div class="gantt-row gantt-phase-row gantt-unassigned-row" data-phase-group="unassigned"><div class="gantt-label"><span class="phase-title"><strong>Ohne Bauphase</strong><span class="phase-task-count">${unassigned.length}</span></span><small>Noch keiner Bauphase zugeordnet</small></div><div class="gantt-timeline" style="${timelineStyle}"></div></div>`;unassigned.forEach(t=>{html+=taskRow(t,null)})}
+ if((!selectedPhase||selectedPhase==='unassigned')&&unassigned.length){html+=`<div class="gantt-row gantt-phase-row gantt-unassigned-row" data-phase-group="unassigned"><div class="gantt-label"><span class="phase-title"><button class="phase-toggle" type="button" data-toggle-phase="unassigned" aria-expanded="${!collapsedPhases.has('unassigned')}" aria-label="Ohne Bauphase ein- oder ausklappen">${collapsedPhases.has('unassigned')?'▸':'▾'}</button><strong>Ohne Bauphase</strong><span class="phase-task-count">${unassigned.length}</span></span><small>Noch keiner Bauphase zugeordnet</small></div><div class="gantt-timeline" style="${timelineStyle}"></div></div>`;if(!collapsedPhases.has('unassigned'))unassigned.forEach(t=>{html+=taskRow(t,null)})}
  if(!list.length)html+=`<div class="gantt-empty">Keine passenden Arbeitspakete gefunden.</div>`;
- $('gantt').dataset.daySize=String(size);$('gantt').innerHTML=html;
+ $('gantt').dataset.daySize=String(size);$('gantt').dataset.origin=origin;$('gantt').innerHTML=html;
  document.querySelectorAll('#gantt [data-id]').forEach(el=>el.onclick=()=>openTask(Number(el.dataset.id)));
+ document.querySelectorAll('#gantt [data-toggle-phase]').forEach(el=>el.onclick=()=>{const id=el.dataset.togglePhase;collapsedPhases.has(id)?collapsedPhases.delete(id):collapsedPhases.add(id);renderGantt()});
  document.querySelectorAll('#gantt [data-phase-id]').forEach(el=>el.onclick=()=>openPhase(Number(el.dataset.phaseId)));
 }
 function refreshTaskContractors(selected=''){const f=$('taskForm'),trade=f.elements.namedItem('trade').value,type=f.elements.namedItem('execution_type').value,c=f.elements.namedItem('contractor_id');const matches=(project.contractors||[]).filter(x=>(x.trade||'').localeCompare(trade,'de',{sensitivity:'accent'})===0);c.innerHTML='<option value="">Keine Zuordnung</option>'+matches.map(x=>`<option value="${x.id}">${escapeHtml(x.name)}</option>`).join('');c.disabled=type==='Eigenleistung';if(matches.some(x=>String(x.id)===String(selected)))c.value=String(selected);$('taskCompanyHelp').textContent=type==='Eigenleistung'?'Für Eigenleistungen ist kein Betrieb erforderlich.':matches.length?`${matches.length} passende Firma${matches.length===1?'':'en'} aus den Stammdaten.`:'Keine Firma mit diesem Gewerk in den Stammdaten vorhanden.'}
@@ -227,6 +229,42 @@ $('delete').onclick=async()=>{
  if(!await PHBUI.confirm('Arbeitspaket löschen? Nachfolger bleiben erhalten und werden mit seinen bisherigen Vorgängern verbunden. Kostenverknüpfungen verhindern das Löschen.'))return;
  await mutateTask('/api/tasks/'+editing,'DELETE',undefined,'Arbeitspaket gelöscht; Abhängigkeiten verbunden');
 };
-$('today').onclick=()=>{let container=document.querySelector('.ganttwrap');let origin=firstMonday(project.start);let n=diff(origin,new Date().toISOString().slice(0,10));container.scrollLeft=Math.max(0,n*($('scale').value==='week'?26:7)-320)};
+$('today').onclick=()=>{const container=document.querySelector('.ganttwrap'),host=$('gantt');const n=diff(host.dataset.origin||project.start,new Date().toISOString().slice(0,10));container.scrollLeft=Math.max(0,n*Number(host.dataset.daySize||26)-160)};
 reload().then(()=>{if(new URLSearchParams(location.search).get('firmenvorschlaege')==='1')$('companySuggestions').click();});
 document.addEventListener('phb-ai-status',renderScheduleStart);
+
+function syncBulkSelection(){
+ const ids=new Set(project.tasks.map(t=>t.id));for(const id of selectedTasks)if(!ids.has(id))selectedTasks.delete(id);
+ const hidden=[...selectedTasks].filter(id=>!visible().some(t=>t.id===id)).length;
+ $('bulkCount').textContent=selectedTasks.size+' ausgewählt'+(hidden?' · '+hidden+' außerhalb des Filters':'');
+ for(const control of document.querySelectorAll('.task-bulk-toolbar input,.task-bulk-editor select,#bulkClear'))control.disabled=taskBusy;
+ $('bulkComplete').disabled=!selectedTasks.size||taskBusy;$('bulkEdit').disabled=!selectedTasks.size||taskBusy;
+ const rows=visible();$('selectAllTasks').checked=rows.length>0&&rows.every(t=>selectedTasks.has(t.id));
+ $('selectAllTasks').indeterminate=rows.some(t=>selectedTasks.has(t.id))&&!$('selectAllTasks').checked;
+}
+$('taskRows').addEventListener('change',e=>{const input=e.target.closest('[data-select-task]');if(!input)return;const id=Number(input.dataset.selectTask);input.checked?selectedTasks.add(id):selectedTasks.delete(id);syncBulkSelection()});
+$('selectAllTasks').onchange=e=>{visible().forEach(t=>e.target.checked?selectedTasks.add(t.id):selectedTasks.delete(t.id));renderTable()};
+$('bulkClear').onclick=()=>{selectedTasks.clear();renderTable();$('bulkEditor').hidden=true};
+function bulkValues(){
+ const field=$('bulkField').value;
+ let options=field==='phase_id'?[['','Ohne Bauphase'],...(project.phases||[]).map(p=>[p.id,p.title])]:
+ field==='trade'?(project.trades||[]).map(t=>[t,t]):
+ field==='execution_type'?['Noch offen','Eigenleistung','Fremdleistung'].map(x=>[x,x]):
+ field==='status'?['Offen','In Arbeit','Pausiert'].map(x=>[x,x]):
+ [['','Firma entfernen'],...(project.contractors||[]).filter(c=>[...selectedTasks].every(id=>{const t=project.tasks.find(t=>t.id===id);return t&&t.execution_type!=='Eigenleistung'&&t.trade.toLocaleLowerCase('de-DE')===(c.trade||'').toLocaleLowerCase('de-DE')})).map(c=>[c.id,c.name])];
+ $('bulkValue').innerHTML=options.map(([value,label])=>`<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join('');
+}
+$('bulkEdit').onclick=()=>{if([...selectedTasks].some(id=>project.tasks.find(t=>t.id===id)?.status==='Erledigt')){message('Abgeschlossene Arbeitspakete bitte aus der Auswahl entfernen.');return;}$('bulkEditor').hidden=false;bulkValues()};
+$('bulkField').onchange=bulkValues;
+async function bulkAction(complete){
+ if(taskBusy||!selectedTasks.size)return;
+ const ids=[...selectedTasks],changes={[$('bulkField').value]:$('bulkValue').value};
+ if(!await PHBUI.confirm(`${ids.length} Arbeitspakete ${complete?'abschließen':'gemeinsam ändern'}?`))return;
+ if(taskBusy)return;
+ taskBusy=true;syncBulkSelection();$('bulkSave').disabled=true;
+ try{const data=await api('/api/tasks/bulk',{method:'POST',body:JSON.stringify(complete?{ids,action:'complete'}:{ids,changes})});selectedTasks.clear();$('bulkEditor').hidden=true;await reload();message(data.changed+' Arbeitspakete aktualisiert.');}
+ catch(error){await PHBUI.alert(error.message)}
+ finally{taskBusy=false;$('bulkSave').disabled=false;syncBulkSelection()}
+}
+$('bulkComplete').onclick=()=>bulkAction(true);$('bulkSave').onclick=()=>bulkAction(false);
+$('toggleAllPhases').onclick=()=>{const ids=[...(project.phases||[]).map(p=>String(p.id)),'unassigned'];const all=ids.every(id=>collapsedPhases.has(id));ids.forEach(id=>all?collapsedPhases.delete(id):collapsedPhases.add(id));$('toggleAllPhases').textContent=all?'Alle einklappen':'Alle ausklappen';renderGantt()};
