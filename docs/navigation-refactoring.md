@@ -36,3 +36,26 @@ Die Architekturänderung wurde in diesem Commit bewusst noch nicht aktiviert: Hi
 - htmx, AJAX, Inhaltsaustausch und History: https://htmx.org/docs/
 - React schrittweise in bestehende Projekte integrieren: https://react.dev/learn/add-react-to-an-existing-project
 - View Transition API und Unterschied zwischen visuellen Übergängen und Navigation: https://developer.mozilla.org/en-US/docs/Web/API/View_Transition_API
+
+## Testbranch: `feature/persistent-navigation`
+
+Auf Basis von `feature/synology-nas`, Ausgangscommit `8c71fb5`, ist der persistente Rahmen jetzt als testbare Implementierung vorhanden. Für diesen Pilot war keine zusätzliche UI-Bibliothek nötig: Ein kleiner nativer ES-Modul-Router übernimmt gezielten Inhaltsaustausch und Browserhistorie. Flask liefert weiterhin dieselben Templates und unveränderte Fach-APIs. Der Browser extrahiert daraus ausschließlich den Fachinhalt; Sidebar, Header, Theme, ChatGPT und Importwarteschlange werden nicht ausgetauscht.
+
+`page_modules.py` liefert explizit erlaubte Modul-Factories aus den vorhandenen lokalen Fachskripten. Jede Aktivierung erhält einen isolierten Scope mit eigenen Dokument-Listenern, Fetch-Abbruchcontrollern, Timern, Observern und Objekt-URLs. Gantt und seine Begleitskripte behalten dabei ihren gemeinsamen lexikalischen Kontext, ohne Variablen in die nächste Fachansicht zu übertragen. Es werden weder `eval` noch dynamische Inline-Skriptinjektionen verwendet. Globale Form-/Dialogdienste bleiben erhalten; ihre Registry gibt entfernte Dialoge wieder frei.
+
+Die Zielansicht und ihre initialen Daten werden zunächst verborgen vorbereitet. Die aktuelle Ansicht bleibt stehen und ist während des Wechsels gegen weitere Eingaben gesperrt. Erst dann werden Inhalt und passende Styles gemeinsam umgeschaltet. Ladefehler lassen den bisherigen Inhalt erhalten. Neue Navigationsaufträge brechen überholte Leseanfragen ab. Formulare werden anhand echter Feldwerte geprüft; programmatische Befüllung und leere Dateifelder erzeugen keine künstlichen Änderungswarnungen. Offene Schreibvorgänge und Vordergrundimporte sperren den Seitenwechsel. Hintergrundjobs laufen im globalen Dienst weiter.
+
+### Lokal testen
+
+Normal über den vorhandenen Entwicklungsstarter starten. Keine Datenmigration erforderlich. Beim ersten Aufruf der neuen Version die Seite einmal neu laden, damit auch die gemeinsamen Skripte aktualisiert werden.
+
+- Sidebar einklappen und mehrfach zwischen Bauzeitenplan, Rechnungen, Finanzierung und Angeboten wechseln. Die Sidebar darf sich nicht neu aufbauen.
+- Zurück/Vorwärts und direkte Links mit `receipt_id`, `offer_id`, `loan_id` oder `schedule_job` prüfen.
+- Ein Formular ändern und zu einer anderen Ansicht wechseln: Abbrechen erhält Formular und Adresse, Bestätigen verwirft den Entwurf im geöffneten Dialog.
+- Nach mehreren Wechseln eine Firma oder ein Arbeitspaket speichern und kontrollieren, dass die Aktion nur einmal ausgeführt wird.
+- Einen Hintergrundimport starten, währenddessen navigieren und das Ergebnis aus der globalen Warteschlange öffnen.
+- Theme und ChatGPT-Verbindung wechseln; beides muss beim Seitenwechsel erhalten bleiben. Keine zusätzliche KI-Statusabfrage pro Fachseitenwechsel.
+
+Automatisierte Browserprüfung: `PHB_TEST_URL=http://127.0.0.1:5056 node tests/browser_navigation.cjs` mit lokal installiertem Playwright und Chromium. **Nur gegen eine Wegwerf-Testdatenbank starten:** Die Prüfung legt eine Testfirma an. `CHROMIUM_PATH` kann den Browserpfad überschreiben. Die Prüfung kontrolliert wiederholte Seitenwechsel, DOM-Identität der Sidebar, einmalig bestehende globale Dienste, Browserhistorie, Entwurfswarnungen, verzögerte und fehlerhafte Zielseiten sowie einen echten Speichervorgang.
+
+Chromium wurde automatisiert geprüft; Safari auf dem betroffenen Mac und die realen NAS-/Netzwerklatenzen sind noch durch den Testbranch zu validieren. Vollständige HTML-Antworten werden weiterhin übertragen; optimierte Server-Fragmente oder ein späterer Komponentenumbau sind mögliche nächste Schritte, ohne den jetzt bestehenden Rahmen zu ersetzen.

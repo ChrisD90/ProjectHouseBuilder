@@ -180,6 +180,6 @@
   }else if(new URLSearchParams(location.search).get('ai')==='error'){
     setTimeout(()=>{show();message('ChatGPT-Anmeldung fehlgeschlagen. Die technischen Details kannst du bei Bedarf aufklappen.');showDiagnostics('callback');},200);
   }
-  window.PHBAI={selection,show,refresh,connected:()=>state.sharing};
+  window.PHBAI={selection,show,refresh,status:()=>({...state}),connected:()=>state.sharing};
   refresh();
 })();

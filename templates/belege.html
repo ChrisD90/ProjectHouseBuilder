@@ -90,7 +90,7 @@
 <div id="message" role="status" class="notice"></div><details id="rawDetails" hidden><summary>Erkannter Originaltext (zur Kontrolle)</summary><pre id="raw"></pre></details><div id="warnings"></div></section>
   </div></dialog></main>
   </div>
-</div><dialog id="receiptCancelDialog" class="phb-workflow-dialog" aria-labelledby="receiptCancelTitle"><div class="phb-workflow-head"><h2 id="receiptCancelTitle">Rechnung stornieren</h2><button id="closeReceiptCancel" type="button">Abbrechen</button></div><form id="receiptCancelForm" class="phb-workflow-body"><p id="receiptCancelSummary"></p><p>Hier werden nur die Einträge in der Anwendung zurückgenommen. Eine tatsächliche Rücküberweisung erfolgt dadurch nicht.</p><label>Grund (optional)<textarea id="receiptCancelReason" name="reason" maxlength="500" rows="3" placeholder="z. B. doppelt erfasst oder durch neue Rechnung ersetzt"></textarea></label><p id="receiptCancelMessage" role="alert"></p><button type="submit" class="danger">Rechnung und Zahlungsvermerke stornieren</button></form></dialog><script src="/static/receipts.js"></script><script src="/static/receipt_cancellations.js"></script><script>if('serviceWorker' in navigator&&window.isSecureContext)navigator.serviceWorker.register('/sw.js').catch(()=>{});</script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+</div><dialog id="receiptCancelDialog" class="phb-workflow-dialog" aria-labelledby="receiptCancelTitle"><div class="phb-workflow-head"><h2 id="receiptCancelTitle">Rechnung stornieren</h2><button id="closeReceiptCancel" type="button">Abbrechen</button></div><form id="receiptCancelForm" class="phb-workflow-body"><p id="receiptCancelSummary"></p><p>Hier werden nur die Einträge in der Anwendung zurückgenommen. Eine tatsächliche Rücküberweisung erfolgt dadurch nicht.</p><label>Grund (optional)<textarea id="receiptCancelReason" name="reason" maxlength="500" rows="3" placeholder="z. B. doppelt erfasst oder durch neue Rechnung ersetzt"></textarea></label><p id="receiptCancelMessage" role="alert"></p><button type="submit" class="danger">Rechnung und Zahlungsvermerke stornieren</button></form></dialog><script>if('serviceWorker' in navigator&&window.isSecureContext)navigator.serviceWorker.register('/sw.js').catch(()=>{});</script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
   <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
   <h2 id="phbAITitle">ChatGPT verbinden</h2>
   <p id="phbAIConnection">Verbindung wird geprüft …</p>
@@ -111,4 +111,4 @@
   <p id="phbAIMessage" role="status"></p>
 </dialog>
 <script src="/static/chatgpt.js"></script>
-<script src="/static/shell.js"></script></body></html>
+<script src="/static/shell.js"></script><script type="module" src="/static/navigation.js"></script></body></html>

@@ -35,12 +35,12 @@ class SidebarUITest(unittest.TestCase):
                 self.assertIn('/static/vendor-bootstrap-5.3.6.min.css', content)
                 if name == 'angebote':
                     self.assertIn('/static/angebote.css', content)
-                    self.assertIn('/static/offers.js', content)
+                    self.assertIn('/static/navigation.js', content)
                 if name == 'daten':
-                    self.assertIn('/static/daten.js', content)
+                    self.assertIn('/static/navigation.js', content)
                     self.assertIn('/static/daten.css', content)
                 if name == 'stammdaten':
-                    self.assertIn('/static/stammdaten.js', content)
+                    self.assertIn('/static/navigation.js', content)
                     self.assertIn('/static/stammdaten.css', content)
                 self.assertIn('<form method="post" action="/logout"', content)
                 self.assertEqual(content.count('aria-current="page"'), 1)
@@ -108,10 +108,10 @@ class SidebarUITest(unittest.TestCase):
             'id="scheduleHistoryDialog"',
             'id="scheduleChatApprove"',
             'id="scheduleChatReject"',
-            '/static/schedule_chat.js'
+            '/static/navigation.js'
         ):
             self.assertIn(marker,page)
-        self.assertIn('/static/initial_schedule.js',page)
+        self.assertIn('/static/navigation.js',page)
         js=(STATIC/'app.js').read_text()
         self.assertIn("project.tasks.length===0",js)
         self.assertIn("window.PHBAI?.connected()",js)
@@ -203,7 +203,7 @@ class SidebarUITest(unittest.TestCase):
     def test_project_document_ui_and_gantt_context_are_separate(self):
         html=self.render('dokumente')
         for marker in ('id="projectDocumentUpload"','id="docFilterStatus"',
-                       'id="docEditDialog"','/static/dokumente.js'):
+                       'id="docEditDialog"','/static/navigation.js'):
             self.assertIn(marker,html)
         schedule=self.render('index')
         self.assertIn('id="scheduleChatDocuments"',schedule)

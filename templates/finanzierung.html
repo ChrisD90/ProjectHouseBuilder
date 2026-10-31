@@ -137,7 +137,7 @@
 <dialog id="equityDialog" aria-labelledby="equityDialogTitle"><form id="equityForm" class="modal"><div class="modal-head"><h2 id="equityDialogTitle">Eigenkapitalkonto</h2><button type="button" class="secondary" id="closeEquity">Schließen</button></div><input type="hidden" name="id"><div class="fields"><label>Bezeichnung<input name="name" maxlength="160" required placeholder="Eigenkapital Sanierung"></label><label>Startbestand (€)<input name="opening_balance" type="number" min="0" step="0.01" required></label><label>Sicherheitsreserve (€)<input name="reserve" type="number" min="0" step="0.01" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div><div class="modal-actions phb-dialog-actions"><button type="button" id="deleteEquity" class="danger">Konto löschen</button><button type="submit" class="primary">Konto speichern</button></div></form></dialog>
 </main>
   </div>
-</div><script src="/static/finanzierung.js"></script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+</div><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
   <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
   <h2 id="phbAITitle">ChatGPT verbinden</h2>
   <p id="phbAIConnection">Verbindung wird geprüft …</p>
@@ -158,4 +158,4 @@
   <p id="phbAIMessage" role="status"></p>
 </dialog>
 <script src="/static/chatgpt.js"></script>
-<script src="/static/shell.js"></script></body></html>
+<script src="/static/shell.js"></script><script type="module" src="/static/navigation.js"></script></body></html>

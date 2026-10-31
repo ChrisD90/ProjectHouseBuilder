@@ -121,7 +121,7 @@ docker compose -f compose.synology.yaml exec app sh -c 'command -v tesseract; co
   </dialog>
 </main>
 </div></div>
-<script src="/static/daten.js"></script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+<dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
   <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
   <h2 id="phbAITitle">ChatGPT verbinden</h2>
   <p id="phbAIConnection">Verbindung wird geprüft …</p>
@@ -142,5 +142,5 @@ docker compose -f compose.synology.yaml exec app sh -c 'command -v tesseract; co
   <p id="phbAIMessage" role="status"></p>
 </dialog>
 <script src="/static/chatgpt.js"></script>
-<script src="/static/shell.js"></script>
+<script src="/static/shell.js"></script><script type="module" src="/static/navigation.js"></script>
 </body></html>

@@ -120,3 +120,9 @@ body.phb-app .phb-main .layout{max-width:none;}
 @view-transition{navigation:auto}
 ::view-transition-old(root){animation:none;opacity:1}
 ::view-transition-new(root){animation:none}
+
+/* Navigation swaps only the page host; the app frame never disappears. */
+.phb-page-host[hidden]{display:none!important}
+body.phb-app.phb-navigating .phb-topbar::after{content:'';position:absolute;inset:auto 0 0;height:2px;background:var(--ui-accent);animation:phb-navigation-progress 1s ease-in-out infinite}
+@keyframes phb-navigation-progress{0%{opacity:.3}50%{opacity:1}100%{opacity:.3}}
+@media(prefers-reduced-motion:reduce){body.phb-app.phb-navigating .phb-topbar::after{animation:none}}

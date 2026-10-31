@@ -107,7 +107,7 @@ title="ChatGPT-Planungsdialog bei Bedarf öffnen">
     <button type="button" id="companyProposalsCancel" class="subtle">Abbrechen</button>
     <button type="button" id="companyProposalsApply" class="primary">Auswahl übernehmen</button>
   </div>
-</dialog><div id="toast" role="status"></div><script src="/static/app.js"></script><script src="/static/task_completion.js"></script><script src="/static/gantt_drag.js"></script><script src="/static/initial_schedule.js"></script><script src="/static/schedule_chat.js"></script><script>if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js").catch(console.warn);</script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+</dialog><div id="toast" role="status"></div><script>if ("serviceWorker" in navigator && window.isSecureContext) navigator.serviceWorker.register("/sw.js").catch(console.warn);</script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
   <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
   <h2 id="phbAITitle">ChatGPT verbinden</h2>
   <p id="phbAIConnection">Verbindung wird geprüft …</p>
@@ -128,4 +128,4 @@ title="ChatGPT-Planungsdialog bei Bedarf öffnen">
   <p id="phbAIMessage" role="status"></p>
 </dialog>
 <script src="/static/chatgpt.js"></script>
-<script src="/static/shell.js"></script></body></html>
+<script src="/static/shell.js"></script><script type="module" src="/static/navigation.js"></script></body></html>

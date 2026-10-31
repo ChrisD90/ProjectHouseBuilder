@@ -21,7 +21,7 @@
  <label>Angebot<select name="offer_id" id="energyOffer"></select></label><label>Planposition<select name="budget_line_id" id="energyBudgetLine"></select></label>
  <label class="wide">Programmquelle<input name="source_url" type="url" maxlength="1000" placeholder="https://"></label><label class="wide">Notizen / Voraussetzungen<textarea name="notes" maxlength="3000" rows="3"></textarea></label>
  </div><p id="energyFormMessage" role="alert"></p><div class="dialog-actions phb-dialog-actions"><button id="deleteEnergyFunding" type="button" class="danger">Löschen</button><button class="primary" type="submit">Förderung speichern</button></div></form></dialog>
-</main></div></div><script src="/static/energieplanung.js"></script>
+</main></div></div>
 <dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
   <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
   <h2 id="phbAITitle">ChatGPT verbinden</h2>
@@ -43,4 +43,4 @@
   <p id="phbAIMessage" role="status"></p>
 </dialog>
 <script src="/static/chatgpt.js"></script>
-<script src="/static/shell.js"></script></body></html>
+<script src="/static/shell.js"></script><script type="module" src="/static/navigation.js"></script></body></html>

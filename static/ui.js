@@ -279,6 +279,7 @@
 
   window.PHBUI={
     setTheme,currentTheme:selectedTheme,
+    pendingWrites:()=>[...inflight.values()].some(x=>x.lock),
     confirm:message=>ask(message),
     alert:message=>ask(message,{title:'Hinweis',confirm:'OK',cancel:false}),
     prompt:(message,initial='')=>ask(message,{title:'Eingabe',confirm:'Übernehmen',initial}),

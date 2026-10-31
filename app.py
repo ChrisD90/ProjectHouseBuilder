@@ -1623,6 +1623,17 @@ def operations_to_proposal(ops):
     return result
 
 
+@app.get('/page-modules/<name>.js')
+def page_module_asset(name):
+    from page_modules import page_module
+    source=page_module(name)
+    if source is None:return Response('Unknown page module',status=404,mimetype='text/plain')
+    response=Response(source,mimetype='text/javascript')
+    response.set_etag(sha256(source.encode()).hexdigest())
+    response.headers['Cache-Control']='private, no-cache'
+    return response.make_conditional(request)
+
+
 @app.get('/')
 def home():
     return render_template('index.html')

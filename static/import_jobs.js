@@ -48,7 +48,7 @@
  }
  function review(jobs){
   const job=jobs.find(j=>j.status==='Fertig'&&j.review_url);
-  if(job)location.assign(job.review_url);
+  if(job)(window.PHBNav?.visit||location.assign.bind(location))(job.review_url);
   else {panelOpen=true;render();}
  }
  window.addEventListener('beforeunload',event=>{if(waitDialog?.open){event.preventDefault();event.returnValue='';}});
@@ -88,13 +88,13 @@
    const controls=document.createElement('div');controls.className='phb-import-toast-actions';
    const review=document.createElement('button');
    review.type='button';review.textContent=j.status==='Fertig'?'Jetzt prüfen':'Importe anzeigen';
-   review.onclick=()=>{if(j.review_url)location.assign(j.review_url);else {panelOpen=true;render();}};
+   review.onclick=()=>{if(j.review_url)(window.PHBNav?.visit||location.assign.bind(location))(j.review_url);else {panelOpen=true;render();}};
    const close=document.createElement('button');close.type='button';close.textContent='Schließen';
    close.onclick=()=>{toast.hidden=true;};
    controls.append(review,close);toast.append(title,info,controls);toast.hidden=false;
    if(j.status==='Fertig'&&document.hidden&&'Notification' in window&&Notification.permission==='granted'){
      try{const note=new Notification('ProjectHouseBuilder: '+subject+' fertig',{body:j.filename+' – jetzt prüfen',tag:'phb-import-'+j.id});
-       note.onclick=()=>{window.focus();if(j.review_url)location.assign(j.review_url);};}catch(_){}
+       note.onclick=()=>{window.focus();if(j.review_url)(window.PHBNav?.visit||location.assign.bind(location))(j.review_url);};}catch(_){}
    }
  }
  async function dismissJob(id){
@@ -118,7 +118,7 @@
    const actions=document.createElement('div');actions.className='phb-import-job-actions';
    if(j.review_url){
      const button=document.createElement('button');button.type='button';button.textContent='Prüfen und bearbeiten';
-     button.onclick=()=>location.assign(j.review_url);
+     button.onclick=()=>(window.PHBNav?.visit||location.assign.bind(location))(j.review_url);
      actions.append(button);
    }
    if(['Fehler','Unterbrochen'].includes(j.status)){

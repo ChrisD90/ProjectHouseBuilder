@@ -33,7 +33,7 @@
   if(!dialog||!(dialog instanceof HTMLDialogElement)){
    throw Error('PHBFlow: Dialog nicht gefunden: '+config.dialog);
   }
-  if(registry.has(dialog.id))return registry.get(dialog.id);
+  if(registry.has(dialog))return registry.get(dialog);
   const forms=(config.forms||[]).map($).filter(Boolean);
   const dismiss=(config.dismiss||[]).map($).filter(Boolean);
   const titles=(config.steps||[]).map(String);
@@ -146,7 +146,7 @@
   });
   stage(0);
   const controller={dialog,open,finish,cancel,stage,run,setBusy,snapshot,dirty,isBusy};
-  registry.set(dialog.id,controller);
+  registry.set(dialog,controller);
   return controller;
  }
  window.addEventListener('beforeunload',event=>{
@@ -156,5 +156,9 @@
   event.preventDefault();
   event.returnValue='';
  });
- window.PHBFlow={manage,get:id=>registry.get($(id)?.id)};
+ window.PHBFlow={manage,get:id=>registry.get($(id)),
+  blocked:root=>[...registry.values()].some(flow=>root.contains(flow.dialog)&&flow.isBusy()),
+  dirty:root=>[...registry.values()].some(flow=>root.contains(flow.dialog)&&flow.dialog.open&&flow.dirty()),
+  dispose:root=>{for(const [dialog] of registry)if(root.contains(dialog)){if(dialog.open)dialog.close();registry.delete(dialog);}}
+ };
 })();
