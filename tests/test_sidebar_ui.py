@@ -72,7 +72,7 @@ class SidebarUITest(unittest.TestCase):
 
     def test_existing_interactive_form_ids_are_unchanged(self):
         for page, identifiers in {
-            'index': ('projectStart', 'saveStart', 'newTask', 'taskForm', 'gantt'),
+            'index': ('projectStart', 'newTask', 'taskForm', 'gantt'),
             'kosten': ('costPipeline', 'costOverviewRows', 'costDetailsDialog'),
             'angebote': ('offerImportForm', 'offerManualForm', 'offerDrafts', 'offerList', 'offerCategoryFilter'),
             'belege': ('upload', 'review'),
@@ -85,6 +85,16 @@ class SidebarUITest(unittest.TestCase):
             for identifier in identifiers:
                 with self.subTest(page=page, id=identifier):
                     self.assertIn('id="' + identifier + '"', html)
+
+    def test_project_start_is_in_gantt_header_and_has_no_save_button(self):
+        page=self.render('index')
+        self.assertNotIn('id="saveStart"',page)
+        header=page.split('class="gantt-panel-header"',1)[1].split('class="gantt-panel-actions"',1)[0]
+        self.assertIn('id="projectStart"',header)
+        script=(STATIC/'app.js').read_text()
+        self.assertIn("$('projectStart').onchange=async",script)
+        self.assertIn('input.value=before',script)
+        self.assertNotIn('!await phaseFlow.cancel()',script)
 
     def test_schedule_chat_is_gated_and_history_collapsed_by_default(self):
         page=self.render('index')

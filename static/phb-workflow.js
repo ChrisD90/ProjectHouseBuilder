@@ -129,7 +129,7 @@
    if(event.target!==dialog)return;
    event.preventDefault();
    event.stopImmediatePropagation();
-   void cancel();
+   // Backdrop clicks never dismiss a dialog; use its explicit close action.
   },true);
   for(const btn of dismiss)btn.addEventListener('click',event=>{
    event.preventDefault();

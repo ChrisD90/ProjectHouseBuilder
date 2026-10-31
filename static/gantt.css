@@ -78,3 +78,20 @@ body.phb-app.phb-page-zeitplan .phase-task-items button{display:grid;text-align:
 body.phb-app.phb-page-zeitplan .phase-task-items small{color:var(--ui-muted);font-size:11px}
 body.phb-app.phb-page-zeitplan #phaseCompletionState{font-size:12px;color:var(--ui-accent);margin:0}
 body.phb-app.phb-page-zeitplan #phaseTaskDetails summary{cursor:pointer;font-size:13px;font-weight:650}
+
+/* The project date belongs to the diagram, separate from view actions. */
+body.phb-app.phb-page-zeitplan .gantt-header-left{display:flex;align-items:center;gap:10px 22px;flex-wrap:wrap;min-width:0}
+body.phb-app.phb-page-zeitplan .gantt-header-left h2{margin:0}
+body.phb-app.phb-page-zeitplan .gantt-project-start{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ui-muted);margin:0}
+body.phb-app.phb-page-zeitplan .gantt-project-start input{width:150px;min-height:36px;padding:6px 9px;font-size:13px}
+body.phb-app.phb-page-zeitplan #projectStartStatus{font-size:11px;color:var(--ui-muted)}
+body.phb-app.phb-page-zeitplan .schedule-metrics{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 14px}
+body.phb-app.phb-page-zeitplan .schedule-metrics article{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:9px;box-shadow:none}
+body.phb-app.phb-page-zeitplan .schedule-metrics article span{font-size:11px;margin:0}
+body.phb-app.phb-page-zeitplan .schedule-metrics article b{font-size:17px;line-height:1.3;white-space:nowrap}
+/* Override shared button centering for the two-line task cards. */
+body.phb-app.phb-page-zeitplan #phaseTaskItems button{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:4px;text-align:left;white-space:normal;width:100%;padding:10px 12px;min-width:0}
+body.phb-app.phb-page-zeitplan #phaseTaskItems button>*{display:block;width:100%;margin:0;padding:0;text-align:left;overflow-wrap:anywhere}
+body.phb-app.phb-page-zeitplan #phaseTaskItems small{font-weight:400;line-height:1.4}
+@media(max-width:1100px){body.phb-app.phb-page-zeitplan .schedule-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){body.phb-app.phb-page-zeitplan .schedule-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}body.phb-app.phb-page-zeitplan .gantt-header-left{gap:10px}}

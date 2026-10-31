@@ -37,15 +37,19 @@ function openPhase(id=null,detail=false){
  $('phaseFormTitle').textContent=row?'Bauphase bearbeiten':'Neue Bauphase';$('phaseDialogTitle').textContent=detail?(row?.title||'Bauphase'):'Bauphasen verwalten';
  $('phaseDialog').classList.toggle('is-phase-detail',detail);$('phaseList').hidden=detail;$('resetPhaseForm').hidden=detail;
  $('deletePhase').hidden=!row;$('phaseFormError').textContent='';renderPhaseList();
+ renderPhaseTaskDetails(id);
+ if(!phaseFlow.dialog.open)phaseFlow.open();phaseFlow.snapshot();setTimeout(()=>form.elements.title.focus(),0);
+}
+function renderPhaseTaskDetails(id){
+ const row=project.phases.find(p=>p.id===id);
  const tasks=project.tasks.filter(t=>t.phase_id===id),done=tasks.filter(t=>t.status==='Erledigt').length;
- $('phaseTaskDetails').hidden=!row;$('phaseTaskDetails').open=false;
+ $('phaseTaskDetails').hidden=!row;
  $('phaseTaskSummary').textContent=`Arbeitspakete (${done} / ${tasks.length} abgeschlossen)`;
  $('phaseTaskItems').innerHTML=tasks.map(t=>`<button type="button" data-phase-task="${t.id}"><span>${escapeHtml(t.code)} · ${escapeHtml(t.name)}</span><small>${escapeHtml(t.status)} · ${escapeHtml(t.trade)}</small></button>`).join('')||'<p>Noch keine Arbeitspakete zugeordnet.</p>';
  $('phaseCompletionState').textContent=row?.completed?'Abgeschlossen am '+fmt(row.completed_at):row?.completed_at?'Wieder offen: Zugeordnete Arbeitspakete sind noch nicht abgeschlossen.':'';
  $('completePhase').hidden=!row||row.completed;
- if(!phaseFlow.dialog.open)phaseFlow.open();phaseFlow.snapshot();setTimeout(()=>form.elements.title.focus(),0);
 }
-$('phaseTaskItems').onclick=async e=>{const button=e.target.closest('[data-phase-task]');if(!button||!await phaseFlow.cancel())return;openTask(Number(button.dataset.phaseTask))};
+$('phaseTaskItems').onclick=e=>{const button=e.target.closest('[data-phase-task]');if(button)openTask(Number(button.dataset.phaseTask))};
 $('completePhase').onclick=async()=>{
  if(phaseBusy)return;const id=Number($('phaseForm').elements.id.value),row=project.phases.find(p=>p.id===id);if(!row)return;
  if(phaseFlow.dirty()){await PHBUI.alert('Bitte deine Änderungen zuerst speichern, bevor du die Bauphase abschließt.');return;}
@@ -101,7 +105,7 @@ function openTask(id){if(taskBusy||ganttBusy)return;editing=id;let t=project.tas
  $('delete').disabled=completed;$('delete').style.display=completed||!id?'none':'block';$('complete').hidden=!id||completed;
  $('reopenTask').hidden=!completed;$('taskForm').querySelector('button[type=submit]').hidden=completed;
  $('cancel').textContent=completed?'Schließen':'Abbrechen';taskFlow.open();document.dispatchEvent(new CustomEvent('phb-task-opened',{detail:{id,completed}}))}
-const taskFlow=PHBFlow.manage({dialog:'overlay',forms:['taskForm'],dismiss:['cancel'],isBusy:()=>taskBusy,onClose:()=>window.PHBTaskCompletion?.closed()});
+const taskFlow=PHBFlow.manage({dialog:'overlay',forms:['taskForm'],dismiss:['cancel'],isBusy:()=>taskBusy,onClose:()=>{window.PHBTaskCompletion?.closed();if(phaseFlow.dialog.open)renderPhaseTaskDetails(Number($('phaseForm').elements.id.value))}});
 function closeModal(){taskFlow.finish();}
 $('newTask').onclick=()=>openTask(null);$('filter').oninput=()=>{renderGantt();renderTable()};$('phase').onchange=()=>{renderGantt();renderTable()};$('scale').onchange=renderGantt;$('workType').onchange=()=>{renderGantt();renderTable()};$('taskForm').elements.namedItem('trade').onchange=()=>refreshTaskContractors();$('taskForm').elements.namedItem('execution_type').onchange=()=>refreshTaskContractors($('taskForm').elements.namedItem('contractor_id').value);
 $('clearSchedule').onclick=async()=>{
@@ -114,7 +118,20 @@ $('clearSchedule').onclick=async()=>{
  catch(e){message(e.message)}
  finally{$('clearSchedule').disabled=false;renderScheduleStart()}
 };
-$('saveStart').onclick=async()=>{try{await api('/api/project',{method:'PATCH',body:JSON.stringify({start:$('projectStart').value})});message('Projektstart gespeichert');await reload()}catch(e){message(e.message)}};
+let projectStartBusy=false;
+$('projectStart').onchange=async()=>{
+ const input=$('projectStart'),before=project.start,next=input.value;
+ if(projectStartBusy)return;
+ if(!next||next===before){input.value=before;return;}
+ projectStartBusy=true;input.disabled=true;
+ try{
+  if(!await PHBUI.confirm(`Projektstart von ${fmt(before)} auf ${fmt(next)} ändern? Die Termine der Arbeitspakete werden wie bisher neu berechnet.`)){input.value=before;return;}
+  await api('/api/project',{method:'PATCH',body:JSON.stringify({start:next})});
+  await reload();$('projectStartStatus').textContent='Projektstart gespeichert.';
+ }catch(error){input.value=before;$('projectStartStatus').textContent=error.message;}
+ finally{projectStartBusy=false;input.disabled=false;}
+};
+
 async function mutateTask(path,method,data,text){
  if(taskBusy)return;
  taskBusy=true;const controls=[...$('taskForm').querySelectorAll('input,select,textarea,button'),$('complete')];const wasDisabled=controls.map(n=>n.disabled);controls.forEach(n=>n.disabled=true);

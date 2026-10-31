@@ -16,9 +16,7 @@ const editFlow=PHBFlow.manage({
 $('openDocUpload').onclick=()=>uploadFlow.open();
 $('closeDocUpload').onclick=()=>{if(!uploadRunning)uploadDialog.close();};
 uploadDialog.addEventListener('cancel',e=>{if(uploadRunning)e.preventDefault();});
-uploadDialog.addEventListener('click',e=>{
- if(e.target===uploadDialog&&!uploadRunning)uploadDialog.close();
-});
+
 const report=(msg,error=false,id='docMessage')=>{const n=$(id);n.textContent=msg;n.classList.toggle('error',error);};
 async function api(url,method='GET',data){
  const opts={method};

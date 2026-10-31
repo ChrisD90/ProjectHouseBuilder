@@ -192,9 +192,7 @@
   $('anotherOffer').onclick=()=>openWorkflow(false);
   $('closeOfferWorkflow').onclick=()=>{if(!offerUploading)workflow.close();};
   workflow.addEventListener('cancel',event=>{if(offerUploading)event.preventDefault();});
-  workflow.addEventListener('click',event=>{
-    if(event.target===workflow&&!offerUploading)workflow.close();
-  });
+
   const defaultCompareLabel = 'Ausgewählte Angebote mit KI vergleichen';
   function updateAICompareSelection() {
     const choices=$('aiOfferChoices'),button=$('aiCompareOffers');

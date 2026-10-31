@@ -44,9 +44,7 @@ $('openReceiptWorkflow').onclick=()=>{
 };
 $('closeReceiptWorkflow').onclick=()=>{if(!uploading&&!receiptBusy)receiptDialog.close();};
 receiptDialog.addEventListener('cancel',event=>{if(uploading||receiptBusy)event.preventDefault();});
-receiptDialog.addEventListener('click',event=>{
-  if(event.target===receiptDialog&&!uploading&&!receiptBusy)receiptDialog.close();
-});
+
 const navigation=new URLSearchParams(window.location.search);
 const linkOffer=Number(navigation.get('offer_id'))||null;
 const linkReceipt=Number(navigation.get('receipt_id'))||null;
