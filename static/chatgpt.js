@@ -1,6 +1,7 @@
 /* All ChatGPT access goes through the local Python runtime. No OAuth tokens in JS. */
 (() => {
   'use strict';
+  if(window.parent!==window&&window.parent.PHBReactBridge){window.PHBAI=window.parent.PHBReactBridge.ai;return;}
   const $=id=>document.getElementById(id);
   if (!$('phbChatGPTButton') || !$('phbAIDialog')) return;
   let state={connected:false,sharing:false}, models=[];

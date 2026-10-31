@@ -155,13 +155,13 @@ class PlanningTest(unittest.TestCase):
         self.assertEqual(self.client.delete('/api/budget/lines/'+str(line.id)).status_code,200)
 
     def test_energy_page_and_funding_moved_from_costs(self):
-        page=self.client.get('/energieplanung');self.assertEqual(page.status_code,200)
+        page=self.client.get('/energieplanung?_classic=1');self.assertEqual(page.status_code,200)
         self.assertIn(b'energyFundingForm',page.data)
-        costs=self.client.get('/kosten').data
+        costs=self.client.get('/kosten?_classic=1').data
         self.assertNotIn(b'id="fundingrows"',costs)
         self.assertNotIn(b'planUploadForm',costs)
         self.assertIn(b'costOverviewRows',costs)
-        self.assertIn(b'tradeSearch',self.client.get('/stammdaten').data)
+        self.assertIn(b'tradeSearch',self.client.get('/stammdaten?_classic=1').data)
 
     def test_company_research_needs_connection_and_explicit_consent(self):
         with patch.object(chatgpt,'run') as run:

@@ -38,3 +38,7 @@ instance/
 
 # Temporäre Dateien während eines vollständigen Projekt-Resets
 .reset-quarantine-*/
+
+# Frontend dependencies and development artifacts
+frontend/node_modules/
+frontend/.vite/

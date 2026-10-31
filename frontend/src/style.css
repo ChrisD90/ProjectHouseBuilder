@@ -1,0 +1,144 @@
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+body {
+  margin: 0;
+}
+button,
+a,
+input {
+  touch-action: manipulation;
+}
+.app-brand {
+  letter-spacing: -0.5px;
+}
+.app-sidebar {
+  background: light-dark(#142f36, #11252c);
+  border-color: transparent;
+  color: #d6e6e8;
+}
+.app-sidebar .mantine-NavLink-root {
+  color: #c4d7da;
+  border-radius: 9px;
+  margin: 3px 0;
+}
+.app-sidebar .mantine-NavLink-root[data-active] {
+  color: #fff;
+  background: #285158;
+}
+.app-sidebar .mantine-NavLink-root:hover {
+  background: #25444b;
+}
+.app-sidebar .mantine-NavLink-label {
+  font-size: 13px;
+}
+.app-main {
+  background: light-dark(#f4f6f7, #12191d);
+}
+.page {
+  max-width: 1500px;
+  margin: auto;
+  padding: 26px 30px;
+}
+.page-header {
+  margin-bottom: 22px;
+}
+.page-header h1 {
+  font-size: 27px;
+  letter-spacing: -0.8px;
+  margin: 0 0 4px;
+}
+.page-header p {
+  margin: 0;
+}
+.metric {
+  padding: 13px 17px;
+  border: 1px solid var(--mantine-color-default-border);
+  background: var(--mantine-color-body);
+  border-radius: 12px;
+}
+.metric strong {
+  display: block;
+  font-size: 22px;
+  font-weight: 650;
+  margin-top: 3px;
+  letter-spacing: -0.5px;
+}
+.paper {
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 14px;
+  padding: 20px;
+  background: var(--mantine-color-body);
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 18px;
+  margin-top: 16px;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+.table-button {
+  cursor: pointer;
+}
+.table-button:hover {
+  background: light-dark(#f2f7f7, #213137);
+}
+.compact-note {
+  font-size: 12px;
+  color: var(--mantine-color-dimmed);
+}
+.frame-zone {
+  position: relative;
+  height: calc(100dvh - 70px);
+  min-height: 480px;
+}
+.workflow-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: var(--mantine-color-body);
+}
+.frame-slot {
+  height: 100%;
+  width: 100%;
+}
+.frame-slot[hidden] {
+  display: none;
+}
+.frame-progress {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 10;
+}
+.header-icon {
+  flex-shrink: 0;
+}
+.route-link {
+  color: var(--mantine-color-teal-text);
+  text-decoration: none;
+}
+@media (max-width: 700px) {
+  .page {
+    padding: 20px 15px;
+  }
+  .page-header h1 {
+    font-size: 23px;
+  }
+  .metric strong {
+    font-size: 18px;
+  }
+  .paper {
+    padding: 14px;
+  }
+  .frame-zone {
+    height: calc(100dvh - 64px);
+  }
+}
+
+.workflow-frame[hidden] {
+  display: none !important;
+}

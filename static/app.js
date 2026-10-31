@@ -12,6 +12,7 @@ function message(s){$('toast').textContent=s;$('toast').style.display='block';se
 async function api(path,options={}){const res=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(options.headers||{})}});const data=await res.json();if(!res.ok)throw Error(data.error||'Serverfehler');return data}
 async function reload(){try{project=await api('/api/project');render();document.dispatchEvent(new CustomEvent('phb-schedule-updated',{detail:{taskCount:project.tasks.length}}))}catch(e){message(e.message)}}
 window.reloadSchedule=reload;
+window.PHBPageRefresh=()=>reload();
 function renderScheduleStart(){
  const empty=project.tasks.length===0;
  $('aiSchedulePanel').hidden=!empty||!Boolean(window.PHBAI?.connected());

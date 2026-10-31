@@ -60,7 +60,7 @@ class FinanceWorkflowTest(unittest.TestCase):
         return r.json
 
     def test_initial_empty_and_page(self):
-        self.assertEqual(self.client.get('/finanzierung').status_code,200)
+        self.assertEqual(self.client.get('/finanzierung?_classic=1').status_code,200)
         self.assertEqual(self.state()['summary']['loan_frame'],0)
         self.assertEqual(self.state()['summary']['equity_available'],0)
 
@@ -114,7 +114,7 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertEqual(current['balance']['drawn'],400)
 
     def test_financing_page_explicitly_offers_editing_and_additional_details(self):
-        page=self.client.get('/finanzierung')
+        page=self.client.get('/finanzierung?_classic=1')
         self.assertEqual(page.status_code,200)
         self.assertIn(b'id="loanSaveStatus"',page.data)
         self.assertIn(b'id="loanSaveButton"',page.data)
@@ -178,7 +178,7 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertEqual(self.state()['summary']['project_budget'],1650)
         self.assertEqual(self.client.patch('/api/budget/config',
             json={'budget':999999}).status_code,409)
-        page=self.client.get('/finanzierung').get_data(as_text=True)
+        page=self.client.get('/finanzierung?_classic=1').get_data(as_text=True)
         self.assertIn('id="newLoan"',page)
         self.assertIn('id="newEquity"',page)
         self.assertNotIn('id="paymentForm"',page)

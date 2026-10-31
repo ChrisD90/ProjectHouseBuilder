@@ -527,3 +527,7 @@ Der dokumentgestützte Weg besitzt die Status **Entwurf**, **Eingereicht**, **Au
 In **Kredit verwalten → Kreditunterlagen** kann pro Kredit eine aktive PDF-Vorlage für den Mittelabruf hinterlegt werden. Wiederverwendbare Angaben wie Kreditnehmer, Objektadresse, Zahlungsempfänger, IBAN, Ort und Standardhinweis werden in neue Abrufe übernommen. Bei aktiver ChatGPT-Verbindung kann die Anwendung ausfüllbare Formularfelder den geprüften Abruf- und Belegdaten zuordnen; das Ergebnis bleibt eine zu prüfende Bankvorlage.
 
 Bereits erfolgte Auszahlungen, Tilgungen, Zinsen, Gebühren und Eigenkapitalbewegungen können unter **„Weitere Buchungen und Kontobewegungen“** nachgetragen werden. Nachweise und Verwendungsdokumente liegen unter `private/` und sind Bestandteil des vollständigen Projektbackups.
+
+### Neue React-/Mantine-Oberfläche (Testbranch)
+
+Auf `feature/react-mantine-ui` bleibt der gemeinsame App-Rahmen bei der Navigation bestehen. Stammdaten, Kostenübersicht, Förderplanung und Dokumente sind native React-/Mantine-Bereiche. Die übrigen bewährten Fachabläufe bleiben zunächst isoliert eingebunden. Fertige Frontend-Dateien sind enthalten; für den normalen Mac-/Python-Start ist keine zusätzliche Node-Installation nötig. Build, Test, Rückfalloption und der genaue Migrationsumfang stehen in [docs/react-ui.md](docs/react-ui.md).

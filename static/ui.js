@@ -142,7 +142,7 @@
     try{
       const result=nativeFetch(input,init);
       return Promise.resolve(result).then(async response=>{
-        if(method!=='GET'&&method!=='HEAD'&&response.headers.get('Content-Type')?.includes('application/json'))await response.clone().text();
+        if(method!=='GET'&&method!=='HEAD'&&response.headers.get('Content-Type')?.includes('application/json')){await response.clone().text();if(response.ok)document.dispatchEvent(new CustomEvent('phb-write-complete',{detail:{form:inflight.get(id)?.button?.form}}));}
         return response;
       }).finally(()=>end(id));
     }catch(error){end(id);throw error;}
@@ -279,6 +279,8 @@
 
   window.PHBUI={
     setTheme,currentTheme:selectedTheme,
+    activeRequests:()=>active,
+    pendingWrites:()=>[...inflight.values()].some(x=>x.lock),
     confirm:message=>ask(message),
     alert:message=>ask(message,{title:'Hinweis',confirm:'OK',cancel:false}),
     prompt:(message,initial='')=>ask(message,{title:'Eingabe',confirm:'Übernehmen',initial}),

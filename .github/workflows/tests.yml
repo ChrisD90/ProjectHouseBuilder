@@ -1,7 +1,7 @@
 name: Tests
 on:
   push:
-    branches: [main, feature/synology-nas, dev/local-testing]
+    branches: [main, feature/synology-nas, feature/react-mantine-ui, dev/local-testing]
   pull_request:
 jobs:
   python:
@@ -21,8 +21,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install and verify React frontend
+        run: |
+          npm --prefix frontend ci --no-audit --no-fund
+          npm --prefix frontend test
+          npm --prefix frontend run build
       - name: Check JavaScript syntax
         run: |
+          node --check static/embed.js
           node --check static/phb-workflow.js
           node --test tests/workflow_runtime.test.cjs
           node --check static/app.js

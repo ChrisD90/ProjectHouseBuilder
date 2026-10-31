@@ -160,7 +160,7 @@ class OfferVersionTests(unittest.TestCase):
         self.assertIn('draft',statuses)
 
     def test_ui_exposes_review_form_and_history_without_old_versions_in_list(self):
-        html=self.client.get('/angebote').get_data(as_text=True)
+        html=self.client.get('/angebote?_classic=1').get_data(as_text=True)
         js=Path(__file__).resolve().parents[1].joinpath('static/offers.js').read_text()
         self.assertIn('offerList',html)
         self.assertIn('data-version-upload',js)

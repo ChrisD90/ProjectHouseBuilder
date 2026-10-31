@@ -553,6 +553,7 @@
   $('offerMethodPdf').addEventListener('click',()=>switchMethod('pdf'));
   $('offerMethodManual').addEventListener('click',()=>switchMethod('manual'));
   $('offerCategoryFilter').addEventListener('change',refreshUI);
+  window.PHBPageRefresh=()=>reload();
   const aiAppend=form=>{
     const data=new FormData(form);
     if(data.get('analysis_mode')==='ai'){

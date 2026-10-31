@@ -19,3 +19,6 @@ synology/
 compose.synology.yaml
 .env.dev
 .env.dev.local
+
+frontend/node_modules/
+frontend/.vite/

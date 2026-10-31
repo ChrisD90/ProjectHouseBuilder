@@ -95,7 +95,7 @@ def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary
                   for x in db.session.scalars(select(Offer)).all()]
         lines = [dict(id=x.id, title=x.title, category=x.category) for x in db.session.scalars(select(BudgetLine)) if not x.is_group]
         summary = budget_summary(db.session.scalars(select(CostItem)).all())
-        return jsonify(funding=funding, offers=offers, budget_lines=lines, statuses=STATUSES,
+        return jsonify(funding=funding, offers=offers, budget_lines=lines, statuses=STATUSES, sources=SOURCES,
                        summary={key: summary[key] for key in ('planned', 'funding_expected', 'funding_confirmed', 'net_after_confirmed')},
                        received=round(sum(x['received'] for x in funding), 2))
 

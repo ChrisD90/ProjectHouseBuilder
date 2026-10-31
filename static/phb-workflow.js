@@ -156,5 +156,5 @@
   event.preventDefault();
   event.returnValue='';
  });
- window.PHBFlow={manage,get:id=>registry.get($(id)?.id)};
+ window.PHBFlow={manage,get:id=>registry.get($(id)?.id),inspect:()=>({busy:[...registry.values()].some(flow=>flow.isBusy()),dirty:[...registry.values()].some(flow=>flow.dialog.open&&flow.dirty())})};
 })();

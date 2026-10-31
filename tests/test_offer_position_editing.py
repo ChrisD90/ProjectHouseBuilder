@@ -163,7 +163,7 @@ class OfferPositionEditingTests(unittest.TestCase):
             self.assertEqual(db.session.get(Offer,oid).gross,1190)
 
     def test_offer_review_screen_contains_position_editor_and_reconciliation(self):
-        html=self.client.get('/angebote').get_data(as_text=True)
+        html=self.client.get('/angebote?_classic=1').get_data(as_text=True)
         js=Path(__file__).resolve().parents[1].joinpath('static/offers.js').read_text()
         self.assertIn('PDF-Daten und Positionen prüfen',html)
         self.assertIn('data-position-add',js)

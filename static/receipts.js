@@ -259,7 +259,8 @@ function inputs({booking=false}={}){
  return result;
 }
 function fillSelect(node,values,getTitle){node.innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${safe(getTitle(x))}</option>`).join('')}
-async function reload(keepId=selected){
+window.PHBPageRefresh=()=>reload(selected,receiptDialog.open);
+async function reload(keepId=selected,reopen=true){
  const [r,c]=await Promise.all([api('/api/receipts'),api('/api/costs')]);overview=c;list=r.receipts;
  $('receiptTrade').innerHTML='<option value="">Ohne Gewerk</option>'+(r.trades||[]).map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('');
  $('stats').innerHTML=`<span>Entwürfe: <b>${r.drafts}</b></span><span>Gebucht brutto: <b>${money(r.booked_gross)}</b></span><span>Bezahlt: <b>${money(r.paid)}</b></span><span>Lohnanteil erfasst: <b>${list.filter(x=>x.labor_amount!==null).length} Belege</b></span>`;
@@ -269,8 +270,8 @@ async function reload(keepId=selected){
  renderReceiptFilters();
  if(keepId&&list.some(x=>x.id===keepId))selected=keepId;
  renderReceiptList();
- if(keepId&&list.some(x=>x.id===keepId))await open(keepId);
- else if(linkReceipt&&list.some(x=>x.id===linkReceipt))await open(linkReceipt);
+ if(reopen&&keepId&&list.some(x=>x.id===keepId))await open(keepId);
+ else if(reopen&&linkReceipt&&list.some(x=>x.id===linkReceipt))await open(linkReceipt);
  else if(!list.length){$('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);}
  if(linkOffer&&!selected){$('uploadStatus').textContent='Angebot ausgewählt: Lade die Rechnung hoch und prüfe danach die Verknüpfung im Entwurf.';}
 }
@@ -324,7 +325,7 @@ async function open(id){
    $('costItems').value=String(linkedCostItem);
  }
  updateInvoiceControls();
- const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);
+ const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();
  $('original').href='/api/receipts/'+id+'/download';$('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
  $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Daten bleiben bearbeitbar; Original und Historie bleiben erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Rechnungsdaten können weiterhin geprüft und korrigiert werden.':'Entwurf: Du kannst jederzeit zwischenspeichern, auch ohne Firma, Betrag oder Zahlungsziel.');
@@ -542,7 +543,7 @@ $('receiptCreateCompany').onclick=async event=>{
  const saved=await receiptAction(()=>api('/api/receipts/'+id,{
   method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(fields)
  }),$('saveReceiptDraft'),'Entwurf gespeichert.');
- if(saved)location.assign('/stammdaten?receipt_id='+id+'&new_company=1#firmen');
+ if(saved){const target='/stammdaten?receipt_id='+id+'&new_company=1#firmen';if(window.PHBEmbed)window.parent.PHBReactBridge.navigate(target);else location.assign(target);}
 };
 $('book').onclick=async()=>{
  if(!selected||receiptBusy)return;

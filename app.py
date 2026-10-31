@@ -91,6 +91,24 @@ def logout():
     session.clear()
     return redirect('/login')
 
+# React owns the shared frame; the reviewed classic workflows remain available
+# as isolated same-origin documents while their native components are migrated.
+REACT_ROUTES={'/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten'}
+
+@app.before_request
+def react_frontend():
+    if request.method!='GET' or request.path not in REACT_ROUTES:
+        return None
+    if request.args.get('_classic')=='1' or os.environ.get('PHB_UI','react')=='classic':
+        return None
+    index=ROOT/'static'/'react'/'index.html'
+    if not index.is_file():
+        return None  # Source-only checkouts can still run the established UI.
+    response=send_file(index)
+    response.headers['Cache-Control']='private, no-store'
+    return response
+
+
 @app.get('/manifest.webmanifest')
 def pwa_manifest():
     return send_file(ROOT/'static'/'manifest.webmanifest',mimetype='application/manifest+json')

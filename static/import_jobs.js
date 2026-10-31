@@ -1,6 +1,7 @@
 /* Persistent, global document-import activity feed. No external dependencies. */
 (()=>{
  'use strict';
+ if(window.parent!==window&&window.parent.PHBReactBridge){window.PHBImports=window.parent.PHBReactBridge.imports;return;}
  const $=id=>document.getElementById(id);
  const now=()=>Date.now();
  const finished=new Set();

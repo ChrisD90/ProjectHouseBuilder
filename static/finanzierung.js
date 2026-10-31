@@ -337,7 +337,7 @@ $('loanForm').onsubmit=async event=>{
  try{
    const saved=await api('/api/financing/loans'+(id?'/'+id:''),id?'PATCH':'POST',fields);
    pendingLoanScan=null;
-   const address=new URL(location.href);address.searchParams.delete('loan_scan');address.searchParams.set('loan_id',String(saved.id));history.replaceState(null,'',address);
+   const address=new URL(location.href);address.searchParams.delete('loan_scan');address.searchParams.set('loan_id',String(saved.id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();
    await reload();
    form.elements.namedItem('id').value=String(saved.id);
    // Show the persisted (server-validated) values, without altering finance bookings.
@@ -515,6 +515,7 @@ $('drawdownForm').onsubmit=async event=>{
  finally{drawdownBusy=false;button.disabled=false;updateDrawdownTotal();}
 };
 
+window.PHBPageRefresh=()=>reload();
 reload().then(()=>{
    const scanId=Number(new URLSearchParams(location.search).get('loan_scan'));
    if(scanId>0)return reviewLoanScan(scanId);

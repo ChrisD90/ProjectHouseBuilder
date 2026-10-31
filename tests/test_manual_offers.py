@@ -135,8 +135,8 @@ class ManualOfferTests(unittest.TestCase):
         self.assertEqual(db.session.get(Offer,oid).notes,'Korrigiert')
 
     def test_simple_navigation_does_not_duplicate_offer_forms_in_costs(self):
-        offers=self.client.get('/angebote').get_data(as_text=True)
-        costs=self.client.get('/kosten').get_data(as_text=True)
+        offers=self.client.get('/angebote?_classic=1').get_data(as_text=True)
+        costs=self.client.get('/kosten?_classic=1').get_data(as_text=True)
         self.assertIn('id="offerManualForm"',offers)
         self.assertIn('id="offerManualContractor"',offers)
         self.assertIn('id="offerCompanyDialog"',offers)

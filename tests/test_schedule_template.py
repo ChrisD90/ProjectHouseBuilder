@@ -87,8 +87,8 @@ class ScheduleTemplateTests(TestCase):
         self.assertIn('Eigenleistung',csv.data.decode('utf-8-sig'))
         backup=self.client.get('/api/backup.json').json
         self.assertIn('execution_type',backup['tasks'][0])
-        self.assertEqual(self.client.get('/').status_code,200)
-        html=self.client.get('/').data.decode('utf-8')
+        self.assertEqual(self.client.get('/?_classic=1').status_code,200)
+        html=self.client.get('/?_classic=1').data.decode('utf-8')
         self.assertNotIn('id="initializeTemplate"',html)
         self.assertIn('id="aiSchedulePanel"',html)
         self.assertIn('Bauzeitenplan gemeinsam vorbereiten',html)

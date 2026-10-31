@@ -1,3 +1,10 @@
+FROM node:22-slim AS frontend
+WORKDIR /build/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
 FROM python:3.12-slim-trixie
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 WEB_CONCURRENCY=1 GUNICORN_THREADS=2 PHB_OCR_IMAGE=deu-eng-poppler-2026-10
 RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
@@ -11,6 +18,7 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt && useradd -u 10001 -m project
 COPY . .
+COPY --from=frontend /build/static/react /app/static/react
 RUN mkdir -p /app/private && chown -R project:project /app
 USER project
 RUN python ocr_runtime.py --check

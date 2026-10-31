@@ -141,7 +141,7 @@
   async function openQueuedProposal(){
     const url=new URL(location.href);const id=url.searchParams.get('schedule_job');
     if(!id)return;
-    url.searchParams.delete('schedule_job');history.replaceState({},'',url.pathname+url.search+url.hash);
+    url.searchParams.delete('schedule_job');history.replaceState({},'',url.pathname+url.search+url.hash);window.PHBEmbed?.syncURL();
     flow.open();status('Erstellten Planvorschlag laden …');
     try{
       const [data]=await Promise.all([request('/api/import-jobs/'+encodeURIComponent(id)+'/schedule-review'),loadState()]);

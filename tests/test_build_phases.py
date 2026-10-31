@@ -122,7 +122,7 @@ class BuildPhaseTests(unittest.TestCase):
         self.assertEqual(row['contractor_id'],electrician.id);self.assertEqual(row['company'],'')
 
     def test_schedule_ui_uses_phase_and_masterdata_controls(self):
-        html=self.client.get('/').get_data(as_text=True)
+        html=self.client.get('/?_classic=1').get_data(as_text=True)
         form=html[html.index('id="taskForm"'):html.index('</form>',html.index('id="taskForm"'))]
         self.assertIn('name="phase_id"',form);self.assertIn('name="planned_end"',form)
         for removed in ('name="company"','name="lag_days"','name="earliest_start"','name="progress"'):
