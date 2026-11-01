@@ -73,3 +73,5 @@ Die gemeinsame Farbpalette liegt in `static/palette.css` und gilt für React und
 Revision `0028` ergänzt den optionalen Archivzeitpunkt bestehender To-dos und Notizen. Inhalte, Verknüpfungen und Erledigt-Status bleiben erhalten. `npm --prefix frontend run test:browser:work` prüft die Buttons, Zähler, gemeinsamen Dialoge, Archivierung, Wiederherstellung, Löschung und verschachtelte Dialoge gegen einen separaten Testserver (`PHB_TEST_URL`).
 
 „Daten & Sicherung“ verwendet projektbezogene Backups und Wiederherstellungen einschließlich Originaldateien; administrative Systemsicherungen bleiben außerhalb dieses Projektablaufs. Siehe [Projektbackups](project-backups.md).
+
+Förderunterlagen werden im Header des Förderbereichs hochgeladen und dort geprüft; Hintergrundjobs speichern diesen Rücksprung als Teil ihres projektbezogenen Jobs. Allgemeine Dokument-Uploads behalten ihren bisherigen Ablauf. [Förderplanung: Umsetzungsvorschlag](funding-planning-proposal.md).

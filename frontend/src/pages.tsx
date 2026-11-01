@@ -1,3 +1,5 @@
+import { DocumentFields, emptyDocument } from './document-fields';
+import { FundingDocumentIntake } from './funding-documents';
 import { projectURL } from './project-context';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -837,7 +839,6 @@ const emptyFunding: Row = {
   notes: '',
 };
 export function Energy() {
-  const navigate = useNavigate();
   const query = useQuery({
       queryKey: ['energy'],
       staleTime: 0,
@@ -845,13 +846,29 @@ export function Energy() {
     }),
     cache = useQueryClient(),
     ask = useConfirm(),
-    [params] = useSearchParams();
+    [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(''),
     [opened, setOpened] = useState(false),
     [id, setID] = useState<number | null>(null),
     [busy, setBusy] = useState(false),
     [failure, setFailure] = useState<unknown>(null);
+  const [uploadDocuments, setUploadDocuments] = useState(false),
+    [uploadFunding, setUploadFunding] = useState<number | null>(null);
+  const documentId = Number(params.get('funding_document')) || null,
+    documentFunding = Number(params.get('document_funding_id')) || null;
   const form = useForm<Row>({ initialValues: emptyFunding });
+  function startDocuments(funding: number | null = null) {
+    setUploadFunding(funding);
+    setUploadDocuments(true);
+  }
+  function reviewDocument(document: number | null, funding: number | null = null) {
+    const next = new URLSearchParams(params);
+    next.delete('funding_document');
+    next.delete('document_funding_id');
+    if (document) next.set('funding_document', String(document));
+    if (document && funding) next.set('document_funding_id', String(funding));
+    setParams(next, { replace: true });
+  }
   useDirtyGuard(opened && form.isDirty());
   const data: Row = query.data || {};
   function open(row: Row | null = null, offer?: number) {
@@ -910,9 +927,18 @@ export function Energy() {
         title="Energetische Planung"
         description="Förderungen planen, Fristen festhalten und Angeboten zuordnen."
       >
-        <Button leftSection={<IconPlus size={17} />} onClick={() => open()}>
-          Förderung erfassen
-        </Button>
+        <Group gap="xs">
+          <Button
+            variant="default"
+            leftSection={<IconPlus size={17} />}
+            onClick={() => startDocuments()}
+          >
+            Unterlagen hochladen
+          </Button>
+          <Button leftSection={<IconPlus size={17} />} onClick={() => open()}>
+            Förderung erfassen
+          </Button>
+        </Group>
       </PageHeader>
       <ErrorBox value={query.error} />
       {query.isPending && <Loader />}
@@ -995,14 +1021,6 @@ export function Energy() {
               Förderungen zuordnen.
             </Text>
           </div>
-          <Button
-            variant="light"
-            onClick={() =>
-              navigate('/dokumente?area=Energetische%20Planung&upload=1&return_to=energy')
-            }
-          >
-            Unterlagen hochladen
-          </Button>
         </Group>
         <Stack gap="xs">
           {(data.documents || []).map((d: Row) => (
@@ -1015,20 +1033,25 @@ export function Energy() {
                   {d.category}
                 </Text>
               </div>
-              <Anchor
-                size="sm"
-                href={projectURL(
-                  '/api/project-documents/' +
-                    d.id +
-                    (['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt'].includes(d.extension)
-                      ? '/preview'
-                      : '/download'),
-                )}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {d.extension === '.docx' ? 'Herunterladen' : 'Öffnen'} ↗
-              </Anchor>
+              <Group gap="xs">
+                <Button size="compact-xs" variant="subtle" onClick={() => reviewDocument(d.id)}>
+                  Bearbeiten
+                </Button>
+                <Anchor
+                  size="sm"
+                  href={projectURL(
+                    '/api/project-documents/' +
+                      d.id +
+                      (['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt'].includes(d.extension)
+                        ? '/preview'
+                        : '/download'),
+                  )}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {d.extension === '.docx' ? 'Herunterladen' : 'Öffnen'} ↗
+                </Anchor>
+              </Group>
             </Group>
           ))}
           {!data.documents?.length && (
@@ -1059,6 +1082,7 @@ export function Energy() {
         title={id ? 'Förderung bearbeiten' : 'Förderung erfassen'}
         dirty={form.isDirty()}
         busy={busy}
+        suspended={uploadDocuments || !!documentId}
         onClose={() => setOpened(false)}
       >
         <form
@@ -1154,6 +1178,15 @@ export function Energy() {
               value={(form.values.document_ids || []).map(String)}
               onChange={(ids) => form.setFieldValue('document_ids', ids.map(Number))}
             />
+            {id && (
+              <Button
+                variant="light"
+                leftSection={<IconPlus size={16} />}
+                onClick={() => startDocuments(id)}
+              >
+                Unterlagen zu dieser Förderung hochladen
+              </Button>
+            )}
             <FundingCheck form={form} busy={busy} setBusy={setBusy} />
             {id && <SourceWork type="funding" id={id} />}
             <ErrorBox value={failure} />
@@ -1176,18 +1209,29 @@ export function Energy() {
           </Stack>
         </form>
       </Editor>
+      <FundingDocumentIntake
+        opened={uploadDocuments}
+        fundingId={uploadFunding}
+        onClose={() => setUploadDocuments(false)}
+        reviewId={documentId}
+        reviewFundingId={documentFunding}
+        missingFunding={
+          !!documentFunding &&
+          !!query.data &&
+          !(data.funding || []).some((row: Row) => row.id === documentFunding)
+        }
+        onReview={reviewDocument}
+        onSaved={(document, funding) => {
+          if (opened && id && id === funding)
+            form.setFieldValue('document_ids', [
+              ...new Set([...(form.values.document_ids || []), document.id]),
+            ]);
+        }}
+      />
     </div>
   );
 }
 
-const emptyDocument: Row = {
-  title: '',
-  category: 'Bauplan',
-  area: 'Allgemein',
-  status: 'Aktuell',
-  tags: '',
-  description: '',
-};
 export function Documents() {
   const query = useQuery({
     queryKey: ['documents'],
@@ -1594,34 +1638,5 @@ export function Documents() {
         </form>
       </Editor>
     </div>
-  );
-}
-function DocumentFields({
-  form,
-  options,
-}: {
-  form: ReturnType<typeof useForm<Row>>;
-  options: Row;
-}) {
-  return (
-    <>
-      <TextInput label="Titel" required maxLength={200} {...form.getInputProps('title')} />
-      <SimpleGrid cols={{ base: 1, sm: 2 }}>
-        <Select
-          label="Kategorie"
-          data={options.categories || []}
-          {...form.getInputProps('category')}
-        />
-        <Select label="Bereich" data={options.areas || []} {...form.getInputProps('area')} />
-        <Select label="Status" data={options.statuses || []} {...form.getInputProps('status')} />
-        <TextInput label="Schlagworte" maxLength={400} {...form.getInputProps('tags')} />
-      </SimpleGrid>
-      <Textarea
-        label="Beschreibung"
-        maxLength={1500}
-        minRows={3}
-        {...form.getInputProps('description')}
-      />
-    </>
   );
 }

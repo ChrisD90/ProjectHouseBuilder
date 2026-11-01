@@ -1,5 +1,5 @@
 import { BrandLogo } from './brand';
-import { projectID, workspaceURL } from './project-context';
+import { projectID, workspaceURL, fundingDocumentOnly } from './project-context';
 import { useQuery } from '@tanstack/react-query';
 import { api } from './core';
 import { useMediaQuery } from '@mantine/hooks';
@@ -115,13 +115,13 @@ export function App() {
   const frameWindow = () => refs.current[currentPath.current]?.contentWindow as any;
   const busy = () => hasWrites() || services.bridge.busy() || !!frameWindow()?.PHBEmbed?.busy();
   const dirty = () => [...guards.current].some((g) => g()) || !!frameWindow()?.PHBEmbed?.dirty();
-  const blocker = useBlocker(({ nextLocation }) =>
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
       syncing.current ===
       nextLocation.pathname.replace(/^\/p\/[1-9]\d*(?=\/)/, '') +
         nextLocation.search +
         nextLocation.hash
         ? false
-        : busy() || dirty(),
+        : busy() || (!fundingDocumentOnly(currentLocation, nextLocation) && dirty()),
     ),
     asking = useRef(false);
   useEffect(() => {

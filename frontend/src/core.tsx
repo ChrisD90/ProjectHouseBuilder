@@ -120,6 +120,7 @@ export function Editor({
   onClose,
   children,
   zIndex,
+  suspended,
 }: {
   opened: boolean;
   title: string;
@@ -128,10 +129,11 @@ export function Editor({
   onClose: () => void;
   children: React.ReactNode;
   zIndex?: number;
+  suspended?: boolean;
 }) {
   const ask = useConfirm(),
     confirming = useModalLayer().blocked,
-    covered = useContext(EditorCoveredContext);
+    covered = useContext(EditorCoveredContext) || suspended;
   return (
     <Modal
       trapFocus={!confirming && !covered}

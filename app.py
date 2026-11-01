@@ -1321,10 +1321,16 @@ def project_document_edit(did):
     if not isinstance(body,dict):
         return jsonify(error='Ungültige Dokumentdaten.'),400
     try:
-        allowed={'title','category','area','status','tags','description'}
+        allowed={'title','category','area','status','tags','description','funding_id'}
         if set(body)-allowed:raise ValueError('Nicht erlaubte Dokumenteigenschaften.')
         fields=_document_fields(body,partial=True)
         for key,value in fields.items():setattr(record,key,value)
+        if body.get('funding_id') is not None:
+            funding_id=body['funding_id']
+            if type(funding_id) is not int or funding_id<=0 or db.session.get(Funding,funding_id) is None:
+                raise ValueError('Zugehörige Förderung nicht gefunden.')
+            if db.session.get(FundingDocument,(funding_id,did)) is None:
+                db.session.add(FundingDocument(funding_id=funding_id,document_id=did))
         _mark_import_reviewed('documents',did)
         db.session.commit()
         return jsonify(document=_document_json(record))
@@ -4992,6 +4998,12 @@ def _sync_import_reviews():
 
 def _import_result(job):
     if job.result_id is None:return None
+    if job.kind=='documents':
+        meta=json.loads(job.extra_json or '{}')
+        if meta.get('review_context')=='funding':
+            result='/energieplanung?funding_document='+str(job.result_id)
+            if meta.get('funding_id'):result+='&document_funding_id='+str(meta['funding_id'])
+            return result
     prefix={'costplans':'/kosten?cost_plan_import=',
             'offers':'/angebote?offer_draft=',
             'versions':'/angebote?offer_draft=',
@@ -5222,8 +5234,18 @@ def enqueue_import_jobs():
                 raise ValueError('Pro Angebotsversion genau ein PDF auswählen.')
             meta['offer_id']=offer_id
         if kind=='documents':
+            context=request.form.get('review_context','')
+            if context not in ('','funding'):raise ValueError('Unbekannter Dokumentbereich.')
+            if context=='funding':
+                meta['review_context']='funding';meta['area']='Energetische Planung'
+                target=request.form.get('funding_id','')
+                if target:
+                    if not target.isdigit() or db.session.get(Funding,int(target)) is None:
+                        raise ValueError('Zugehörige Förderung nicht gefunden.')
+                    meta['funding_id']=int(target)
             for key in ('title','category','area','status','tags','description'):
                 if key in request.form:meta[key]=request.form[key][:1500]
+            if context=='funding':meta['area']='Energetische Planung'
             # Batch titles use the filename to avoid confusing duplicate titles.
             if len(files)>1:meta.pop('title',None)
         batch=uuid4().hex

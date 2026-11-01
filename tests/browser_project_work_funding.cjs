@@ -187,7 +187,7 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
       .getByRole("button", { name: "Unterlagen hochladen", exact: true })
       .click();
     await page
-      .getByRole("dialog", { name: "Dokumente hochladen", exact: true })
+      .getByRole("dialog", { name: "Förderunterlagen hochladen", exact: true })
       .waitFor();
     const documentName = "isfp-" + token + ".txt";
     await page.locator("input[type=file]").setInputFiles({
@@ -199,7 +199,7 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
       .getByRole("button", { name: "Dateien einlesen", exact: true })
       .click();
     await page
-      .getByRole("dialog", { name: "Dokument pflegen", exact: true })
+      .getByRole("dialog", { name: "Förderunterlage prüfen", exact: true })
       .waitFor({ timeout: 20000 });
     await page.getByRole("button", { name: "Speichern", exact: true }).click();
     await page.waitForURL("**/energieplanung");
@@ -312,7 +312,7 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
     assert.equal(funding.received, 0);
     assert.equal(funding.document_ids.length, 1);
     console.log(
-      "PASS: standard document upload/review returns to funding, readiness gates AI, proposal requires explicit adoption/save",
+      "PASS: direct funding document upload/review stays in funding, readiness gates AI, proposal requires explicit adoption/save",
     );
     await page.getByText("Fenstersanierung " + token, { exact: true }).click();
     const edit = page.getByRole("dialog", {

@@ -29,6 +29,48 @@ class ImportJobsTest(unittest.TestCase):
             return self.client.post('/api/import-jobs',data=data,
                 content_type='multipart/form-data',
                 headers={'X-PHB-AI':'1'} if mode=='ai' else {})
+    def test_funding_documents_keep_review_context_and_attach_only_after_confirmation(self):
+        from app import FundingDocument
+        funding=self.client.post('/api/funding',json={'name':'Fensterförderung'}).json['id']
+        response=self.enqueue(kind='documents',names=('isfp.txt',),extra={'review_context':'funding','funding_id':str(funding),'area':'Allgemein','category':'iSFP'})
+        self.assertEqual(response.status_code,202,response.json)
+        job_id=response.json['jobs'][0]['id'];_run_import_job(job_id)
+        job=db.session.get(ImportJob,job_id);self.assertEqual(job.status,'Fertig',job.error)
+        doc=db.session.get(ProjectDocument,job.result_id)
+        self.assertEqual(doc.area,'Energetische Planung')
+        self.assertEqual(db.session.query(FundingDocument).count(),0)
+        jobs=self.client.get('/api/import-jobs').json['jobs']
+        result=next(x for x in jobs if x['id']==job_id)
+        self.assertEqual(result['review_url'],f'/energieplanung?funding_document={doc.id}&document_funding_id={funding}')
+        for _ in range(2):
+            saved=self.client.patch(f'/api/project-documents/{doc.id}',json={'title':'Geprüfter iSFP','funding_id':funding})
+            self.assertEqual(saved.status_code,200,saved.json)
+        self.assertEqual(db.session.query(FundingDocument).count(),1)
+        self.assertEqual(self.client.get('/api/energy-planning').json['funding'][0]['document_ids'],[doc.id])
+        self.assertTrue(any(x['id']==doc.id for x in self.client.get('/api/project-documents').json['documents']))
+        self.assertEqual(db.session.get(ImportJob,job_id).status,'Übernommen')
+
+    def test_funding_document_queue_rejects_foreign_target_and_invalid_context(self):
+        from app import Funding,Project
+        from multi_projects import project_context
+        other=self.client.post('/api/projects',json={'title':'Andere Baustelle'}).json['project']['id']
+        with project_context(other):
+            row=Funding(name='Andere Förderung');db.session.add(row);db.session.commit();ident=row.id
+        for extra in ({'review_context':'funding','funding_id':str(ident)},{'review_context':'unknown'}):
+            response=self.enqueue(kind='documents',names=('isfp.txt',),extra=extra)
+            self.assertEqual(response.status_code,400,response.json)
+        self.assertEqual(db.session.query(ImportJob).count(),0)
+        response=self.enqueue(kind='documents',names=('local.txt',))
+        _run_import_job(response.json['jobs'][0]['id'])
+        job=db.session.get(ImportJob,response.json['jobs'][0]['id'])
+        doc_id=job.result_id
+        result=self.client.patch(f'/api/project-documents/{doc_id}',json={'title':'Nicht speichern','funding_id':ident})
+        self.assertEqual(result.status_code,400)
+        self.assertNotEqual(db.session.get(ProjectDocument,doc_id).title,'Nicht speichern')
+        self.assertEqual(db.session.get(ImportJob,job.id).status,'Fertig')
+        jobs=self.client.get('/api/import-jobs').json['jobs']
+        self.assertEqual(next(x for x in jobs if x['id']==job.id)['review_url'],f'/dokumente?document_id={doc_id}')
+
     def test_multiple_jobs_are_queued_and_executed_in_order(self):
         result=self.enqueue(kind='offers',names=('one.pdf','two.pdf','three.pdf'))
         self.assertEqual(result.status_code,202,result.json)
