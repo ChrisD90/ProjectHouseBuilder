@@ -1,3 +1,6 @@
+import { projectID, workspaceURL } from './project-context';
+import { useQuery } from '@tanstack/react-query';
+import { api } from './core';
 import { useMediaQuery } from '@mantine/hooks';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
@@ -5,6 +8,7 @@ import {
   Group,
   Text,
   ActionIcon,
+  Anchor,
   NavLink,
   Stack,
   Burger,
@@ -68,6 +72,10 @@ export function useDirtyGuard(dirty: boolean) {
   useEffect(() => register(() => ref.current), [register]);
 }
 export function App() {
+  const projectInfo = useQuery({
+    queryKey: ['current-project', projectID],
+    queryFn: () => api('/api/projects/' + projectID),
+  });
   const location = useLocation(),
     navigate = useNavigate(),
     ask = useConfirm();
@@ -107,7 +115,10 @@ export function App() {
   const busy = () => hasWrites() || services.bridge.busy() || !!frameWindow()?.PHBEmbed?.busy();
   const dirty = () => [...guards.current].some((g) => g()) || !!frameWindow()?.PHBEmbed?.dirty();
   const blocker = useBlocker(({ nextLocation }) =>
-      syncing.current === nextLocation.pathname + nextLocation.search + nextLocation.hash
+      syncing.current ===
+      nextLocation.pathname.replace(/^\/p\/[1-9]\d*(?=\/)/, '') +
+        nextLocation.search +
+        nextLocation.hash
         ? false
         : busy() || dirty(),
     ),
@@ -270,14 +281,30 @@ export function App() {
       >
         <AppShell.Navbar className="app-sidebar" p={mini ? 'xs' : 'md'}>
           <Group justify={mini ? 'center' : 'space-between'} wrap="nowrap" h={52}>
-            <Group gap="sm" wrap="nowrap">
-              <IconBuildingCottage size={29} />
-              {!mini && (
-                <Text fw={700} size="sm" className="app-brand">
-                  ProjectHouseBuilder
-                </Text>
-              )}
-            </Group>
+            <Anchor
+              href="/"
+              aria-label="Alle Projekte"
+              title="Zur Projektübersicht"
+              c="inherit"
+              underline="never"
+              style={{ minWidth: 0 }}
+            >
+              <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                <IconBuildingCottage size={29} />
+                {!mini && (
+                  <Text
+                    fw={700}
+                    size="sm"
+                    className="app-brand"
+                    lineClamp={2}
+                    style={{ overflowWrap: 'anywhere' }}
+                  >
+                    {projectInfo.data?.project?.title ||
+                      (projectInfo.isError ? 'Projekt nicht verfügbar' : 'Projekt wird geladen …')}
+                  </Text>
+                )}
+              </Group>
+            </Anchor>
           </Group>
           <Divider color="#345058" my="md" />
           <Stack gap="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
@@ -296,7 +323,7 @@ export function App() {
                     <Tooltip key={path} label={label} disabled={!mini} position="right">
                       <NavLink
                         component="a"
-                        href={path}
+                        href={workspaceURL(path)}
                         onClick={(e) => {
                           if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
                             e.preventDefault();
@@ -411,6 +438,16 @@ export function App() {
           </Group>
         </AppShell.Header>
         <AppShell.Main className="app-main">
+          {projectInfo.error && (
+            <Alert color="red" m="lg" title="Projekt nicht verfügbar">
+              <Text size="sm">
+                Das Projekt wurde nicht gefunden oder konnte nicht geladen werden.
+              </Text>
+              <Button component="a" href="/" mt="sm" variant="light">
+                Zur Projektübersicht
+              </Button>
+            </Alert>
+          )}
           <div
             style={{
               display: native.has(location.pathname) ? 'block' : 'none',
@@ -525,5 +562,6 @@ function classicURL(value: string) {
   const url = new URL(value, location.origin);
   url.searchParams.set('_classic', '1');
   url.searchParams.set('_embedded', '1');
+  url.searchParams.set('project_id', String(projectID));
   return url.pathname + url.search + url.hash;
 }

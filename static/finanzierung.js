@@ -454,7 +454,7 @@ function renderDraftEditor(draft){
  $('drawdownPreviewTotal').value=Number(draft.requested_amount).toFixed(2);
  $('drawdownPositionEditor').innerHTML=(draft.positions||[]).map((position,index)=>`<article class="drawdown-position" data-receipt-id="${position.receipt_id}"><header><strong>Position ${index+1}</strong><span>${esc(position.filename||'Beleg')}</span></header><label>Lieferant<input data-position-field="supplier" maxlength="200" required value="${esc(position.supplier)}"></label><label>Rechnungsnummer<input data-position-field="invoice_number" maxlength="100" value="${esc(position.invoice_number||'')}"></label><label>Belegdatum<input data-position-field="document_date" type="date" value="${esc(position.document_date||'')}"></label><label>Betrag (€)<input data-position-field="amount" type="number" min="0.01" step="0.01" required value="${Number(position.amount).toFixed(2)}"></label></article>`).join('');
  const iframe=$('drawdownPdfPreview'),empty=$('drawdownPdfPanel').querySelector('.drawdown-no-preview');
- if(draft.preview_url){iframe.hidden=false;empty.hidden=true;iframe.src=draft.preview_url+'?v='+Date.now();}
+ if(draft.preview_url){iframe.hidden=false;empty.hidden=true;iframe.src=draft.preview_url+(draft.preview_url.includes('?')?'&':'?')+'v='+Date.now();}
  else{iframe.hidden=true;iframe.removeAttribute('src');empty.hidden=false;}
  $('drawdownPreviewMessage').textContent=(draft.data?.warnings||[]).join(' · ');
  $('drawdownDialogTitle').textContent='Mittelabruf #'+draft.id+' prüfen';

@@ -11,7 +11,7 @@ function showReceiptPreview(item){
  const isPdf=/\.pdf$/i.test(name),isImage=/\.(png|jpe?g|webp)$/i.test(name);
  pane.hidden=!item||(!isPdf&&!isImage);
  if(pane.hidden){frame.removeAttribute('src');image.removeAttribute('src');return;}
- const url='/api/receipts/'+encodeURIComponent(item.id)+'/preview';
+ const url=window.PHBProject?.url('/api/receipts/'+encodeURIComponent(item.id)+'/preview')||'/api/receipts/'+encodeURIComponent(item.id)+'/preview';
  frame.hidden=!isPdf;image.hidden=!isImage;
  if(isPdf&&frame.getAttribute('src')!==url)frame.src=url;
  if(isImage)image.src=url;

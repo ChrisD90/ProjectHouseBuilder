@@ -11,7 +11,7 @@
   function showOfferPreview(docId){
     const pane=$('offerPdfPane'),frame=$('offerPdfFrame');
     if(!docId){pane.hidden=true;frame.removeAttribute('src');currentPreviewDocument=null;return;}
-    const url='/api/documents/'+Number(docId)+'/preview';
+    const url=window.PHBProject?.url('/api/documents/'+Number(docId)+'/preview')||'/api/documents/'+Number(docId)+'/preview';
     pane.hidden=false;
     if(currentPreviewDocument!==Number(docId)){frame.src=url;currentPreviewDocument=Number(docId);}
     $('offerPdfDownload').href='/api/documents/'+Number(docId)+'/download';
@@ -126,7 +126,7 @@
     const pane=$('offerEditPdfPane'),frame=$('offerEditPdfFrame');
     pane.hidden=!offer.document_id;
     if(offer.document_id){
-      frame.src='/api/documents/'+offer.document_id+'/preview';
+      frame.src=window.PHBProject?.url('/api/documents/'+offer.document_id+'/preview')||'/api/documents/'+offer.document_id+'/preview';
       $('offerEditPdfDownload').href='/api/documents/'+offer.document_id+'/preview';
     }else frame.removeAttribute('src');
     editFlow.open();

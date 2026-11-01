@@ -531,3 +531,5 @@ Bereits erfolgte Auszahlungen, Tilgungen, Zinsen, Gebühren und Eigenkapitalbewe
 ### Neue React-/Mantine-Oberfläche (Testbranch)
 
 Auf `feature/react-mantine-ui` bleibt der gemeinsame App-Rahmen bei der Navigation bestehen. Stammdaten, Kostenübersicht, Förderplanung und Dokumente sind native React-/Mantine-Bereiche. Die übrigen bewährten Fachabläufe bleiben zunächst isoliert eingebunden. Fertige Frontend-Dateien sind enthalten; für den normalen Mac-/Python-Start ist keine zusätzliche Node-Installation nötig. Build, Test, Rückfalloption und der genaue Migrationsumfang stehen in [docs/react-ui.md](docs/react-ui.md).
+
+Mehrere Vorhaben werden über die Projektübersicht getrennt verwaltet. Hinweise zu Migration, Projektgrenzen und Sicherungen: [Mehrere Projekte](docs/multiple-projects.md).

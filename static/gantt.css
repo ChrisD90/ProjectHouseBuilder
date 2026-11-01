@@ -95,3 +95,9 @@ body.phb-app.phb-page-zeitplan #phaseTaskItems button>*{display:block;width:100%
 body.phb-app.phb-page-zeitplan #phaseTaskItems small{font-weight:400;line-height:1.4}
 @media(max-width:1100px){body.phb-app.phb-page-zeitplan .schedule-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:600px){body.phb-app.phb-page-zeitplan .schedule-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}body.phb-app.phb-page-zeitplan .gantt-header-left{gap:10px}}
+
+body.phb-app.phb-page-zeitplan .phase-bar.is-complete{background:var(--ui-success);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ui-success) 55%,var(--ui-ink));background-image:repeating-linear-gradient(135deg,transparent,transparent 7px,#ffffff18 7px,#ffffff18 9px)}
+body.phb-app.phb-page-zeitplan #overlay .modalhead{display:flex;justify-content:space-between;gap:12px;align-items:center}
+body.phb-app.phb-page-zeitplan #taskForm .task-dialog-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid var(--ui-line);padding-top:16px;margin-top:16px}
+body.phb-app.phb-page-zeitplan .task-actions-group{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+body.phb-app.phb-page-zeitplan #taskForm .task-dialog-actions button{margin:0}

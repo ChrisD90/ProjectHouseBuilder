@@ -25,7 +25,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
         method: r.method(),
       }),
     );
-    await page.goto(base + "/");
+    await page.goto(base + "/p/1/");
     await page.waitForFunction(() => !!window.PHBReactBridge);
     await page
       .frameLocator('iframe[title="Bauzeitenplan"]')
@@ -205,7 +205,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
       .getByRole("dialog", { name: "Bitte bestätigen", exact: true })
       .getByRole("button", { name: "Abbrechen", exact: true })
       .click();
-    assert.equal(new URL(page.url()).pathname, "/stammdaten");
+    assert.equal(new URL(page.url()).pathname.replace(/^\/p\/1/,''), "/stammdaten");
     await page.waitForTimeout(350);
     await page.screenshot({
       path: "/tmp/react-guard-state.png",
@@ -360,7 +360,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
     });
     await invoices.locator("#receiptUploadButton").click();
     await page.waitForURL(
-      (url) => url.pathname === "/belege" && url.searchParams.has("receipt_id"),
+      (url) => url.pathname.endsWith("/belege") && url.searchParams.has("receipt_id"),
       { timeout: 20000 },
     );
     invoices = page.frameLocator(
@@ -391,7 +391,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
     console.log("retained PDF import and invoice booking passed");
     await visit("Kosten & Budget");
     await page.goBack();
-    await page.waitForURL((url) => url.pathname === "/belege");
+    await page.waitForURL((url) => url.pathname.endsWith("/belege"));
     await page.goForward();
     await page.waitForURL("**/kosten");
     await page

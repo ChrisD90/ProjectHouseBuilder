@@ -138,6 +138,8 @@
       method=(init?.method||request?.method||'GET').toUpperCase();
       form=init?.body;
     }catch(_){return nativeFetch(input,init);}
+    init={...init,headers:new Headers(init?.headers||(input instanceof Request?input.headers:undefined))};
+    init.headers.set('X-PHB-Project',String(window.PHBProject?.id||1));
     const id=start(classify(pathname,method,form));
     try{
       const result=nativeFetch(input,init);

@@ -1,3 +1,4 @@
+import { projectID } from './project-context';
 import React, { createContext, useContext, useRef, useState } from 'react';
 import { Modal, Button, Group, Text, TextInput, Stack, Alert } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -10,7 +11,7 @@ export async function api<T = Row>(
   ai = false,
 ): Promise<T> {
   const form = body instanceof FormData;
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { 'X-PHB-Project': String(projectID) };
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
   if (ai) headers['X-PHB-AI'] = '1';
   const mutation = !['GET', 'HEAD'].includes(method);

@@ -1,3 +1,4 @@
+import { projectURL } from './project-context';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
@@ -1016,13 +1017,13 @@ export function Energy() {
               </div>
               <Anchor
                 size="sm"
-                href={
+                href={projectURL(
                   '/api/project-documents/' +
-                  d.id +
-                  (['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt'].includes(d.extension)
-                    ? '/preview'
-                    : '/download')
-                }
+                    d.id +
+                    (['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt'].includes(d.extension)
+                      ? '/preview'
+                      : '/download'),
+                )}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -1434,7 +1435,7 @@ export function Documents() {
                         variant="light"
                         size="xs"
                         component="a"
-                        href={'/api/project-documents/' + d.id + '/preview'}
+                        href={projectURL('/api/project-documents/' + d.id + '/preview')}
                         target="_blank"
                       >
                         Ansehen
@@ -1444,7 +1445,7 @@ export function Documents() {
                       variant="default"
                       size="xs"
                       component="a"
-                      href={'/api/project-documents/' + d.id + '/download'}
+                      href={projectURL('/api/project-documents/' + d.id + '/download')}
                     >
                       Herunterladen
                     </Button>
@@ -1483,11 +1484,11 @@ export function Documents() {
                   </Group>
                   <Group mt="sm">
                     {d.view_url && (
-                      <Anchor size="xs" href={d.view_url} target="_blank">
+                      <Anchor size="xs" href={projectURL(d.view_url)} target="_blank">
                         Original ansehen
                       </Anchor>
                     )}
-                    <Anchor size="xs" href={d.download_url}>
+                    <Anchor size="xs" href={projectURL(d.download_url)}>
                       Herunterladen
                     </Anchor>
                   </Group>

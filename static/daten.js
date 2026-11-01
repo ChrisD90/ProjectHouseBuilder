@@ -191,23 +191,24 @@
     while(restoring){
       await new Promise(resolve=>setTimeout(resolve,1500));
       try{
-        const status=await json('/api/backup/restore/status');
-        get('restoreProgress').textContent=status.message||'Wiederherstellung wird geprüft …';
-        if(status.state==='done'||status.state==='failed'){
+        const restoreState=await json('/api/backup/restore/status');
+        get('restoreProgress').textContent=restoreState.message||'Wiederherstellung wird geprüft …';
+        if(restoreState.state==='done'||restoreState.state==='failed'){
           restoring=false;
           get('cancelRestore').textContent='Schließen';
           get('restoreBackupSelect').disabled=false;
           get('restoreBackupUpload').disabled=false;
           get('verifyRestore').disabled=false;
-          get('restoreResult').textContent=status.state==='done'?
-            'Wiederhergestellt. Sicherheitsbackup: '+(status.result?.safety_backup||'')+
+          get('restoreResult').textContent=restoreState.state==='done'?
+            'Wiederhergestellt. Sicherheitsbackup: '+(restoreState.result?.safety_backup||'')+
             '. Bitte die Seite neu laden und den Projektstand kontrollieren.':
             'Wiederherstellung fehlgeschlagen. Bitte Serverprotokoll und Sicherungsstand prüfen.';
           invalidateRestore();
-          if(status.state==='done'){
-            notice('Wiederherstellung abgeschlossen. Projekt bitte neu laden und Daten kontrollieren.');
+          if(restoreState.state==='done'){
+            notice('Wiederherstellung aller Projekte abgeschlossen. Bitte die Projektübersicht öffnen und alle weiteren geöffneten App-Fenster neu laden.');
+            const link=document.createElement('a');link.href='/';link.target='_top';link.dataset.projectGlobal='true';link.textContent=' Projektübersicht öffnen →';get('restoreResult').append(link);
             await status();
-          }else notice(status.message,true);
+          }else notice(restoreState.message,true);
         }
       }catch(error){get('restoreProgress').textContent='Statusabfrage fehlgeschlagen: '+error.message;}
     }

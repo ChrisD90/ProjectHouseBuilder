@@ -17,10 +17,11 @@ EXTENSIONS = {'.pdf', '.xlsx', '.csv', '.txt', '.docx', '.jpg', '.jpeg', '.png',
 def register_cost_plan_imports(app, db, BudgetLine, Document, *, document_root,
                                ai_required, chatgpt, extract_json, mark_reviewed):
     class CostPlanImport(db.Model):
+        __table_args__=(db.UniqueConstraint('project_id','digest',name='uq_cost_plan_import_project_digest'),)
         __tablename__ = 'cost_plan_import'
         id = db.Column(db.Integer, primary_key=True)
         document_id = db.Column(db.Integer, db.ForeignKey('document.id'), nullable=False)
-        digest = db.Column(db.String(64), nullable=False, unique=True)
+        digest = db.Column(db.String(64), nullable=False)
         status = db.Column(db.String(20), nullable=False, default='Entwurf')
         analysis_mode = db.Column(db.String(10), nullable=False)
         rows_json = db.Column(db.Text, nullable=False, default='[]')

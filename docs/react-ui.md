@@ -4,6 +4,8 @@ Testbranch: `feature/react-mantine-ui`, auf Basis von `feature/synology-nas` (`8
 
 ## Aktueller Umfang
 
+Der Einstieg zeigt jetzt eine [Projektübersicht](multiple-projects.md); der folgende gemeinsame Rahmen gilt innerhalb eines Projekts.
+
 Der gemeinsame Rahmen verwendet React, TypeScript, React Router und Mantine; Serverdaten werden über TanStack Query geladen. Sidebar, Header, Theme, ChatGPT-Verbindung und Warteschlange bleiben über die Navigation hinweg erhalten. Die Sidebar ist wieder in Projekt, Finanzen und Verwaltung gegliedert; eingeklappt trennen Linien die Gruppen. Native Ansichten und erhaltene Fachmasken verwenden im Dark Mode dieselbe blaugraue Farbpalette.
 
 Bereits als native React-/Mantine-Komponenten umgesetzt:

@@ -18,6 +18,13 @@ def upgrade():
     # Initial migration must work with a brand new database AND old live user databases.
     # create_all never removes tables, rows, indexes or columns from existing tables.
     db.metadata.create_all(bind=bind, checkfirst=True)
+    # The current metadata includes project-owned tables; their default owner must
+    # exist before later legacy revisions seed master data on fresh databases.
+    if 'project' in db.metadata.tables:
+        from datetime import datetime
+        project=db.metadata.tables['project']
+        if bind.execute(project.select().where(project.c.id==1)).first() is None:
+            bind.execute(project.insert().values(id=1,title='Mein bestehendes Projekt',kind='Sanierung',description='Bisherige Projektdaten',created_at=datetime.utcnow()))
     inspector = inspect(bind)
     additions = {
         'task': {'contractor_id': 'INTEGER'},

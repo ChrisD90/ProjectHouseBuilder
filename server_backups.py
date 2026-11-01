@@ -120,8 +120,13 @@ def _hash(path):
         for block in iter(lambda:file.read(1024*1024),b''):h.update(block)
     return h.hexdigest()
 
-def create(engine_url):
-    cfg=configuration()
+def create(engine_url, *, folder=None):
+    if folder is None:cfg=configuration()
+    else:
+        target=Path(folder).resolve();root=_root()
+        if not target.is_relative_to(root) or not target.is_dir() or Path(folder).is_symlink():
+            raise ValueError('Sicherheitsbackup-Ziel liegt außerhalb des eingebundenen Backup-Speichers.')
+        cfg={'folder':target,'keep':30}
     directory=cfg['folder']
     timestamp=datetime.now().astimezone().strftime('%Y-%m-%d_%H-%M-%S_%f')
     path=directory/(PREFIX+timestamp+'.zip')

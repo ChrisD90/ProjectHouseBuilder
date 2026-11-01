@@ -13,9 +13,9 @@
  document.addEventListener('phb-write-complete',event=>{const form=event.detail.form;if(form){forms.set(form,signature(form));changed.delete(form);}bridge.changed?.();});
  document.addEventListener('click',event=>{
   const link=event.target.closest('a[href]');if(!link||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||link.target||link.hasAttribute('download'))return;
-  const url=new URL(link.href,location.href);if(url.origin!==location.origin||!routes.has(url.pathname))return;
+  const url=new URL(link.href,location.href);url.pathname=url.pathname.replace(/^\/p\/[1-9]\d*(?=\/)/,'');if(url.origin!==location.origin||!routes.has(url.pathname))return;
   if(url.pathname===location.pathname&&url.search===location.search&&url.hash)return;
-  url.searchParams.delete('_classic');url.searchParams.delete('_embedded');event.preventDefault();bridge.navigate(url.pathname+url.search+url.hash);
+  url.searchParams.delete('_classic');url.searchParams.delete('_embedded');url.searchParams.delete('project_id');event.preventDefault();bridge.navigate(url.pathname+url.search+url.hash);
  });
  function prepareModes(){for(const form of document.querySelectorAll('form[data-import-kind],form[data-version-upload]')){
   if(form.querySelector('[name=processing_mode]'))continue;
@@ -31,7 +31,7 @@
   dirty:()=>window.PHBFlow?.inspect().dirty||[...changed].some(form=>(!form.closest('dialog')||form.closest('dialog').open)&&forms.has(form)&&signature(form)!==forms.get(form)),
   activate(){if(!window.PHBEmbed.dirty()&&!window.PHBEmbed.busy())return window.PHBPageActivate?.();},
   discard(){document.querySelectorAll('dialog[open]').forEach(dialog=>{dialog.querySelectorAll('form').forEach(form=>form.reset());const flow=window.PHBFlow?.get(dialog);if(flow)flow.finish();else dialog.close();});changed.forEach(form=>form.reset());changed.clear();forms.clear();},
-  syncURL(){const url=new URL(location.href);url.searchParams.delete('_classic');url.searchParams.delete('_embedded');url.searchParams.delete('_react_retry');bridge.sync?.(url.pathname+url.search+url.hash);},
+  syncURL(){const url=new URL(location.href);url.searchParams.delete('_classic');url.searchParams.delete('_embedded');url.searchParams.delete('_react_retry');url.searchParams.delete('project_id');bridge.sync?.(url.pathname+url.search+url.hash);},
   refresh(){if(refreshing)return refreshing;if(window.PHBEmbed.dirty()||window.PHBEmbed.busy()||!window.PHBPageRefresh)return;refreshing=Promise.resolve(window.PHBPageRefresh()).finally(()=>{refreshing=null;});return refreshing;},
  };
  window.PHBEmbed.setJobs(bridge.jobs?.()||[]);

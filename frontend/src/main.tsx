@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { DialogProvider } from './core';
 import { App } from './shell';
+import { ProjectDashboard } from './projects';
+import { workspaceBase } from './project-context';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css';
@@ -67,7 +69,22 @@ createRoot(document.getElementById('root')!).render(
     <Notifications position="bottom-right" />
     <QueryClientProvider client={client}>
       <DialogProvider>
-        <RouterProvider router={createBrowserRouter([{ path: '*', element: <App /> }])} />
+        <RouterProvider
+          router={createBrowserRouter(
+            [
+              {
+                path: '*',
+                element:
+                  !workspaceBase && ['/', '/projekte'].includes(window.location.pathname) ? (
+                    <ProjectDashboard />
+                  ) : (
+                    <App />
+                  ),
+              },
+            ],
+            { basename: workspaceBase || '/' },
+          )}
+        />
       </DialogProvider>
     </QueryClientProvider>
   </MantineProvider>,

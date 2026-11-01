@@ -10,6 +10,8 @@ export default defineConfig(({ command }) => ({
       '/auth': 'http://127.0.0.1:5055',
       '/logout': 'http://127.0.0.1:5055',
       '/static': 'http://127.0.0.1:5055',
+      '^/p/': { target: 'http://127.0.0.1:5055', bypass: () => '/index.html' },
+      '/projekte': { target: 'http://127.0.0.1:5055', bypass: () => '/index.html' },
       '^/(?:$|\\?|kosten(?:\\?|$)|angebote(?:\\?|$)|belege(?:\\?|$)|finanzierung(?:\\?|$)|energieplanung(?:\\?|$)|stammdaten(?:\\?|$)|dokumente(?:\\?|$)|aufgaben(?:\\?|$)|daten(?:\\?|$))':
         {
           target: 'http://127.0.0.1:5055',
