@@ -93,6 +93,43 @@ if (!base) throw Error("Use dev/funding_plan_browser_smoke.py.");
     ).funding;
     const fid = rows.find((x) => x.name === "Fensterprojekt").id;
     assert.equal(rows.find((x) => x.id === fid).expected, 0);
+    const initialCheck = await (
+      await page.request.get(base + "/api/funding/plans/" + fid)
+    ).json();
+    for (const check of initialCheck.checklist.items) {
+      await plan
+        .getByRole("button", { name: check.title + " bearbeiten", exact: true })
+        .click();
+      const field = check.missing_fields[0] || check.fields[0];
+      await expect
+        .poll(() =>
+          plan
+            .locator('[data-funding-field="' + field + '"]')
+            .evaluate(
+              (node) =>
+                node === document.activeElement ||
+                node.contains(document.activeElement),
+            ),
+        )
+        .toBe(true);
+      if (["measure", "selections"].includes(field))
+        await plan.getByRole("button", { name: "Weiter", exact: true }).click();
+      await plan
+        .getByRole("button", { name: "Prüfung vorbereiten", exact: true })
+        .click();
+    }
+    await plan
+      .getByRole("button", { name: "Rückfragen beantworten", exact: true })
+      .click();
+    await expect(
+      plan.getByRole("textbox", {
+        name: "Antworten und Ergänzungen für die nächste Prüfung",
+        exact: true,
+      }),
+    ).toBeFocused();
+    console.log(
+      "PASS every initial checklist item opens and focuses its editable field; AI answers remain accessible",
+    );
     await plan.getByRole("button", { name: "Schließen", exact: true }).click();
     await expect(page.getByText("Noch offen", { exact: true })).toBeVisible();
     await page.getByText("Fensterprojekt", { exact: true }).click();
@@ -128,13 +165,11 @@ if (!base) throw Error("Use dev/funding_plan_browser_smoke.py.");
       name: "Förderunterlagen hochladen",
       exact: true,
     });
-    await upload
-      .locator("input[type=file]")
-      .setInputFiles({
-        name: "Planungsunterlage.txt",
-        mimeType: "text/plain",
-        buffer: Buffer.from("Technische Unterlage zum Fördervorhaben"),
-      });
+    await upload.locator("input[type=file]").setInputFiles({
+      name: "Planungsunterlage.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("Technische Unterlage zum Fördervorhaben"),
+    });
     await upload
       .getByRole("button", { name: "Dateien einlesen", exact: true })
       .click();

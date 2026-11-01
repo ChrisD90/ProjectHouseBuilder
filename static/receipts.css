@@ -203,3 +203,12 @@ body.phb-app.phb-page-belege .receipt-assignment{padding:16px;background:var(--u
 body.phb-app.phb-page-belege .receipt-assignment-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 body.phb-app.phb-page-belege .receipt-assignment-fields>[hidden]{display:none!important}
 @media(max-width:650px){body.phb-app.phb-page-belege .receipt-assignment-fields{grid-template-columns:1fr}}
+
+/* The source tools live alongside the receipt, outside its review workflow. */
+body.phb-app.phb-page-belege .receipt-entry-row{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:8px;align-items:start}
+body.phb-app.phb-page-belege .receipt-entry-row .linked-work-button{margin-top:12px}
+body.phb-app.phb-page-belege .receipt-review-actions{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+body.phb-app.phb-page-belege .receipt-primary-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+body.phb-app.phb-page-belege .receipt-secondary-actions>summary{cursor:pointer;padding:10px 0;color:var(--ui-muted);font-size:13px}
+body.phb-app.phb-page-belege .receipt-secondary-actions>div{display:grid;gap:8px;padding:10px 0}
+@media(max-width:650px){body.phb-app.phb-page-belege .receipt-primary-actions{width:100%;margin:0}body.phb-app.phb-page-belege .receipt-primary-actions button{flex:1 1 150px}}

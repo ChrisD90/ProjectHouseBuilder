@@ -15,7 +15,8 @@
     "test:browser:backups": "node ../tests/browser_project_backups.cjs",
     "test:browser:funding-documents": "node ../tests/browser_funding_documents.cjs",
     "test:browser:funding-plans": "../.venv/bin/python ../dev/funding_plan_browser_smoke.py",
-    "test:browser:lifecycle": "node ../tests/browser_project_lifecycle.cjs"
+    "test:browser:lifecycle": "node ../tests/browser_project_lifecycle.cjs",
+    "test:browser:receipt-phase": "node ../tests/browser_receipt_phase_ui.cjs"
   },
   "dependencies": {
     "@mantine/core": "^8.3.0",

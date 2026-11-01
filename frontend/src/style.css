@@ -148,21 +148,98 @@ input {
   display: none !important;
 }
 
-.mantine-AppShell-header {background:var(--brand-surface);border-color:var(--brand-line)}
-.brand-logo {display:block;width:200px;height:30px;object-fit:contain;object-position:left center}
-.brand-logo-dark {display:none}
-[data-mantine-color-scheme="dark"] .brand-logo-light {display:none}
-[data-mantine-color-scheme="dark"] .brand-logo-dark {display:block}
+.mantine-AppShell-header {
+  background: var(--brand-surface);
+  border-color: var(--brand-line);
+}
+.brand-logo {
+  display: block;
+  width: 200px;
+  height: 30px;
+  object-fit: contain;
+  object-position: left center;
+}
+.brand-logo-dark {
+  display: none;
+}
+[data-mantine-color-scheme='dark'] .brand-logo-light {
+  display: none;
+}
+[data-mantine-color-scheme='dark'] .brand-logo-dark {
+  display: block;
+}
 
 @media (max-width: 700px) {
-  .brand-logo { width:180px; height:27px; }
+  .brand-logo {
+    width: 180px;
+    height: 27px;
+  }
 }
 @media (max-width: 380px) {
-  .brand-logo { width:155px; height:24px; }
+  .brand-logo {
+    width: 155px;
+    height: 24px;
+  }
 }
 
-.work-editor-actions { flex-wrap:wrap; }
-.work-row-actions { flex:0 0 auto; }
+.work-editor-actions {
+  flex-wrap: wrap;
+}
+.work-row-actions {
+  flex: 0 0 auto;
+}
 @media (max-width: 480px) {
-  .work-row-actions { max-width:30px; }
+  .work-row-actions {
+    max-width: 30px;
+  }
+}
+
+.funding-check-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 16px;
+  align-items: start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: left;
+  color: var(--brand-ink);
+}
+.funding-check-row:hover,
+.funding-check-row:focus-visible {
+  background: var(--brand-soft);
+}
+.funding-check-row:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
+}
+.funding-check-status {
+  width: 112px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+.funding-check-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-funding-field] {
+  scroll-margin-block: 25px;
+}
+@media (max-width: 500px) {
+  .funding-check-row {
+    grid-template-columns: 1fr 16px;
+    gap: 7px;
+  }
+  .funding-check-status {
+    grid-column: 1;
+  }
+  .funding-check-copy {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .funding-check-row > span:last-child {
+    grid-column: 2;
+    grid-row: 1/3;
+    align-self: center;
+  }
 }

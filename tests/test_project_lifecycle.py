@@ -25,6 +25,12 @@ class ProjectLifecycleTest(unittest.TestCase):
     def remove(self,owner=1,**body):
         return self.client.delete(f'/api/projects/{owner}',json={'confirmed':True,'confirmation':self.info(owner)['title'],**body})
 
+    def test_legacy_default_category_order_does_not_block_empty_project(self):
+        for category in b.db.session.query(b.Category):category.sort_order=0
+        b.db.session.commit()
+        self.assertTrue(self.info()['can_delete'])
+        self.assertEqual(self.remove().status_code,200)
+
     def test_archive_column_upgrade_preserves_existing_registry(self):
         import sqlalchemy as sa
         from project_lifecycle import ensure_project_lifecycle_schema

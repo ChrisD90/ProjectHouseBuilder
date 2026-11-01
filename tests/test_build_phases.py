@@ -32,6 +32,16 @@ class BuildPhaseTests(unittest.TestCase):
         body.update(changes)
         return self.client.post('/api/tasks',json=body)
 
+    def test_new_phase_titles_are_limited_without_truncating_existing_titles(self):
+        self.assertEqual(self.phase(title='A'*81).status_code,400)
+        self.assertEqual(self.phase(title='A'*80).status_code,201)
+        from app import BuildPhase
+        legacy=BuildPhase(title='Historische Bauphase '+('B'*100),start_date=date(2027,4,1))
+        db.session.add(legacy);db.session.commit()
+        response=self.client.put('/api/phases/'+str(legacy.id),json={'description':'Bleibt bearbeitbar'})
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertEqual(response.json['phase']['title'],legacy.title)
+
     def test_project_start_shift_moves_plan_dates_but_preserves_actual_dates(self):
         phase=self.phase(end_date='2027-04-20').json['phase']['id']
         self.task(phase_id=phase,planned_end='2027-04-15',actual_start='2026-10-01')

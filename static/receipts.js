@@ -114,7 +114,7 @@ function renderReceiptList(){
  $('receiptSearchResult').textContent=filtered
   ?`${visible.length} von ${list.length} Belegen gefunden`
   :`${list.length} Belege insgesamt`;
- $('list').innerHTML=visible.map(x=>`<button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':x.status==='Storniert'?'cancelled':'draft'}">${safe(x.status)}</span>${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}<strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
+ $('list').innerHTML=visible.map(x=>`<article class="receipt-entry-row"><button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><span class="status ${x.status==='Gebucht'?'booked':x.status==='Storniert'?'cancelled':'draft'}">${safe(x.status)}</span>${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}<strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button>${PHBWorkUI.button('receipt',x.id)}</article>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
  $('list').querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
  renderLaborSummary();
 }
@@ -327,7 +327,7 @@ async function open(id){
  }
  updateInvoiceControls();
  const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();
- $('original').href='/api/receipts/'+id+'/preview';$('original').target='_blank';$('original').rel='noopener';$('receiptWorkLink').href='/aufgaben?source_type=receipt&source_id='+id+'&new=todo';$('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
+ $('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
  $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Daten bleiben bearbeitbar; Original und Historie bleiben erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Rechnungsdaten können weiterhin geprüft und korrigiert werden.':'Entwurf: Du kannst jederzeit zwischenspeichern, auch ohne Firma, Betrag oder Zahlungsziel.');
  }catch(e){notice(e.message,true)}

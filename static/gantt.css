@@ -101,3 +101,13 @@ body.phb-app.phb-page-zeitplan #overlay .modalhead{display:flex;justify-content:
 body.phb-app.phb-page-zeitplan #taskForm .task-dialog-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid var(--ui-line);padding-top:16px;margin-top:16px}
 body.phb-app.phb-page-zeitplan .task-actions-group{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 body.phb-app.phb-page-zeitplan #taskForm .task-dialog-actions button{margin:0}
+
+/* Two title lines have a fixed place; long titles never shift their beginning off-screen. */
+body.phb-app.phb-page-zeitplan .gantt-phase-row{height:74px;min-height:74px}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-timeline{height:74px}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-label{height:74px;min-width:0;overflow:hidden}
+body.phb-app.phb-page-zeitplan .phase-title{min-width:0;width:100%}
+body.phb-app.phb-page-zeitplan .phase-title>:not(.phase-edit){flex-shrink:0}
+body.phb-app.phb-page-zeitplan .phase-edit{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;white-space:normal;overflow-wrap:anywhere;line-height:16px;min-height:32px;min-width:0;flex:1;text-align:left;justify-content:flex-start}
+body.phb-app.phb-page-zeitplan .phase-list-item strong,body.phb-app.phb-page-zeitplan #phaseDialogTitle{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere;white-space:normal;line-height:1.4;min-width:0}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-label{flex-shrink:0}

@@ -66,6 +66,27 @@ class FundingPlansTest(unittest.TestCase):
         self.assertEqual(self.adopt(response.json).status_code,400)
         self.assertTrue(run.call_args.kwargs['web_search'])
 
+    def test_checklist_identifies_editable_missing_fields(self):
+        data=self.create(full=False)
+        checks={c['key']:c for c in data['checklist']['items']}
+        self.assertEqual(checks['program']['missing_fields'],['program_key'])
+        self.assertIn('used_budget',checks['budget']['missing_fields'])
+        self.assertTrue(checks['object']['missing_labels'])
+        self.assertEqual(checks['costs']['fields'],['selections'])
+        self.assertTrue(all(c['fields'] for c in checks.values()))
+
+    def test_checklist_targets_conditional_isfp_document_and_bonus_usage(self):
+        data=self.create(full=False)
+        response=self.client.put(f"/api/funding/plans/{data['id']}",json={'inputs':dict(measure='Fenster fachgerecht erneuern',program_key='bafa_envelope',isfp='yes',isfp_date='2025-01-01',application_date='2027-01-01',isfp_measure='yes')})
+        self.assertEqual(response.status_code,200,response.json)
+        checks={c['key']:c for c in response.json['checklist']['items']}
+        self.assertEqual(checks['isfp']['missing_fields'],['document_ids'])
+        response=self.client.put(f"/api/funding/plans/{data['id']}",json={'inputs':dict(measure='Heizung fachgerecht erneuern',program_key='kfw_458',bonus_requested='yes',usage='rented',household_income=0,children=0,old_heating='Gas',old_heating_year=1990,new_heating='Wärmepumpe',natural_refrigerant='yes')})
+        self.assertEqual(response.status_code,200,response.json)
+        checks={c['key']:c for c in response.json['checklist']['items']}
+        self.assertEqual(checks['bonus']['missing_fields'],['usage'])
+        self.assertEqual(checks['heating']['status'],'present')
+
     def test_checklist_allows_missing_tpb_and_expert_but_blocks_missing_costs_and_started_work(self):
         data=self.create();self.assertTrue(data['checklist']['estimate_ready'])
         warnings={c['key'] for c in data['checklist']['items'] if c['status']=='confirm'}

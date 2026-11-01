@@ -479,6 +479,7 @@ def _phase_id_for_title(title,start_date=None):
     row=next((item for item in db.session.scalars(select(BuildPhase)).all()
               if item.title.casefold()==value.casefold()),None)
     if row:return row.id
+    if len(value)>80:raise ValueError('Bauphasentitel darf maximal 80 Zeichen enthalten.')
     row=BuildPhase(title=value,start_date=start_date or parse_date(setting('start','2027-03-01')),
                    position=db.session.scalar(select(db.func.count(BuildPhase.id))) or 0)
     db.session.add(row);db.session.flush();return row.id
@@ -1001,6 +1002,8 @@ def _validate_initial_schedule(data):
         description=str(item.get('description') or '').strip()
         if not title or len(title)>140 or len(description)>1000 or title.casefold() in phase_names:
             raise ValueError('Bauphasentitel fehlt, ist doppelt oder zu lang.')
+        if len(title)>80 and not db.session.scalar(select(BuildPhase.id).where(BuildPhase.title==title)):
+            raise ValueError('Neue Bauphasentitel dürfen maximal 80 Zeichen enthalten.')
         start=parse_date(item.get('start_date'))
         end=parse_date(item.get('end_date')) if item.get('end_date') else None
         if not start or (end and end<start):
@@ -1037,7 +1040,7 @@ def _generate_initial_schedule(info,model=''):
     instruction=(
       'Du bist Bauplanungsassistenz. Erzeuge aus der abgeschlossenen Klärung einen unverbindlichen '
       'Projektablauf passend zur Projektart (auch Garten, Hof oder einzelnes Gewerk). Plane nur den bestätigten Umfang und liefere ausschließlich JSON mit overview, phases und tasks. phases enthält '
-      '1-40 Objekte mit title, description, start_date (YYYY-MM-DD), end_date (YYYY-MM-DD oder leer). '
+      '1-40 Objekte mit title (maximal 80 Zeichen), description, start_date (YYYY-MM-DD), end_date (YYYY-MM-DD oder leer). '
       'tasks enthält 1-120 vollständige Arbeitspakete mit code, name, phase (exakt ein phase-Titel), '
       'trade, execution_type (Eigenleistung, Fremdleistung oder Noch offen), duration (Kalendertage 1..365), '
       'planned_end (YYYY-MM-DD oder leer), notes und predecessors (Codes aus diesem Vorschlag). '
@@ -1817,7 +1820,10 @@ def project():
 
 def _apply_phase_fields(row,body):
     if not isinstance(body,dict):raise ValueError('Bauphase muss ein Objekt sein.')
-    if 'title' in body:row.title=str(body['title'] or '').strip()
+    if 'title' in body:
+        title=str(body['title'] or '').strip()
+        if title!=row.title and len(title)>80:raise ValueError('Bauphasentitel darf maximal 80 Zeichen enthalten.')
+        row.title=title
     if 'description' in body:row.description=str(body['description'] or '').strip()
     if 'start_date' in body:row.start_date=parse_date(body['start_date'])
     if 'end_date' in body:row.end_date=parse_date(body['end_date'])

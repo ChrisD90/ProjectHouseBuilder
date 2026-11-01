@@ -20,6 +20,7 @@ import {
   Textarea,
   TextInput,
   Title,
+  UnstyledButton,
 } from '@mantine/core';
 import { IconPlus, IconDeviceFloppy } from '@tabler/icons-react';
 import { api, Editor, ErrorBox, money, Row, success } from './core';
@@ -66,7 +67,11 @@ export function FundingPlanDialog({
     [saved, setSaved] = useState<Row | null>(null),
     [consent, setConsent] = useState(false),
     [accept, setAccept] = useState(false),
-    [amount, setAmount] = useState<number | string>('');
+    [amount, setAmount] = useState<number | string>(''),
+    [sections, setSections] = useState<string[]>(['object']),
+    [costSections, setCostSections] = useState<string[]>([]),
+    [jump, setJump] = useState<{ field: string; nonce: number } | null>(null);
+  const editorRoot = useRef<HTMLFormElement>(null);
   const ai = useQuery({ queryKey: ['ai'], queryFn: () => api('/api/ai/status'), staleTime: 60000 });
   const options = useQuery({
     queryKey: ['funding-plan-options'],
@@ -105,6 +110,9 @@ export function FundingPlanDialog({
     if (!opened) return;
     setID(planId);
     setStep(0);
+    setSections(['object']);
+    setCostSections([]);
+    setJump(null);
     setFailure(null);
     setSaved(null);
     setConsent(false);
@@ -161,6 +169,39 @@ export function FundingPlanDialog({
   const source: Row = options.data || {},
     input = form.values.inputs || {},
     selections: Row[] = form.values.selections || [];
+  function jumpTo(check: Row) {
+    const field = check.missing_fields?.[0] || check.fields?.[0] || 'measure';
+    const section = [
+      'postcode',
+      'units',
+      'ownership',
+      'usage',
+      'building_application',
+      'application_date',
+    ].includes(field)
+      ? 'object'
+      : ['contract', 'started', 'vat_deductible', 'used_budget', 'cumulation_reviewed'].includes(
+            field,
+          )
+        ? 'timing'
+        : 'technical';
+    setSections((current) => [...new Set([...current, section])]);
+    setCostSections(selections.map((row) => String(row.offer_id)));
+    setStep(['measure', 'selections'].includes(field) ? 0 : 1);
+    setJump({ field, nonce: Date.now() });
+  }
+  useEffect(() => {
+    if (!jump || !opened) return;
+    const node = editorRoot.current?.querySelector<HTMLElement>(
+      '[data-funding-field="' + jump.field + '"]',
+    );
+    if (!node) return;
+    const focus = node.matches('input,textarea,button')
+      ? node
+      : node.querySelector<HTMLElement>('input,textarea,button');
+    node.scrollIntoView({ block: 'center' });
+    focus?.focus({ preventScroll: true });
+  }, [jump, step, opened]);
   function recommendation(o: Row, ids: number[], vat = input.vat_deductible) {
     const all = o.positions.filter((p: Row) => !p.optional).map((p: Row) => p.id),
       whole =
@@ -272,6 +313,7 @@ export function FundingPlanDialog({
   const select = (key: string, label: string, data = yn) => (
     <Select
       key={key}
+      data-funding-field={key}
       label={label}
       clearable
       data={data}
@@ -282,6 +324,7 @@ export function FundingPlanDialog({
   const field = (key: string, label: string, type = 'text') => (
     <TextInput
       key={key}
+      data-funding-field={key}
       label={label}
       type={type}
       value={input[key] || ''}
@@ -291,8 +334,14 @@ export function FundingPlanDialog({
   const number = (key: string, label: string) => (
     <NumberInput
       key={key}
+      data-funding-field={key}
       label={label}
       min={0}
+      description={
+        ['used_budget', 'household_income', 'children'].includes(key)
+          ? 'Auch 0 ausdrücklich eintragen, wenn nichts zu berücksichtigen ist.'
+          : undefined
+      }
       decimalScale={['used_budget', 'household_income'].includes(key) ? 2 : 0}
       decimalSeparator=","
       thousandSeparator="."
@@ -311,6 +360,7 @@ export function FundingPlanDialog({
       onClose={onClose}
     >
       <form
+        ref={editorRoot}
         onSubmit={(e) => {
           e.preventDefault();
           void action(async () => {
@@ -325,7 +375,14 @@ export function FundingPlanDialog({
             size="xs"
             allowNextStepsSelect={false}
             onStepClick={(n) => {
-              if (!busy) setStep(n);
+              if (!busy) {
+                if (n === 2 && form.isDirty())
+                  void action(async () => {
+                    await saveDraft();
+                    setStep(2);
+                  });
+                else setStep(n);
+              }
             }}
           >
             <Stepper.Step label="Vorhaben" />
@@ -355,6 +412,7 @@ export function FundingPlanDialog({
                 {...form.getInputProps('name')}
               />
               <Textarea
+                data-funding-field="measure"
                 label="Maßnahme und technische Ausführung"
                 description="Für eine erste Orientierung genügen Beschreibung und bekannte Eckdaten. Fehlende Angaben erscheinen in der Checkliste."
                 minRows={3}
@@ -363,6 +421,7 @@ export function FundingPlanDialog({
                 onChange={(e) => setInput('measure', e.currentTarget.value)}
               />
               <MultiSelect
+                data-funding-field="selections"
                 label="Angebote (optional für den Entwurf)"
                 searchable
                 clearable
@@ -383,7 +442,13 @@ export function FundingPlanDialog({
                 }
               />
               {selections.length > 0 && (
-                <Accordion variant="contained" multiple>
+                <Accordion
+                  variant="contained"
+                  multiple
+                  value={costSections}
+                  onChange={setCostSections}
+                  transitionDuration={0}
+                >
                   {selections.map((row, index) => {
                     const o = source.offers?.find((x: Row) => x.id === row.offer_id);
                     return (
@@ -457,6 +522,7 @@ export function FundingPlanDialog({
           {step === 1 && (
             <>
               <Select
+                data-funding-field="program_key"
                 label="Programm"
                 data={[
                   { value: 'auto', label: 'Noch offen – passende Möglichkeiten prüfen' },
@@ -465,7 +531,13 @@ export function FundingPlanDialog({
                 value={input.program_key || 'auto'}
                 onChange={(v) => setInput('program_key', v === 'auto' ? '' : v)}
               />
-              <Accordion variant="contained" defaultValue="object">
+              <Accordion
+                variant="contained"
+                multiple
+                value={sections}
+                onChange={setSections}
+                transitionDuration={0}
+              >
                 <Accordion.Item value="object">
                   <Accordion.Control>Objekt und Antragsteller</Accordion.Control>
                   <Accordion.Panel>
@@ -576,12 +648,14 @@ export function FundingPlanDialog({
                 </Accordion.Item>
               </Accordion>
               <MultiSelect
+                data-funding-field="document_ids"
+                description="Für einen iSFP-Bonus eine aktuelle Unterlage der Kategorie iSFP zuordnen. Unterlagen können über den Button darunter hochgeladen werden."
                 label="Förderunterlagen"
                 searchable
                 clearable
                 data={(source.documents || []).map((d: Row) => ({
                   value: String(d.id),
-                  label: d.title + ' · ' + d.category,
+                  label: d.title + ' · ' + d.category + (d.status ? ' · ' + d.status : ''),
                 }))}
                 value={(form.values.document_ids || []).map(String)}
                 onChange={(values) => form.setFieldValue('document_ids', values.map(Number))}
@@ -603,11 +677,21 @@ export function FundingPlanDialog({
                 Erst Möglichkeiten prüfen, dann fehlende Angaben ergänzen und eine konkrete Spanne
                 schätzen. Es werden keine Zahlungen oder Bewilligungen erzeugt.
               </Text>
+              <Text size="xs" c="dimmed">
+                Klicke einen Prüfpunkt an, um die Angaben zu bearbeiten. „Offen“ verhindert die
+                Betragsschätzung; „Fachlich klären“ ist ein Vorbehalt für die frühe Planung.
+              </Text>
               {saved?.checklist && (
                 <Paper withBorder p="sm">
                   <Stack gap={7}>
                     {saved.checklist.items.map((c: Row) => (
-                      <Group key={c.key} align="start" wrap="nowrap" gap="xs">
+                      <UnstyledButton
+                        type="button"
+                        key={c.key}
+                        className="funding-check-row"
+                        onClick={() => jumpTo(c)}
+                        aria-label={c.title + ' bearbeiten'}
+                      >
                         <Badge
                           color={
                             c.status === 'present'
@@ -617,25 +701,34 @@ export function FundingPlanDialog({
                                 : 'gray'
                           }
                           variant="light"
-                          size="xs"
+                          size="sm"
+                          className="funding-check-status"
                         >
                           {c.status === 'present'
                             ? 'Vorhanden'
                             : c.status === 'confirm'
-                              ? 'Bestätigen'
+                              ? 'Fachlich klären'
                               : 'Offen'}
                         </Badge>
-                        <div>
+                        <div className="funding-check-copy">
                           <Text size="sm" fw={500}>
                             {c.title}
                           </Text>
                           {c.status !== 'present' && (
-                            <Text size="xs" c="dimmed">
-                              {c.detail}
-                            </Text>
+                            <>
+                              <Text size="xs" c="dimmed">
+                                {c.detail}
+                              </Text>
+                              {!!c.missing_labels?.length && (
+                                <Text size="xs" mt={4}>
+                                  Bitte prüfen: {c.missing_labels.join(' · ')}
+                                </Text>
+                              )}
+                            </>
                           )}
                         </div>
-                      </Group>
+                        <span aria-hidden="true">→</span>
+                      </UnstyledButton>
                     ))}
                   </Stack>
                 </Paper>
@@ -752,12 +845,18 @@ export function FundingPlanDialog({
                           <li key={q}>{q}</li>
                         ))}
                       </ul>
-                      <Button variant="subtle" size="xs" onClick={() => setStep(1)}>
-                        Angaben ergänzen
+                      <Button
+                        variant="subtle"
+                        size="xs"
+                        onClick={() => setJump({ field: 'answers', nonce: Date.now() })}
+                      >
+                        Rückfragen beantworten
                       </Button>
                     </Alert>
                   )}
                   <Textarea
+                    data-funding-field="answers"
+                    description="Hier kannst du auch fachliche Angaben ergänzen, für die es kein eigenes Formularfeld gibt. Die Antworten werden bei der nächsten bestätigten Prüfung mitgesendet."
                     label="Antworten und Ergänzungen für die nächste Prüfung"
                     maxLength={5000}
                     minRows={2}

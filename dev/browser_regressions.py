@@ -273,7 +273,7 @@ server.serve_forever()
                     print('PASS: queued loan scan error releases all initiating controls')
                     queue.update(jobs=[],terminal=True,error=False,review_url=None)
                     page.goto(BASE+'/belege');page.locator('#list .entry',has_text='Browser-Testbetrieb').click()
-                    page.locator('#markReceiptPaid').click();page.locator('.phb-messagebox button',has_text='Bestätigen').click()
+                    page.locator('.receipt-secondary-actions > summary').click();page.locator('#markReceiptPaid').click();page.locator('.phb-messagebox button',has_text='Bestätigen').click()
                     expect(page.locator('#list .entry',has_text='Browser-Testbetrieb')).to_contain_text('Nicht zugewiesen')
                     rid=next(r['id'] for r in page.request.get(BASE+'/api/receipts').json()['receipts'] if r['supplier']=='Browser-Testbetrieb')
                     assert page.request.get(BASE+'/api/receipts/'+str(rid)).json()['paid_amount']==100

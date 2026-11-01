@@ -28,7 +28,10 @@ def content_status(db, owner, categories, trades):
         query=select(table).where(table.c.project_id==owner)
         if table.name=='category' and not set(table.c.keys())-{'id','project_id','name','sort_order'}:
             defaults={name:index for index,name in enumerate(categories)}
-            count=sum(r['name'] not in defaults or r['sort_order']!=defaults.get(r['name']) for r in connection.execute(query).mappings())
+            rows=list(connection.execute(query).mappings())
+            # Before category ordering was introduced all built-in categories had sort_order=0.
+            legacy_defaults=bool(rows) and all(r['name'] in defaults and r['sort_order']==0 for r in rows)
+            count=0 if legacy_defaults else sum(r['name'] not in defaults or r['sort_order']!=defaults.get(r['name']) for r in rows)
         elif table.name=='trade' and not set(table.c.keys())-{'id','project_id','name'}:
             count=sum(r['name'] not in trades for r in connection.execute(query).mappings())
         elif table.name=='setting' and not set(table.c.keys())-{'project_id','key','value'}:
@@ -46,7 +49,7 @@ def content_status(db, owner, categories, trades):
         elif table.name=='planning_browser_state':
             count=sum(r['value'] not in ('null',None) for r in connection.execute(query).mappings())
         else:count=connection.scalar(select(func.count()).select_from(table).where(table.c.project_id==owner)) or 0
-        if count:details.append(dict(table=table.name,label=labels.get(table.name,'weitere Projektdaten'),count=count))
+        if count:details.append(dict(table=table.name,label=labels.get(table.name,table.name.replace('_',' ')),count=count))
     names=list(dict.fromkeys(row['label'] for row in details))
     return dict(can_delete=not details,data_count=sum(row['count'] for row in details),
         delete_reason='Enthält noch '+', '.join(names[:3])+('.' if len(names)<=3 else ' und weitere Daten.') if names else '',

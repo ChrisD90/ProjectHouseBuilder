@@ -34,3 +34,9 @@ Projektbackups enthalten beide neuen Tabellen einschließlich bestätigter Beric
 ## Prüfung
 
 `tests/test_funding_plans.py` prüft Entwürfe, Verbindungs-/Einwilligungsgates, Orientierung, Checklisten, Betragsspannen, Übernahme ohne Geldbuchungen, Programm-/Kostenvalidierung, Mehrfachangebote, Datenschutz bei Bonusfeldern, veraltete und während der Prüfung geänderte Grundlagen, Doppelzählung, Projektgrenzen und Backups. `python dev/funding_plan_browser_smoke.py` verwendet eine neue temporäre SQLite-Datenbank und ausschließlich simulierte KI-Antworten. Die PostgreSQL-17-Integration in `dev/multi_project_pg_smoke.py` prüft zusätzlich die tatsächlichen Transaktionen und die Wiederherstellung geplanter Förderungen.
+
+## Checkliste und Eingabehilfen
+
+Jeder Prüfpunkt nennt die konkret fehlenden Angaben und führt per Klick zum betreffenden Feld. Der Dialog öffnet dafür den passenden Schritt und Formularabschnitt; bereits erfasste Daten bleiben erhalten. Angebote und Kostenanteile liegen im ersten Schritt, Objekt-/Termin-/Technikangaben im zweiten. Die Checkliste verwendet eine feste Statusspalte. „Offen“ blockiert die Betragsschätzung, „Fachlich klären“ kennzeichnet einen Vorbehalt für die frühe Planung. Der nächste Prüfschritt speichert und bewertet die aktuellen Angaben erneut.
+
+Bei iSFP werden Datum, enthaltene Maßnahme und eine aktuelle Unterlage der Kategorie iSFP benötigt; Dokumentauswahl zeigt auch den Status. „Bereits genutzte Kosten“ und gegebenenfalls persönliche Bonusangaben müssen ausdrücklich ausgefüllt werden, auch wenn der Wert 0 ist. Freie KI-Rückfragen haben mit „Rückfragen beantworten“ einen direkten Sprung zum Antwortfeld; dort sind auch ergänzende Fakten ohne eigenes Formularfeld möglich. Sie werden nur nach erneuter Einwilligung mitgesendet.

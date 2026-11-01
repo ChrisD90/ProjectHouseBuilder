@@ -32,6 +32,40 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     ).projects;
     const project = projects.find((row) => row.title === title);
     assert(project?.can_delete);
+    // Editing metadata must not submit an obsolete archive flag from the original card.
+    await page
+      .getByRole("button", {
+        name: "Projekt bearbeiten: " + title,
+        exact: true,
+      })
+      .click();
+    const edit = page.getByRole("dialog", {
+      name: "Projekt bearbeiten",
+      exact: true,
+    });
+    await page.request.patch(base + "/api/projects/" + project.id, {
+      data: { archived: true },
+    });
+    await edit
+      .getByRole("textbox", { name: "Beschreibung (optional)", exact: true })
+      .fill("Metadaten bleiben unabhängig vom Archivstatus.");
+    await edit.getByRole("button", { name: "Speichern", exact: true }).click();
+    await expect(edit).toBeHidden();
+    assert.equal(
+      (
+        await (
+          await page.request.get(base + "/api/projects/" + project.id)
+        ).json()
+      ).project.archived,
+      true,
+    );
+    await page.getByRole("button", { name: /Archivierte Projekte \(/ }).click();
+    await page
+      .getByRole("button", {
+        name: "Projekt wiederherstellen: " + title,
+        exact: true,
+      })
+      .click();
     await page
       .getByRole("button", {
         name: "Projekt archivieren: " + title,
@@ -41,10 +75,14 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     const archive = page.getByRole("button", {
       name: /Archivierte Projekte \(/,
     });
-    await expect(archive).toBeVisible();
+    await expect(archive).toHaveAttribute("aria-pressed", "true");
     await expect(
       page.getByRole("heading", { name: title, exact: true }),
-    ).toBeHidden();
+    ).toBeVisible();
+    await page.getByRole("button", { name: /Aktive Projekte \(/ }).click();
+    await expect(
+      page.getByRole("heading", { name: title, exact: true }),
+    ).toHaveCount(0);
     await archive.click();
     await page
       .getByRole("button", {
@@ -104,7 +142,26 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
         name: "Projekt löschen: Belegt " + title,
         exact: true,
       }),
+    ).toBeEnabled();
+    await page
+      .getByRole("button", {
+        name: "Projekt löschen: Belegt " + title,
+        exact: true,
+      })
+      .click();
+    const blocked = page.getByRole("dialog", {
+      name: "Projekt löschen – Voraussetzungen",
+      exact: true,
+    });
+    await expect(
+      blocked.getByText("To-dos oder Notizen: 1", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      blocked.getByRole("button", { name: "Endgültig löschen", exact: true }),
     ).toBeDisabled();
+    await blocked
+      .getByRole("button", { name: "Schließen", exact: true })
+      .click();
     const offer = await page.request.post(base + "/api/offers/manual", {
       headers,
       data: { vendor: "Darkmode " + title, gross: 1000, category: "Sonstiges" },

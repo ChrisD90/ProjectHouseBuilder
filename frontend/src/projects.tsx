@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
 import {
   ActionIcon,
-  Accordion,
+  Alert,
   Anchor,
   Badge,
   Button,
@@ -51,7 +51,8 @@ export function ProjectDashboard() {
     [failure, setFailure] = useState<unknown>(null),
     [removing, setRemoving] = useState<Row | null>(null),
     [confirmation, setConfirmation] = useState(''),
-    [actionFailure, setActionFailure] = useState<unknown>(null);
+    [actionFailure, setActionFailure] = useState<unknown>(null),
+    [showArchived, setShowArchived] = useState(false);
   const projects: Row[] = query.data?.projects || [];
   const active = projects.filter((project) => !project.archived);
   const archived = projects.filter((project) => project.archived);
@@ -80,7 +81,13 @@ export function ProjectDashboard() {
     setBusy(true);
     setFailure(null);
     try {
-      await api('/api/projects' + (id ? '/' + id : ''), id ? 'PATCH' : 'POST', form.values);
+      const { title, kind, description, start_date } = form.values;
+      await api('/api/projects' + (id ? '/' + id : ''), id ? 'PATCH' : 'POST', {
+        title,
+        kind,
+        description,
+        ...(!id ? { start_date } : {}),
+      });
       setOpened(false);
       await cache.invalidateQueries({ queryKey: ['projects'] });
       success(id ? 'Projekt gespeichert.' : 'Projekt angelegt. Du kannst es jetzt öffnen.');
@@ -97,6 +104,7 @@ export function ProjectDashboard() {
     try {
       await api('/api/projects/' + project.id, 'PATCH', { archived: !project.archived });
       await cache.invalidateQueries({ queryKey: ['projects'] });
+      setShowArchived(!project.archived);
       success(project.archived ? 'Projekt wiederhergestellt.' : 'Projekt archiviert.');
     } catch (error) {
       setActionFailure(error);
@@ -104,8 +112,23 @@ export function ProjectDashboard() {
       setBusy(false);
     }
   }
+  async function inspectRemoval(project: Row) {
+    if (busy) return;
+    setBusy(true);
+    setFailure(null);
+    setActionFailure(null);
+    try {
+      const result = await api('/api/projects/' + project.id);
+      setRemoving(result.project);
+      setConfirmation('');
+    } catch (error) {
+      setActionFailure(error);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function remove() {
-    if (busy || !removing || confirmation !== removing.title) return;
+    if (busy || !removing?.can_delete || confirmation !== removing.title) return;
     setBusy(true);
     setFailure(null);
     try {
@@ -155,7 +178,9 @@ export function ProjectDashboard() {
                   </ActionIcon>
                 </Tooltip>
                 <Tooltip
-                  label={project.can_delete ? 'Leeres Projekt löschen' : project.delete_reason}
+                  label={
+                    project.can_delete ? 'Leeres Projekt löschen' : 'Löschvoraussetzungen prüfen'
+                  }
                   multiline
                   w={240}
                 >
@@ -164,12 +189,8 @@ export function ProjectDashboard() {
                       aria-label={'Projekt löschen: ' + project.title}
                       variant="subtle"
                       color="red"
-                      disabled={busy || !project.can_delete}
-                      onClick={() => {
-                        setRemoving(project);
-                        setConfirmation('');
-                        setFailure(null);
-                      }}
+                      disabled={busy}
+                      onClick={() => inspectRemoval(project)}
                     >
                       <IconTrash size={17} />
                     </ActionIcon>
@@ -270,30 +291,45 @@ export function ProjectDashboard() {
               Haus, Garten oder ein einzelnes Gewerk – jedes Vorhaben hat seinen eigenen Platz.
             </Text>
           </div>
-          <Button leftSection={<IconPlus size={17} />} onClick={() => open()}>
+          <Button leftSection={<IconPlus size={17} />} disabled={busy} onClick={() => open()}>
             Neues Projekt
           </Button>
         </Group>
         <ErrorBox value={query.error} />
         <ErrorBox value={actionFailure} />
-        {tiles(active)}
-        {!!archived.length && (
-          <Accordion mt="lg" variant="separated">
-            <Accordion.Item value="archived">
-              <Accordion.Control icon={<IconArchive size={18} />}>
-                Archivierte Projekte ({archived.length})
-              </Accordion.Control>
-              <Accordion.Panel>{tiles(archived)}</Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
+        <Group mb="lg" gap="xs" aria-label="Projektauswahl">
+          <Button
+            variant={!showArchived ? 'filled' : 'default'}
+            aria-pressed={!showArchived}
+            onClick={() => setShowArchived(false)}
+          >
+            Aktive Projekte ({active.length})
+          </Button>
+          <Button
+            variant={showArchived ? 'filled' : 'default'}
+            leftSection={<IconArchive size={16} />}
+            aria-pressed={showArchived}
+            onClick={() => setShowArchived(true)}
+          >
+            Archivierte Projekte ({archived.length})
+          </Button>
+        </Group>
+        {showArchived && (
+          <Text size="sm" c="dimmed" mb="md">
+            Archivierte Projekte bleiben zugänglich. Du kannst sie öffnen oder wieder in die aktiven
+            Projekte aufnehmen.
+          </Text>
         )}
+        {tiles(showArchived ? archived : active)}
         {query.isPending && <Text c="dimmed">Projekte werden geladen …</Text>}
-        {!query.isPending && !query.error && !active.length && (
+        {!query.isPending && !query.error && !(showArchived ? archived : active).length && (
           <Paper className="paper">
             <Text>
-              {archived.length
-                ? 'Keine aktiven Projekte. Du kannst ein Projekt aus dem Archiv wiederherstellen oder ein neues anlegen.'
-                : 'Noch keine Projekte. Lege dein erstes Vorhaben an.'}
+              {showArchived
+                ? 'Keine archivierten Projekte.'
+                : archived.length
+                  ? 'Keine aktiven Projekte. Du kannst ein Projekt aus dem Archiv wiederherstellen oder ein neues anlegen.'
+                  : 'Noch keine Projekte. Lege dein erstes Vorhaben an.'}
             </Text>
           </Paper>
         )}
@@ -302,16 +338,45 @@ export function ProjectDashboard() {
           ChatGPT-Verbindung gilt für die gesamte Anwendung.
         </Text>
         <Editor
-          title="Leeres Projekt löschen"
+          title={
+            removing?.can_delete ? 'Leeres Projekt löschen' : 'Projekt löschen – Voraussetzungen'
+          }
           opened={!!removing}
           busy={busy}
           onClose={() => setRemoving(null)}
         >
           <Stack>
+            {!removing?.can_delete && (
+              <Alert color="yellow" title="Projekt enthält noch Daten">
+                <Text size="sm">
+                  Diese Daten müssen vor dem Löschen entfernt oder über den Projekt-Reset
+                  zurückgesetzt werden:
+                </Text>
+                <ul>
+                  {(removing?.data_sections || []).map((section: Row) => (
+                    <li key={section.table}>
+                      {section.label}: {section.count}
+                    </li>
+                  ))}
+                </ul>
+                <Anchor href={'/p/' + removing?.id + '/daten'}>
+                  Daten & Sicherung im Projekt öffnen
+                </Anchor>
+              </Alert>
+            )}
             <Text>
-              Das Projekt „{removing?.title}“ (Nr. {removing?.id}) wird endgültig gelöscht. Diese
-              Aktion kann nicht rückgängig gemacht werden. Vorhandene Projektsicherungen bleiben
-              erhalten.
+              {removing?.can_delete ? (
+                <>
+                  Das Projekt „{removing.title}“ (Nr. {removing.id}) wird endgültig gelöscht. Diese
+                  Aktion kann nicht rückgängig gemacht werden. Vorhandene Projektsicherungen bleiben
+                  erhalten.
+                </>
+              ) : (
+                <>
+                  Das Projekt „{removing?.title}“ bleibt erhalten. Sobald die oben aufgeführten
+                  Daten entfernt sind, kannst du die Löschprüfung erneut öffnen.
+                </>
+              )}
             </Text>
             <Text size="sm" c="dimmed">
               Nur leere Projekte können gelöscht werden. Standardgewerke und Standardkategorien
@@ -321,14 +386,14 @@ export function ProjectDashboard() {
               label="Projekttitel zur Bestätigung"
               value={confirmation}
               onChange={(event) => setConfirmation(event.currentTarget.value)}
-              disabled={busy}
+              disabled={busy || !removing?.can_delete}
               autoComplete="off"
             />
             <ErrorBox value={failure} />
             <div className="actions">
               <Button
                 color="red"
-                disabled={confirmation !== removing?.title}
+                disabled={!removing?.can_delete || confirmation !== removing?.title}
                 loading={busy}
                 onClick={remove}
               >
