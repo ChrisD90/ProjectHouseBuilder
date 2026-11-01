@@ -17,7 +17,7 @@ SOURCES = [
     {'name': 'Energieeffizienz-Expertenliste', 'url': 'https://www.energie-effizienz-experten.de/',
      'description': 'Qualifizierte Energieberatung und erforderliche Fachplanung finden.'},
 ]
-STATUSES = ('In Prüfung', 'Beantragt', 'Bewilligt', 'Ausgezahlt', 'Abgelehnt')
+STATUSES = ('Geplant', 'In Prüfung', 'Beantragt', 'Bewilligt', 'Ausgezahlt', 'Abgelehnt')
 
 
 def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary, CostItem, ProjectDocument):
@@ -52,6 +52,8 @@ def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary
         assessment = db.session.get(FundingAssessment, item.id)
         result['assessment_inputs'] = json.loads(assessment.inputs) if assessment else {}
         result['document_ids'] = list(db.session.scalars(select(FundingDocument.document_id).where(FundingDocument.funding_id == item.id)))
+        planner=app.extensions.get('phb_funding_plans')
+        result['planning']=planner['summary'](item) if planner else None
         return result
 
     def apply_fields(item, data):
@@ -92,7 +94,11 @@ def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary
                     raise ValueError('Ungültiges Datum.')
                 setattr(detail, key, value)
         if 'assessment_inputs' in data:
-            fields = clean_inputs(data['assessment_inputs'])
+            planner=app.extensions.get('phb_funding_plans')
+            if planner and db.session.get(planner['models'][0],item.id):
+                from funding_plans import clean_plan_inputs
+                fields=clean_plan_inputs(data['assessment_inputs'])
+            else:fields = clean_inputs(data['assessment_inputs'])
             record = db.session.get(FundingAssessment, item.id)
             if record is None:
                 record = FundingAssessment(funding_id=item.id); db.session.add(record)
@@ -140,6 +146,11 @@ def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary
             return jsonify(error='Förderung nicht gefunden.'), 404
         try:
             if request.method == 'DELETE':
+                planner=app.extensions.get('phb_funding_plans')
+                if planner:
+                    Plan,PlanOffer=planner['models']
+                    db.session.query(PlanOffer).filter_by(funding_id=item.id).delete()
+                    db.session.query(Plan).filter_by(funding_id=item.id).delete()
                 db.session.query(FundingDocument).filter_by(funding_id=item.id).delete()
                 db.session.query(FundingAssessment).filter_by(funding_id=item.id).delete()
                 detail = db.session.get(FundingDetail, item.id)

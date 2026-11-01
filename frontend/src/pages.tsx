@@ -1,3 +1,4 @@
+import { FundingPlanDialog } from './funding-plan';
 import { DocumentFields, emptyDocument } from './document-fields';
 import { FundingDocumentIntake } from './funding-documents';
 import { projectURL } from './project-context';
@@ -856,6 +857,20 @@ export function Energy() {
     [uploadFunding, setUploadFunding] = useState<number | null>(null);
   const documentId = Number(params.get('funding_document')) || null,
     documentFunding = Number(params.get('document_funding_id')) || null;
+  const ai = useQuery({ queryKey: ['ai'], queryFn: () => api('/api/ai/status'), staleTime: 60000 });
+  const [planOpened, setPlanOpened] = useState(false),
+    [planId, setPlanId] = useState<number | null>(null),
+    [planOffer, setPlanOffer] = useState<number | null>(null),
+    [latestDocument, setLatestDocument] = useState<{
+      fundingId: number;
+      documentId: number;
+    } | null>(null);
+  const handledOffer = useRef('');
+  function startPlan(ident: number | null = null, offer: number | null = null) {
+    setPlanId(ident);
+    setPlanOffer(offer);
+    setPlanOpened(true);
+  }
   const form = useForm<Row>({ initialValues: emptyFunding });
   function startDocuments(funding: number | null = null) {
     setUploadFunding(funding);
@@ -871,7 +886,11 @@ export function Energy() {
   }
   useDirtyGuard(opened && form.isDirty());
   const data: Row = query.data || {};
-  function open(row: Row | null = null, offer?: number) {
+  function open(row: Row | null = null, offer?: number, manual = false) {
+    if (row?.planning && !row.planning.adopted && !manual) {
+      startPlan(row.id);
+      return;
+    }
     setID(row?.id || null);
     const values = { ...emptyFunding, ...row };
     if (offer && !row) {
@@ -888,8 +907,14 @@ export function Energy() {
   }
   useEffect(() => {
     const offer = Number(params.get('offer_id'));
-    if (query.data && offer) open(null, offer);
-  }, [!!query.data, params.get('offer_id')]);
+    const token = params.get('offer_id') || '';
+    if (query.data && offer && (ai.isSuccess || ai.isError) && handledOffer.current !== token) {
+      handledOffer.current = token;
+      if (ai.data?.sharing) startPlan(null, offer);
+      else open(null, offer);
+    }
+    if (!offer) handledOffer.current = '';
+  }, [!!query.data, params.get('offer_id'), ai.isSuccess, ai.isError]);
   useEffect(() => {
     const row = data.funding?.find((r: Row) => r.id === Number(params.get('funding_id')));
     if (row && !opened) open(row);
@@ -935,7 +960,12 @@ export function Energy() {
           >
             Unterlagen hochladen
           </Button>
-          <Button leftSection={<IconPlus size={17} />} onClick={() => open()}>
+          {ai.data?.sharing && (
+            <Button leftSection={<IconPlus size={17} />} onClick={() => startPlan()}>
+              Förderung planen
+            </Button>
+          )}
+          <Button variant="light" leftSection={<IconPlus size={17} />} onClick={() => open()}>
             Förderung erfassen
           </Button>
         </Group>
@@ -986,6 +1016,11 @@ export function Energy() {
                     <Text size="sm" fw={600}>
                       {r.name}
                     </Text>
+                    {r.planning?.stale && (
+                      <Badge size="xs" color="yellow" variant="light">
+                        Prüfgrundlage geändert
+                      </Badge>
+                    )}
                     <Text size="xs" c="dimmed">
                       {[r.provider, r.program].filter(Boolean).join(' · ')}
                     </Text>
@@ -997,7 +1032,11 @@ export function Energy() {
                     </Text>
                   </Table.Td>
                   {['expected', 'confirmed', 'received'].map((key) => (
-                    <Table.Td key={key}>{money(r[key])}</Table.Td>
+                    <Table.Td key={key}>
+                      {key === 'expected' && r.planning && !r.planning.adopted && !r.expected
+                        ? 'Noch offen'
+                        : money(r[key])}
+                    </Table.Td>
                   ))}
                 </Table.Tr>
               ))}
@@ -1082,7 +1121,7 @@ export function Energy() {
         title={id ? 'Förderung bearbeiten' : 'Förderung erfassen'}
         dirty={form.isDirty()}
         busy={busy}
-        suspended={uploadDocuments || !!documentId}
+        suspended={uploadDocuments || !!documentId || planOpened}
         onClose={() => setOpened(false)}
       >
         <form
@@ -1187,7 +1226,25 @@ export function Energy() {
                 Unterlagen zu dieser Förderung hochladen
               </Button>
             )}
-            <FundingCheck form={form} busy={busy} setBusy={setBusy} />
+            {id && data.funding?.find((r: Row) => r.id === id)?.planning && (
+              <Button
+                variant="light"
+                onClick={async () => {
+                  if (
+                    form.isDirty() &&
+                    !(await ask('Ungespeicherte Förderangaben verwerfen und die Planung öffnen?'))
+                  )
+                    return;
+                  setOpened(false);
+                  startPlan(id);
+                }}
+              >
+                Förderplanung & Prüfbericht öffnen
+              </Button>
+            )}
+            {!(id && data.funding?.find((r: Row) => r.id === id)?.planning) && (
+              <FundingCheck form={form} busy={busy} setBusy={setBusy} />
+            )}
             {id && <SourceWork type="funding" id={id} />}
             <ErrorBox value={failure} />
             <div className="actions">
@@ -1222,10 +1279,25 @@ export function Energy() {
         }
         onReview={reviewDocument}
         onSaved={(document, funding) => {
+          if (funding) setLatestDocument({ fundingId: funding, documentId: document.id });
           if (opened && id && id === funding)
             form.setFieldValue('document_ids', [
               ...new Set([...(form.values.document_ids || []), document.id]),
             ]);
+        }}
+      />
+      <FundingPlanDialog
+        opened={planOpened}
+        planId={planId}
+        initialOffer={planOffer}
+        suspended={uploadDocuments || !!documentId}
+        latestDocument={latestDocument}
+        onClose={() => setPlanOpened(false)}
+        onSaved={() => void cache.invalidateQueries({ queryKey: ['energy'] })}
+        onUpload={startDocuments}
+        onManual={(row) => {
+          setPlanOpened(false);
+          open(row, undefined, true);
         }}
       />
     </div>

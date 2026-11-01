@@ -3565,6 +3565,8 @@ def _offer_deletion_reason(offer):
     linked=db.session.scalars(select(CostItem).where(CostItem.offer_id==offer.id)).all()
     if any(x.committed or x.selected or x.state in ('Beauftragt','Abgelehnt') or _offer_has_dependencies(x) for x in linked):
         return 'Rechnungen, Aufträge, Zahlungen oder weitere Belege sind mit diesem Angebot verknüpft.'
+    if db.session.scalar(select(FundingPlanOffer.funding_id).where(FundingPlanOffer.offer_id==offer.id).limit(1)):
+        return 'Das Angebot ist Teil einer Förderplanung. Zuerst die Zuordnung in Energetische Planung entfernen.'
     if db.session.scalar(select(FundingDetail.funding_id).where(FundingDetail.offer_id==offer.id).limit(1)):
         return 'Eine Förderung ist mit diesem Angebot verknüpft. Zuerst die Zuordnung in Energetische Planung entfernen.'
     documents=_offer_document_ids(offer)
@@ -4609,6 +4611,10 @@ LoanDrawdown, LoanDrawdownItem, list_loan_drawdowns = register_loan_drawdowns(
 from energy_planning import register_energy_planning
 FundingDetail, FundingAssessment, FundingDocument, energy_funding_dict = register_energy_planning(
     app, db, Funding, Offer, BudgetLine, budget_summary, CostItem, ProjectDocument)
+from funding_plans import register_funding_plans
+FundingPlan, FundingPlanOffer = register_funding_plans(app,db,Funding,FundingDetail,FundingAssessment,FundingDocument,
+    Offer,ProjectDocument,energy_funding_dict,contract_gross=_contract_gross,ai_required=_ai_request_required,
+    chatgpt=chatgpt,extract_json=extract_json)
 from funding_estimates import register_funding_estimates
 register_funding_estimates(app, db, Offer, ProjectDocument,
     contract_gross=_contract_gross, ai_required=_ai_request_required, chatgpt=chatgpt, extract_json=extract_json)

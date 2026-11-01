@@ -79,6 +79,19 @@ def main():
             assert next(row for row in project_rows if row['id']==1)['forecast']==0
             assert next(row for row in project_rows if row['id']==pid)['forecast']==1000
             b.db.session.remove();b.db.engine.dispose()
+            from unittest.mock import patch
+            from funding_estimates import BAFA_URL
+            import json
+            plan_headers={**headers(pid),'X-PHB-AI':'1'}
+            with patch.object(b.chatgpt,'status',return_value={'sharing':True,'credits_acknowledged':True}), patch.object(b.chatgpt,'run',return_value=json.dumps(dict(eligible=True,program_key='bafa_envelope',amount_min=100,amount_max=200,explanation='PostgreSQL Testbericht',sources=[{'title':'BAFA','url':BAFA_URL}]))):
+                plan=client.post('/api/funding/plans',headers=plan_headers,json=dict(name='Fenster-Förderplan',plan_only=True,inputs=dict(program_key='bafa_envelope',measure='Fenster erneuern mit technischer Prüfung',postcode='80331',units=1,ownership='private_owner',usage='self',building_application='1990-01-01',application_date='2027-05-01',contract='not_signed',started='no',vat_deductible='no',used_budget=0,cumulation_reviewed='yes',isfp='no'),selections=[dict(offer_id=offers[1],position_ids=[],eligible_cost=1000)]) )
+                assert plan.status_code==201,plan.json;plan_id=plan.json['id']
+                checked=client.post(f'/api/funding/plans/{plan_id}/check',headers=plan_headers,json=dict(phase='estimate',consent=True,plan_only=True))
+                assert checked.status_code==200,checked.json
+                adopted=client.post(f'/api/funding/plans/{plan_id}/adopt',headers=plan_headers,json=dict(token=checked.json['report']['token'],amount=150,confirm=True,plan_only=True))
+                assert adopted.status_code==200,adopted.json
+                assert adopted.json['funding']['expected']==150 and adopted.json['funding']['confirmed']==0
+            print('PASS PostgreSQL 17: persisted funding plan, official-source report and explicit adoption')
             import project_backups
             store=Path(temp)/'backups';store.mkdir()
             cfg={'folder':store,'keep':3}
@@ -88,6 +101,8 @@ def main():
                 current=b.db.session.get(b.Task,tasks[1]);current.name='Nach Sicherung geändert';b.db.session.commit()
                 project_backups.restore(archive,b.db,b.ROOT,pid)
                 assert b.db.session.get(b.Task,tasks[1]).name=='Paket '+str(pid)
+                assert b.db.session.get(b.Funding,plan_id).expected==150
+                assert b.db.session.get(b.FundingPlan,plan_id).adopted_amount==150
                 # Explicit restored IDs must not move any PostgreSQL sequence backwards.
                 new=b.Task(code='AP-002',name='Neu nach Restore',trade='Sonstiges',duration=1,phase='',company='',notes='',status='Offen',progress=0,lag_days=0,position=9)
                 b.db.session.add(new);b.db.session.commit();assert new.id>max(tasks)

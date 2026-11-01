@@ -1,6 +1,6 @@
 # Vorschlag: Förderplanung vor der Förderungserfassung
 
-Stand: 1. November 2026. Dies ist ein Umsetzungsvorschlag für den neuen Planungsschritt; die bestehende manuelle Erfassung bleibt erhalten. Der eigenständige Dokumentenupload im Förderbereich ist bereits umgesetzt.
+Stand: 1. November 2026. Der beschriebene Kernablauf ist mit Revision 0029 für BAFA-Gebäudehülle und KfW 458 umgesetzt. Die bestehende manuelle Erfassung bleibt erhalten. Effizienzhaus- und zusätzliche Regionalprogramme bleiben Ausbaustufen. Die tatsächliche Bedienung und technische Abgrenzung sind in [Förderplanung](funding-planning.md) dokumentiert.
 
 ## Recherche und Auswirkungen
 

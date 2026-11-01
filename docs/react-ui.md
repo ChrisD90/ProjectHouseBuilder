@@ -75,3 +75,5 @@ Revision `0028` ergänzt den optionalen Archivzeitpunkt bestehender To-dos und N
 „Daten & Sicherung“ verwendet projektbezogene Backups und Wiederherstellungen einschließlich Originaldateien; administrative Systemsicherungen bleiben außerhalb dieses Projektablaufs. Siehe [Projektbackups](project-backups.md).
 
 Förderunterlagen werden im Header des Förderbereichs hochgeladen und dort geprüft; Hintergrundjobs speichern diesen Rücksprung als Teil ihres projektbezogenen Jobs. Allgemeine Dokument-Uploads behalten ihren bisherigen Ablauf. [Förderplanung: Umsetzungsvorschlag](funding-planning-proposal.md).
+
+Der vorgelagerte Förderplanungsdialog unterstützt speicherbare Entwürfe, mehrere Angebote/Positionen, programmabhängige Checklisten und bestätigte Übernahme einer KI-Spanne. [Bedienung und Grenzen](funding-planning.md).

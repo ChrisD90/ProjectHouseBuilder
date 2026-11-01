@@ -178,6 +178,13 @@ class ProjectBackupTest(unittest.TestCase):
         self.assertEqual(self.client.post('/api/backup/create',json={}).status_code,409)
         self.assertEqual(backups.existing(self.config,1),[])
 
+    def test_revision_0028_project_backup_restores_without_new_empty_planning_tables(self):
+        path=self.create();expected=self.snapshot(1);other=self.snapshot(self.other)
+        self.rewrite(path,lambda data:[data['tables'].pop(name) for name in ('funding_plan','funding_plan_offer')])
+        result=self.start_restore(path)
+        self.assertEqual(result['state'],'done',result)
+        self.assertEqual(self.snapshot(1),expected);self.assertEqual(self.snapshot(self.other),other)
+
     def test_tampered_and_full_system_archives_are_rejected(self):
         path=self.create()
         with zipfile.ZipFile(path,'a') as z:z.writestr('private/auth.json','FORBIDDEN')

@@ -13,7 +13,8 @@
     "test:browser:projects": "node ../tests/browser_multi_projects.cjs",
     "test:browser:work": "node ../tests/browser_work_dialogs.cjs",
     "test:browser:backups": "node ../tests/browser_project_backups.cjs",
-    "test:browser:funding-documents": "node ../tests/browser_funding_documents.cjs"
+    "test:browser:funding-documents": "node ../tests/browser_funding_documents.cjs",
+    "test:browser:funding-plans": "../.venv/bin/python ../dev/funding_plan_browser_smoke.py"
   },
   "dependencies": {
     "@mantine/core": "^8.3.0",

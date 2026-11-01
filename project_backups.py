@@ -229,6 +229,10 @@ def load_rows(path, db, owner):
     with zipfile.ZipFile(path) as archive: payload = _loads(archive.read('project-data.json'))
     tables = owned_tables(db)
     expected = set(tables) - EPHEMERAL
+    # Backups from revision 0028 predate both plan tables; they legitimately contain no plans.
+    missing=expected-set(payload['tables'])
+    if missing=={'funding_plan','funding_plan_offer'} and not (set(payload['tables'])-expected):
+        for name in missing:payload['tables'][name]=[]
     if set(payload['tables']) != expected: raise ValueError('Backup-Schema passt nicht zur Anwendung. Bitte die passende App-Version verwenden.')
     result = {}; total = 0
     for name, rows in payload['tables'].items():
