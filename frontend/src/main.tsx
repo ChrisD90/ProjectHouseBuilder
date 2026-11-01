@@ -11,6 +11,7 @@ import { workspaceBase } from './project-context';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css';
+import '../../static/palette.css';
 import './style.css';
 const client = new QueryClient({
   defaultOptions: {
@@ -20,19 +21,31 @@ const client = new QueryClient({
 });
 const theme = createTheme({
   primaryColor: 'teal',
-  // Match the blue-gray surfaces of the retained workflow documents.
+  // Green accents and cool forest surfaces match the shared workflow palette.
   colors: {
+    teal: [
+      '#f2f7e9',
+      '#e5efcf',
+      '#d0e2ac',
+      '#b5cf81',
+      '#99b957',
+      '#7c9f32',
+      '#527c1c',
+      '#416317',
+      '#34501a',
+      '#263e17',
+    ],
     dark: [
-      '#eef6f8',
-      '#d0dfe5',
-      '#9db2bd',
-      '#425667',
-      '#334353',
-      '#233242',
-      '#1c2835',
-      '#101822',
-      '#0d151e',
-      '#09121b',
+      '#eef4ef',
+      '#cfddd4',
+      '#94a79c',
+      '#43595a',
+      '#304346',
+      '#1d3032',
+      '#192c2d',
+      '#152426',
+      '#0c181a',
+      '#081214',
     ],
   },
   defaultRadius: 'md',
@@ -54,15 +67,28 @@ createRoot(document.getElementById('root')!).render(
     defaultColorScheme="auto"
     cssVariablesResolver={() => ({
       variables: {},
-      light: {},
+      light: {
+        '--mantine-color-body': 'var(--brand-surface)',
+        '--mantine-color-text': 'var(--brand-ink)',
+        '--mantine-color-dimmed': 'var(--brand-muted)',
+        '--mantine-color-placeholder': 'var(--brand-muted-light)',
+        '--mantine-color-default': 'var(--brand-surface)',
+        '--mantine-color-default-hover': 'var(--brand-soft)',
+        '--mantine-color-default-border': 'var(--brand-line)',
+        '--mantine-primary-color-filled': 'var(--brand-button)',
+        '--mantine-primary-color-filled-hover': 'var(--brand-button-hover)',
+      },
       dark: {
-        '--mantine-color-body': '#1c2835',
-        '--mantine-color-text': '#eef6f8',
-        '--mantine-color-dimmed': '#aec0ca',
-        '--mantine-color-placeholder': '#9db2bd',
-        '--mantine-color-default': '#233242',
-        '--mantine-color-default-hover': '#2b3b4b',
-        '--mantine-color-default-border': '#334353',
+        '--mantine-color-body': 'var(--brand-surface)',
+        '--mantine-color-text': 'var(--brand-ink)',
+        '--mantine-color-dimmed': 'var(--brand-muted)',
+        '--mantine-color-placeholder': 'var(--brand-muted-light)',
+        '--mantine-color-default': 'var(--brand-raised)',
+        '--mantine-color-default-hover': 'var(--brand-soft)',
+        '--mantine-color-default-border': 'var(--brand-line)',
+        '--mantine-primary-color-filled': 'var(--brand-button)',
+        '--mantine-primary-color-filled-hover': 'var(--brand-button-hover)',
+        '--mantine-primary-color-light-color': 'var(--brand-accent)',
       },
     })}
   >

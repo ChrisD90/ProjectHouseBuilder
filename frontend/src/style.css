@@ -14,32 +14,32 @@ input {
   letter-spacing: -0.5px;
 }
 .app-sidebar {
-  background: light-dark(#142f36, #11252c);
+  background: var(--brand-sidebar);
   border-color: transparent;
-  color: #d6e6e8;
+  color: var(--brand-sidebar-text);
 }
 .app-sidebar .mantine-NavLink-root {
-  color: #c4d7da;
+  color: var(--brand-sidebar-text);
   border-radius: 9px;
   margin: 2px 0;
 }
 .app-sidebar .mantine-NavLink-root[data-active] {
-  color: #fff;
-  background: #285158;
+  color: var(--brand-nav-text);
+  background: var(--brand-nav-active);
 }
 .app-sidebar .mantine-NavLink-root:hover {
-  background: #25444b;
+  background: var(--brand-nav-hover);
 }
 .app-sidebar .mantine-NavLink-label {
   font-size: 13px;
 }
 .sidebar-group-label {
-  color: #9db9bf;
+  color: var(--brand-muted);
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
 .app-main {
-  background: light-dark(#f5f8fa, #101822);
+  background: var(--brand-bg);
 }
 .page {
   max-width: 1500px;
@@ -89,7 +89,7 @@ input {
   cursor: pointer;
 }
 .table-button:hover {
-  background: light-dark(#f2f7f7, #213137);
+  background: var(--brand-soft);
 }
 .compact-note {
   font-size: 12px;
@@ -147,3 +147,9 @@ input {
 .workflow-frame[hidden] {
   display: none !important;
 }
+
+.mantine-AppShell-header {background:var(--brand-surface);border-color:var(--brand-line)}
+.brand-logo {display:block;width:160px;height:24px;object-fit:contain;object-position:left center}
+.brand-logo-dark {display:none}
+[data-mantine-color-scheme="dark"] .brand-logo-light {display:none}
+[data-mantine-color-scheme="dark"] .brand-logo-dark {display:block}

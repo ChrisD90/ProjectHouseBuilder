@@ -67,3 +67,5 @@ PHB_TEST_URL=http://127.0.0.1:5059 npm --prefix frontend run test:browser:featur
 ```
 
 Er prüft Angebot ↔ zentrale To-dos, Annahmerücknahme im Editor, Förderunterlagen mit Rückkehr nach Metadatenprüfung, vorausgesetzte Zustimmung und explizite Übernahme einer simulierten KI-Schätzung. Reale ChatGPT-Aufrufe erfolgen dabei nicht.
+
+Die gemeinsame Farbpalette liegt in `static/palette.css` und gilt für React und eingebettete Abläufe. Die Mantine-Grünabstufungen sind in `frontend/src/main.tsx` hinterlegt. Logos für beide Darstellungen können direkt in `static/branding/logo-light.svg` und `static/branding/logo-dark.svg` ersetzt werden; Hinweise stehen in [static/branding/README.md](../static/branding/README.md).

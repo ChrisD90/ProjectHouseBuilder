@@ -21,7 +21,7 @@ body.phb-app.phb-page-zeitplan .gantt-task-row .gantt-label::before{content:"";p
 body.phb-app.phb-page-zeitplan .gantt-task-row:hover .gantt-label{background:color-mix(in srgb,var(--ui-accent) 5%,var(--ui-surface))}
 body.phb-app.phb-page-zeitplan .gantt-unassigned-row{background:var(--ui-soft);border-top-color:var(--ui-line)}
 body.phb-app.phb-page-zeitplan .gantt-unassigned-row .gantt-label{background:var(--ui-soft)}
-body.phb-app.phb-page-zeitplan .phase-bar{position:absolute;top:14px;height:16px;border-radius:8px;background:color-mix(in srgb,var(--ui-accent) 76%,#37577a);box-shadow:inset 0 0 0 1px #fff4}
+body.phb-app.phb-page-zeitplan .phase-bar{position:absolute;top:14px;height:16px;border-radius:8px;background:var(--brand-bar-phase);box-shadow:inset 0 0 0 1px #fff4}
 body.phb-app.phb-page-zeitplan .planned-end-marker{position:absolute;top:5px;bottom:5px;width:3px;border-radius:3px;background:var(--ui-warning,#c17a1c);z-index:3}
 body.phb-app.phb-page-zeitplan .planned-end-marker.due-soon,body.phb-app.phb-page-zeitplan .bar.due-soon{box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-warning,#c17a1c) 42%,transparent)}
 body.phb-app.phb-page-zeitplan .planned-end-marker.overdue{background:var(--ui-danger,#bd3142)}

@@ -1,3 +1,4 @@
+import { BrandLogo } from './brand';
 import { projectID, workspaceURL } from './project-context';
 import { useQuery } from '@tanstack/react-query';
 import { api } from './core';
@@ -306,12 +307,12 @@ export function App() {
               </Group>
             </Anchor>
           </Group>
-          <Divider color="#345058" my="md" />
+          <Divider color="var(--brand-line)" my="md" />
           <Stack gap="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {navigationGroups.map((group, index) => (
               <section key={group.label} aria-label={group.label}>
                 {mini ? (
-                  index > 0 && <Divider color="#345058" mb="sm" />
+                  index > 0 && <Divider color="var(--brand-line)" mb="sm" />
                 ) : (
                   <Text className="sidebar-group-label" size="xs" fw={700} mb={4} px="sm">
                     {group.label}
@@ -379,9 +380,7 @@ export function App() {
                 size="sm"
               />
               <div>
-                <Text size="xs" c="dimmed" visibleFrom="sm">
-                  Sanierung · Projektsteuerung
-                </Text>
+                <BrandLogo />
                 <Text size="sm" fw={650}>
                   {route?.[1] || 'Projekt'}
                 </Text>

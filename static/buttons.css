@@ -1,5 +1,5 @@
-:root{--ui-button-accent:var(--ui-accent);--ui-button-accent-hover:var(--ui-accent-hover)}
-:root[data-phb-theme=dark]{--ui-button-accent:#147e82;--ui-button-accent-hover:#116a70}
+:root{--ui-button-accent:var(--brand-button);--ui-button-accent-hover:var(--brand-button-hover)}
+:root[data-phb-theme=dark]{--ui-button-accent:var(--brand-button);--ui-button-accent-hover:var(--brand-button-hover)}
 /* Action buttons share one contract. Navigation, cards and floating controls own their geometry. */
 body:is(.phb-app,.login-screen) button.phb-button,body:is(.phb-app,.login-screen) a.phb-button{
  display:inline-flex;align-items:center;justify-content:center;gap:8px;vertical-align:middle;

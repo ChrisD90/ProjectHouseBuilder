@@ -1,23 +1,24 @@
+@import url("/static/palette.css");
 /* ProjectHouseBuilder design system: consistent sizing, surfaces, contrast, and dark mode. */
 :root {
-  --ui-bg:#f5f8fa;--ui-surface:#ffffff;--ui-raised:#ffffff;--ui-soft:#f0f6f7;
-  --ui-soft-accent:#e8f5f2;--ui-line:#dce6e9;--ui-line-strong:#c5d6db;
-  --ui-ink:#18313b;--ui-ink-soft:#38535e;--ui-muted:#647d86;--ui-muted-light:#78909a;
-  --ui-accent:#087e83;--ui-accent-hover:#09676d;--ui-success:#1c765e;
+  --ui-bg:var(--brand-bg);--ui-surface:var(--brand-surface);--ui-raised:var(--brand-raised);--ui-soft:var(--brand-soft);
+  --ui-soft-accent:var(--brand-soft-accent);--ui-line:var(--brand-line);--ui-line-strong:var(--brand-line-strong);
+  --ui-ink:var(--brand-ink);--ui-ink-soft:var(--brand-ink-soft);--ui-muted:var(--brand-muted);--ui-muted-light:var(--brand-muted-light);
+  --ui-accent:var(--brand-accent);--ui-accent-hover:var(--brand-accent-hover);--ui-success:var(--brand-success);
   --ui-warning:#93641e;--ui-danger:#a63f4d;
-  --ui-ring:rgba(5,139,142,.26);--ui-shadow:0 2px 8px rgba(18,48,60,.038),0 14px 35px rgba(16,50,64,.025);
+  --ui-ring:var(--brand-ring);--ui-shadow:0 2px 8px rgba(18,48,60,.038),0 14px 35px rgba(16,50,64,.025);
   --ui-shadow-raised:0 18px 55px rgba(16,42,55,.16);
   --ui-radius:15px;--ui-radius-sm:10px;
   --ui-gutter:clamp(16px,2.15vw,36px);
   color-scheme:light;
 }
 :root[data-phb-theme="dark"]{
-  --ui-bg:#101822;--ui-surface:#1c2835;--ui-raised:#233242;--ui-soft:#202e3d;
-  --ui-soft-accent:#193f41;--ui-line:#334353;--ui-line-strong:#425667;
-  --ui-ink:#eef6f8;--ui-ink-soft:#d0dfe5;--ui-muted:#aec0ca;--ui-muted-light:#9db2bd;
-  --ui-accent:#37b6b2;--ui-accent-hover:#52d1c9;--ui-success:#7bc8ac;
+  --ui-bg:var(--brand-bg);--ui-surface:var(--brand-surface);--ui-raised:var(--brand-raised);--ui-soft:var(--brand-soft);
+  --ui-soft-accent:var(--brand-soft-accent);--ui-line:var(--brand-line);--ui-line-strong:var(--brand-line-strong);
+  --ui-ink:var(--brand-ink);--ui-ink-soft:var(--brand-ink-soft);--ui-muted:var(--brand-muted);--ui-muted-light:var(--brand-muted-light);
+  --ui-accent:var(--brand-accent);--ui-accent-hover:var(--brand-accent-hover);--ui-success:var(--brand-success);
   --ui-warning:#f0bf79;--ui-danger:#ff999c;
-  --ui-ring:rgba(54,196,192,.31);--ui-shadow:0 8px 32px rgba(0,0,0,.15);
+  --ui-ring:var(--brand-ring);--ui-shadow:0 8px 32px rgba(0,0,0,.15);
   --ui-shadow-raised:0 28px 70px rgba(0,0,0,.45);
   color-scheme:dark;
 }
@@ -27,7 +28,7 @@ body.phb-app .phb-appshell{font-feature-settings:"tnum" 1}
 body.phb-app .phb-workspace{background:var(--ui-bg)}
 body.phb-app main.phb-main{padding:clamp(18px,2.1vw,32px) var(--ui-gutter) 58px}
 body.phb-app main.phb-main> :first-child{scroll-margin-top:84px}
-body.phb-app .phb-sidebar{background:linear-gradient(160deg,#122b3b 0%,#0f2533 68%,#0b202b 100%)}
+body.phb-app .phb-sidebar{background:var(--brand-sidebar)}
 body.phb-app .phb-sidebar__brand{min-height:78px}
 body.phb-app .phb-nav{gap:4px}
 body.phb-app .phb-nav-link{min-height:44px}
@@ -142,7 +143,7 @@ body.phb-app :is(.master-tag-row,.master-contact-info,.loan-documents,.loan-doc-
 body.phb-app :is(.master-table th,.master-table td){padding:13px 14px}
 body.phb-app :is(.loan-ai-assistant,.receipt-assignment){background:var(--ui-soft);border-color:var(--ui-line)}
 /* Dark mode: override the old page-specific hardcoded light fills after legacy styles. */
-:root[data-phb-theme="dark"] body.phb-app .phb-topbar{background:#1c2835!important}
+:root[data-phb-theme="dark"] body.phb-app .phb-topbar{background:var(--ui-surface)!important}
 :root[data-phb-theme="dark"] body.phb-app :is(.phb-page-intro h1,.heading h1,
   .hero h1,.intro h1,.offers-stats strong,.offer-card-head h3,.offer-sum strong,
   .kpi strong,.tile strong,.main-kpi strong,.smallcard h3,.modalhead h2,
@@ -183,7 +184,7 @@ body.phb-app :is(.loan-ai-assistant,.receipt-assignment){background:var(--ui-sof
 :root[data-phb-theme="dark"] body.phb-app .gantt-header .gantt-timeline{
   background-image:linear-gradient(to right,rgba(142,173,186,.16) 1px,transparent 1px)
 }
-:root[data-phb-theme="dark"] body.phb-app .bartext{color:#c8e4f0}
+:root[data-phb-theme="dark"] body.phb-app .bartext{color:var(--ui-ink-soft)}
 :root[data-phb-theme="dark"] body.phb-app pre, 
 :root[data-phb-theme="dark"] body.phb-app code{background:var(--ui-soft);color:var(--ui-ink-soft)}
 /* Topbar appearance preference */
@@ -196,9 +197,9 @@ body.phb-app .phb-theme-control select{
 }
 body.phb-app .phb-theme-control span{font-size:11px;font-weight:700;color:var(--ui-muted)}
 /* Activity feedback with no fictitious percentage or completion promise. */
-#phbLoadTrack{position:fixed;left:0;right:0;top:0;height:3px;z-index:9999;overflow:hidden;background:rgba(34,185,179,.16)}
+#phbLoadTrack{position:fixed;left:0;right:0;top:0;height:3px;z-index:9999;overflow:hidden;background:var(--ui-soft-accent)}
 #phbLoadTrack[hidden],#phbBusyOverlay[hidden]{display:none!important}
-#phbLoadTrack::after{content:"";position:absolute;inset:0;width:34%;background:linear-gradient(90deg,transparent,#3ed5c6 35%,#087e83 85%,transparent);animation:phb-track 1.2s ease-in-out infinite}
+#phbLoadTrack::after{content:"";position:absolute;inset:0;width:34%;background:linear-gradient(90deg,transparent,var(--ui-accent) 35%,var(--ui-accent-hover) 85%,transparent);animation:phb-track 1.2s ease-in-out infinite}
 @keyframes phb-track{0%{transform:translateX(-110%)}100%{transform:translateX(395%)}}
 #phbBusyOverlay{position:fixed;z-index:9000;bottom:24px;right:24px;width:min(390px,calc(100vw - 32px));pointer-events:none}
 .phb-busy-panel{display:flex;align-items:flex-start;gap:14px;padding:18px;border-radius:16px;
@@ -261,7 +262,7 @@ body.phb-app main.phb-main :is(.schedule-chat-bubble,.offer-notes,.offer-mapping
   .schedule-history-heading strong){color:var(--ui-ink)}
 :root[data-phb-theme="dark"] body.phb-app .phb-ai-confirm input[type=checkbox]{accent-color:var(--ui-accent)}
 :root[data-phb-theme="dark"] body.phb-app .phb-ai-topbar{background:var(--ui-soft)}
-:root[data-phb-theme="dark"] body.phb-app .offers-how b{background:#178f92}
+:root[data-phb-theme="dark"] body.phb-app .offers-how b{background:var(--brand-button)}
 :root[data-phb-theme="dark"] body.phb-app .phb-ai-warning>strong{color:var(--ui-ink)}
 
 /* Login inherits the same saved appearance without requiring the app sidebar. */
@@ -445,3 +446,10 @@ body.phb-app .phb-import-wait p{font-size:14px;line-height:1.6;overflow-wrap:any
 body.phb-app .phb-import-wait small{font-size:12px;color:var(--ui-muted);line-height:1.6}
 body.phb-app .phb-processing-control{min-width:0;display:grid;gap:6px;font-size:13px}
 body.phb-app .phb-processing-control select{width:100%;min-width:0;min-height:40px}
+
+/* Neutral and brand fills of retained controls share the same palette. */
+body.phb-app .gantt-row .bar:not(.done):not(.paused):not(.overdue){background:var(--brand-bar)}
+body.phb-app .gantt-row .bartext{color:var(--ui-ink)}
+body.phb-app :is(.loan-progress-used){background:var(--ui-accent)}
+body.phb-app .loan-progress-available{background:var(--brand-bar)}
+body.phb-app input[type=checkbox],body.phb-app input[type=radio]{accent-color:var(--brand-button)}

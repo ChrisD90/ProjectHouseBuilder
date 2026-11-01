@@ -1,3 +1,4 @@
+import { BrandLogo } from './brand';
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
@@ -19,14 +20,7 @@ import {
   Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
-import {
-  IconPlus,
-  IconPencil,
-  IconBuildingCottage,
-  IconMoon,
-  IconSun,
-  IconLogout,
-} from '@tabler/icons-react';
+import { IconPlus, IconPencil, IconMoon, IconSun, IconLogout } from '@tabler/icons-react';
 import { api, Editor, ErrorBox, Row, money, success } from './core';
 const empty: Row = {
   title: '',
@@ -81,12 +75,11 @@ export function ProjectDashboard() {
     }
   }
   return (
-    <div style={{ minHeight: '100dvh', background: 'light-dark(#f5f8fa,#101822)' }}>
+    <div style={{ minHeight: '100dvh', background: 'var(--brand-bg)' }}>
       <div className="page" style={{ maxWidth: 1280, paddingTop: 36 }}>
         <Group justify="space-between" mb={42}>
           <Group gap="sm">
-            <IconBuildingCottage size={27} />
-            <Text fw={700}>ProjectHouseBuilder</Text>
+            <BrandLogo />
           </Group>
           <Group gap="xs">
             {' '}
