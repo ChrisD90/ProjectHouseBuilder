@@ -126,6 +126,36 @@ class ProjectBackupTest(unittest.TestCase):
         self.assertEqual((self.root/'private'/'auth.json').read_text(),'GLOBAL AUTH')
         self.assertEqual(len(self.client.get('/api/projects').json['projects']),2)
 
+    def test_archived_project_backup_stays_scoped_and_preserves_live_archive_state(self):
+        response=self.client.patch(f'/api/projects/{self.other}',json={'archived':True})
+        self.assertEqual(response.status_code,200,response.json)
+        stamp=response.json['project']['archived_at']
+        path=self.create(self.other);first=self.snapshot(1)
+        with zipfile.ZipFile(path) as archive:
+            payload=json.loads(archive.read('project-data.json'))
+            self.assertEqual(payload['project']['id'],self.other)
+            self.assertTrue(payload['project']['archived_at'])
+            self.assertTrue(all(row['project_id']==self.other for rows in payload['tables'].values() for row in rows))
+        self.assertEqual(self.start_restore(path,self.other)['state'],'done')
+        self.assertEqual(self.client.get(f'/api/projects/{self.other}').json['project']['archived_at'],stamp)
+        self.assertEqual(self.snapshot(1),first)
+        self.client.patch(f'/api/projects/{self.other}',json={'archived':False})
+        self.assertEqual(self.start_restore(path,self.other)['state'],'done')
+        self.assertFalse(self.client.get(f'/api/projects/{self.other}').json['project']['archived'])
+
+    def test_deleted_project_backup_cannot_be_used_for_new_project(self):
+        row=self.client.post('/api/projects',json={'title':'Leeres Projekt'}).json['project']
+        owner=row['id'];path=self.create(owner)
+        response=self.client.delete(f'/api/projects/{owner}',json={'confirmed':True,'confirmation':row['title']})
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertTrue(path.is_file())
+        new=self.client.post('/api/projects',json={'title':'Neuer Besitzer'}).json['project']['id']
+        self.assertGreater(new,owner)
+        with path.open('rb') as upload:
+            response=self.client.post('/api/backup/inspect',headers=self.headers(new),data={'file':(upload,'old-project.zip')})
+        self.assertEqual(response.status_code,400,response.json)
+        self.assertEqual(self.client.get('/api/backup/status',headers=self.headers(owner)).status_code,404)
+
     def test_second_project_worker_keeps_owner_and_does_not_default_to_first(self):
         path=self.create(self.other);expected=self.snapshot(self.other);first=self.snapshot(1)
         with project_context(self.other):

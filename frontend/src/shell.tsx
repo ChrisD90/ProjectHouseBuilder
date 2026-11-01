@@ -310,6 +310,11 @@ export function App() {
                 </Group>
               </Anchor>
             </Group>
+            {!mini && projectInfo.data?.project?.archived && (
+              <Badge variant="light" color="gray" mt="xs">
+                Archiviert
+              </Badge>
+            )}
             <Divider color="var(--brand-line)" my="md" />
             <Stack gap="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
               {navigationGroups.map((group, index) => (

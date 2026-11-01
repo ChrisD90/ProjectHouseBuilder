@@ -464,7 +464,6 @@
         ${o.deletion_reason?`<p class="offer-mapping">${esc(o.deletion_reason)}</p>`:''}${notice(o)}
       </section>
       ${(o.acceptance_reversals||[]).length?`<details class="offer-details"><summary>Zurückgenommene Annahmen (${o.acceptance_reversals.length})</summary>${o.acceptance_reversals.map(r=>`<p>${esc(r.reversed_at.slice(0,10))} · ${fmt(r.agreed_gross)}${r.document_id?` · <a href="/api/documents/${r.document_id}/preview" target="_blank" rel="noopener">Frühere Auftragsbestätigung ansehen</a>`:''}</p>`).join('')}</details>`:''}
-      <div class="offer-details-work">${PHBWorkUI.button('offer',o.id)}<span>To-dos & Notizen</span></div>
       ${accepted?billingBlock(o):''}
       ${parsedPositions(o)}
       ${versionUpload(o)}${versionHistory(o)}`;

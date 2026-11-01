@@ -95,7 +95,10 @@ def install_project_scope(app, db, Project):
         project_id = current_project_id()
         pending = list(session.new)
         owned=[item for item in list(session.new)+list(session.dirty)+list(session.deleted) if type(item) in models]
-        if owned and not any(isinstance(x,Project) and x.id==project_id for x in pending) and session.get(Project,project_id) is None:
+        if owned:
+            from project_lifecycle import sqlite_write_lock
+            sqlite_write_lock(session.connection())
+        if owned and not any(isinstance(x,Project) and x.id==project_id for x in pending) and session.scalar(select(Project.id).where(Project.id==project_id)) is None:
             raise ValueError('Projekt nicht gefunden. Keine Daten gespeichert.')
         for item in list(session.new) + list(session.dirty) + list(session.deleted):
             model = type(item)
@@ -164,10 +167,13 @@ def install_project_scope(app, db, Project):
         return jsonify(error=str(error)), 400
 
 
-def register_project_routes(app, db, Project, *, initialize, summary, Task, CostItem, ProjectWork):
+def register_project_routes(app, db, Project, *, initialize, summary, Task, CostItem, ProjectWork, categories, trades, operation_busy):
+    from project_lifecycle import content_status, sqlite_write_lock
     def describe(project):
         return dict(id=project.id,title=project.title,kind=project.kind,description=project.description,
-                    created_at=project.created_at.isoformat() if project.created_at else '')
+                    created_at=project.created_at.isoformat() if project.created_at else '',
+                    archived=bool(project.archived_at),archived_at=project.archived_at.isoformat() if project.archived_at else '',
+                    **content_status(db,project.id,categories,trades))
 
     @app.get('/api/projects')
     def project_list():
@@ -201,9 +207,15 @@ def register_project_routes(app, db, Project, *, initialize, summary, Task, Cost
                     value=body[key]
                     if not isinstance(value,str) or len(value)>limit: raise ValueError('Ungültiges Projektfeld: '+key)
                     fields[key]=value.strip()
-            project=db.session.get(Project,project_id) if project_id else Project(title='',kind='Sonstiges',description='')
+            if project_id:
+                sqlite_write_lock(db.session.connection())
+                project=db.session.scalar(select(Project).where(Project.id==project_id).with_for_update())
+            else:project=Project(title='',kind='Sonstiges',description='')
             if project is None: return jsonify(error='Projekt nicht gefunden.'),404
             for key,value in fields.items():setattr(project,key,value)
+            if 'archived' in body:
+                if type(body['archived']) is not bool:raise ValueError('Archiviert muss ein Wahrheitswert sein.')
+                project.archived_at=(project.archived_at or datetime.now(timezone.utc)) if body['archived'] else None
             if not project.title:raise ValueError('Bitte einen Projekttitel eingeben.')
             start=body.get('start_date') or date.today().isoformat()
             if date.fromisoformat(start).isoformat()!=start: raise ValueError('Ungültiger Projektstart.')
@@ -216,6 +228,27 @@ def register_project_routes(app, db, Project, *, initialize, summary, Task, Cost
             return jsonify(project=describe(project)),201 if project_id is None else 200
         except (ValueError,TypeError) as error:
             db.session.rollback();return jsonify(error=str(error)),400
+
+    @app.delete('/api/projects/<int:project_id>')
+    def project_delete(project_id):
+        body=request.get_json(silent=True) or {}
+        if operation_busy(project_id):return jsonify(error='Für dieses Projekt läuft ein Reset oder eine Wiederherstellung.'),409
+        sqlite_write_lock(db.session.connection())
+        project=db.session.scalar(select(Project).where(Project.id==project_id).with_for_update())
+        if project is None:return jsonify(error='Projekt nicht gefunden.'),404
+        if not isinstance(body,dict) or body.get('confirmed') is not True or body.get('confirmation')!=project.title:
+            return jsonify(error='Den genauen Projekttitel zur endgültigen Löschung bestätigen.'),400
+        status=content_status(db,project_id,categories,trades)
+        if not status['can_delete']:return jsonify(error='Projekt nicht leer. '+status['delete_reason']+' Zuerst die Projektdaten zurücksetzen.'),409
+        try:
+            from project_backups import clear_rows
+            with project_context(project_id):
+                clear_rows(db.session.connection(),db,project_id)
+                db.session.delete(project);db.session.commit()
+            return jsonify(ok=True,project_id=project_id)
+        except Exception:
+            db.session.rollback();app.logger.exception('Leeres Projekt konnte nicht gelöscht werden.')
+            return jsonify(error='Projekt konnte nicht gelöscht werden. Keine Änderungen übernommen.'),409
 
 
 def project_files(db, root):

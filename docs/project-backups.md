@@ -14,6 +14,8 @@ Der Hintergrundprozess bindet sich an die beim Start bestätigte Projekt-ID. Wä
 
 Der lokale vollständige Reset und der gezielte Zeitplan-Reset verlangen jeweils ein erfolgreich geprüftes Projektbackup. Die bisherige Beschränkung dieser Reset-Funktionen auf lokales SQLite bleibt bestehen. Projektbackups und deren Wiederherstellung funktionieren auch mit PostgreSQL.
 
+Archivierte Projekte behalten denselben Sicherungsordner und dieselbe Projekt-ID. Wiederherstellen verändert den aktuellen Archivstatus nicht. Beim Löschen einer leeren Projekthülle bleiben vorhandene Sicherungen erhalten. Ihre ID wird nie wieder verwendet; eine Wiederherstellung unter einer anderen Projekt-ID bleibt gesperrt.
+
 Administrative Vollsicherungen über `backup_manager.py`, NAS-CLI sowie die Sicherheitskopien vor Datenbankmigrationen bleiben separat verfügbar. Sie umfassen absichtlich die ganze Installation, erscheinen nicht in der Projekt-Backup-Liste und dürfen nur im administrativen System-Restore verwendet werden. Bestehende Archive werden nicht gelöscht oder umgedeutet.
 
 Tests: `tests/test_project_backups.py`, reale Datei-/Reset-Tests in `tests/test_data_management.py` und `tests/test_multi_projects.py`, PostgreSQL-17-Integration in `dev/multi_project_pg_smoke.py`. Die Browserprüfung `PHB_TEST_URL=http://127.0.0.1:5083 npm --prefix frontend run test:browser:backups` benötigt einen separaten Testserver mit eingerichtetem Backupziel und erzeugt ausschließlich eigene Testprojekte.

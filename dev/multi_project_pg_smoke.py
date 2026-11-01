@@ -92,6 +92,16 @@ def main():
                 assert adopted.status_code==200,adopted.json
                 assert adopted.json['funding']['expected']==150 and adopted.json['funding']['confirmed']==0
             print('PASS PostgreSQL 17: persisted funding plan, official-source report and explicit adoption')
+            lifecycle=client.post('/api/projects',json={'title':'Leeres PG-Projekt'}).json['project']
+            empty_id=lifecycle['id'];assert lifecycle['can_delete']
+            assert client.patch(f'/api/projects/{pid}',json={'archived':True}).json['project']['archived']
+            assert client.delete(f'/api/projects/{pid}',json={'confirmed':True,'confirmation':'Garten PostgreSQL'}).status_code==409
+            assert not client.patch(f'/api/projects/{pid}',json={'archived':False}).json['project']['archived']
+            assert client.delete(f'/api/projects/{empty_id}',json={'confirmed':True,'confirmation':'Leeres PG-Projekt'}).status_code==200
+            replacement=client.post('/api/projects',json={'title':'Neues PG-Projekt'}).json['project']
+            assert replacement['id']>empty_id
+            assert client.get('/api/project',headers=headers(pid)).json['tasks'][0]['id']==tasks[1]
+            print('PASS PostgreSQL 17: archive/reopen, nonempty deletion blocked, empty deletion and monotonic project IDs')
             import project_backups
             store=Path(temp)/'backups';store.mkdir()
             cfg={'folder':store,'keep':3}

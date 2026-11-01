@@ -325,4 +325,19 @@ body.phb-app .phb-offer-invoices-dialog td:last-child{display:flex;gap:7px;flex-
 .offer-invoices-actions{display:flex;justify-content:flex-end}
 @media(max-width:680px){.offer-invoice-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.offer-invoices-actions a{width:100%;text-align:center}}
 
-.phb-page-angebote .offer-details-work{display:flex;align-items:center;gap:8px;margin:14px 0;color:var(--ui-muted);font-size:13px}
+
+/* Billing detail surfaces follow the shared palette in both color schemes. */
+body.phb-app.phb-page-angebote .offer-billing{background:var(--ui-soft);border-color:var(--ui-line);color:var(--ui-ink)}
+body.phb-app.phb-page-angebote .offer-billing-heading,body.phb-app.phb-page-angebote .offer-billing-numbers b{color:var(--ui-ink)}
+body.phb-app.phb-page-angebote .offer-billing-flag{background:var(--ui-soft-accent);color:var(--ui-success)}
+body.phb-app.phb-page-angebote .offer-billing-warning{background:color-mix(in srgb,var(--ui-warning) 9%,var(--ui-surface));border-color:color-mix(in srgb,var(--ui-warning) 35%,var(--ui-line))}
+body.phb-app.phb-page-angebote .offer-billing-warning .offer-billing-flag{background:color-mix(in srgb,var(--ui-warning) 16%,var(--ui-surface));color:var(--ui-warning)}
+body.phb-app.phb-page-angebote .offer-billing-overrun{background:color-mix(in srgb,var(--ui-danger) 9%,var(--ui-surface));border-color:color-mix(in srgb,var(--ui-danger) 35%,var(--ui-line))}
+body.phb-app.phb-page-angebote .offer-billing-overrun .offer-billing-flag{background:color-mix(in srgb,var(--ui-danger) 16%,var(--ui-surface));color:var(--ui-danger)}
+body.phb-app.phb-page-angebote .offer-billing-numbers,body.phb-app.phb-page-angebote .offer-billing-help,body.phb-app.phb-page-angebote .offer-billing-details td small{color:var(--ui-muted)}
+body.phb-app.phb-page-angebote .offer-billing-details summary{color:var(--ui-accent)}
+body.phb-app.phb-page-angebote .offer-billing-details :is(th,td){border-color:var(--ui-line)}
+body.phb-app.phb-page-angebote .offer-progress{background:var(--ui-line)}
+body.phb-app.phb-page-angebote .offer-progress>span{background:var(--ui-success)}
+body.phb-app.phb-page-angebote .offer-billing-warning .offer-progress>span{background:var(--ui-warning)}
+body.phb-app.phb-page-angebote .offer-billing-overrun .offer-progress>span{background:var(--ui-danger)}

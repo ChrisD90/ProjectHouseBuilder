@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
 import {
   ActionIcon,
+  Accordion,
   Anchor,
   Badge,
   Button,
@@ -20,7 +21,16 @@ import {
   Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
-import { IconPlus, IconPencil, IconMoon, IconSun, IconLogout } from '@tabler/icons-react';
+import {
+  IconPlus,
+  IconPencil,
+  IconMoon,
+  IconSun,
+  IconLogout,
+  IconArchive,
+  IconArchiveOff,
+  IconTrash,
+} from '@tabler/icons-react';
 import { api, Editor, ErrorBox, Row, money, success } from './core';
 const empty: Row = {
   title: '',
@@ -38,7 +48,13 @@ export function ProjectDashboard() {
   const [opened, setOpened] = useState(false),
     [id, setID] = useState<number | null>(null),
     [busy, setBusy] = useState(false),
-    [failure, setFailure] = useState<unknown>(null);
+    [failure, setFailure] = useState<unknown>(null),
+    [removing, setRemoving] = useState<Row | null>(null),
+    [confirmation, setConfirmation] = useState(''),
+    [actionFailure, setActionFailure] = useState<unknown>(null);
+  const projects: Row[] = query.data?.projects || [];
+  const active = projects.filter((project) => !project.archived);
+  const archived = projects.filter((project) => project.archived);
   const form = useForm<Row>({ initialValues: empty }),
     { colorScheme, setColorScheme } = useMantineColorScheme();
   useEffect(() => {
@@ -73,6 +89,145 @@ export function ProjectDashboard() {
     } finally {
       setBusy(false);
     }
+  }
+  async function archive(project: Row) {
+    if (busy) return;
+    setBusy(true);
+    setActionFailure(null);
+    try {
+      await api('/api/projects/' + project.id, 'PATCH', { archived: !project.archived });
+      await cache.invalidateQueries({ queryKey: ['projects'] });
+      success(project.archived ? 'Projekt wiederhergestellt.' : 'Projekt archiviert.');
+    } catch (error) {
+      setActionFailure(error);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function remove() {
+    if (busy || !removing || confirmation !== removing.title) return;
+    setBusy(true);
+    setFailure(null);
+    try {
+      await api('/api/projects/' + removing.id, 'DELETE', { confirmed: true, confirmation });
+      setRemoving(null);
+      success('Leeres Projekt gelöscht.');
+    } catch (error) {
+      setFailure(error);
+    } finally {
+      await cache.invalidateQueries({ queryKey: ['projects'] });
+      setBusy(false);
+    }
+  }
+  function tiles(rows: Row[]) {
+    return (
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
+        {rows.map((project) => (
+          <Paper key={project.id} className="paper" style={{ padding: 0, overflow: 'hidden' }}>
+            <Group justify="space-between" wrap="nowrap" p="md" pb={0}>
+              <Badge variant="light" size="sm">
+                {project.kind || 'Projekt'}
+              </Badge>
+              <Group gap={2} wrap="nowrap">
+                <Tooltip label="Projekt bearbeiten">
+                  <ActionIcon
+                    aria-label={'Projekt bearbeiten: ' + project.title}
+                    variant="subtle"
+                    disabled={busy}
+                    onClick={() => open(project)}
+                  >
+                    <IconPencil size={17} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip
+                  label={project.archived ? 'Projekt wiederherstellen' : 'Projekt archivieren'}
+                >
+                  <ActionIcon
+                    aria-label={
+                      (project.archived ? 'Projekt wiederherstellen: ' : 'Projekt archivieren: ') +
+                      project.title
+                    }
+                    variant="subtle"
+                    disabled={busy}
+                    onClick={() => archive(project)}
+                  >
+                    {project.archived ? <IconArchiveOff size={17} /> : <IconArchive size={17} />}
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip
+                  label={project.can_delete ? 'Leeres Projekt löschen' : project.delete_reason}
+                  multiline
+                  w={240}
+                >
+                  <span>
+                    <ActionIcon
+                      aria-label={'Projekt löschen: ' + project.title}
+                      variant="subtle"
+                      color="red"
+                      disabled={busy || !project.can_delete}
+                      onClick={() => {
+                        setRemoving(project);
+                        setConfirmation('');
+                        setFailure(null);
+                      }}
+                    >
+                      <IconTrash size={17} />
+                    </ActionIcon>
+                  </span>
+                </Tooltip>
+              </Group>
+            </Group>
+            <Anchor
+              href={'/p/' + project.id + '/'}
+              underline="never"
+              c="inherit"
+              style={{ display: 'block', padding: 24 }}
+            >
+              <Title order={2} size="h3" style={{ overflowWrap: 'anywhere' }}>
+                {project.title}
+              </Title>
+              <Text size="sm" c="dimmed" mt="xs" lineClamp={2} mih={42}>
+                {project.description || 'Dein Arbeitsbereich für Planung, Kosten und Unterlagen.'}
+              </Text>
+              <Progress
+                value={project.tasks ? (project.completed / project.tasks) * 100 : 0}
+                mt="lg"
+                size={5}
+              />
+              <SimpleGrid cols={3} mt="md" spacing="xs">
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Arbeitspakete
+                  </Text>
+                  <Text fw={600} size="sm">
+                    {project.completed} / {project.tasks}
+                  </Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Kostenprognose
+                  </Text>
+                  <Text fw={600} size="sm">
+                    {money(project.forecast)}
+                  </Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">
+                    Offene To-dos
+                  </Text>
+                  <Text fw={600} size="sm">
+                    {project.open_todos}
+                  </Text>
+                </div>
+              </SimpleGrid>
+              <Text size="sm" c="teal" mt="lg" fw={600}>
+                Projekt öffnen →
+              </Text>
+            </Anchor>
+          </Paper>
+        ))}
+      </SimpleGrid>
+    );
   }
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--brand-bg)' }}>
@@ -120,86 +275,68 @@ export function ProjectDashboard() {
           </Button>
         </Group>
         <ErrorBox value={query.error} />
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="lg">
-          {(query.data?.projects || []).map((project: Row) => (
-            <Paper
-              key={project.id}
-              className="paper"
-              style={{ position: 'relative', padding: 0, overflow: 'hidden' }}
-            >
-              <Tooltip label="Projekt bearbeiten">
-                <ActionIcon
-                  aria-label={'Projekt bearbeiten: ' + project.title}
-                  variant="subtle"
-                  style={{ position: 'absolute', right: 14, top: 14, zIndex: 1 }}
-                  onClick={() => open(project)}
-                >
-                  <IconPencil size={17} />
-                </ActionIcon>
-              </Tooltip>
-              <Anchor
-                href={'/p/' + project.id + '/'}
-                underline="never"
-                c="inherit"
-                style={{ display: 'block', padding: 24 }}
-              >
-                <Badge variant="light" size="sm" mb="md">
-                  {project.kind || 'Projekt'}
-                </Badge>
-                <Title order={2} size="h3" pr={15} style={{ overflowWrap: 'anywhere' }}>
-                  {project.title}
-                </Title>
-                <Text size="sm" c="dimmed" mt="xs" lineClamp={2} mih={42}>
-                  {project.description || 'Dein Arbeitsbereich für Planung, Kosten und Unterlagen.'}
-                </Text>
-                <Progress
-                  value={project.tasks ? (project.completed / project.tasks) * 100 : 0}
-                  mt="lg"
-                  size={5}
-                />
-                <SimpleGrid cols={3} mt="md" spacing="xs">
-                  <div>
-                    <Text size="xs" c="dimmed">
-                      Arbeitspakete
-                    </Text>
-                    <Text fw={600} size="sm">
-                      {project.completed} / {project.tasks}
-                    </Text>
-                  </div>
-                  <div>
-                    <Text size="xs" c="dimmed">
-                      Kostenprognose
-                    </Text>
-                    <Text fw={600} size="sm">
-                      {money(project.forecast)}
-                    </Text>
-                  </div>
-                  <div>
-                    <Text size="xs" c="dimmed">
-                      Offene To-dos
-                    </Text>
-                    <Text fw={600} size="sm">
-                      {project.open_todos}
-                    </Text>
-                  </div>
-                </SimpleGrid>
-                <Text size="sm" c="teal" mt="lg" fw={600}>
-                  Projekt öffnen →
-                </Text>
-              </Anchor>
-            </Paper>
-          ))}
-        </SimpleGrid>
+        <ErrorBox value={actionFailure} />
+        {tiles(active)}
+        {!!archived.length && (
+          <Accordion mt="lg" variant="separated">
+            <Accordion.Item value="archived">
+              <Accordion.Control icon={<IconArchive size={18} />}>
+                Archivierte Projekte ({archived.length})
+              </Accordion.Control>
+              <Accordion.Panel>{tiles(archived)}</Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
+        )}
         {query.isPending && <Text c="dimmed">Projekte werden geladen …</Text>}
-        {!query.isPending && !query.error && !query.data?.projects?.length && (
+        {!query.isPending && !query.error && !active.length && (
           <Paper className="paper">
-            <Text>Noch keine Projekte. Lege dein erstes Vorhaben an.</Text>
+            <Text>
+              {archived.length
+                ? 'Keine aktiven Projekte. Du kannst ein Projekt aus dem Archiv wiederherstellen oder ein neues anlegen.'
+                : 'Noch keine Projekte. Lege dein erstes Vorhaben an.'}
+            </Text>
           </Paper>
         )}
         <Text c="dimmed" size="xs" mt="lg">
-          Daten und Stammdaten bleiben je Projekt getrennt. Die ChatGPT-Verbindung und vollständige
-          Sicherungen gelten für die gesamte Anwendung.
+          Daten, Stammdaten und Projektsicherungen bleiben je Projekt getrennt. Die
+          ChatGPT-Verbindung gilt für die gesamte Anwendung.
         </Text>
+        <Editor
+          title="Leeres Projekt löschen"
+          opened={!!removing}
+          busy={busy}
+          onClose={() => setRemoving(null)}
+        >
+          <Stack>
+            <Text>
+              Das Projekt „{removing?.title}“ (Nr. {removing?.id}) wird endgültig gelöscht. Diese
+              Aktion kann nicht rückgängig gemacht werden. Vorhandene Projektsicherungen bleiben
+              erhalten.
+            </Text>
+            <Text size="sm" c="dimmed">
+              Nur leere Projekte können gelöscht werden. Standardgewerke und Standardkategorien
+              zählen nicht als eigene Daten.
+            </Text>
+            <TextInput
+              label="Projekttitel zur Bestätigung"
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.currentTarget.value)}
+              disabled={busy}
+              autoComplete="off"
+            />
+            <ErrorBox value={failure} />
+            <div className="actions">
+              <Button
+                color="red"
+                disabled={confirmation !== removing?.title}
+                loading={busy}
+                onClick={remove}
+              >
+                Endgültig löschen
+              </Button>
+            </div>
+          </Stack>
+        </Editor>
         <Editor
           title={id ? 'Projekt bearbeiten' : 'Neues Projekt'}
           opened={opened}

@@ -4,6 +4,14 @@ Der Einstieg `/` zeigt die Projektübersicht. Jedes Projekt hat eine stabile ID,
 
 Der bisherige Arbeitsbereich bleibt erhalten und liegt unter `/p/<id>/`. Das Haus-Symbol bzw. der Projektname oben in der Sidebar führt zur Übersicht zurück. Beim Öffnen eines anderen Projekts wird ein neuer Arbeitsbereich geladen. Innerhalb desselben Projekts bleiben Rahmen und Navigation weiterhin bestehen. Dadurch können Query-Caches, geladene Fachmasken und Warteschlangen nicht von einem Projekt ins andere übernommen werden.
 
+## Archivieren und leere Projekte löschen
+
+Die Kachelaktionen erlauben Bearbeiten, Archivieren/Wiederherstellen und das Löschen eines leeren Projekts. Archivierte Projekte liegen in einer standardmäßig eingeklappten Liste; ihre Daten bleiben vollständig erhalten und der Arbeitsbereich bleibt zugänglich. Eine Kennzeichnung in der Sidebar zeigt den Archivstatus.
+
+Löschen ist ausschließlich für eine leere Projekthülle möglich. Die unveränderten Standardgewerke, Standardkategorien sowie technische Start-/Initialisierungseinstellungen zählen nicht als eigene Daten. Eigene Stammdaten, Budget, Aufgaben, Bauphasen, Angebote, Rechnungen, Finanzierungsdaten, Dokumente, Förderungen, To-dos/Notizen (auch archivierte), Historien und Importaufträge blockieren die Löschung. Die Oberfläche zeigt den Grund an. Vor endgültigem Löschen muss der genaue Projekttitel eingegeben werden; der Server prüft die Leere unter einer Schreibsperre erneut. Mit vorhandenen Daten ist zuerst der ausdrücklich bestätigte Projekt-Reset nötig, soweit dieser verfügbar ist.
+
+Revision **0030** ergänzt ausschließlich `project.archived_at`. Gelöschte Projekt-IDs werden niemals neu vergeben; auch nach Löschen des letzten Projekts und Neustart wird Projekt 1 nicht neu erzeugt. Vorhandene Backups bleiben erhalten und können nicht in ein neues Projekt mit anderer ID eingespielt werden. Löschen ist kein Mittel, um fachliche Datensätze ohne Reset-Bestätigung zu entfernen.
+
 ## Backend und Migration
 
 Revision **0027** ergänzt die globale Tabelle `project` und ein `project_id`-Fremdschlüsselfeld an allen Fachtabellen, einschließlich Einstellungen, Stammdaten, Versions-/Zahlungshistorien, Förderunterlagen-Verknüpfungen und Importjobs. Vorhandene Datensätze erhalten Eigentümer 1 („Mein bestehendes Projekt“). Bestehende IDs, Beträge, Dokumentpfade und Beziehungen werden nicht umnummeriert. Titel/Art können anschließend in der Übersicht bearbeitet werden.
@@ -40,3 +48,5 @@ PHB_TEST_URL=http://127.0.0.1:5075 npm --prefix frontend run test:browser:projec
 Nur gegen ein Wegwerfprojekt ausführen. Der Browserlauf legt zwei Projekte an, prüft den leeren Einstieg, Phase abschließen/wieder öffnen, Dialogaktionen, zwei parallele Tabs, getrennte Firmen, Hintergrund-Upload und Dateivorschau. Die übrigen vorhandenen Browserläufe bleiben verfügbar. Zusätzlich wurde PostgreSQL 17.11 in einer isolierten Datenbank geprüft: frischer Start, Projektsequenz, wiederverwendbare Kennungen, Summen, Fremdbezüge, Dateien und die Migration des vorherigen Schemas. Dieser Lauf ist als CI-Job mit PostgreSQL 17 hinterlegt. SQLite und Chromium sind ebenfalls automatisiert geprüft; Safari und die konkrete NAS-Installation bleiben Bestandteil des Nutzertests.
 
 Der zusätzliche PostgreSQL-Lauf ist lokal über `dev/multi_project_pg_smoke.py` verfügbar. Er benötigt `PHB_PG_TEST_URL` auf eine **leere lokale** Datenbank mit dem Namenspräfix `phb_`; andere bzw. vorhandene Datenbanken werden abgewiesen. Es werden ausschließlich synthetische Testdaten verwendet.
+
+Die ergänzenden Tests `tests/test_project_lifecycle.py` und `tests/browser_project_lifecycle.cjs` prüfen Archivieren, Wiederherstellen, Leerprüfung, Sicherheitsabfrage, unveränderte andere Projekte und nicht wiederverwendete IDs.

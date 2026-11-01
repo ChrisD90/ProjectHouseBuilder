@@ -76,8 +76,17 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
       await frame.locator("#offerList [data-offer-unaccept]").count(),
       0,
     );
+    assert.equal(
+      await frame
+        .locator('#offerDetailsContent [data-work-open="offer"]')
+        .count(),
+      0,
+    );
+    await frame.locator("#closeOfferDetails").click();
     await frame
-      .locator('#offerDetailsContent [data-work-open="offer"]')
+      .locator(
+        '#offerList [data-work-open="offer"][data-work-id="' + oid + '"]',
+      )
       .click();
     const linked = page.getByRole("dialog", {
       name: "To-dos & Notizen",
@@ -116,7 +125,6 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
     await linked
       .getByRole("button", { name: "Schließen", exact: true })
       .click();
-    await frame.locator("#closeOfferDetails").click();
     await page
       .getByRole("link", { name: "To-dos & Notizen", exact: true })
       .click();
@@ -155,8 +163,17 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
       .click();
     frame = page.frameLocator('iframe[title="Angebote"]:not([hidden])');
     await frame.locator("#offerDetailsDialog").waitFor();
+    assert.equal(
+      await frame
+        .locator('#offerDetailsContent [data-work-open="offer"]')
+        .count(),
+      0,
+    );
+    await frame.locator("#closeOfferDetails").click();
     await frame
-      .locator('#offerDetailsContent [data-work-open="offer"]')
+      .locator(
+        '#offerList [data-work-open="offer"][data-work-id="' + oid + '"]',
+      )
       .click();
     await linked
       .getByText("Auch Liefertermin klären", { exact: true })
@@ -164,7 +181,6 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
     await linked
       .getByRole("button", { name: "Schließen", exact: true })
       .click();
-    await frame.locator("#closeOfferDetails").click();
     await frame.locator('[data-offer-edit="' + oid + '"]').click();
     await frame.locator("#reverseOfferAcceptance").click();
     await frame

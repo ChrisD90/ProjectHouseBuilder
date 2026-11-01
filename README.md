@@ -27,14 +27,16 @@ Port **5055** ist absichtlich gewählt. macOS belegt **5000** häufig mit dem Ai
 
 ## Datensicherheit & vollständiger Projekt-Reset
 
-In der **linken Sidebar → Datenverwaltung & Reset**:
+In der **linken Sidebar → Daten & Sicherung** des geöffneten Projekts:
 
-- **„Jetzt vollständiges Backup erstellen“**: Geprüfter SQLite-Snapshot **inklusive sämtlicher** Dateien aus `private/` (PDF-Angebote, Belege, Kassenzettel, Dokumente) in deinem gewählten Ordner. Kredit-, Zahlungs- und Angebotsdaten befinden sich vollständig in der Datenbank.
-- **„Projekt vollständig zurücksetzen“**: Nach Ankreuzen einer Bestätigung und Eingabe von `ALLE DATEN LÖSCHEN` wird **zuerst zwingend ein geprüftes vollständiges Backup** erstellt. Nur bei Erfolg werden Aufgaben, Angebote, Kosten, Rechnungen, Finanzierung, eigene Kategorien, Kontakte, hochgeladene Dateien usw. aus der aktuellen Installation gelöscht. Übrig bleiben das Datenbankschema samt Alembic-Migrationshistorie, die eingebauten Standardkategorien und ein leeres Projektbudget. Nach Neustart erscheinen **keine alten Beispielaufgaben** erneut.
+- **Projektbackup erstellen**: Geprüfte portable ZIP-Sicherung ausschließlich des geöffneten Projekts einschließlich seiner Stammdaten, Historien und referenzierten Originaldateien. Sicherungslisten und Aufbewahrung sind nach Projekt-ID getrennt. Siehe [Projektbackups](docs/project-backups.md).
+- **„Projekt vollständig zurücksetzen“**: Nach Ankreuzen einer Bestätigung und Eingabe von `ALLE DATEN LÖSCHEN` wird **zuerst zwingend ein geprüftes vollständiges Backup** erstellt. Nur bei Erfolg werden Aufgaben, Angebote, Kosten, Rechnungen, Finanzierung, eigene Kategorien, Kontakte, hochgeladene Dateien usw. ausschließlich aus dem geöffneten Projekt gelöscht. Andere Projekte bleiben unverändert. Übrig bleiben das Datenbankschema samt Alembic-Migrationshistorie, die eingebauten Standardkategorien und ein leeres Projektbudget. Nach Neustart erscheinen **keine alten Beispielaufgaben** erneut.
 - Alle **Backup-ZIP-Dateien bleiben unangetastet**. Die Backup-Zielkonfiguration bleibt bestehen. Der vollständige Reset ist aus Sicherheitsgründen nur für **lokales SQLite** und Aufrufe auf diesem Rechner erlaubt; bei PostgreSQL/NAS wird er abgewiesen.
 - Fehlt der Sicherungsordner, ist er nicht erreichbar, ist die DB beschädigt oder schlägt die ZIP-Prüfung fehl, wird **nichts gelöscht**.
 
-**Wiederherstellung:** Anwendung beenden und `python3 backup_manager.py restore "/Pfad/zum/Backup.zip" --yes` ausführen, anschließend `sh start_mac_linux.sh`. Ein Backup sollte gelegentlich auf einem separaten Medium getestet werden. Für regelmäßige Backups auf dem Mac steht der per `sh mac/backup-setup.sh` eingerichtete tägliche LaunchAgent bereit (solange der Mac eingeschaltet ist). Die letzten 30 erfolgreichen Versionen bleiben normalerweise erhalten.
+**Projekt wiederherstellen:** Im zugehörigen Projekt unter „Daten & Sicherung“ das Projektbackup prüfen und die Wiederherstellung ausdrücklich bestätigen. Backups anderer Projekte werden abgewiesen. Die Wiederherstellung ersetzt ausschließlich dieses Projekt.
+
+**Administrative Systemsicherungen** über CLI, den täglichen Mac-LaunchAgent oder vor Schema-Upgrades umfassen dagegen bewusst die gesamte Installation. Nur solche Systemsicherungen werden bei beendeter Anwendung über `python3 backup_manager.py restore "/Pfad/zum/Systembackup.zip" --yes` zurückgespielt. Sie gehören nicht in den Projekt-Restore. Sicherungen regelmäßig getrennt vom aktiven Datenbestand aufbewahren und die Wiederherstellung auf einem separaten System prüfen.
 
 Die alten Excel-Kostenplanvorlagen und ihr automatischer Import sind **entfernt**. Der Kostenplan wird manuell gepflegt; bereits existierende Budgetpositionen werden durch den Code-Update **nicht automatisch gelöscht**. Ein vollständiger Reset leert auch diese Daten. Der CSV-Export des eigenen Kostenplans bleibt erhalten. Alte Backup-ZIPs lassen sich weiter prüfen; beim Restore wird die inzwischen überflüssige Excel-Initialdatei nicht wieder importiert.
 

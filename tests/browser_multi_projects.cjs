@@ -93,7 +93,10 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
       .locator("dialog.phb-messagebox[open]")
       .getByRole("button", { name: "Bestätigen", exact: true })
       .click();
+    // Wait for the asynchronous completion/reload before closing its busy dialog.
+    await frame.locator("#completePhase").waitFor({ state: "hidden" });
     await frame.locator("#closePhaseDialog").click();
+    await frame.locator("#phaseDialog").waitFor({ state: "hidden" });
     await frame
       .locator('.phase-bar.is-complete[data-phase-id="' + phase.id + '"]')
       .waitFor();

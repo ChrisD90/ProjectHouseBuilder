@@ -141,6 +141,7 @@ class Project(db.Model):
     kind=db.Column(db.String(80),nullable=False,default='Sanierung')
     description=db.Column(db.String(2000),nullable=False,default='')
     created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
+    archived_at=db.Column(db.DateTime,nullable=True)
 
 
 class Setting(db.Model):
@@ -521,14 +522,17 @@ def phase_dict(row):
 def initialize():
     # Additive migration for existing SQLite/PostgreSQL user databases (never drop old entries).
     existing=sa_inspect(db.engine)
+    had_project_registry=existing.has_table('project')
     if existing.has_table('task') and 'project_id' not in {c['name'] for c in existing.get_columns('task')}:
         archive=_backup_before_project_upgrade()
         from project_schema import upgrade_project_schema
         with db.engine.begin() as connection: upgrade_project_schema(connection)
     db.create_all()
+    from project_lifecycle import ensure_project_lifecycle_schema
+    ensure_project_lifecycle_schema(db.session.connection())
     from project_work import ensure_work_archive_schema
     ensure_work_archive_schema(db.session.connection())
-    if db.session.scalar(select(Project.id).limit(1)) is None:
+    if not had_project_registry and db.session.scalar(select(Project.id).limit(1)) is None:
         db.session.add(Project(id=1,title='Mein bestehendes Projekt',kind='Sanierung',description='Bisherige Projektdaten'))
         db.session.commit()
         if db.engine.dialect.name=='postgresql':
@@ -4654,7 +4658,9 @@ ReceiptCancellation, ReceiptCancellationReversal = register_cancellations(
 PlanningBrowserState, planning_get, planning_put, planning_pop = register_planning_state(db)
 install_project_scope(app,db,Project)
 register_project_routes(app,db,Project,initialize=seed_project_defaults,
-    summary=budget_summary,Task=Task,CostItem=CostItem,ProjectWork=ProjectWork)
+    summary=budget_summary,Task=Task,CostItem=CostItem,ProjectWork=ProjectWork,
+    categories=CATEGORIES,trades=DEFAULT_TRADES,
+    operation_busy=lambda owner: _BACKUP_RESTORE_LOCK.locked() and _BACKUP_RESTORE_STATE.get('project_id')==owner)
 
 _BACKUP_RESTORE_LOCK=Lock()
 _BACKUP_RESTORE_STATE={'state':'idle','message':'','result':None}
