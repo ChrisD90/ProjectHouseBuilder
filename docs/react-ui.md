@@ -8,16 +8,17 @@ Der gemeinsame Rahmen verwendet React, TypeScript, React Router und Mantine; Ser
 
 Bereits als native React-/Mantine-Komponenten umgesetzt:
 
+- To-dos & Notizen: freie oder kontextbezogene Einträge, Quellenverknüpfung, Fälligkeit, Abschließen/Wiederöffnen und Bearbeiten. Angebotseinträge erscheinen zusätzlich direkt im Angebotsdialog; dort werden dieselben Datensätze verwendet.
 - Stammdaten: Firmen mit allen Kontaktfeldern, Gewerke und Kategorien, Suchen, Umbenennen, Löschen und Standardlisten wiederherstellen. ChatGPT-Recherche bleibt eine ausdrückliche Aktion; Ergebnisse werden vor dem Speichern ausgewählt und geprüft. Rückkehr zu einem zwischengespeicherten Rechnungsentwurf bleibt möglich.
 - Kosten & Budget: aggregierte Kennzahlen, Abrechnungskette, Hinweise, Gruppierung, Suche und Aufschlüsselung bis zu den Originalquellen. Keine neue Uploadstrecke und keine zusätzliche Buchungslogik.
-- Energetische Planung: manuelle Förderdatenerfassung mit Beträgen, Status, Fristen, Quellen und Zuordnung zu Angebot/Budgetposition.
+- Energetische Planung: manuelle Förderdatenerfassung mit Beträgen, Status, Fristen, Quellen und Zuordnung zu Angebot/Budgetposition. Förderunterlagen nutzen den vorhandenen Dokumenten-Upload. Ein ausdrücklicher KI-Fördercheck mit Voraussetzungen und Quellen ist für BAFA-Gebäudehülle und KfW 458 verfügbar; siehe [Förderprüfung](funding-estimates.md).
 - Dokumente: Projektunterlagen, Metadatenpflege, Suche und Filter sowie die verknüpfte Originalbibliothek. Lokaler Upload im Vorder- oder Hintergrund mit anschließender Metadatenprüfung und gemeinsamem Jobstatus.
 
 Bauzeitenplan, Angebote, Rechnungen, Finanzierung sowie Datensicherung verwenden in dieser ersten Stufe ihre bestehenden Fachmasken. Sie laufen in getrennten Same-Origin-Dokumenten innerhalb des neuen Rahmens. Damit bleiben insbesondere Positionsprüfung, Angebotsannahme, Rechnungsbuchung, Zahlungen, Storno, Kreditverwendung, Mittelabruf samt PDF/ZIP und Wiederherstellung erhalten. **Diese Masken sind noch nicht auf native Mantine-Komponenten portiert.**
 
 Die Übergangsgrenze ist explizit: kein Abfangen oder Ersetzen von `document`/`window`, kein zusammengesetztes Ausführen alter Skripte und kein Auswerten fremder HTML-Skripte. Jede Fachmaske hat ihr eigenes Dokument und ihre eigenen Variablen. Ein kleiner `embed.js`-Adapter vermittelt Navigation, Theme, Status und gemeinsame Uploaddienste. Bereits besuchte Masken bleiben geladen; eine andere Beleg-ID wird verborgen vorbereitet, bevor die Ansicht wechselt. Login und Dateidownloads bleiben serverseitig geschützt.
 
-Die vorhandenen Flask-APIs validieren weiterhin alle fachlichen Änderungen. Der Frontendumbau führt keine Datenmigration ein. Der Förder-GET liefert zusätzlich die bereits bestehenden Recherchequellen für die neue Darstellung.
+Die vorhandenen Flask-APIs validieren weiterhin alle fachlichen Änderungen. Der ursprüngliche Frontendumbau benötigte keine Datenmigration. Die Erweiterung um To-dos, Förderkontext und Annahmerücknahmen ergänzt mit Revision 0026 vier Tabellen; der bestehende Mac-Migrationsstarter sichert eine vorhandene Datenbank vor dem Upgrade. Der Förder-GET liefert zusätzlich die bereits bestehenden Recherchequellen für die neue Darstellung.
 
 ## Start und Build
 
@@ -56,3 +57,11 @@ PHB_TEST_URL=http://127.0.0.1:5058 npm --prefix frontend run test:browser
 Der Browserlauf legt Firmen, Förderungen, Projektdokumente, Arbeitspakete, Kredite und eine lokal eingelesene und gebuchte Testrechnung an. Er darf nicht gegen das echte Bauprojekt laufen. `CHROMIUM_PATH` kann einen bereits installierten Browser angeben. Geprüft werden wiederholte Navigation mit derselben Sidebar-/Dienstinstanz, Entwurfswarnung bei Zurück, Native-Speichervorgänge, echter lokaler Upload mit anschließender Prüfung, erhaltene Arbeitspaket-/Kreditaktionen, Browserhistorie, Dark Mode und mobile Navigation ohne horizontales Überlaufen. Weitere Fälle prüfen einen fehlgeschlagenen Ansichtsaufruf mit erneutem Laden sowie den ChatGPT-Verbindungsdialog über einem Firmenentwurf. Vorder- und Hintergrundverarbeitung werden beide geprüft. Die Angebotsprüfung deckt außerdem das vollständige Schließen nach erfolgreichem Entwurfs-Löschen, den Erhalt bei Abbruch/Fehler und den direkten Link zur Kategorienverwaltung ab. OAuth und reale ChatGPT-Anfragen werden dabei nicht ausgelöst; der Verbindungstest nutzt simulierte Antworten.
 
 Automatisiert geprüft ist Chromium. Safari auf dem Intel-Mac sowie reale NAS-/Netzwerklatenzen bleiben Bestandteil des Nutzertests. Der nächste Migrationsschritt kann einzelne erhaltene Fachmasken durch React-Komponenten ersetzen, ohne den Rahmen oder die Server-APIs erneut umzubauen.
+
+Zusätzlicher Browserlauf für die neuen Fachaktionen (ebenfalls nur Wegwerfprojekt):
+
+```sh
+PHB_TEST_URL=http://127.0.0.1:5059 npm --prefix frontend run test:browser:features
+```
+
+Er prüft Angebot ↔ zentrale To-dos, Annahmerücknahme im Editor, Förderunterlagen mit Rückkehr nach Metadatenprüfung, vorausgesetzte Zustimmung und explizite Übernahme einer simulierten KI-Schätzung. Reale ChatGPT-Aufrufe erfolgen dabei nicht.

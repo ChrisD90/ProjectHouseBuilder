@@ -468,7 +468,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         path=LOAN_DOCUMENT_ROOT/d.stored_name
         if not path.is_file():
             return jsonify(error='Gespeichertes Originaldokument fehlt.'),404
-        response=send_file(path,as_attachment=True,download_name=d.original_name)
+        response=send_file(path,as_attachment=not(request.args.get('inline')=='1' and path.suffix.lower()=='.pdf'),download_name=d.original_name)
         response.headers['Cache-Control']='no-store'
         response.headers['X-Content-Type-Options']='nosniff'
         return response
@@ -768,7 +768,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         if not row or not row.stored_name:return jsonify(error='Verwendungsnachweis nicht gefunden.'),404
         path=USAGE_DOCUMENT_ROOT/row.stored_name
         if not path.is_file():return jsonify(error='Gespeicherter Verwendungsnachweis fehlt.'),404
-        response=send_file(path,as_attachment=True,download_name=row.original_name);response.headers['Cache-Control']='no-store';return response
+        response=send_file(path,as_attachment=not(request.args.get('inline')=='1' and path.suffix.lower()=='.pdf'),download_name=row.original_name);response.headers['Cache-Control']='no-store';return response
 
     @app.delete('/api/financing/usages/<int:usage_id>')
     def loan_usage_reverse(usage_id):
@@ -865,7 +865,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         if not document:return jsonify(error='Auszahlungsformular nicht gefunden.'),404
         path=EVENT_DOCUMENT_ROOT/document.stored_name
         if not path.is_file():return jsonify(error='Gespeichertes Auszahlungsformular fehlt.'),404
-        response=send_file(path,as_attachment=True,download_name=document.original_name)
+        response=send_file(path,as_attachment=not(request.args.get('inline')=='1' and path.suffix.lower()=='.pdf'),download_name=document.original_name)
         response.headers['Cache-Control']='no-store';return response
 
     @app.delete('/api/financing/events/<int:eid>')

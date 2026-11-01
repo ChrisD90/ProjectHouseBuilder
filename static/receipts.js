@@ -260,6 +260,7 @@ function inputs({booking=false}={}){
 }
 function fillSelect(node,values,getTitle){node.innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${safe(getTitle(x))}</option>`).join('')}
 window.PHBPageRefresh=()=>reload(selected,receiptDialog.open);
+window.PHBPageActivate=()=>{const id=Number(new URLSearchParams(location.search).get('receipt_id'));if(id&&!receiptDialog.open&&list.some(x=>x.id===id))return open(id);};
 async function reload(keepId=selected,reopen=true){
  const [r,c]=await Promise.all([api('/api/receipts'),api('/api/costs')]);overview=c;list=r.receipts;
  $('receiptTrade').innerHTML='<option value="">Ohne Gewerk</option>'+(r.trades||[]).map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('');
@@ -326,7 +327,7 @@ async function open(id){
  }
  updateInvoiceControls();
  const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();
- $('original').href='/api/receipts/'+id+'/download';$('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
+ $('original').href='/api/receipts/'+id+'/preview';$('original').target='_blank';$('original').rel='noopener';$('receiptWorkLink').href='/aufgaben?source_type=receipt&source_id='+id+'&new=todo';$('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
  $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Daten bleiben bearbeitbar; Original und Historie bleiben erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Rechnungsdaten können weiterhin geprüft und korrigiert werden.':'Entwurf: Du kannst jederzeit zwischenspeichern, auch ohne Firma, Betrag oder Zahlungsziel.');
  }catch(e){notice(e.message,true)}

@@ -1,9 +1,11 @@
 """Manual funding records, linked to offers/budget without changing gross costs."""
+import json
 from datetime import date
 from urllib.parse import urlsplit
 from flask import jsonify, render_template, request
 from sqlalchemy import select
 from cost_plan_parser import amount
+from funding_estimates import clean_inputs
 
 SOURCES = [
     {'name': 'KfW – Förderung bestehender Immobilien', 'url': 'https://www.kfw.de/inlandsfoerderung/Privatpersonen/Bestehende-Immobilie/',
@@ -18,7 +20,7 @@ SOURCES = [
 STATUSES = ('In Prüfung', 'Beantragt', 'Bewilligt', 'Ausgezahlt', 'Abgelehnt')
 
 
-def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary, CostItem):
+def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary, CostItem, ProjectDocument):
     class FundingDetail(db.Model):
         __tablename__ = 'funding_detail'
         funding_id = db.Column(db.Integer, db.ForeignKey('funding.id'), primary_key=True)
@@ -32,11 +34,24 @@ def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary
         offer_id = db.Column(db.Integer, db.ForeignKey('offer.id'), nullable=True)
         budget_line_id = db.Column(db.Integer, db.ForeignKey('budget_line.id'), nullable=True)
 
+    class FundingAssessment(db.Model):
+        __tablename__ = 'funding_assessment'
+        funding_id = db.Column(db.Integer, db.ForeignKey('funding.id'), primary_key=True)
+        inputs = db.Column(db.Text, nullable=False, default='{}')
+
+    class FundingDocument(db.Model):
+        __tablename__ = 'funding_document'
+        funding_id = db.Column(db.Integer, db.ForeignKey('funding.id'), primary_key=True)
+        document_id = db.Column(db.Integer, db.ForeignKey('project_document.id'), primary_key=True)
+
     def serialize(item):
         result = {key: getattr(item, key) for key in ('id', 'name', 'expected', 'confirmed', 'received', 'notes')}
         detail = db.session.get(FundingDetail, item.id)
         for key in ('provider', 'program', 'status', 'deadline', 'applied_on', 'reference', 'source_url', 'offer_id', 'budget_line_id'):
             result[key] = getattr(detail, key) if detail else ('In Prüfung' if key == 'status' else None if key.endswith('_id') else '')
+        assessment = db.session.get(FundingAssessment, item.id)
+        result['assessment_inputs'] = json.loads(assessment.inputs) if assessment else {}
+        result['document_ids'] = list(db.session.scalars(select(FundingDocument.document_id).where(FundingDocument.funding_id == item.id)))
         return result
 
     def apply_fields(item, data):
@@ -76,6 +91,20 @@ def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary
                 if value and (not isinstance(value, str) or date.fromisoformat(value).isoformat() != value):
                     raise ValueError('Ungültiges Datum.')
                 setattr(detail, key, value)
+        if 'assessment_inputs' in data:
+            fields = clean_inputs(data['assessment_inputs'])
+            record = db.session.get(FundingAssessment, item.id)
+            if record is None:
+                record = FundingAssessment(funding_id=item.id); db.session.add(record)
+            record.inputs = json.dumps(fields, ensure_ascii=False)
+        if 'document_ids' in data:
+            ids = data['document_ids']
+            if not isinstance(ids, list) or len(ids) > 30 or any(type(i) is not int or i <= 0 or db.session.get(ProjectDocument, i) is None for i in ids):
+                raise ValueError('Ungültige Förderunterlagen.')
+            for link in db.session.scalars(select(FundingDocument).where(FundingDocument.funding_id == item.id)):
+                db.session.delete(link)
+            db.session.flush()
+            for ident in set(ids): db.session.add(FundingDocument(funding_id=item.id, document_id=ident))
         for key, model in [('offer_id', Offer), ('budget_line_id', BudgetLine)]:
             if key in data:
                 value = data[key]
@@ -95,7 +124,11 @@ def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary
                   for x in db.session.scalars(select(Offer)).all()]
         lines = [dict(id=x.id, title=x.title, category=x.category) for x in db.session.scalars(select(BudgetLine)) if not x.is_group]
         summary = budget_summary(db.session.scalars(select(CostItem)).all())
-        return jsonify(funding=funding, offers=offers, budget_lines=lines, statuses=STATUSES, sources=SOURCES,
+        linked_ids = select(FundingDocument.document_id)
+        documents = [dict(id=d.id, title=d.title, filename=d.original_name, category=d.category, extension=d.extension)
+                     for d in db.session.scalars(select(ProjectDocument).where(
+                         (ProjectDocument.area == 'Energetische Planung') | ProjectDocument.id.in_(linked_ids)).order_by(ProjectDocument.id.desc()))]
+        return jsonify(documents=documents, funding=funding, offers=offers, budget_lines=lines, statuses=STATUSES, sources=SOURCES,
                        summary={key: summary[key] for key in ('planned', 'funding_expected', 'funding_confirmed', 'net_after_confirmed')},
                        received=round(sum(x['received'] for x in funding), 2))
 
@@ -107,6 +140,8 @@ def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary
             return jsonify(error='Förderung nicht gefunden.'), 404
         try:
             if request.method == 'DELETE':
+                db.session.query(FundingDocument).filter_by(funding_id=item.id).delete()
+                db.session.query(FundingAssessment).filter_by(funding_id=item.id).delete()
                 detail = db.session.get(FundingDetail, item.id)
                 if detail:
                     db.session.delete(detail); db.session.flush()
@@ -119,4 +154,4 @@ def register_energy_planning(app, db, Funding, Offer, BudgetLine, budget_summary
             db.session.rollback()
             return jsonify(error=str(exc)), 400
 
-    return FundingDetail, serialize
+    return FundingDetail, FundingAssessment, FundingDocument, serialize

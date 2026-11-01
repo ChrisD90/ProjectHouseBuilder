@@ -13,6 +13,7 @@ async function api(path,options={}){const res=await fetch(path,{...options,heade
 async function reload(){try{project=await api('/api/project');render();document.dispatchEvent(new CustomEvent('phb-schedule-updated',{detail:{taskCount:project.tasks.length}}))}catch(e){message(e.message)}}
 window.reloadSchedule=reload;
 window.PHBPageRefresh=()=>reload();
+window.PHBPageActivate=()=>{if($('overlay').open||$('phaseForm').closest('dialog').open)return;const q=new URLSearchParams(location.search);if(project.tasks.some(t=>t.id===Number(q.get('task_id'))))openTask(Number(q.get('task_id')));else if(project.phases.some(p=>p.id===Number(q.get('phase_id'))))openPhase(Number(q.get('phase_id')),true);};
 function renderScheduleStart(){
  const empty=project.tasks.length===0;
  $('aiSchedulePanel').hidden=!empty||!Boolean(window.PHBAI?.connected());
@@ -104,7 +105,7 @@ function openTask(id){if(taskBusy||ganttBusy)return;editing=id;let t=project.tas
  const completed=t.status==='Erledigt';$('taskLockNotice').hidden=!completed;
  for(const field of f.querySelectorAll('input,select,textarea'))field.disabled=completed&&!['notes','predecessors','successors'].includes(field.name);
  $('delete').disabled=completed;$('delete').style.display=completed||!id?'none':'block';$('complete').hidden=!id||completed;
- $('reopenTask').hidden=!completed;$('taskForm').querySelector('button[type=submit]').hidden=completed;
+ $('taskWorkLink').hidden=!id;$('taskWorkLink').href='/aufgaben?source_type=task&source_id='+id+'&new=todo';$('reopenTask').hidden=!completed;$('taskForm').querySelector('button[type=submit]').hidden=completed;
  $('cancel').textContent=completed?'Schließen':'Abbrechen';taskFlow.open();document.dispatchEvent(new CustomEvent('phb-task-opened',{detail:{id,completed}}))}
 const taskFlow=PHBFlow.manage({dialog:'overlay',forms:['taskForm'],dismiss:['cancel','closeTask'],isBusy:()=>taskBusy,onClose:()=>{window.PHBTaskCompletion?.closed();if(phaseFlow.dialog.open)renderPhaseTaskDetails(Number($('phaseForm').elements.id.value))}});
 function closeModal(){taskFlow.finish();}
@@ -274,7 +275,7 @@ $('delete').onclick=async()=>{
  await mutateTask('/api/tasks/'+editing,'DELETE',undefined,'Arbeitspaket gelöscht; Abhängigkeiten verbunden');
 };
 $('today').onclick=()=>{const container=document.querySelector('.ganttwrap'),host=$('gantt');const n=diff(host.dataset.origin||project.start,new Date().toISOString().slice(0,10));container.scrollLeft=Math.max(0,n*Number(host.dataset.daySize||26)-160)};
-reload().then(()=>{if(new URLSearchParams(location.search).get('firmenvorschlaege')==='1')$('companySuggestions').click();});
+reload().then(()=>{const q=new URLSearchParams(location.search);if(q.get('firmenvorschlaege')==='1')$('companySuggestions').click();if(project.tasks.some(t=>t.id===Number(q.get('task_id'))))openTask(Number(q.get('task_id')));else if(project.phases.some(p=>p.id===Number(q.get('phase_id'))))openPhase(Number(q.get('phase_id')),true);});
 document.addEventListener('phb-ai-status',renderScheduleStart);
 
 function syncBulkSelection(){

@@ -93,7 +93,7 @@ def logout():
 
 # React owns the shared frame; the reviewed classic workflows remain available
 # as isolated same-origin documents while their native components are migrated.
-REACT_ROUTES={'/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten'}
+REACT_ROUTES={'/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben'}
 
 @app.before_request
 def react_frontend():
@@ -1216,7 +1216,7 @@ def document_library():
                         'description':ld.notes or '',
                         'date':ld.uploaded_at.isoformat() if ld.uploaded_at else '',
                         'download_url':f'/api/financing/loans/{ld.loan_id}/documents/{ld.id}/download',
-                        'view_url':None,'module_url':f'/finanzierung?loan_id={ld.loan_id}'})
+                        'view_url':f'/api/financing/loans/{ld.loan_id}/documents/{ld.id}/download?inline=1' if Path(ld.original_name).suffix.lower()=='.pdf' else None,'module_url':f'/finanzierung?loan_id={ld.loan_id}'})
     for usage in db.session.scalars(select(LoanUsage).where(LoanUsage.stored_name!='')).all():
         entries.append({'source':'Finanzierung','id':'loan-usage-'+str(usage.id),
                         'title':usage.purpose,'filename':usage.original_name,
@@ -1224,7 +1224,7 @@ def document_library():
                         'description':usage.notes or '',
                         'date':usage.created_at.isoformat() if usage.created_at else '',
                         'download_url':f'/api/financing/usages/{usage.id}/document',
-                        'view_url':None,'module_url':'/finanzierung'})
+                        'view_url':f'/api/financing/usages/{usage.id}/document?inline=1' if Path(usage.original_name).suffix.lower()=='.pdf' else None,'module_url':'/finanzierung'})
     entries.sort(key=lambda entry:(entry['date'],entry['id']),reverse=True)
     response=jsonify(documents=entries,total=len(entries))
     response.headers['Cache-Control']='no-store'
@@ -1320,6 +1320,7 @@ def project_document_delete(did):
     record=db.session.get(ProjectDocument,did)
     if not record:return jsonify(error='Dokument nicht gefunden.'),404
     path=PROJECT_DOCUMENT_ROOT/record.stored_name
+    db.session.query(FundingDocument).filter_by(document_id=did).delete()
     db.session.delete(record)
     db.session.commit()
     path.unlink(missing_ok=True)
@@ -2295,7 +2296,7 @@ def export_csv():
 
 @app.get('/api/backup.json')
 def backup():
-    return Response(json.dumps({'start':setting('start'),'phases':[phase_dict(x) for x in db.session.scalars(select(BuildPhase).order_by(BuildPhase.position,BuildPhase.id))],'tasks':serialize(all_tasks()),'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))], 'budget_lines':[budget_dict(x) for x in all_budget_lines()], 'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))], 'contractors':[as_dict(x,CONTACT_FIELDS) for x in db.session.scalars(select(Contractor))], 'documents':[document_dict(x) for x in db.session.scalars(select(Document))], 'offers':[offer_dict(x) for x in db.session.scalars(select(Offer))]},ensure_ascii=False,indent=2),mimetype='application/json',headers={'Content-Disposition':'attachment; filename=Sanierungsprojekt_Backup.json'})
+    return Response(json.dumps({'start':setting('start'),'phases':[phase_dict(x) for x in db.session.scalars(select(BuildPhase).order_by(BuildPhase.position,BuildPhase.id))],'tasks':serialize(all_tasks()),'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))], 'budget_lines':[budget_dict(x) for x in all_budget_lines()], 'work_items':[project_work_dict(x) for x in db.session.scalars(select(ProjectWork))], 'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))], 'contractors':[as_dict(x,CONTACT_FIELDS) for x in db.session.scalars(select(Contractor))], 'documents':[document_dict(x) for x in db.session.scalars(select(Document))], 'offers':[offer_dict(x) for x in db.session.scalars(select(Offer))]},ensure_ascii=False,indent=2),mimetype='application/json',headers={'Content-Disposition':'attachment; filename=Sanierungsprojekt_Backup.json'})
 
 COST_FIELDS={'category','title','contractor_id','task_id','budget_line_id','selected','kind','state','estimate','offer','committed','paid','own_hours','own_hourly','source_ref','notes'}
 CONTACT_FIELDS={'trade','name','contact','contact_secondary','phone','mobile','phone_other','email','website','address','notes'}
@@ -2956,6 +2957,7 @@ def list_offer_versions(offer_id):
 
 def offer_dict(o):
     acceptance=_order_acceptance(o)
+    reversals=[dict(reversed_at=x.reversed_at.isoformat(),agreed_gross=float(x.agreed_gross),document_id=x.confirmation_document_id) for x in db.session.scalars(select(OfferAcceptanceReversal).where(OfferAcceptanceReversal.offer_id==o.id).order_by(OfferAcceptanceReversal.id.desc()))]
     acceptance_json=({'id':acceptance.id,'mode':acceptance.mode,
         'quoted_gross':float(acceptance.quoted_gross),
         'agreed_gross':float(acceptance.agreed_gross),
@@ -2963,7 +2965,7 @@ def offer_dict(o):
         'created_at':acceptance.created_at.isoformat() if acceptance.created_at else ''}
         if acceptance else None)
     deletion_reason=_offer_deletion_reason(o)
-    return {'acceptance':acceptance_json,'agreed_gross':_contract_gross(o),
+    return {'acceptance_reversals':reversals,'acceptance':acceptance_json,'agreed_gross':_contract_gross(o),
             'can_delete':not deletion_reason,'deletion_reason':deletion_reason,
             'id':o.id,'number':o.number,'vendor':o.vendor,'filename':o.filename,
             'issued':o.issued,'expires':o.expires,'net':o.net,'vat':o.vat,'gross':o.gross,
@@ -4409,12 +4411,15 @@ def download_document(doc_id):
     if not row:return jsonify(error='Dokument nicht gefunden.'),404
     p=DOCUMENT_ROOT/row.stored_name
     if not p.is_file():return jsonify(error='Datei fehlt auf diesem Rechner.'),404
-    return send_file(p,as_attachment=True,download_name=row.original_name)
+    return send_file(p,as_attachment=not(request.args.get('inline')=='1' and p.suffix.lower()=='.pdf'),download_name=row.original_name)
 
 @app.delete('/api/documents/<int:doc_id>')
 def delete_document(doc_id):
     row=db.session.get(Document,doc_id)
     if not row:return jsonify(error='Dokument nicht gefunden.'),404
+    if (db.session.scalar(select(OrderAcceptance.id).where(OrderAcceptance.confirmation_document_id==doc_id).limit(1))
+        or db.session.scalar(select(OfferAcceptanceReversal.id).where(OfferAcceptanceReversal.confirmation_document_id==doc_id).limit(1))):
+        return jsonify(error='Auftragsbestätigung bleibt als Annahme-/Rücknahmenachweis erhalten.'),409
     if db.session.scalar(select(CostPlanImport.id).where(CostPlanImport.document_id==doc_id).limit(1)):
         return jsonify(error='Original einer Kostenplanung ist als Importnachweis geschützt.'),409
     if db.session.scalar(select(Offer.id).where(Offer.document_id==doc_id).limit(1)) or db.session.scalar(select(OfferVersion.id).where(OfferVersion.document_id==doc_id).limit(1)):
@@ -4455,7 +4460,7 @@ def project_archive():
             'tasks':serialize(all_tasks()),
             'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))],
             'budget_lines':[budget_dict(x) for x in all_budget_lines()],
-            'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))],
+            'work_items':[project_work_dict(x) for x in db.session.scalars(select(ProjectWork))], 'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))],
             'contractors':[as_dict(x,CONTACT_FIELDS) for x in db.session.scalars(select(Contractor))],
             'documents':[document_dict(x) for x in db.session.scalars(select(Document))],
             'offers':[offer_dict(x) for x in db.session.scalars(select(Offer))]
@@ -4552,8 +4557,25 @@ LoanDrawdown, LoanDrawdownItem, list_loan_drawdowns = register_loan_drawdowns(
 
 
 from energy_planning import register_energy_planning
-FundingDetail, energy_funding_dict = register_energy_planning(
-    app, db, Funding, Offer, BudgetLine, budget_summary, CostItem)
+FundingDetail, FundingAssessment, FundingDocument, energy_funding_dict = register_energy_planning(
+    app, db, Funding, Offer, BudgetLine, budget_summary, CostItem, ProjectDocument)
+from funding_estimates import register_funding_estimates
+register_funding_estimates(app, db, Offer, ProjectDocument,
+    contract_gross=_contract_gross, ai_required=_ai_request_required, chatgpt=chatgpt, extract_json=extract_json)
+from offer_reversals import register_offer_reversals
+OfferAcceptanceReversal = register_offer_reversals(app, db, Offer, CostItem, OrderAcceptance,
+    has_dependencies=_offer_has_dependencies, sync_costs=_sync_offer_costs,
+    sync_version=_sync_current_version, serialize=offer_dict)
+from project_work import register_project_work
+ProjectWork, project_work_dict = register_project_work(app, db, {
+    'offer': (Offer, lambda x: 'Angebot · '+x.vendor, lambda x: '/angebote?offer_id='+str(x.id)),
+    'receipt': (Receipt, lambda x: 'Beleg · '+(x.supplier or x.original_name), lambda x: '/belege?receipt_id='+str(x.id)),
+    'task': (Task, lambda x: 'Arbeitspaket · '+x.name, lambda x: '/?task_id='+str(x.id)),
+    'phase': (BuildPhase, lambda x: 'Bauphase · '+x.title, lambda x: '/?phase_id='+str(x.id)),
+    'funding': (Funding, lambda x: 'Förderung · '+x.name, lambda x: '/energieplanung?funding_id='+str(x.id)),
+    'loan': (Loan, lambda x: 'Kredit · '+x.name, lambda x: '/finanzierung?loan_id='+str(x.id)),
+    'document': (ProjectDocument, lambda x: 'Dokument · '+x.title, lambda x: '/dokumente?document_id='+str(x.id)),
+})
 from cost_plan_imports import register_cost_plan_imports
 CostPlanImport, cost_plan_upload = register_cost_plan_imports(
     app, db, BudgetLine, Document, document_root=lambda: DOCUMENT_ROOT,

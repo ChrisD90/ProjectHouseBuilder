@@ -122,14 +122,25 @@
     $('offerEditTitle').textContent='Angebot '+(offer.number||'#'+offer.id)+' bearbeiten';
     $('offerEditFields').innerHTML=fields(offer);
     $('offerEditError').textContent='';
+    $('reverseOfferAcceptance').hidden=!['Angenommen','Beauftragt'].includes(offer.status);
     const pane=$('offerEditPdfPane'),frame=$('offerEditPdfFrame');
     pane.hidden=!offer.document_id;
     if(offer.document_id){
       frame.src='/api/documents/'+offer.document_id+'/preview';
-      $('offerEditPdfDownload').href='/api/documents/'+offer.document_id+'/download';
+      $('offerEditPdfDownload').href='/api/documents/'+offer.document_id+'/preview';
     }else frame.removeAttribute('src');
     editFlow.open();
   }
+  $('reverseOfferAcceptance').onclick=async()=>{
+    if(!editingOfferId||offerEditBusy)return;
+    if(editFlow.dirty()){await PHBUI.alert('Bitte Änderungen zuerst speichern oder verwerfen und das Angebot erneut bearbeiten.');return;}
+    if(!await PHBUI.confirm('Annahme zurücknehmen? Der Auftrag wird aus der Kostenplanung entfernt. Original und Rücknahmehistorie bleiben erhalten. Zugeordnete Rechnungen oder Zahlungen verhindern die Rücknahme. Dies ersetzt keine rechtliche Vertragskündigung.'))return;
+    offerEditBusy=true;
+    const controls=[...editDialog.querySelectorAll('button,input,select,textarea')],disabled=controls.map(x=>x.disabled);controls.forEach(x=>x.disabled=true);
+    try{const reversedID=editingOfferId;await request('/api/offers/'+reversedID+'/reverse-acceptance',{method:'POST',data:{confirm:true}});editFlow.finish();await reload();if(detailsDialog.open)openOfferDetails(reversedID);}
+    catch(error){$('offerEditError').textContent=error.message;}
+    finally{offerEditBusy=false;controls.forEach((x,i)=>x.disabled=disabled[i]);}
+  };
   const closeEdit=()=>{
     if(offerEditBusy)return;
     editDialog.close();
@@ -360,7 +371,7 @@
   function renderHistory(versions) {
     return versions.map(v=>{const d=v.snapshot||{};
       const label=v.state==='current'?'Aktuelle Version':v.state==='historical'?'Frühere Version':'Verworfener Entwurf';
-      const link=v.document_id?`<a href="/api/documents/${v.document_id}/download" target="_blank" rel="noopener">Original-PDF öffnen ↗</a>`:'Manuell erfasst';
+      const link=v.document_id?`<a href="/api/documents/${v.document_id}/preview" target="_blank" rel="noopener">Original-PDF öffnen ↗</a>`:'Manuell erfasst';
       return `<details class="offer-version-record"><summary><strong>Version ${v.version}: ${esc(label)}</strong><span>${fmt(d.gross)} · ${esc(d.number||'Ohne Nummer')}</span></summary>
         <div class="offer-version-record-details"><p><b>Anbieter:</b> ${esc(d.vendor)} · <b>Datum:</b> ${esc(d.issued||'–')} · <b>Kategorie:</b> ${esc(d.category||'–')}</p>
         <p><b>Netto:</b> ${fmt(d.net)} · <b>Brutto:</b> ${fmt(d.gross)} · <b>Damals:</b> ${esc(d.status||'–')}</p>
@@ -408,7 +419,7 @@
     const invoiceCount=o.billing?.linked_invoices?.length??o.billing?.invoices?.length??0;
     const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
     const actions=accepted
-      ? `<a class="mini" href="/?firmenvorschlaege=1" title="Arbeitspaket im Bauzeitenplan zuordnen">Arbeitspaket zuordnen</a><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>${o.acceptance?"":`<button class="mini" type="button" data-offer-unaccept="${o.id}">Annahme zurücknehmen</button>`}`
+      ? `<a class="mini" href="/?firmenvorschlaege=1" title="Arbeitspaket im Bauzeitenplan zuordnen">Arbeitspaket zuordnen</a><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>`
       : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
     const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${accepted?`<button class="offer-tile-icon" type="button" data-offer-invoices="${o.id}" aria-label="Zugeordnete Rechnungen anzeigen: ${invoiceCount}" title="Zugeordnete Rechnungen anzeigen">${icon('receipt')}<span class="offer-icon-badge">${invoiceCount}</span></button>`:''}${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
     return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
@@ -448,10 +459,12 @@
       <section class="offer-detail-summary">
         <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>
         ${o.notes?`<p class="offer-notes">${esc(o.notes)}</p>`:''}
-        ${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/download">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}
-        ${o.document_id?`<p><a class="mini" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Angebots-PDF öffnen</a></p>`:''}
+        ${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/preview" target="_blank" rel="noopener">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}
+        ${o.document_id?`<p><a class="mini" href="/api/documents/${o.document_id}/preview" target="_blank" rel="noopener">Angebots-PDF öffnen</a></p>`:''}
         ${o.deletion_reason?`<p class="offer-mapping">${esc(o.deletion_reason)}</p>`:''}${notice(o)}
       </section>
+      ${(o.acceptance_reversals||[]).length?`<details class="offer-details"><summary>Zurückgenommene Annahmen (${o.acceptance_reversals.length})</summary>${o.acceptance_reversals.map(r=>`<p>${esc(r.reversed_at.slice(0,10))} · ${fmt(r.agreed_gross)}${r.document_id?` · <a href="/api/documents/${r.document_id}/preview" target="_blank" rel="noopener">Frühere Auftragsbestätigung ansehen</a>`:''}</p>`).join('')}</details>`:''}
+      <details class="offer-details" data-work-type="offer" data-work-id="${o.id}"><summary>To-dos & Notizen</summary><div data-work-items aria-live="polite"></div><div class="linked-work-create"><label>Art<select data-work-kind><option value="todo">To-do</option><option value="note">Notiz</option></select></label><label>Titel<input name="work_title" data-work-title maxlength="200"></label><label>Details (optional)<textarea name="work_body" data-work-body maxlength="10000"></textarea></label><button type="button" class="mini" data-work-create>Eintrag hinzufügen</button><a href="/aufgaben">Alle To-dos & Notizen öffnen →</a></div></details>
       ${accepted?billingBlock(o):''}
       ${parsedPositions(o)}
       ${versionUpload(o)}${versionHistory(o)}`;
@@ -751,7 +764,7 @@
     openOfferDetails(Number(toggle.dataset.offerDetails));
   });
   document.addEventListener('click',async e=>{
-    const button=e.target.closest('button[data-offer-promote],button[data-offer-accept],button[data-offer-reject],button[data-offer-relist],button[data-offer-unaccept],button[data-offer-edit],button[data-offer-delete],button[data-offer-invoices]');
+    const button=e.target.closest('button[data-offer-promote],button[data-offer-accept],button[data-offer-reject],button[data-offer-relist],button[data-offer-edit],button[data-offer-delete],button[data-offer-invoices]');
     if(!button)return;
     const dataset=button.dataset;
     const key=Object.keys(dataset).find(k=>k.startsWith('offer'));
@@ -779,10 +792,7 @@
       }
       if(key==='offerReject') await changeStatus(id,'Abgelehnt');
       if(key==='offerRelist') await changeStatus(id,'Angebot');
-      if(key==='offerUnaccept'){
-        if(!await PHBUI.confirm('Annahme zurücknehmen? Das ist nur möglich, solange keine Rechnungen oder Zahlungen verknüpft sind.'))return;
-        await changeStatus(id,'Angebot');
-      }
+
       if(key==='offerDelete'){
         if(button.disabled)return;
         button.disabled=true;
@@ -828,9 +838,9 @@
   document.addEventListener('phb-import-updated',event=>{
     if(['offers','versions'].includes(event.detail.kind)&&!workflow.open)reload().catch(()=>{});
   });
-  reload().then(()=>{
+  function activateOffer(){
     const linkedOfferId=Number(new URLSearchParams(location.search).get('offer_id'));
-    if(linkedOfferId&&offers.some(offer=>offer.id===linkedOfferId)){
+    if(linkedOfferId&&!detailsDialog.open&&offers.some(offer=>offer.id===linkedOfferId)){
       requestAnimationFrame(()=>openOfferDetails(linkedOfferId));
     }
     const draftId=Number(new URLSearchParams(location.search).get('offer_draft'));
@@ -841,7 +851,9 @@
       openWorkflow(true);
       requestAnimationFrame(()=>$('offerDrafts').querySelector('[data-offer-card="'+draftId+'"],[data-version-card^="'+draftId+':"]')?.scrollIntoView({block:'nearest'}));
     }
-  }).catch(error=>{
+  }
+  window.PHBPageActivate=activateOffer;
+  reload().then(activateOffer).catch(error=>{
     $('offerList').textContent='Angebote konnten nicht geladen werden: '+error.message;
     $('offerDrafts').textContent='Verbindung zur Angebotsverwaltung fehlgeschlagen.';
   });

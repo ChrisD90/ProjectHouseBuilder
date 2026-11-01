@@ -1,5 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id);
+const fileView=(url,filename)=>/\.pdf$/i.test(filename||'')?url+(url.includes('?')?'&':'?')+'inline=1':url;
 let loanSaving=false,equityBusy=false,drawdownBusy=false,usageBusy=false,pendingLoanScan=null,drawdownOptions=null,currentDrawdown=null;
 const loanFlow=PHBFlow.manage({
  dialog:'loanDialog',forms:['loanForm'],dismiss:['closeLoan'],
@@ -67,11 +68,11 @@ function render(){
  }).join('')||'<p>Noch kein Kredit erfasst.</p>';
  $('equityList').innerHTML=state.equity.map(l=>`<article class="smallcard equity-overview-card"><div><h3>${esc(l.name)}</h3><p class="meta">Verfügbar <strong>${euro(l.balance.available)}</strong>${Number(l.reserve)>0?' · Reserve '+euro(l.reserve):''}</p></div><button type="button" data-equity="${l.id}">Verwalten</button></article>`).join('')||'<p>Noch kein Eigenkapital erfasst.</p>';
  const kinds={loan_drawdown:'Kreditauszahlung',loan_repayment:'Tilgung',loan_interest:'Zinsen',loan_fee:'Gebühren',equity_deposit:'Eigenkapital-Zugang',equity_withdrawal:'Eigenkapital-Entnahme'};
- $('events').innerHTML=state.events.map(e=>`<div class="record"><div><strong>${esc(kinds[e.kind])}</strong> · ${euro(e.amount)}<br><span>${esc(e.event_date)} · ${esc(sourceTitle(e.loan_id?'loan':'equity',e.loan_id||e.equity_id))} ${e.notes?'· '+esc(e.notes):''}${e.document?` · <a href="${esc(e.document.download_url)}">${esc(e.document.filename)}</a>`:''}</span></div>${e.kind==='loan_drawdown'&&/^Mittelabruf #/.test(e.notes||'')?'':`<button type="button" data-delete-event="${e.id}" class="danger" title="Buchung stornieren">✕</button>`}</div>`).join('');
+ $('events').innerHTML=state.events.map(e=>`<div class="record"><div><strong>${esc(kinds[e.kind])}</strong> · ${euro(e.amount)}<br><span>${esc(e.event_date)} · ${esc(sourceTitle(e.loan_id?'loan':'equity',e.loan_id||e.equity_id))} ${e.notes?'· '+esc(e.notes):''}${e.document?` · <a href="${esc(fileView(e.document.download_url,e.document.filename))}" target="_blank" rel="noopener">${esc(e.document.filename)}</a>`:''}</span></div>${e.kind==='loan_drawdown'&&/^Mittelabruf #/.test(e.notes||'')?'':`<button type="button" data-delete-event="${e.id}" class="danger" title="Buchung stornieren">✕</button>`}</div>`).join('');
  const payout={own_account:'Eigenes Konto',direct:'Direkt an Firma',reimbursement:'Eigenkapitalerstattung'};
  $('drawdownHistory').innerHTML=(state.drawdowns||[]).map(d=>`<article class="drawdown-history-row"><div><div class="drawdown-history-title"><strong>${esc(d.loan_name)} · ${euro(d.requested_amount)}</strong><span class="drawdown-status-badge status-${esc(d.status.toLowerCase())}">${esc(d.status)}</span></div><span>${esc(payout[d.payout_type]||'Eigenes Konto')} · ${d.receipt_count} Beleg${d.receipt_count===1?'':'e'}${drawdownMilestone(d)}${d.ai_prefilled?' · Vorlage mit ChatGPT zugeordnet':''}${d.rejection_reason?' · '+esc(d.rejection_reason):''}</span></div><div>${drawdownActions(d)}</div></article>`).join('')||'<p class="hint">Noch keine Mittelabrufe erstellt.</p>';
  const usageKinds={manual:'Sonstige Verwendung',receipt_payment:'Rechnung bezahlt',reimbursement:'Eigenkapital erstattet'};
- $('usageHistory').innerHTML=(state.usages||[]).map(u=>`<article class="usage-history-row ${u.status==='Zurückgenommen'?'is-reversed':''}"><div><strong>${esc(usageKinds[u.kind]||'Kreditverwendung')} · ${euro(u.amount)}</strong><span>${esc(u.usage_date)} · ${esc(u.loan_name)} · ${esc(u.purpose)}${u.receipt_name?' · '+esc(u.receipt_name):''}${u.notes?' · '+esc(u.notes):''}${u.document?` · <a href="${esc(u.document.download_url)}">${esc(u.document.filename)}</a>`:''}</span></div><div><span class="drawdown-status-badge">${esc(u.status)}</span>${u.status==='Aktiv'?`<button type="button" class="danger" data-reverse-usage="${u.id}">Zurücknehmen</button>`:''}</div></article>`).join('')||'<p class="hint">Noch keine Kreditverwendung erfasst.</p>';
+ $('usageHistory').innerHTML=(state.usages||[]).map(u=>`<article class="usage-history-row ${u.status==='Zurückgenommen'?'is-reversed':''}"><div><strong>${esc(usageKinds[u.kind]||'Kreditverwendung')} · ${euro(u.amount)}</strong><span>${esc(u.usage_date)} · ${esc(u.loan_name)} · ${esc(u.purpose)}${u.receipt_name?' · '+esc(u.receipt_name):''}${u.notes?' · '+esc(u.notes):''}${u.document?` · <a href="${esc(fileView(u.document.download_url,u.document.filename))}" target="_blank" rel="noopener">${esc(u.document.filename)}</a>`:''}</span></div><div><span class="drawdown-status-badge">${esc(u.status)}</span>${u.status==='Aktiv'?`<button type="button" class="danger" data-reverse-usage="${u.id}">Zurücknehmen</button>`:''}</div></article>`).join('')||'<p class="hint">Noch keine Kreditverwendung erfasst.</p>';
 
  fillOptions();
  document.querySelectorAll('[data-loan]').forEach(el=>el.onclick=()=>openLoan(Number(el.dataset.loan)));
@@ -85,11 +86,12 @@ function render(){
  document.querySelectorAll('[data-confirm-drawdown]').forEach(el=>el.onclick=()=>confirmDrawdown(Number(el.dataset.confirmDrawdown)));
  document.querySelectorAll('[data-reject-drawdown]').forEach(el=>el.onclick=()=>rejectDrawdown(Number(el.dataset.rejectDrawdown)));
 }
+window.PHBPageActivate=()=>{const id=Number(new URLSearchParams(location.search).get('loan_id'));if(id&&!$('loanDialog').open&&state.loans.some(x=>x.id===id))openLoan(id);};
 async function reload(){const [finance,drawdowns]=await Promise.all([api('/api/financing'),api('/api/financing/drawdowns')]);state=finance;state.drawdowns=drawdowns.drawdowns||[];render()}
 function fill(form,obj){for(const [k,v] of Object.entries(obj||{})){const f=form.elements.namedItem(k);if(f&&f.tagName!=='BUTTON'){f.value=v??'';if(f instanceof HTMLInputElement)PHBUI.currency.prepare(f);}}}
 function documentRows(loan){
  $('loanDocumentList').innerHTML=(loan.documents||[]).map(d=>`<div class="loan-doc-row">
-   <div><a href="/api/financing/loans/${loan.id}/documents/${d.id}/download">${esc(d.filename)}</a>
+   <div><a href="${fileView(`/api/financing/loans/${loan.id}/documents/${d.id}/download`,d.filename)}" target="_blank" rel="noopener">${esc(d.filename)}</a>
    <small>${d.document_type==='drawdown_template'?'<b class="doc-type">Aktive Kreditabruf-Vorlage</b> · ':''}${esc(d.notes||'Ohne Beschreibung')} · ${esc(d.uploaded_at?.slice(0,10)||'')}</small></div>
    <button type="button" class="danger" data-delete-loan-document="${d.id}" aria-label="Dokument ${esc(d.filename)} entfernen">Löschen</button>
  </div>`).join('')||'<p class="hint">Noch keine Dokumente hinterlegt.</p>';

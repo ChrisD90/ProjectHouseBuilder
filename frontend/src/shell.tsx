@@ -38,8 +38,10 @@ import { useBlocker, useLocation, useNavigate } from 'react-router-dom';
 import { error, hasWrites, useConfirm, Row } from './core';
 import { useServices } from './services';
 import { MasterData, Costs, Energy, Documents } from './pages';
+import { WorkPage } from './work';
 const items = [
   ['/', 'Bauzeitenplan', IconCalendar],
+  ['/aufgaben', 'To-dos & Notizen', IconListCheck],
   ['/kosten', 'Kosten & Budget', IconChartBar],
   ['/angebote', 'Angebote', IconFiles],
   ['/belege', 'Rechnungen & Belege', IconReceipt],
@@ -50,14 +52,14 @@ const items = [
   ['/daten', 'Daten & Sicherung', IconDatabase],
 ] as const;
 const navigationGroups = [
-  { label: 'Projekt', paths: ['/'] },
+  { label: 'Projekt', paths: ['/', '/aufgaben'] },
   {
     label: 'Finanzen',
     paths: ['/kosten', '/angebote', '/belege', '/finanzierung', '/energieplanung'],
   },
   { label: 'Verwaltung', paths: ['/dokumente', '/stammdaten', '/daten'] },
 ];
-const native = new Set(['/kosten', '/stammdaten', '/energieplanung', '/dokumente']);
+const native = new Set(['/aufgaben', '/kosten', '/stammdaten', '/energieplanung', '/dokumente']);
 const GuardContext = createContext<(guard: () => boolean) => () => void>(() => () => {});
 export function useDirtyGuard(dirty: boolean) {
   const register = useContext(GuardContext);
@@ -151,10 +153,12 @@ export function App() {
   }, [collapsed]);
   function refreshFrame(path: string) {
     try {
-      const promise = (refs.current[path]?.contentWindow as any)?.PHBEmbed?.refresh();
+      const embedded = (refs.current[path]?.contentWindow as any)?.PHBEmbed;
+      const promise = embedded?.refresh();
       if (promise) {
         setRefreshing(path);
         Promise.resolve(promise)
+          .then(() => (currentPath.current === path ? embedded.activate?.() : undefined))
           .catch(error)
           .finally(() => setRefreshing((current) => (current === path ? null : current)));
       }
@@ -276,13 +280,13 @@ export function App() {
             </Group>
           </Group>
           <Divider color="#345058" my="md" />
-          <Stack gap="sm" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          <Stack gap="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {navigationGroups.map((group, index) => (
               <section key={group.label} aria-label={group.label}>
                 {mini ? (
                   index > 0 && <Divider color="#345058" mb="sm" />
                 ) : (
-                  <Text className="sidebar-group-label" size="xs" fw={700} mb="xs" px="sm">
+                  <Text className="sidebar-group-label" size="xs" fw={700} mb={4} px="sm">
                     {group.label}
                   </Text>
                 )}
@@ -306,7 +310,7 @@ export function App() {
                         styles={{
                           root: {
                             justifyContent: mini ? 'center' : undefined,
-                            padding: mini ? '10px' : '7px 12px',
+                            padding: mini ? '8px' : '6px 12px',
                           },
                           section: { marginRight: mini ? 0 : undefined },
                         }}
@@ -412,7 +416,9 @@ export function App() {
               display: native.has(location.pathname) ? 'block' : 'none',
             }}
           >
-            {location.pathname === '/stammdaten' ? (
+            {location.pathname === '/aufgaben' ? (
+              <WorkPage />
+            ) : location.pathname === '/stammdaten' ? (
               <MasterData />
             ) : location.pathname === '/kosten' ? (
               <Costs />

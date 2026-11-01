@@ -44,6 +44,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
       .click();
     for (let i = 0; i < 2; i++)
       for (const name of [
+        "To-dos & Notizen",
         "Stammdaten",
         "Kosten & Budget",
         "Energetische Planung",

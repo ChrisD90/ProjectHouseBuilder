@@ -12,9 +12,9 @@ from pypdf import PdfReader
 from receipt_parser import extract_pdf_pages
 
 CATEGORIES = ('Bauplan', 'Technische Zeichnung', 'Technisches Datenblatt',
-              'Genehmigung', 'Versicherung', 'Vertrag', 'Protokoll', 'Sonstiges')
+              'Genehmigung', 'Versicherung', 'Vertrag', 'Protokoll', 'iSFP', 'Förderbescheid', 'Fördernachweis', 'Sonstiges')
 AREAS = ('Allgemein', 'Bauzeitenplan', 'Elektrik', 'Heizung & Sanitär',
-         'Dach & Fassade', 'Innenausbau', 'Finanzierung', 'Versicherung')
+         'Dach & Fassade', 'Innenausbau', 'Finanzierung', 'Versicherung', 'Energetische Planung')
 STATUSES = ('Aktuell', 'Entwurf', 'Überholt')
 EXTENSIONS = {'.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt', '.docx'}
 MAX_BYTES = 12 * 1024 * 1024

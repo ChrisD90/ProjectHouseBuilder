@@ -10,7 +10,7 @@ export default defineConfig(({ command }) => ({
       '/auth': 'http://127.0.0.1:5055',
       '/logout': 'http://127.0.0.1:5055',
       '/static': 'http://127.0.0.1:5055',
-      '^/(?:$|\\?|kosten(?:\\?|$)|angebote(?:\\?|$)|belege(?:\\?|$)|finanzierung(?:\\?|$)|energieplanung(?:\\?|$)|stammdaten(?:\\?|$)|dokumente(?:\\?|$)|daten(?:\\?|$))':
+      '^/(?:$|\\?|kosten(?:\\?|$)|angebote(?:\\?|$)|belege(?:\\?|$)|finanzierung(?:\\?|$)|energieplanung(?:\\?|$)|stammdaten(?:\\?|$)|dokumente(?:\\?|$)|aufgaben(?:\\?|$)|daten(?:\\?|$))':
         {
           target: 'http://127.0.0.1:5055',
           // Only retained workflow documents go to Flask. React navigation stays in Vite.

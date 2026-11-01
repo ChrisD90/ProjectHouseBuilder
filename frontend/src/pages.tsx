@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
 import {
@@ -26,6 +26,7 @@ import {
   NumberInput,
   Accordion,
   FileInput,
+  MultiSelect,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -38,6 +39,8 @@ import {
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, Row, Editor, ErrorBox, error, money, success, useConfirm } from './core';
 import { useDirtyGuard } from './shell';
+import { FundingCheck } from './funding-check';
+import { SourceWork } from './work';
 export function PageHeader({
   title,
   description,
@@ -815,6 +818,8 @@ export function Costs() {
   );
 }
 const emptyFunding: Row = {
+  assessment_inputs: {},
+  document_ids: [],
   name: '',
   provider: '',
   program: '',
@@ -831,6 +836,7 @@ const emptyFunding: Row = {
   notes: '',
 };
 export function Energy() {
+  const navigate = useNavigate();
   const query = useQuery({
       queryKey: ['energy'],
       staleTime: 0,
@@ -865,7 +871,11 @@ export function Energy() {
   useEffect(() => {
     const offer = Number(params.get('offer_id'));
     if (query.data && offer) open(null, offer);
-  }, [!!query.data]);
+  }, [!!query.data, params.get('offer_id')]);
+  useEffect(() => {
+    const row = data.funding?.find((r: Row) => r.id === Number(params.get('funding_id')));
+    if (row && !opened) open(row);
+  }, [!!query.data, params.get('funding_id')]);
   async function save(remove = false) {
     if (busy) return;
     if (remove && !(await ask('Diese Förderung endgültig löschen?'))) return;
@@ -974,6 +984,60 @@ export function Energy() {
         )}
       </Paper>
       <Paper className="paper" mt="lg">
+        <Group justify="space-between" mb="sm">
+          <div>
+            <Title order={3} size="h5">
+              Förderunterlagen
+            </Title>
+            <Text size="sm" c="dimmed">
+              iSFP, Förderbescheide und technische Nachweise zentral hinterlegen und einzelnen
+              Förderungen zuordnen.
+            </Text>
+          </div>
+          <Button
+            variant="light"
+            onClick={() =>
+              navigate('/dokumente?area=Energetische%20Planung&upload=1&return_to=energy')
+            }
+          >
+            Unterlagen hochladen
+          </Button>
+        </Group>
+        <Stack gap="xs">
+          {(data.documents || []).map((d: Row) => (
+            <Group justify="space-between" key={d.id}>
+              <div>
+                <Text size="sm" fw={600}>
+                  {d.title}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {d.category}
+                </Text>
+              </div>
+              <Anchor
+                size="sm"
+                href={
+                  '/api/project-documents/' +
+                  d.id +
+                  (['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt'].includes(d.extension)
+                    ? '/preview'
+                    : '/download')
+                }
+                target="_blank"
+                rel="noreferrer"
+              >
+                {d.extension === '.docx' ? 'Herunterladen' : 'Öffnen'} ↗
+              </Anchor>
+            </Group>
+          ))}
+          {!data.documents?.length && (
+            <Text size="sm" c="dimmed">
+              Noch keine Förderunterlagen hinterlegt.
+            </Text>
+          )}
+        </Stack>
+      </Paper>
+      <Paper className="paper" mt="lg">
         <Title order={3} size="h5" mb="sm">
           Fördercheck vorbereiten
         </Title>
@@ -1077,6 +1141,20 @@ export function Energy() {
               maxLength={3000}
               {...form.getInputProps('notes')}
             />
+            <MultiSelect
+              label="Zugeordnete Förderunterlagen"
+              description="Die wichtigsten Unterlagen oben im Förderbereich hochladen; anschließend hier auswählen."
+              searchable
+              clearable
+              data={(data.documents || []).map((d: Row) => ({
+                value: String(d.id),
+                label: d.title + ' · ' + d.category,
+              }))}
+              value={(form.values.document_ids || []).map(String)}
+              onChange={(ids) => form.setFieldValue('document_ids', ids.map(Number))}
+            />
+            <FundingCheck form={form} busy={busy} setBusy={setBusy} />
+            {id && <SourceWork type="funding" id={id} />}
             <ErrorBox value={failure} />
             <div className="actions">
               {id && (
@@ -1139,7 +1217,24 @@ export function Documents() {
     [failure, setFailure] = useState<unknown>(null);
   const edit = useForm<Row>({ initialValues: emptyDocument }),
     metadata = useForm<Row>({ initialValues: emptyDocument });
+  const uploadRoute = useRef('');
   const data: Row = query.data || {};
+  useEffect(() => {
+    const token = params.toString();
+    if (params.get('upload') === '1' && data.areas && uploadRoute.current !== token) {
+      uploadRoute.current = token;
+      const area = data.areas.includes(params.get('area')) ? params.get('area') : 'Allgemein';
+      const values = {
+        ...emptyDocument,
+        area,
+        category: area === 'Energetische Planung' ? 'iSFP' : emptyDocument.category,
+      };
+      metadata.setValues(values);
+      metadata.resetDirty(values);
+      setArea(area);
+      setUpload(true);
+    }
+  }, [data.areas, params]);
   useDirtyGuard((opened && edit.isDirty()) || (upload && (files.length > 0 || metadata.isDirty())));
   function open(row: Row) {
     setRecord(row);
@@ -1192,6 +1287,8 @@ export function Documents() {
       await cache.invalidateQueries({ queryKey: ['documents'] });
       await (window as any).PHBReactBridge.imports.refresh();
       success(remove ? 'Dokument gelöscht.' : 'Dokument gespeichert.');
+      await cache.invalidateQueries({ queryKey: ['energy'] });
+      if (params.get('return_to') === 'energy') navigate('/energieplanung');
     } catch (e) {
       setFailure(e);
     } finally {
@@ -1214,8 +1311,17 @@ export function Documents() {
       setUpload(false);
       setFiles([]);
       await cache.invalidateQueries({ queryKey: ['documents'] });
+      if (result.background && params.get('return_to') === 'energy') navigate('/energieplanung');
       if (!result.background && result.jobs[0]?.result_id)
-        setTimeout(() => navigate('/dokumente?document_id=' + result.jobs[0].result_id), 0);
+        setTimeout(
+          () =>
+            navigate(
+              '/dokumente?document_id=' +
+                result.jobs[0].result_id +
+                (params.get('return_to') === 'energy' ? '&return_to=energy' : ''),
+            ),
+          0,
+        );
     } catch (e) {
       setFailure(e);
     } finally {
@@ -1233,7 +1339,8 @@ export function Documents() {
           onClick={() => {
             metadata.setValues({
               ...emptyDocument,
-              area: data.areas?.[0] || 'Allgemein',
+              area: area || data.areas?.[0] || 'Allgemein',
+              category: area === 'Energetische Planung' ? 'iSFP' : emptyDocument.category,
             });
             metadata.resetDirty();
             setFiles([]);
@@ -1410,6 +1517,7 @@ export function Documents() {
         >
           <Stack>
             <DocumentFields form={edit} options={data} />
+            {record && <SourceWork type="document" id={record.id} />}
             <Text size="xs" c="dimmed">
               Überholte Unterlagen bleiben archiviert und werden nicht automatisch mit ChatGPT
               geteilt.

@@ -9,7 +9,7 @@ class ReactUITest(unittest.TestCase):
     def test_browser_routes_serve_built_react_app(self):
         with patch.dict(os.environ,{'PHB_UI':'react'}):
             client=app.test_client()
-            for path in ('/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten'):
+            for path in ('/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben'):
                 with self.subTest(path=path):
                     response=client.get(path)
                     self.assertEqual(response.status_code,200)

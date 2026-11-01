@@ -33,6 +33,7 @@ jobs:
           npm --prefix frontend run build
       - name: Check JavaScript syntax
         run: |
+          node --check static/project_work.js
           node --check static/embed.js
           node --check static/phb-workflow.js
           node --test tests/workflow_runtime.test.cjs
