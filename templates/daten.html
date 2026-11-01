@@ -15,15 +15,15 @@
   <div class="phb-page-intro"><div><span class="phb-page-kicker">Verwaltung / Datensicherheit</span>
     <h1>Backup, Export &amp; Datenverwaltung</h1>
     <p>Vollständige Sicherungen, einzelne Datenexporte, Wiederherstellung und Zurücksetzen – zentral an einem Ort.</p></div></div>
-  <p class="note">Komplette Sicherungen und Wiederherstellungen umfassen alle Projekte. Ein Projekt-Reset leert nur das geöffnete Projekt.</p>
+  <p class="note">Sicherungen, Wiederherstellung und Reset gelten ausschließlich für das geöffnete Projekt. Andere Projekte bleiben erhalten.</p>
   <div class="phb-data-grid">
     <section class="panel phb-data-card" id="sicherung" aria-labelledby="backupHeading">
       <div class="phb-data-symbol" aria-hidden="true">↥</div>
-      <h2 id="backupHeading">Vollständiges Backup</h2>
-      <p>Alle Einträge aus Bauzeitenplan, Kosten, Angeboten, Rechnungen, Finanzierung und sämtliche hochgeladenen Dateien gemeinsam sichern.</p>
+      <h2 id="backupHeading">Projektbackup</h2>
+      <p>Alle Einträge aus Bauzeitenplan, Kosten, Angeboten, Rechnungen, Finanzierung und die hochgeladenen Dateien dieses Projekts gemeinsam sichern. Andere Projekte und Zugangsdaten werden nicht mitgesichert.</p>
       <div class="phb-data-status" id="backupInfo" role="status">Backup-Konfiguration wird geladen …</div>
       <div class="phb-backup-actions">
-        <button id="backupNow" type="button" class="primary">Jetzt vollständiges Backup erstellen</button>
+        <button id="backupNow" type="button" class="primary">Jetzt Projektbackup erstellen</button>
         <button id="backupConfigure" type="button" class="subtle">Zielordner ändern</button>
       </div>
       <p class="phb-data-footnote" id="backupFolderHint">Der Backup-Ordner ist ein Pfad auf dem App-Server. NAS-Freigaben müssen vorher als Docker-Volume eingebunden sein. Die bisherigen Terminalbefehle funktionieren weiterhin.</p>
@@ -38,7 +38,7 @@
       <a href="/api/budget.csv" download><strong>Kostenplan</strong><span>Planpositionen und Prognosen · CSV</span></a>
       <a href="/api/costs.csv" download><strong>Kosten &amp; Aufträge</strong><span>Weitere Kostenpositionen · CSV</span></a>
       <a href="/api/backup.json" download><strong>Projektstruktur</strong><span>Strukturierte Daten ohne Dateien · JSON</span></a>
-      <a href="/api/project-archive.zip" download><strong>Projektarchiv herunterladen</strong><span>ZIP mit Projektdateien; bei PostgreSQL keine vollständige Datenbanksicherung</span></a>
+      <a href="/api/project-archive.zip" download><strong>Projektarchiv herunterladen</strong><span>Vollständiges Projektbackup mit allen zugehörigen Daten und Dateien</span></a>
     </div>
   </section>
   <details class="panel phb-data-more phb-danger">
@@ -47,9 +47,9 @@
       <div class="phb-data-symbol" aria-hidden="true">↻</div>
       <h2 id="resetHeading">Projekt vollständig zurücksetzen</h2>
       <p>Löscht unwiderruflich <strong>alle Projektdaten</strong>: Aufgaben, Angebote, Kosten, Rechnungen, Finanzierungen, Firmen, eigene Kategorien und hochgeladene Dokumente.</p>
-      <p>Die App legt vorher <strong>verpflichtend ein geprüftes Komplettbackup</strong> im ausgewählten Ordner an. Ist das nicht möglich, findet kein Reset statt. Systemkategorien und das Datenbankschema bleiben erhalten; die Projektliste ist anschließend leer.</p>
+      <p>Die App legt vorher <strong>verpflichtend ein geprüftes Projektbackup</strong> im ausgewählten Ordner an. Ist das nicht möglich, findet kein Reset statt. Systemkategorien und das Datenbankschema bleiben erhalten; das Projekt bleibt erhalten und ist anschließend leer. Andere Projekte bleiben unverändert.</p>
       <form id="resetForm" autocomplete="off">
-        <label class="phb-data-verify"><input id="resetUnderstand" type="checkbox" required> Ich habe verstanden, dass sämtliche Einträge und Dateien aus der aktiven Anwendung entfernt werden.</label>
+        <label class="phb-data-verify"><input id="resetUnderstand" type="checkbox" required> Ich habe verstanden, dass sämtliche Einträge und Dateien ausschließlich aus dem geöffneten Projekt entfernt werden.</label>
         <label class="phb-reset-label" for="resetText">Zur Bestätigung exakt <strong>ALLE DATEN LÖSCHEN</strong> eingeben:</label>
         <input id="resetText" type="text" placeholder="ALLE DATEN LÖSCHEN" autocorrect="off" autocapitalize="off" spellcheck="false" required>
         <button id="resetButton" class="danger" type="submit" disabled>Projekt endgültig zurücksetzen</button>
@@ -60,9 +60,9 @@
   <div id="dataNotice" role="status" aria-live="polite" class="phb-data-notice" hidden></div>
   <section class="panel phb-data-help" id="restorePanel">
     <h2>Wiederherstellen</h2>
-    <p>Wähle ein geprüftes Backup aus dem eingerichteten Speicher oder lade ein Backup-ZIP hoch. Die App prüft zunächst dessen Integrität, bevor du die Wiederherstellung ausdrücklich bestätigst.</p>
+    <p>Wähle ein geprüftes Backup aus dem eingerichteten Speicher oder lade ein Backup-ZIP hoch. Es werden nur Sicherungen dieses Projekts angeboten. Die App prüft zunächst die Projektzugehörigkeit und Integrität, bevor du die Wiederherstellung ausdrücklich bestätigst.</p>
     <button id="openRestore" type="button" class="subtle">Backup wiederherstellen …</button>
-    <p class="phb-data-footnote">Das bisherige Terminalverfahren bleibt erhalten: auf dem Mac <code>python3 backup_manager.py restore "DATEI.zip" --yes</code>; auf der Synology weiterhin <code>pg_restore</code> und die Dokumentwiederherstellung wie in <code>synology/README.md</code>. Bei produktiven Daten vorab eine externe Kopie prüfen.</p>
+    <p class="phb-data-footnote">Administrative Systemsicherungen aller Projekte bleiben separat über das Terminal verfügbar und werden hier nicht eingespielt: auf dem Mac <code>python3 backup_manager.py restore "DATEI.zip" --yes</code>; auf der Synology weiterhin <code>pg_restore</code> und die Dokumentwiederherstellung wie in <code>synology/README.md</code>. Bei produktiven Daten vorab eine externe Kopie prüfen.</p>
     <p id="restoreResult" role="status"></p>
   </section>
   <section class="panel phb-data-help"><h2>Lokale OCR-Diagnose</h2>
@@ -101,17 +101,17 @@ docker compose -f compose.synology.yaml exec app sh -c 'command -v tesseract; co
       </div>
       <label for="backupKeep">Anzahl aufzubewahrender Sicherungen</label>
       <input id="backupKeep" name="keep" type="number" min="2" max="1000" value="30" required>
-      <p class="phb-data-footnote">Existierende Backups werden beim Wechsel nicht verschoben. Neue Sicherungen landen ausschließlich im neuen Zielordner.</p>
+      <p class="phb-data-footnote">Der Basisordner wird gemeinsam genutzt; jedes Projekt erhält darin einen eigenen Sicherungsordner. Bestehende Backups werden beim Wechsel nicht verschoben.</p>
       <p id="backupConfigMessage" role="status"></p>
       <div class="phb-data-dialog-actions phb-dialog-actions"><button type="button" id="backupConfigCancel" class="subtle">Abbrechen</button><button type="submit" class="primary">Ziel speichern</button></div>
     </form>
   </dialog>
   <dialog id="backupRestoreDialog" class="phb-data-dialog phb-restore-dialog" aria-labelledby="backupRestoreTitle">
     <h2 id="backupRestoreTitle">Projekt aus Backup wiederherstellen</h2>
-    <p><strong>Achtung:</strong> Der aktuelle Projektstand wird ersetzt. Die Anwendung legt vor der Wiederherstellung zusätzlich eine Sicherheitssicherung an und behält die alten Daten zur Rückkehr vor.</p>
+    <p><strong>Achtung:</strong> Nur der geöffnete Projektstand wird ersetzt. Andere Projekte bleiben unverändert. Die Anwendung legt vor der Wiederherstellung zusätzlich eine Sicherheitssicherung an und behält ein Projektbackup zur Rückkehr vor.</p>
     <label for="restoreBackupSelect">Vorhandenes Backup</label>
     <select id="restoreBackupSelect"><option value="">Bitte auswählen</option></select>
-    <p class="phb-data-footnote">Oder ein externes, von ProjectHouseBuilder erzeugtes ZIP auswählen:</p>
+    <p class="phb-data-footnote">Oder ein externes Projektbackup für dieses Projekt auswählen:</p>
     <input id="restoreBackupUpload" type="file" accept=".zip,application/zip">
     <button type="button" id="verifyRestore" class="subtle">Backup zuerst prüfen</button>
     <p id="restoreVerifyInfo" role="status"></p>

@@ -131,7 +131,7 @@ def install_project_scope(app, db, Project):
         ident = int(raw)
         g.phb_project_token = _project_id.set(ident)
         # Legacy tests/bootstrap can initialize their schema separately; requests never invent projects.
-        global_api=request.path in ('/api/ai/status','/api/ai/connect','/api/ai/disconnect','/api/ai/models','/api/ai/diagnostics','/api/ai/acknowledge-credits') or request.path.startswith(('/api/backup','/api/ocr','/api/projects'))
+        global_api=request.path in ('/api/ai/status','/api/ai/connect','/api/ai/disconnect','/api/ai/models','/api/ai/diagnostics','/api/ai/acknowledge-credits') or request.path.startswith(('/api/ocr','/api/projects'))
         if request.path.startswith('/api/') and not global_api and db.session.get(Project, ident) is None:
             return jsonify(error='Projekt nicht gefunden.'), 404
 
@@ -220,16 +220,8 @@ def register_project_routes(app, db, Project, *, initialize, summary, Task, Cost
 
 def project_files(db, root):
     """Physical originals stay at their legacy paths; ownership comes from scoped records."""
-    private=root/'private'
-    names=set()
-    for mapper in db.Model.registry.mappers:
-        model=mapper.class_
-        fields=[getattr(model,key) for key in ('stored_name','preview_name') if key in mapper.columns]
-        if fields:
-            for row in db.session.execute(select(*fields)):
-                names.update(str(value) for value in row if value)
-    if not private.exists():return []
-    return [path for path in private.rglob('*') if path.is_file() and path.name in names]
+    from project_backups import files_for_project
+    return files_for_project(db,root,current_project_id())
 
 
 def project_snapshot(source, destination, project_id):

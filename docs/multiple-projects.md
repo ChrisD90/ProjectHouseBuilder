@@ -14,21 +14,24 @@ Der Mac-Migrationsstarter legt weiterhin ein geprüftes Komplettbackup vor einem
 
 ## Projektgrenze
 
-Eine Session-Erweiterung setzt Projektfilter für ORM-Abfragen, Projektionen, Aggregationen und Bulk-Änderungen. Direkte ID-Abfragen prüfen auch bereits geladene Objekte. Neue/geänderte ORM-Datensätze und ihre Fremdschlüssel müssen zum aktiven Projekt gehören; vorhandene Datensätze können ihre Projekt-ID nicht durch Bearbeiten wechseln. Interne globale Vorgänge wie Backup und Start-Wiederherstellung der Jobzustände sind ausdrücklich ausgenommen. Neue Backendfunktionen müssen diese Session nutzen; SQL über rohe Engine-Verbindungen ist ausschließlich für ausdrücklich globale Verwaltung/Migration vorgesehen.
+Eine Session-Erweiterung setzt Projektfilter für ORM-Abfragen, Projektionen, Aggregationen und Bulk-Änderungen. Direkte ID-Abfragen prüfen auch bereits geladene Objekte. Neue/geänderte ORM-Datensätze und ihre Fremdschlüssel müssen zum aktiven Projekt gehören; vorhandene Datensätze können ihre Projekt-ID nicht durch Bearbeiten wechseln. Administrative Systemsicherungen und die Start-Wiederherstellung der Jobzustände sind ausdrücklich globale Vorgänge. Die Backup-UI arbeitet dagegen immer im ausgewählten Projekt. Neue Backendfunktionen müssen diese Session nutzen; SQL über rohe Engine-Verbindungen ist nur für ausdrücklich globale Verwaltung/Migration oder die validierte Projektwiederherstellung mit expliziten Projektfiltern vorgesehen.
 
 API-Anfragen erhalten `X-PHB-Project`. Dokumentlinks, PDF-/Bildvorschauen und Downloads führen `project_id` in der URL mit. Es gibt kein globales „aktives Projekt“-Cookie: Zwei Browser-Tabs können unabhängig verschiedene Projekte bearbeiten. Für alte Integrationen ohne Kontext bleibt Projekt 1 der Standard; ungültige bzw. unbekannte IDs liefern einen Fehler und fallen nicht auf ein anderes Projekt zurück. Hintergrundimporte binden sich an die ID ihres gespeicherten Jobs, auch wenn die Oberfläche inzwischen ein anderes Projekt zeigt. Projektbezogene KI-Gespräche und offene Vorschläge werden zusätzlich an den Browser gebunden in `planning_browser_state` gespeichert; sie verwenden keine miteinander konkurrierenden Projektzustände im gemeinsamen Cookie. Die ChatGPT-Verbindung ist global; die übermittelten Fachdaten stammen jeweils aus dem ausgewählten Projekt. Nach der Anmeldung führt der Rückruf zum ursprünglichen Projekt zurück.
 
 ## Sicherungen und Exporte
 
-- **Komplettes Backup / Wiederherstellung:** umfasst alle Projekte, die zentrale Datenbank und sämtliche privaten Dateien. Nach einer Wiederherstellung alle geöffneten App-Fenster neu laden.
-- **Projektarchiv / einzelne Fach-Exporte:** umfasst nur die aktuellen Projektdaten und zugehörigen Originale. Auch die SQLite-Kopie im Projektarchiv enthält keine Zeilen anderer Projekte.
-- **Projekt zurücksetzen:** leert nur das geöffnete Projekt nach einem vorherigen vollständigen, geprüften Backup. Das Projekt selbst bleibt als leere Kachel erhalten. Laufende Uploads dieses Projekts verhindern den Reset; andere Projekte und ihre Dateien bleiben erhalten.
+- **Projektbackup / Wiederherstellung in der UI:** enthält nur das geöffnete Projekt einschließlich Stammdaten, Zahlungen, Historien und Originaldateien. Jeder Projekt-ID ist ein eigener Sicherungsunterordner zugeordnet; Liste und Aufbewahrung sind getrennt. Ein fremdes Projektbackup wird zurückgewiesen. Die Wiederherstellung ersetzt ausschließlich den ausgewählten Projektstand und erstellt vorher ein weiteres Projektbackup. Datensatz-IDs bleiben erhalten; Kollisionen und projektfremde Verknüpfungen werden vor Änderungen zurückgewiesen. SQLite und PostgreSQL verwenden dasselbe portable ZIP-Format.
+- **Projektarchiv herunterladen:** lädt dasselbe vollständige Projektbackup herunter, auch ohne eingerichteten Sicherungsordner. Es enthält keine komplette Datenbankdatei, keine anderen Projektmetadaten und keine Zugangsdaten. Einzelne CSV-/JSON-Fachexporte bleiben ebenfalls projektbezogen.
+- **Projekt zurücksetzen:** leert nur das geöffnete Projekt nach einem vorherigen vollständigen, geprüften Projektbackup. Das Projekt selbst bleibt als leere Kachel erhalten. Laufende Uploads dieses Projekts verhindern den Reset; andere Projekte und ihre Dateien bleiben erhalten. Der Reset ist weiterhin nur für lokales SQLite freigeschaltet.
+- **Administrative Systemsicherung:** bisherige CLI-/NAS-Sicherungen und automatische Sicherheitskopien vor Schema-Upgrades umfassen weiterhin die gesamte Installation. Sie sind separat gekennzeichnet und werden nicht über die Projekt-UI wiederhergestellt. Bestehende Systemsicherungen bleiben erhalten.
+
+Details und Prüfungen: [Projektbackups](project-backups.md).
 
 Dies erweitert die bestehende Anwendung für mehrere Vorhaben derselben Anwendung/Anmeldung. Separate Benutzerrollen oder Zugriffskontrollen je Projekt sind kein Bestandteil dieser Änderung.
 
 ## Prüfung
 
-Python-Tests prüfen Migration und Datenerhalt, Projektionen/Identitätscache, wiederverwendbare Kennungen, Summen, unzulässige Verknüpfungen, direkte Dateizugriffe, Hintergrundjobs sowie Projektarchiv und Reset einschließlich gemeinsamer Sicherung.
+Python-Tests prüfen Migration und Datenerhalt, Projektionen/Identitätscache, wiederverwendbare Kennungen, Summen, unzulässige Verknüpfungen, direkte Dateizugriffe, Hintergrundjobs sowie Projektarchiv, Reset und Wiederherstellung einschließlich isolierter Sicherung, Dateisicherheit und Rücknahme bei Fehlern.
 
 ```sh
 PHB_TEST_URL=http://127.0.0.1:5075 npm --prefix frontend run test:browser:projects

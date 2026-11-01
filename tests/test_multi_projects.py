@@ -216,11 +216,10 @@ with b.app.app_context():
   names=archive.namelist()
   assert any(docs[1][1] in name for name in names),names
   assert not any(docs[0][1] in name for name in names),names
-  assert json.loads(archive.read('export.json'))['project_id']==pid
-  snapshot=root/'export.db';snapshot.write_bytes(archive.read('sanierung.db'))
- with sqlite3.connect(snapshot) as snap:
-  assert snap.execute('SELECT id FROM project').fetchall()==[(pid,)]
-  assert snap.execute('SELECT project_id FROM project_document').fetchall()==[(pid,)]
+  assert json.loads(archive.read('backup-manifest.json'))['project_id']==pid
+  data=json.loads(archive.read('project-data.json'))
+  assert data['project']['id']==pid
+  assert [row['project_id'] for row in data['tables']['project_document']]==[pid]
  result=c.post('/api/data/reset',json={'confirmation':'ALLE DATEN LÖSCHEN'},headers={'X-PHB-Reset':'1','X-PHB-Project':str(pid)})
  assert result.status_code==200,result.json
  assert len(c.get('/api/project-documents').json['documents'])==1
@@ -228,10 +227,11 @@ with b.app.app_context():
  assert (b.PROJECT_DOCUMENT_ROOT/docs[0][1]).is_file()
  assert not (b.PROJECT_DOCUMENT_ROOT/docs[1][1]).exists()
  assert len(c.get('/api/projects').json['projects'])==2
- manifest=backup.verify_backup(Path(result.json['backup']))
- assert 'private/project-documents/'+docs[0][1] in manifest['files']
+ import project_backups
+ manifest=project_backups.verify(Path(result.json['backup']),pid)
+ assert 'private/project-documents/'+docs[0][1] not in manifest['files']
  assert 'private/project-documents/'+docs[1][1] in manifest['files']
- print('PASS project-specific export/reset and complete global backup')
+ print('PASS project-specific download/reset and project-only safety backup')
 '''
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)/'app';root.mkdir()

@@ -32,7 +32,9 @@ def main():
         import app as b
         from multi_projects import project_context
         from project_schema import upgrade_project_schema,SCOPED_UNIQUE
-        b.PROJECT_DOCUMENT_ROOT=Path(temp)/'documents'
+        b.ROOT=Path(temp)/'app';b.ROOT.mkdir()
+        b.PROJECT_DOCUMENT_ROOT=b.ROOT/'private'/'project-documents'
+        b.RECEIPT_ROOT=b.ROOT/'private'/'receipts'
         with b.app.app_context():
             b.initialize();client=b.app.test_client()
             result=client.post('/api/projects',json={'title':'Garten PostgreSQL','kind':'Garten','start_date':'2027-04-01'})
@@ -49,6 +51,8 @@ def main():
                 with project_context(owner):
                     b.db.session.add(b.Receipt(digest='same-document',original_name='Beleg.pdf',stored_name='pg-'+str(owner)+'.pdf',gross_amount=Decimal('100'),paid_amount=0))
                     b.db.session.commit()
+                    b.RECEIPT_ROOT.mkdir(parents=True,exist_ok=True)
+                    (b.RECEIPT_ROOT/('pg-'+str(owner)+'.pdf')).write_bytes(b'%PDF-test-'+str(owner).encode())
             assert client.post(f'/api/offers/{offers[1]}/accept',headers=headers(pid),data={'mode':'offer','confirm':'true'}).status_code==201
             assert client.get('/api/costs').json['summary']['planned']==0
             assert client.get('/api/costs',headers=headers(pid)).json['summary']['planned']==1000
@@ -75,6 +79,21 @@ def main():
             assert next(row for row in project_rows if row['id']==1)['forecast']==0
             assert next(row for row in project_rows if row['id']==pid)['forecast']==1000
             b.db.session.remove();b.db.engine.dispose()
+            import project_backups
+            store=Path(temp)/'backups';store.mkdir()
+            cfg={'folder':store,'keep':3}
+            before_first=client.get('/api/project').json
+            with project_context(pid):
+                archive=project_backups.create(b.db,b.ROOT,pid,cfg)
+                current=b.db.session.get(b.Task,tasks[1]);current.name='Nach Sicherung geändert';b.db.session.commit()
+                project_backups.restore(archive,b.db,b.ROOT,pid)
+                assert b.db.session.get(b.Task,tasks[1]).name=='Paket '+str(pid)
+                # Explicit restored IDs must not move any PostgreSQL sequence backwards.
+                new=b.Task(code='AP-002',name='Neu nach Restore',trade='Sonstiges',duration=1,phase='',company='',notes='',status='Offen',progress=0,lag_days=0,position=9)
+                b.db.session.add(new);b.db.session.commit();assert new.id>max(tasks)
+            assert client.get('/api/project').json==before_first
+            assert (b.RECEIPT_ROOT/'pg-1.pdf').read_bytes()==b'%PDF-test-1'
+            print('PASS PostgreSQL 17: project-only backup/restore, other project unchanged, stable IDs and sequences')
             print('PASS PostgreSQL '+version+': fresh startup, project sequence, scoped identifiers, totals, links and files')
 
         legacy_name='phb_legacy_'+uuid4().hex[:12]

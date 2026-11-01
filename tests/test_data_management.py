@@ -19,6 +19,7 @@ root = Path(sys.argv[1]); root.mkdir(parents=True, exist_ok=True)
 import app as package
 shutil.copy2(Path(package.__file__).parent/'seed.json',root/'seed.json')
 import backup_manager as backup
+import project_backups
 import schema_manager
 package.ROOT = root
 package.DOCUMENT_ROOT = root/'private'/'documents'
@@ -30,7 +31,7 @@ backup.CONFIG_PATH = root/'backup-config.json'
 schema_manager.upgrade_database()
 with package.app.app_context():
     package.initialize()
-    from app import db, Setting, Task, Category, BudgetLine, Contractor, Receipt, Loan, EquityAccount, ReceiptFinancingPayment, Offer, CostItem
+    from app import db, Setting, Task, Category, BudgetLine, Contractor, Receipt, Loan, EquityAccount, ReceiptFinancingPayment, Offer, CostItem, Document
     assert db.session.query(Task).count() == 0  # Fresh setup is opt-in now.
     initial = package.app.test_client().post('/api/tasks/initialize', json={'confirm':True})
     assert initial.status_code == 201, initial.json
@@ -46,6 +47,8 @@ with package.app.app_context():
     loan=db.session.query(Loan).first()
     db.session.add(ReceiptFinancingPayment(receipt_id=receipt.id,source='loan',loan_id=loan.id,amount=Decimal('50.00'),payment_date='2026-10-23'))
     db.session.commit()
+with package.app.app_context():
+    db.session.add(Document(original_name='Angebot.pdf',stored_name='angebot.pdf',kind='Angebot'));db.session.commit()
 receipt_file = root/'private'/'receipts'/'beleg.pdf'
 receipt_file.parent.mkdir(parents=True,exist_ok=True)
 receipt_file.write_bytes(b'%PDF Fake personal document')
@@ -95,7 +98,7 @@ if sys.argv[2]=='schedule-clear':
     assert success.status_code==200,success.json
     archive=Path(success.json['backup'])
     assert archive.is_file()
-    backup.verify_backup(archive)
+    project_backups.verify(archive,1)
     with package.app.app_context():
         assert db.session.query(Task).count()==0
         assert db.session.query(Loan).count()==1
@@ -147,7 +150,7 @@ assert reply.status_code==200, reply.json
 assert reply.json.get('ok') is True
 archive=Path(reply.json['backup'])
 assert archive.exists()
-manifest=backup.verify_backup(archive)
+manifest=project_backups.verify(archive,1)
 assert 'private/receipts/beleg.pdf' in manifest['files']
 assert 'private/documents/angebot.pdf' in manifest['files']
 assert any(name.startswith('private/project-documents/') for name in manifest['files'])
@@ -186,7 +189,7 @@ class DataManagementTest(unittest.TestCase):
     def test_complete_reset_preserves_backup_and_schema(self):
         self.scenario('reset')
 
-    def test_reset_backup_can_restore_everything_on_new_mac(self):
+    def test_reset_backup_restores_project_without_replacing_database(self):
         with tempfile.TemporaryDirectory(prefix='phb-restore-test-') as folder:
             root=Path(folder)/'project'
             env=os.environ.copy()
@@ -195,10 +198,12 @@ class DataManagementTest(unittest.TestCase):
             creation=subprocess.run([sys.executable,'-c',SCENARIO,str(root),'reset'],env=env,
                                    cwd=ROOT,capture_output=True,text=True,timeout=45)
             self.assertEqual(creation.returncode,0,creation.stderr)
-            archive=next((Path(folder)/'cloud').glob('ProjectHouseBuilder_Backup_*.zip'))
-            restore_code="""import backup_manager as b,sys,sqlite3
+            archive=next((Path(folder)/'cloud'/'project-1').glob('PHB_Project_1_*.zip'))
+            restore_code="""import app as b,project_backups,sys,sqlite3
 from pathlib import Path
-b.ROOT=Path(sys.argv[1]); b.restore(Path(sys.argv[2]),yes=True)
+b.ROOT=Path(sys.argv[1])
+with b.app.app_context():
+    b.initialize();project_backups.restore(Path(sys.argv[2]),b.db,b.ROOT,1)
 with sqlite3.connect(b.ROOT/'sanierung.db') as c:
     assert c.execute('SELECT name FROM finance_loan').fetchone()[0]=='Kredit A'
     assert c.execute('SELECT supplier FROM receipt').fetchone()[0]=='Test'

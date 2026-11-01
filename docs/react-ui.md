@@ -71,3 +71,5 @@ Er prüft Angebot ↔ zentrale To-dos, Annahmerücknahme im Editor, Förderunter
 Die gemeinsame Farbpalette liegt in `static/palette.css` und gilt für React und eingebettete Abläufe. Die Mantine-Grünabstufungen sind in `frontend/src/main.tsx` hinterlegt. Logos für beide Darstellungen können direkt in `static/branding/logo-light.svg` und `static/branding/logo-dark.svg` ersetzt werden; Hinweise stehen in [static/branding/README.md](../static/branding/README.md).
 
 Revision `0028` ergänzt den optionalen Archivzeitpunkt bestehender To-dos und Notizen. Inhalte, Verknüpfungen und Erledigt-Status bleiben erhalten. `npm --prefix frontend run test:browser:work` prüft die Buttons, Zähler, gemeinsamen Dialoge, Archivierung, Wiederherstellung, Löschung und verschachtelte Dialoge gegen einen separaten Testserver (`PHB_TEST_URL`).
+
+„Daten & Sicherung“ verwendet projektbezogene Backups und Wiederherstellungen einschließlich Originaldateien; administrative Systemsicherungen bleiben außerhalb dieses Projektablaufs. Siehe [Projektbackups](project-backups.md).

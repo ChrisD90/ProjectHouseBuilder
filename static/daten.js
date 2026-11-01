@@ -31,7 +31,7 @@
     try{
       config=await json('/api/backup/status');
       get('backupInfo').textContent=config.configured
-        ? 'Sicherungsordner: '+config.folder+'\nVorhandene Backups: '+config.count+
+        ? 'Projekt: '+(config.project_title||('#'+config.project_id))+'\nSicherungsordner: '+config.folder+'\nVorhandene Backups: '+config.count+
           '\nLetztes: '+(config.latest||'noch keines')
         : 'Noch kein Backupziel eingerichtet: '+(config.error||'Bitte Zielordner festlegen.');
       get('backupNow').disabled=false;
@@ -134,7 +134,7 @@
     try{
       if(!config?.configured){await openConfigure(true);return;}
       const result=await post('/api/backup/create',{});
-      notice('Vollständiges Backup erstellt und geprüft:\n'+result.filename);
+      notice('Projektbackup erstellt und geprüft:\n'+result.filename);
       await status();
     }catch(error){notice(error.message,true);
       if(/nicht eingerichtet|nicht konfiguriert/.test(error.message))await openConfigure(true);
@@ -205,8 +205,8 @@
             'Wiederherstellung fehlgeschlagen. Bitte Serverprotokoll und Sicherungsstand prüfen.';
           invalidateRestore();
           if(restoreState.state==='done'){
-            notice('Wiederherstellung aller Projekte abgeschlossen. Bitte die Projektübersicht öffnen und alle weiteren geöffneten App-Fenster neu laden.');
-            const link=document.createElement('a');link.href='/';link.target='_top';link.dataset.projectGlobal='true';link.textContent=' Projektübersicht öffnen →';get('restoreResult').append(link);
+            notice('Dieses Projekt wurde wiederhergestellt. Andere Projekte wurden nicht verändert. Bitte die Projektansicht neu laden.');
+            const link=document.createElement('a');link.href='/p/'+window.PHBProject.id+'/';link.target='_top';link.textContent=' Projekt öffnen →';get('restoreResult').append(link);
             await status();
           }else notice(restoreState.message,true);
         }
@@ -215,7 +215,7 @@
   }
   get('performRestore').onclick=async()=>{
     if(!verifiedRef||get('restorePhrase').value!==restorePhrase)return;
-    if(!await PHBUI.confirm('Jetzt den aktuellen Datenbestand durch das geprüfte Backup ersetzen? Vorher wird eine Sicherheitssicherung angelegt.'))return;
+    if(!await PHBUI.confirm('Jetzt ausschließlich das geöffnete Projekt durch dessen geprüftes Projektbackup ersetzen? Andere Projekte bleiben erhalten. Vorher wird eine Sicherheitssicherung angelegt.'))return;
     try{
       restoring=true;updateRestoreButton();
       get('cancelRestore').textContent='Wiederherstellung läuft …';
@@ -273,7 +273,7 @@
   get('resetForm').addEventListener('submit',async event=>{
     event.preventDefault();
     if(get('resetButton').disabled)return;
-    if(!await PHBUI.confirm('Wirklich alle Projektdaten und Uploads löschen? Es wird unmittelbar vorher ein vollständiges Backup verlangt.'))return;
+    if(!await PHBUI.confirm('Wirklich die Daten und Uploads ausschließlich dieses Projekts löschen? Andere Projekte bleiben erhalten. Unmittelbar vorher wird ein geprüftes Projektbackup angelegt.'))return;
     const button=get('resetButton');button.disabled=true;
     try{
       const result=await json('/api/data/reset',{

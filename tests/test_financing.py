@@ -507,12 +507,12 @@ class FinanceWorkflowTest(unittest.TestCase):
 
     def test_backup_manual_endpoint(self):
         from unittest.mock import patch as mock
-        with mock('backup_manager.make_backup',side_effect=ValueError('Backupziel offline')):
+        with mock('app._project_backup_create',side_effect=ValueError('Backupziel offline')):
             res=self.client.post('/api/backup/create',json={})
         self.assertEqual(res.status_code,409)
         with tempfile.TemporaryDirectory() as td:
             f=Path(td)/'safe.zip';f.write_bytes(b'some bytes')
-            with mock('backup_manager.make_backup',return_value=f):
+            with mock('app._project_backup_create',return_value=f):
                 res=self.client.post('/api/backup/create',json={})
         self.assertEqual(res.status_code,201,res.json)
         self.assertTrue(res.json['verified'])

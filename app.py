@@ -39,7 +39,7 @@ from werkzeug.datastructures import FileStorage
 from flask import Flask, jsonify, render_template, request, Response, send_file, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import select, text, inspect as sa_inspect
-from multi_projects import ProjectModel, ProjectSession, current_project_id, project_context, all_projects, install_project_scope, register_project_routes, project_files, project_snapshot, register_planning_state
+from multi_projects import ProjectModel, ProjectSession, current_project_id, project_context, all_projects, install_project_scope, register_project_routes, project_files, register_planning_state
 
 ROOT = Path(__file__).resolve().parent
 app = Flask(__name__)
@@ -1940,7 +1940,7 @@ def tasks_initialize_from_template():
 
 @app.post('/api/tasks/clear')
 def clear_schedule_after_backup():
-    """Clear ONLY the schedule, after a verified full backup and typed approval.
+    """Clear ONLY the schedule, after a verified project backup and typed approval.
 
     Other user data (costs, offers, receipts, financing, uploads) is untouched.
     A task linked to a cost item blocks deletion until resolved.
@@ -1964,15 +1964,15 @@ def clear_schedule_after_backup():
     if Path(db.engine.url.database).resolve() != backup_manager.db_path().resolve():
         return jsonify(error='Aktive Datenbank stimmt nicht mit der Sicherungsdatenbank überein.'),409
     try:
-        archive=backup_manager.make_backup()
-        backup_manager.verify_backup(archive)
+        archive=_project_backup_create()
+        _verify_project_backup(archive)
     except (ValueError,OSError,sqlite3.DatabaseError,zipfile.BadZipFile) as exc:
-        return jsonify(error='Zeitplan unverändert: Vollständige Sicherung fehlgeschlagen: '+str(exc)),409
+        return jsonify(error='Zeitplan unverändert: Projektbackup fehlgeschlagen: '+str(exc)),409
     try:
         previous=_schedule_snapshot()
         db.session.execute(db.delete(Dependency))
         db.session.execute(db.delete(Task))
-        _schedule_audit('Manuell','Bauzeitenplan nach geprüftem Komplettbackup geleert.',
+        _schedule_audit('Manuell','Bauzeitenplan nach geprüftem Projektbackup geleert.',
                         [{'action':'remove','code':row['code'],'name':row['name']}
                          for row in previous[:180]])
         db.session.commit()
@@ -4478,43 +4478,17 @@ def delete_document(doc_id):
 
 @app.get('/api/project-archive.zip')
 def project_archive():
-    """Lokales Archiv inklusive Uploads; unter SQLite auch konsistente DB-Kopie."""
-    stream=io.BytesIO()
-    with zipfile.ZipFile(stream,'w',compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr('HINWEISE.txt',
-            'Persönliche Sanierungsunterlagen: nur privat aufbewahren.\n'
-            'Unter SQLite enthält das Archiv sanierung.db, die im ausgeschalteten\n'
-            'Projektplaner an ihren bisherigen Speicherort zurückkopiert werden kann.\n'
-            'Bei PostgreSQL enthält dieses Archiv keine vollständige Datenbanksicherung.\n'
-            'Dafür separat pg_dump nutzen.\n')
-        if db.engine.url.get_backend_name() == 'sqlite':
-            db.session.flush()
-            with tempfile.TemporaryDirectory() as temp:
-                dest=Path(temp)/'sanierung.db'
-                project_snapshot(db.engine.url.database,dest,current_project_id())
-                archive.write(dest,arcname='sanierung.db')
-        else:
-            archive.writestr('POSTGRESQL_BACKUP_NOETIG.txt','Bei PostgreSQL bitte zusätzlich pg_dump zur vollständigen Sicherung ausführen.\n')
-        private_dir = ROOT / 'private'
-        if private_dir.exists():
-            for document in project_files(db,ROOT):
-                if document.is_symlink():
-                    return jsonify(error='Unsicherer Dateilink im Dokumentenordner; Archiv abgebrochen.'),409
-                if document.is_file():
-                    archive.write(document, arcname=document.relative_to(ROOT).as_posix())
-        archive.writestr('export.json',json.dumps({'project_id':current_project_id(),
-            'phases':[phase_dict(x) for x in db.session.scalars(select(BuildPhase).order_by(BuildPhase.position,BuildPhase.id))],
-            'tasks':serialize(all_tasks()),
-            'costs':[as_dict(x,COST_FIELDS) for x in db.session.scalars(select(CostItem))],
-            'budget_lines':[budget_dict(x) for x in all_budget_lines()],
-            'work_items':[project_work_dict(x) for x in db.session.scalars(select(ProjectWork))], 'funding':[funding_dict(x) for x in db.session.scalars(select(Funding))],
-            'contractors':[as_dict(x,CONTACT_FIELDS) for x in db.session.scalars(select(Contractor))],
-            'documents':[document_dict(x) for x in db.session.scalars(select(Document))],
-            'offers':[offer_dict(x) for x in db.session.scalars(select(Offer))]
-        },ensure_ascii=False,indent=2))
-    stream.seek(0)
-    return send_file(stream,mimetype='application/zip',as_attachment=True,
-                     download_name='Sanierungsprojekt_Projektarchiv.zip')
+    """Download a complete project backup without requiring a configured server folder."""
+    import project_backups
+    temporary=tempfile.TemporaryDirectory(prefix='phb-project-download-')
+    try:
+        path=project_backups.create(db,ROOT,current_project_id(),{'folder':Path(temporary.name),'keep':2})
+        response=send_file(path,mimetype='application/zip',as_attachment=True,download_name=path.name)
+        response.call_on_close(temporary.cleanup)
+        return response
+    except (ValueError,OSError,zipfile.BadZipFile) as exc:
+        temporary.cleanup()
+        return jsonify(error='Projektbackup nicht erstellt: '+str(exc)),409
 
 
 @app.get('/daten')
@@ -4524,7 +4498,7 @@ def data_management_page():
 
 @app.post('/api/data/reset')
 def reset_all_project_data():
-    """Clear local project records and uploads, after a mandatory verified complete backup.
+    """Clear only the selected project after a mandatory verified project backup.
 
     Keep schema and Alembic history so upgrades continue to work. Never touch
     backup archives or the backup configuration. Only permit calls from localhost.
@@ -4543,14 +4517,27 @@ def reset_all_project_data():
     if not isinstance(body, dict) or body.get('confirmation') != 'ALLE DATEN LÖSCHEN':
         return jsonify(error='Bitte den Bestätigungstext vollständig eingeben.'),400
 
+    if not _BACKUP_RESTORE_LOCK.acquire(blocking=False):
+        return jsonify(error='Es läuft bereits ein Reset oder eine Wiederherstellung.'),409
+    global _BACKUP_RESTORE_STATE
+    owner=current_project_id()
+    _BACKUP_RESTORE_STATE={'state':'resetting','project_id':owner,'message':'Projekt wird gesichert und zurückgesetzt.','result':None}
+    try:
+        return _reset_current_project()
+    finally:
+        _BACKUP_RESTORE_STATE={'state':'idle','project_id':owner,'message':'','result':None}
+        _BACKUP_RESTORE_LOCK.release()
+
+
+def _reset_current_project():
     import backup_manager
     if Path(db.engine.url.database).resolve() != backup_manager.db_path().resolve():
         return jsonify(error='Backup-Datenbank und aktive Datenbank stimmen nicht überein.'),409
     try:
-        archive = backup_manager.make_backup()
-        backup_manager.verify_backup(archive)
+        archive = _project_backup_create()
+        _verify_project_backup(archive)
     except (ValueError, OSError, sqlite3.DatabaseError, zipfile.BadZipFile) as exc:
-        return jsonify(error='Keine Daten gelöscht: Vollständiges Backup fehlgeschlagen: '+str(exc)),409
+        return jsonify(error='Keine Daten gelöscht: Projektbackup fehlgeschlagen: '+str(exc)),409
 
     if db.session.scalar(select(ImportJob.id).where(ImportJob.status.in_(['Wartend','Läuft'])).limit(1)):
         return jsonify(error='Bitte laufende Projekt-Uploads vor dem Zurücksetzen abwarten.'),409
@@ -4566,8 +4553,8 @@ def reset_all_project_data():
             destination.parent.mkdir(parents=True,exist_ok=True)
             path.replace(destination)
         # Reverse FK dependency order, all user tables, do not touch alembic_version.
-        for table in reversed(db.metadata.sorted_tables):
-            if table.name != 'project': db.session.execute(table.delete())
+        import project_backups
+        project_backups.clear_rows(db.session.connection(),db,current_project_id())
         db.session.add(Setting(key='start',value='2027-03-01'))
         db.session.add(Setting(key='initial_budget',value='0'))
         db.session.add(Setting(key='project_initialized',value='1'))
@@ -4674,17 +4661,19 @@ def _backup_config():
     return {'folder':cfg['folder'],'keep':cfg['keep'],'relative_folder':str(cfg['folder'])}
 
 
-def _backup_archive_by_name(name):
-    if _backup_pg():
-        import server_backups
-        return server_backups.selected_archive(name)
-    import backup_manager
-    import re
-    if not isinstance(name,str) or not re.fullmatch(r'ProjectHouseBuilder_Backup_[0-9_\\-]+\\.zip',name):
-        raise ValueError('Ungültiger Backup-Dateiname.')
-    archive=_backup_config()['folder']/name
-    if not archive.is_file() or archive.is_symlink():raise ValueError('Backup nicht gefunden.')
-    return archive
+def _backup_archive_by_name(name,owner=None):
+    import project_backups
+    return project_backups.selected(_backup_config(),current_project_id() if owner is None else owner,name)
+
+
+def _project_backup_create():
+    import project_backups
+    return project_backups.create(db,ROOT,current_project_id(),_backup_config())
+
+
+def _verify_project_backup(path,owner=None):
+    import project_backups
+    return project_backups.verify(path,current_project_id() if owner is None else owner)
 
 
 def _verify_selected_backup(path):
@@ -4736,18 +4725,15 @@ def ocr_status():
 def backup_status():
     try:
         cfg=_backup_config()
+        import project_backups
+        entries=project_backups.existing(cfg,current_project_id())
+        root=None
         if _backup_pg():
             import server_backups
-            entries=server_backups.existing()
             root=str(server_backups._root())
-        else:
-            import backup_manager
-            entries=[{'filename':p.name,'bytes':p.stat().st_size}
-                     for p in sorted(cfg['folder'].glob(backup_manager.PREFIX+'*.zip'),reverse=True)
-                     if p.is_file()]
-            root=None
         return jsonify(configured=True,backend='postgres' if _backup_pg() else 'sqlite',
-                       folder=str(cfg['folder']),relative_folder=cfg['relative_folder'],
+                       folder=str(project_backups.folder(cfg,current_project_id())),relative_folder=cfg['relative_folder'],
+                       scope='project',project_id=current_project_id(),project_title=db.session.get(Project,current_project_id()).title,
                        storage_root=root,keep=cfg['keep'],count=len(entries),
                        latest=entries[0]['filename'] if entries else None,
                        backups=entries)
@@ -4814,14 +4800,14 @@ def create_manual_backup():
     if _BACKUP_RESTORE_LOCK.locked():
         return jsonify(error='Wiederherstellung läuft. Keine Sicherung möglich.'),409
     try:
-        path=_backup_create()
-        return jsonify(ok=True,filename=path.name,verified=True,bytes=path.stat().st_size),201
+        path=_project_backup_create()
+        return jsonify(ok=True,scope='project',project_id=current_project_id(),filename=path.name,verified=True,bytes=path.stat().st_size),201
     except (ValueError,OSError,sqlite3.DatabaseError,zipfile.BadZipFile) as exc:
         return jsonify(error='Backup nicht erstellt: '+str(exc)),409
 
 
 # Two-stage restore: first validate archive, then require an explicit typed confirmation.
-_BACKUP_RESTORE_UPLOADS=Path.home()/'.cache'/'ProjectHouseBuilder'/'restore-staging'
+_BACKUP_RESTORE_UPLOADS=ROOT/'private'/'restore-staging'
 
 
 @app.post('/api/backup/inspect')
@@ -4850,24 +4836,24 @@ def backup_inspect():
                         size+=len(block)
                         if size>1024**3:raise ValueError('Maximal 1 GB Uploadgröße.')
                         output.write(block)
-                manifest=_verify_selected_backup(archive)
+                manifest=_verify_project_backup(archive)
             except Exception:
                 archive.unlink(missing_ok=True)
                 raise
             return jsonify(ok=True,ref='upload:'+key,created=manifest.get('created'),
-                           files=len(manifest.get('files',{})),verified=True)
+                           files=len(manifest.get('files',{})),verified=True,project_id=current_project_id(),project_title=manifest.get('project_title'),scope='project')
         body=request.get_json(silent=True) or {}
         archive=_backup_archive_by_name(body.get('filename',''))
-        manifest=_verify_selected_backup(archive)
+        manifest=_verify_project_backup(archive)
         return jsonify(ok=True,ref='stored:'+archive.name,created=manifest.get('created'),
-                       files=len(manifest.get('files',{})),verified=True)
+                       files=len(manifest.get('files',{})),verified=True,project_id=current_project_id(),project_title=manifest.get('project_title'),scope='project')
     except (ValueError,OSError,zipfile.BadZipFile,KeyError) as exc:
         return jsonify(error='Sicherung nicht bestätigt: '+str(exc)),400
 
 
-def _restore_archive(ref):
+def _restore_archive(ref,owner=None):
     if isinstance(ref,str) and ref.startswith('stored:'):
-        return _backup_archive_by_name(ref[7:])
+        return _backup_archive_by_name(ref[7:],owner)
     if isinstance(ref,str) and ref.startswith('upload:'):
         import re
         key=ref[7:]
@@ -4877,36 +4863,27 @@ def _restore_archive(ref):
     raise ValueError('Bitte zuerst ein Backup prüfen.')
 
 
-def _run_restore(ref):
+def _run_restore(ref,owner):
     global _BACKUP_RESTORE_STATE
     try:
-        with app.app_context():
-            archive=_restore_archive(ref)
-            _verify_selected_backup(archive)
-            if _backup_pg():
-                import server_backups
-                outcome=server_backups.restore_postgres(archive,db.engine.url,
-                                                        lambda: (db.session.remove(),db.engine.dispose()))
-                db.engine.dispose()
-            else:
-                import backup_manager
-                safety=backup_manager.make_backup()
-                _verify_selected_backup(safety)
-                db.session.remove();db.engine.dispose()
-                rollback=backup_manager.restore(archive,yes=True)
-                db.engine.dispose()
-                outcome={'restored':True,'safety_backup':safety.name,
-                         'previous_files':str(rollback)}
-        _BACKUP_RESTORE_STATE={'state':'done','message':'Wiederherstellung abgeschlossen. Bitte Anwendung neu laden und Daten prüfen.',
-                               'result':outcome}
+        with app.app_context(),project_context(owner):
+            import project_backups
+            archive=_restore_archive(ref,owner)
+            # Keep an immutable copy: retention after the safety backup may prune the selected ZIP.
+            with tempfile.TemporaryDirectory(prefix='phb-project-restore-source-') as temporary:
+                staged=Path(temporary)/'project.zip';shutil.copy2(archive,staged)
+                project_backups.load_rows(staged,db,owner)
+                safety=_project_backup_create()
+                outcome=project_backups.restore(staged,db,ROOT,owner)
+                outcome['safety_backup']=safety.name
+        _BACKUP_RESTORE_STATE={'state':'done','project_id':owner,'message':'Projekt wiederhergestellt. Andere Projekte bleiben unverändert.','result':outcome}
     except Exception:
-        app.logger.exception('Wiederherstellung fehlgeschlagen.')
-        _BACKUP_RESTORE_STATE={'state':'failed',
-            'message':'Wiederherstellung fehlgeschlagen. Projektstand und Sicherheitsbackup prüfen; Serverprotokoll enthält Details.',
-            'result':None}
+        app.logger.exception('Projektwiederherstellung fehlgeschlagen.')
+        _BACKUP_RESTORE_STATE={'state':'failed','project_id':owner,
+            'message':'Projektwiederherstellung fehlgeschlagen. Änderungen wurden zurückgenommen; Serverprotokoll enthält Details.','result':None}
     finally:
         if isinstance(ref,str) and ref.startswith('upload:'):
-            try:_restore_archive(ref).unlink(missing_ok=True)
+            try:_restore_archive(ref,owner).unlink(missing_ok=True)
             except Exception:pass
         _BACKUP_RESTORE_LOCK.release()
 
@@ -4918,7 +4895,7 @@ def backup_restore_start():
         return jsonify(error='Zur Bestätigung BACKUP WIEDERHERSTELLEN eingeben.'),400
     try:
         archive=_restore_archive(body.get('ref',''))
-        _verify_selected_backup(archive)
+        _verify_project_backup(archive)
         _backup_config() # Safety backup destination must be configured and available.
     except (ValueError,OSError,KeyError,zipfile.BadZipFile) as exc:
         return jsonify(error='Keine Wiederherstellung gestartet: '+str(exc)),409
@@ -4927,21 +4904,24 @@ def backup_restore_start():
     if not _BACKUP_RESTORE_LOCK.acquire(blocking=False):
         return jsonify(error='Es läuft bereits eine Wiederherstellung.'),409
     global _BACKUP_RESTORE_STATE
-    _BACKUP_RESTORE_STATE={'state':'running','message':'Sicherheitsbackup, Prüfung und Wiederherstellung laufen.',
+    _BACKUP_RESTORE_STATE={'state':'running','project_id':current_project_id(),'message':'Sicherheitsbackup, Prüfung und Wiederherstellung laufen.',
                            'result':None}
-    Thread(target=_run_restore,args=(body['ref'],),daemon=True,name='phb-restore').start()
+    Thread(target=_run_restore,args=(body['ref'],current_project_id()),daemon=True,name='phb-restore').start()
     return jsonify(started=True),202
 
 
 @app.get('/api/backup/restore/status')
 def backup_restore_status():
+    if _BACKUP_RESTORE_STATE.get('project_id')!=current_project_id():
+        return jsonify(state='idle',project_id=current_project_id(),message='',result=None)
     return jsonify(_BACKUP_RESTORE_STATE)
 
 
 @app.before_request
 def prevent_requests_during_restore():
-    if _BACKUP_RESTORE_LOCK.locked() and request.path not in (
-            '/api/backup/restore/status',) and not request.path.startswith('/static/'):
+    if (_BACKUP_RESTORE_LOCK.locked() and _BACKUP_RESTORE_STATE.get('project_id')==current_project_id()
+            and (request.path.startswith('/api/') or request.args.get('_classic')=='1') and request.path not in (
+            '/api/backup/restore/status',) and not request.path.startswith('/static/')):
         return jsonify(error='Wiederherstellung läuft. Bitte keine Änderungen vornehmen.'),503
 
 
