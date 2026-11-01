@@ -526,6 +526,8 @@ def initialize():
         from project_schema import upgrade_project_schema
         with db.engine.begin() as connection: upgrade_project_schema(connection)
     db.create_all()
+    from project_work import ensure_work_archive_schema
+    ensure_work_archive_schema(db.session.connection())
     if db.session.scalar(select(Project.id).limit(1)) is None:
         db.session.add(Project(id=1,title='Mein bestehendes Projekt',kind='Sanierung',description='Bisherige Projektdaten'))
         db.session.commit()

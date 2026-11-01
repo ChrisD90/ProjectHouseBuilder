@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
 import {
-  Accordion,
   ActionIcon,
   Badge,
   Button,
   Checkbox,
   Group,
+  Modal,
   Paper,
   Select,
   Stack,
@@ -18,10 +18,31 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
-import { IconPlus, IconPencil, IconTrash, IconSearch } from '@tabler/icons-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { api, Editor, ErrorBox, Row, success, useConfirm, error } from './core';
+import {
+  IconPlus,
+  IconPencil,
+  IconTrash,
+  IconSearch,
+  IconArchive,
+  IconArchiveOff,
+  IconListCheck,
+  IconNotes,
+} from '@tabler/icons-react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  api,
+  Editor,
+  ErrorBox,
+  Row,
+  success,
+  useConfirm,
+  error,
+  useModalLayer,
+  EditorCoveredContext,
+} from './core';
 import { useDirtyGuard } from './shell';
+
+type Source = { type: string; id: number; label?: string };
 const initial: Row = {
   kind: 'todo',
   title: '',
@@ -31,168 +52,159 @@ const initial: Row = {
   source_type: '',
   source_id: null,
 };
-export function SourceWork({ type, id }: { type: string; id: number }) {
-  const [active, setActive] = useState<string | null>(null),
-    navigate = useNavigate();
+const WorkContext = createContext<any>(null);
+const useWork = () => useContext(WorkContext);
+const matches = (row: Row, source: Source) =>
+  row.source_type === source.type && row.source_id === source.id;
+
+/** One editor and source-list dialog, shared by native pages and embedded workflows. */
+export function WorkProvider({ children }: { children: React.ReactNode }) {
   const query = useQuery({
-    queryKey: ['work', type, id],
-    queryFn: () => api('/api/project-work?source_type=' + type + '&source_id=' + id),
-    enabled: active === 'work',
+    queryKey: ['work'],
+    queryFn: () => api('/api/project-work'),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
-  return (
-    <Accordion value={active} onChange={setActive} variant="contained">
-      <Accordion.Item value="work">
-        <Accordion.Control>To-dos & Notizen</Accordion.Control>
-        <Accordion.Panel>
-          <Stack gap="xs">
-            <ErrorBox value={query.error} />
-            {(query.data?.items || []).map((item: Row) => (
-              <Group key={item.id} justify="space-between">
-                <Text size="sm" td={item.done ? 'line-through' : undefined}>
-                  {item.kind === 'note' ? 'Notiz: ' : ''}
-                  {item.title}
-                </Text>
-                <Badge variant="light">
-                  {item.kind === 'note' ? 'Notiz' : item.done ? 'Erledigt' : 'Offen'}
-                </Badge>
-              </Group>
-            ))}
-            {!query.isPending && !query.data?.items?.length && (
-              <Text size="sm" c="dimmed">
-                Noch keine Einträge.
-              </Text>
-            )}
-            <Button
-              size="xs"
-              variant="light"
-              onClick={() =>
-                navigate('/aufgaben?source_type=' + type + '&source_id=' + id + '&new=todo')
-              }
-            >
-              To-do oder Notiz hinzufügen
-            </Button>
-            <Button size="xs" variant="subtle" onClick={() => navigate('/aufgaben')}>
-              Alle Einträge öffnen
-            </Button>
-          </Stack>
-        </Accordion.Panel>
-      </Accordion.Item>
-    </Accordion>
-  );
-}
-export function WorkPage() {
-  const query = useQuery({
-      queryKey: ['work'],
-      queryFn: () => api('/api/project-work'),
-      staleTime: 0,
-    }),
-    sources = useQuery({
-      queryKey: ['work-sources'],
-      queryFn: () => api('/api/project-work/sources'),
-      staleTime: 0,
-    });
+  const sources = useQuery({
+    queryKey: ['work-sources'],
+    queryFn: () => api('/api/project-work/sources'),
+    staleTime: 20000,
+  });
   const cache = useQueryClient(),
     ask = useConfirm(),
     navigate = useNavigate(),
-    [params] = useSearchParams();
-  const [opened, setOpened] = useState(false),
-    [id, setID] = useState<number | null>(null),
+    confirming = useModalLayer().blocked;
+  const [source, setSource] = useState<Source | null>(null),
+    [item, setItem] = useState<Row | null>(null),
     [busy, setBusy] = useState(false),
     [failure, setFailure] = useState<unknown>(null),
-    [search, setSearch] = useState(''),
-    [tab, setTab] = useState<string | null>('todo'),
-    [showDone, setShowDone] = useState(false),
-    [pending, setPending] = useState<{ id: number; done: boolean } | null>(null);
-  const form = useForm<Row>({ initialValues: initial }),
-    handled = useRef('');
-  useDirtyGuard(opened && form.isDirty());
-  function open(row?: Row) {
+    [listTab, setListTab] = useState<string | null>('todo'),
+    [archived, setArchived] = useState(false);
+  const form = useForm<Row>({ initialValues: initial });
+  const location = useLocation();
+  useLayoutEffect(() => {
+    setSource(null);
+    setItem(null);
+  }, [location.pathname]);
+  const [pendingDone, setPendingDone] = useState<{ id: number; done: boolean } | null>(null);
+  const rows: Row[] = query.data?.items || [];
+  const rowsRef = useRef(rows);
+  rowsRef.current = rows;
+  const locking = useRef(false);
+  useDirtyGuard(!!item && form.isDirty());
+  const sourceInfo =
+    source && sources.data?.sources.find((x: Row) => x.type === source.type && x.id === source.id);
+  function edit(row: Row) {
+    if (locking.current) return;
     const values = { ...initial, ...row };
-    setID(row?.id || null);
     form.setValues(values);
     form.resetDirty(values);
     setFailure(null);
-    setOpened(true);
+    setItem(values);
   }
-  useEffect(() => {
-    const token = params.toString();
-    if (params.get('new') && sources.data && !sources.isFetching && handled.current !== token) {
-      handled.current = token;
-      const type = params.get('source_type') || '',
-        ident = Number(params.get('source_id'));
-      const found = sources.data.sources.find((x: Row) => x.type === type && x.id === ident);
-      open({
-        ...initial,
-        kind: params.get('new') === 'note' ? 'note' : 'todo',
-        source_type: found ? type : '',
-        source_id: found ? ident : null,
-      });
-      if (type && !found)
-        setFailure(
-          Error('Die verknüpfte Quelle ist nicht mehr vorhanden. Bitte die Zuordnung prüfen.'),
-        );
+  function create(kind: string, from?: Source) {
+    edit({ ...initial, kind, source_type: from?.type || '', source_id: from?.id || null });
+  }
+  function open(from: Source) {
+    if (!from.type || !Number.isSafeInteger(from.id) || from.id <= 0 || locking.current) return;
+    setSource(from);
+    setArchived(false);
+    setListTab('todo');
+    query.refetch();
+    sources.refetch();
+  }
+  async function changed() {
+    await Promise.all([
+      cache.invalidateQueries({ queryKey: ['work'] }),
+      cache.invalidateQueries({ queryKey: ['projects'] }),
+    ]);
+  }
+  async function mutate(row: Row, operation: 'done' | 'archive' | 'delete') {
+    if (locking.current) return;
+    locking.current = true;
+    setBusy(true);
+    if (operation === 'done') setPendingDone({ id: row.id, done: !row.done });
+    try {
+      if (operation === 'delete' && !(await ask('„' + row.title + '“ endgültig löschen?')))
+        return false;
+      await api(
+        '/api/project-work/' + row.id,
+        operation === 'delete' ? 'DELETE' : 'PATCH',
+        operation === 'delete'
+          ? undefined
+          : operation === 'done'
+            ? { done: !row.done }
+            : { archived: !row.archived },
+      );
+      await changed();
+      success(
+        operation === 'delete'
+          ? 'Eintrag gelöscht.'
+          : operation === 'archive'
+            ? row.archived
+              ? 'Eintrag wiederhergestellt.'
+              : 'Eintrag archiviert.'
+            : row.done
+              ? 'To-do wieder geöffnet.'
+              : 'To-do erledigt.',
+      );
+      return true;
+    } catch (e) {
+      error(e);
+      return false;
+    } finally {
+      locking.current = false;
+      setBusy(false);
+      setPendingDone(null);
     }
-  }, [params, sources.data, sources.isFetching]);
-  async function save(remove = false) {
-    if (busy) return;
-    if (remove && !(await ask('Diesen Eintrag endgültig löschen?'))) return;
+  }
+  async function save() {
+    if (locking.current) return;
+    locking.current = true;
     setBusy(true);
     setFailure(null);
     try {
-      const values = form.values;
+      const v = form.values;
       await api(
-        '/api/project-work' + (id ? '/' + id : ''),
-        remove ? 'DELETE' : id ? 'PATCH' : 'POST',
-        remove
-          ? undefined
-          : {
-              kind: values.kind,
-              title: values.title,
-              body: values.body,
-              due_on: values.due_on,
-              done: values.done,
-              source_type: values.source_type,
-              source_id: values.source_id,
-            },
+        '/api/project-work' + (item?.id ? '/' + item.id : ''),
+        item?.id ? 'PATCH' : 'POST',
+        {
+          kind: v.kind,
+          title: v.title,
+          body: v.body,
+          due_on: v.due_on,
+          done: v.done,
+          source_type: v.source_type,
+          source_id: v.source_id,
+        },
       );
-      setOpened(false);
-      await cache.invalidateQueries({ queryKey: ['work'] });
-      success(remove ? 'Eintrag gelöscht.' : 'Eintrag gespeichert.');
+      setItem(null);
+      await changed();
+      success(v.kind === 'note' ? 'Notiz gespeichert.' : 'To-do gespeichert.');
     } catch (e) {
       setFailure(e);
     } finally {
+      locking.current = false;
       setBusy(false);
     }
   }
-  async function toggle(item: Row) {
-    if (pending) return;
-    setPending({ id: item.id, done: !item.done });
-    try {
-      await api('/api/project-work/' + item.id, 'PATCH', { done: !item.done });
-      await cache.invalidateQueries({ queryKey: ['work'] });
-    } catch (e) {
-      error(e);
-    } finally {
-      setPending(null);
+  useEffect(() => {
+    const bridge = {
+      open: (type: string, id: number) => open({ type, id: Number(id) }),
+      items: () => rowsRef.current,
+    };
+    (window as any).PHBWork = bridge;
+    return () => {
+      if ((window as any).PHBWork === bridge) delete (window as any).PHBWork;
+    };
+  }, []);
+  useEffect(() => {
+    for (const frame of document.querySelectorAll<HTMLIFrameElement>('iframe.workflow-frame')) {
+      try {
+        frame.contentDocument?.dispatchEvent(new CustomEvent('phb-work-changed'));
+      } catch {}
     }
-  }
-  const rows = (query.data?.items || [])
-    .filter(
-      (x: Row) =>
-        x.kind === tab &&
-        (showDone || !x.done) &&
-        [x.title, x.body, x.source_label].some((v) =>
-          String(v || '')
-            .toLocaleLowerCase('de')
-            .includes(search.toLocaleLowerCase('de')),
-        ),
-    )
-    .sort(
-      (a: Row, b: Row) =>
-        Number(a.done) - Number(b.done) ||
-        (a.due_on || '9999').localeCompare(b.due_on || '9999') ||
-        b.id - a.id,
-    );
+  }, [query.data]);
   const choices = (sources.data?.sources || []).map((x: Row) => ({
     value: x.type + ':' + x.id,
     label: x.label,
@@ -203,135 +215,90 @@ export function WorkPage() {
   if (selected && !choices.some((x: Row) => x.value === selected))
     choices.push({
       value: selected,
-      label: form.values.source_label || 'Frühere Quelle (nicht mehr vorhanden)',
+      label: form.values.source_label || 'Verknüpfte Quelle (wird geprüft)',
     });
+  const note = form.values.kind === 'note';
   return (
-    <div className="page">
-      <Group className="page-header" justify="space-between">
-        <div>
-          <Title order={1}>To-dos & Notizen</Title>
-          <Text c="dimmed" size="sm">
-            Alles Wichtige festhalten – frei oder mit deinem Bauprojekt verknüpft.
-          </Text>
-        </div>
-        <Button
-          leftSection={<IconPlus size={17} />}
-          onClick={() => open({ ...initial, kind: tab })}
-        >
-          Eintrag anlegen
-        </Button>
-      </Group>
-      <ErrorBox value={query.error || sources.error} />
-      <Paper className="paper">
-        <Group justify="space-between" mb="md">
-          <Tabs value={tab} onChange={setTab}>
-            <Tabs.List>
-              <Tabs.Tab value="todo">To-dos</Tabs.Tab>
-              <Tabs.Tab value="note">Notizen</Tabs.Tab>
-            </Tabs.List>
-          </Tabs>
-          <TextInput
-            aria-label="Einträge suchen"
-            placeholder="Einträge suchen"
-            leftSection={<IconSearch size={16} />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </Group>
-        {tab === 'todo' && (
-          <Checkbox
-            label="Erledigte anzeigen"
-            checked={showDone}
-            onChange={(e) => setShowDone(e.currentTarget.checked)}
-            mb="md"
-          />
-        )}
-        <Stack gap="sm">
-          {rows.map((item: Row) => (
-            <Paper withBorder p="md" radius="md" key={item.id}>
-              <Group align="start" wrap="nowrap">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <Group wrap="nowrap">
-                    {item.kind === 'todo' && (
-                      <Checkbox
-                        aria-label={
-                          item.done
-                            ? 'To-do wieder öffnen: ' + item.title
-                            : 'To-do abschließen: ' + item.title
-                        }
-                        checked={pending && pending.id === item.id ? pending.done : item.done}
-                        disabled={pending !== null}
-                        onChange={() => toggle(item)}
-                      />
-                    )}
-                    <Text
-                      fw={600}
-                      td={item.done ? 'line-through' : undefined}
-                      style={{ overflowWrap: 'anywhere' }}
-                    >
-                      {item.title}
-                    </Text>
-                  </Group>
-                  {item.body && (
-                    <Text
-                      size="sm"
-                      mt="sm"
-                      style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
-                    >
-                      {item.body}
-                    </Text>
-                  )}
-                  <Group gap="xs" mt="sm">
-                    {item.due_on && (
-                      <Badge
-                        variant="light"
-                        color={
-                          !item.done && item.due_on < new Date().toLocaleDateString('sv-SE')
-                            ? 'red'
-                            : 'gray'
-                        }
-                      >
-                        Fällig {item.due_on}
-                      </Badge>
-                    )}
-                    {item.source_type && (
-                      <Button
-                        size="compact-xs"
-                        variant="subtle"
-                        disabled={!item.source_url}
-                        onClick={() => navigate(item.source_url)}
-                      >
-                        {item.source_label}
-                        {item.source_missing ? ' · Quelle entfernt' : ''}
-                      </Button>
-                    )}
-                  </Group>
-                </div>
-                <Tooltip label="Bearbeiten">
-                  <ActionIcon
-                    variant="subtle"
-                    aria-label={'Eintrag bearbeiten: ' + item.title}
-                    onClick={() => open(item)}
-                  >
-                    <IconPencil size={17} />
-                  </ActionIcon>
-                </Tooltip>
-              </Group>
-            </Paper>
-          ))}
-          {!rows.length && (
-            <Text c="dimmed" size="sm">
-              {query.isPending ? 'Einträge werden geladen …' : 'Keine passenden Einträge.'}
+    <WorkContext.Provider
+      value={{
+        rows,
+        query,
+        sources,
+        open,
+        edit,
+        create,
+        mutate,
+        busy,
+        pendingDone,
+        goToSource: (url: string) => {
+          setSource(null);
+          navigate(url);
+        },
+      }}
+    >
+      <EditorCoveredContext.Provider value={!!source || !!item}>
+        {children}
+      </EditorCoveredContext.Provider>
+      <Modal
+        opened={!!source}
+        title="To-dos & Notizen"
+        size="lg"
+        zIndex={260}
+        centered
+        onClose={() => {
+          if (!item && !busy) setSource(null);
+        }}
+        closeOnClickOutside={false}
+        closeOnEscape={!item && !busy && !confirming}
+        trapFocus={!item && !confirming}
+        closeButtonProps={{ 'aria-label': 'Schließen', disabled: !!item || busy }}
+      >
+        {source && (
+          <Stack>
+            <Text size="sm" c="dimmed">
+              {sourceInfo?.label || source.label || 'Verknüpfte Einträge'}
             </Text>
-          )}
-        </Stack>
-      </Paper>
+            <CreateButtons
+              disabled={busy}
+              onCreate={(kind) => {
+                setListTab(kind);
+                setArchived(false);
+                create(kind, source);
+              }}
+            />
+            <Group justify="space-between">
+              <WorkTabs value={listTab} onChange={setListTab} />
+              <Checkbox
+                label="Archiv anzeigen"
+                checked={archived}
+                onChange={(e) => setArchived(e.currentTarget.checked)}
+              />
+            </Group>
+            <ErrorBox value={query.error || sources.error} />
+            <WorkRows
+              rows={rows.filter(
+                (x) => matches(x, source) && x.kind === listTab && !!x.archived === archived,
+              )}
+              loading={query.isPending}
+            />
+          </Stack>
+        )}
+      </Modal>
       <Editor
-        title={id ? 'Eintrag bearbeiten' : 'Eintrag anlegen'}
-        opened={opened}
+        title={
+          note
+            ? item?.id
+              ? 'Notiz bearbeiten'
+              : 'Neue Notiz'
+            : item?.id
+              ? 'To-do bearbeiten'
+              : 'Neues To-do'
+        }
+        opened={!!item}
         dirty={form.isDirty()}
         busy={busy}
-        onClose={() => setOpened(false)}
+        onClose={() => setItem(null)}
+        zIndex={280}
       >
         <form
           onSubmit={(e) => {
@@ -340,22 +307,14 @@ export function WorkPage() {
           }}
         >
           <Stack>
-            <Select
-              label="Art"
-              data={[
-                { value: 'todo', label: 'To-do' },
-                { value: 'note', label: 'Notiz' },
-              ]}
-              {...form.getInputProps('kind')}
-            />
             <TextInput label="Titel" required maxLength={200} {...form.getInputProps('title')} />
             <Textarea
-              label="Notizen / Details"
+              label="Details"
               minRows={4}
               maxLength={10000}
               {...form.getInputProps('body')}
             />
-            {form.values.kind === 'todo' && (
+            {!note && (
               <>
                 <TextInput
                   label="Fällig am (optional)"
@@ -372,25 +331,43 @@ export function WorkPage() {
               data={choices}
               value={selected}
               onChange={(v) => {
-                const [type, ident] = (v || '').split(':');
-                form.setValues({
-                  source_type: type || '',
-                  source_id: ident ? Number(ident) : null,
-                });
+                const [type, id] = (v || '').split(':');
+                form.setValues({ source_type: type || '', source_id: id ? Number(id) : null });
               }}
             />
-            <ErrorBox value={failure} />
-            <div className="actions">
-              {id && (
-                <Button
-                  color="red"
-                  variant="subtle"
-                  leftSection={<IconTrash size={16} />}
-                  mr="auto"
-                  onClick={() => save(true)}
-                >
-                  Löschen
-                </Button>
+            <ErrorBox value={failure || sources.error} />
+            {item?.archived && (
+              <Badge variant="light" color="gray">
+                Archiviert
+              </Badge>
+            )}
+            <div className="actions work-editor-actions">
+              {item?.id && (
+                <Group gap="xs" mr="auto">
+                  <Button
+                    color="red"
+                    variant="subtle"
+                    leftSection={<IconTrash size={16} />}
+                    onClick={async () => {
+                      if (await mutate(item, 'delete')) setItem(null);
+                    }}
+                  >
+                    Löschen
+                  </Button>
+                  <Button
+                    variant="default"
+                    leftSection={
+                      item.archived ? <IconArchiveOff size={16} /> : <IconArchive size={16} />
+                    }
+                    onClick={async () => {
+                      if (form.isDirty() && !(await ask('Ungespeicherte Änderungen verwerfen?')))
+                        return;
+                      if (await mutate(item, 'archive')) setItem(null);
+                    }}
+                  >
+                    {item.archived ? 'Wiederherstellen' : 'Archivieren'}
+                  </Button>
+                </Group>
               )}
               <Button type="submit" loading={busy}>
                 Speichern
@@ -399,6 +376,281 @@ export function WorkPage() {
           </Stack>
         </form>
       </Editor>
+    </WorkContext.Provider>
+  );
+}
+function CreateButtons({
+  onCreate,
+  disabled,
+}: {
+  onCreate: (kind: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Group gap="xs">
+      <Button
+        leftSection={<IconPlus size={17} />}
+        disabled={disabled}
+        onClick={() => onCreate('todo')}
+      >
+        Neues To-do
+      </Button>
+      <Button
+        variant="default"
+        leftSection={<IconNotes size={17} />}
+        disabled={disabled}
+        onClick={() => onCreate('note')}
+      >
+        Neue Notiz
+      </Button>
+    </Group>
+  );
+}
+function WorkTabs({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (value: string | null) => void;
+}) {
+  return (
+    <Tabs value={value} onChange={onChange}>
+      <Tabs.List>
+        <Tabs.Tab value="todo">To-dos</Tabs.Tab>
+        <Tabs.Tab value="note">Notizen</Tabs.Tab>
+      </Tabs.List>
+    </Tabs>
+  );
+}
+function WorkRows({ rows, loading }: { rows: Row[]; loading?: boolean }) {
+  const { edit, mutate, busy, pendingDone, goToSource } = useWork();
+  return (
+    <Stack gap="sm">
+      {[...rows]
+        .sort(
+          (a, b) =>
+            Number(a.done) - Number(b.done) ||
+            (a.due_on || '9999').localeCompare(b.due_on || '9999') ||
+            b.id - a.id,
+        )
+        .map((item) => (
+          <Paper withBorder p="md" radius="md" key={item.id}>
+            <Group align="start" wrap="nowrap">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Group wrap="nowrap" align="start">
+                  {item.kind === 'todo' && (
+                    <Checkbox
+                      mt={3}
+                      aria-label={
+                        (item.done ? 'To-do wieder öffnen: ' : 'To-do abschließen: ') + item.title
+                      }
+                      checked={pendingDone?.id === item.id ? pendingDone.done : item.done}
+                      disabled={busy || item.archived}
+                      onChange={() => mutate(item, 'done')}
+                    />
+                  )}
+                  <Text
+                    fw={600}
+                    td={item.done ? 'line-through' : undefined}
+                    style={{ overflowWrap: 'anywhere' }}
+                  >
+                    {item.title}
+                  </Text>
+                </Group>
+                {item.body && (
+                  <Text
+                    size="sm"
+                    mt="xs"
+                    style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+                  >
+                    {item.body}
+                  </Text>
+                )}
+                <Group gap="xs" mt="xs">
+                  {item.archived && (
+                    <Badge color="gray" variant="light">
+                      Archiviert
+                    </Badge>
+                  )}
+                  {item.done && <Badge variant="light">Erledigt</Badge>}
+                  {item.due_on && (
+                    <Badge
+                      variant="light"
+                      color={
+                        !item.done && item.due_on < new Date().toLocaleDateString('sv-SE')
+                          ? 'red'
+                          : 'gray'
+                      }
+                    >
+                      Fällig {item.due_on}
+                    </Badge>
+                  )}
+                  {item.source_type && (
+                    <Button
+                      size="compact-xs"
+                      variant="subtle"
+                      disabled={!item.source_url}
+                      onClick={() => goToSource(item.source_url)}
+                    >
+                      {item.source_label}
+                      {item.source_missing ? ' · Quelle entfernt' : ''}
+                    </Button>
+                  )}
+                </Group>
+              </div>
+              <Group gap={2} wrap="wrap" className="work-row-actions">
+                <Tooltip label="Bearbeiten">
+                  <ActionIcon
+                    variant="subtle"
+                    disabled={busy}
+                    aria-label={'Eintrag bearbeiten: ' + item.title}
+                    onClick={() => edit(item)}
+                  >
+                    <IconPencil size={17} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label={item.archived ? 'Wiederherstellen' : 'Archivieren'}>
+                  <ActionIcon
+                    variant="subtle"
+                    disabled={busy}
+                    aria-label={
+                      (item.archived ? 'Wiederherstellen: ' : 'Archivieren: ') + item.title
+                    }
+                    onClick={() => mutate(item, 'archive')}
+                  >
+                    {item.archived ? <IconArchiveOff size={17} /> : <IconArchive size={17} />}
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label="Löschen">
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    disabled={busy}
+                    aria-label={'Löschen: ' + item.title}
+                    onClick={() => mutate(item, 'delete')}
+                  >
+                    <IconTrash size={17} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
+            </Group>
+          </Paper>
+        ))}
+      {!rows.length && (
+        <Text c="dimmed" size="sm">
+          {loading ? 'Einträge werden geladen …' : 'Keine passenden Einträge.'}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+export function SourceWork({ type, id }: { type: string; id: number }) {
+  const { rows, open } = useWork();
+  const count = rows.filter(
+    (x: Row) => matches(x, { type, id }) && x.kind === 'todo' && !x.archived,
+  ).length;
+  return (
+    <Button
+      variant="light"
+      size="xs"
+      leftSection={<IconListCheck size={16} />}
+      rightSection={count ? <Badge size="sm">{count}</Badge> : undefined}
+      onClick={() => open({ type, id })}
+    >
+      To-dos & Notizen
+    </Button>
+  );
+}
+export function WorkPage() {
+  const { rows, query, sources, create, open, busy } = useWork();
+  const [search, setSearch] = useState(''),
+    [tab, setTab] = useState<string | null>('todo'),
+    [showDone, setShowDone] = useState(false),
+    [archived, setArchived] = useState(false);
+  const [params, setParams] = useSearchParams(),
+    handled = useRef('');
+  useEffect(() => {
+    query.refetch();
+  }, []);
+  useEffect(() => {
+    const token = params.toString();
+    if (!params.has('new') && !params.has('list')) {
+      handled.current = '';
+      return;
+    }
+    if (!sources.data || sources.isFetching || handled.current === token) return;
+    handled.current = token;
+    const type = params.get('source_type') || '',
+      id = Number(params.get('source_id')),
+      found = sources.data.sources.find((x: Row) => x.type === type && x.id === id);
+    if (params.has('list') && found) open(found);
+    else create(params.get('new') === 'note' ? 'note' : 'todo', found);
+    if (type && !found)
+      error(Error('Die verknüpfte Quelle ist nicht mehr vorhanden. Bitte die Zuordnung prüfen.'));
+    const next = new URLSearchParams(params);
+    ['new', 'list', 'source_type', 'source_id'].forEach((key) => next.delete(key));
+    setParams(next, { replace: true });
+  }, [params, sources.data, sources.isFetching]);
+  return (
+    <div className="page">
+      <Group className="page-header" justify="space-between">
+        <div>
+          <Title order={1}>To-dos & Notizen</Title>
+          <Text c="dimmed" size="sm">
+            Alles Wichtige festhalten – frei oder mit deinem Projekt verknüpft.
+          </Text>
+        </div>
+        <CreateButtons
+          disabled={busy}
+          onCreate={(kind) => {
+            setTab(kind);
+            setArchived(false);
+            setSearch('');
+            create(kind);
+          }}
+        />
+      </Group>
+      <ErrorBox value={query.error || sources.error} />
+      <Paper className="paper">
+        <Group justify="space-between" mb="md">
+          <WorkTabs value={tab} onChange={setTab} />
+          <TextInput
+            aria-label="Einträge suchen"
+            placeholder="Einträge suchen"
+            leftSection={<IconSearch size={16} />}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </Group>
+        <Group mb="md">
+          <Checkbox
+            label="Archiv anzeigen"
+            checked={archived}
+            onChange={(e) => setArchived(e.currentTarget.checked)}
+          />
+          {tab === 'todo' && !archived && (
+            <Checkbox
+              label="Erledigte anzeigen"
+              checked={showDone}
+              onChange={(e) => setShowDone(e.currentTarget.checked)}
+            />
+          )}
+        </Group>
+        <WorkRows
+          loading={query.isPending}
+          rows={rows.filter(
+            (x: Row) =>
+              x.kind === tab &&
+              !!x.archived === archived &&
+              (archived || showDone || !x.done) &&
+              [x.title, x.body, x.source_label].some((v) =>
+                String(v || '')
+                  .toLocaleLowerCase('de')
+                  .includes(search.toLocaleLowerCase('de')),
+              ),
+          )}
+        />
+      </Paper>
     </div>
   );
 }

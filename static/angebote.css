@@ -324,3 +324,5 @@ body.phb-app .phb-offer-invoices-dialog td:last-child{display:flex;gap:7px;flex-
 .offer-invoice-status{display:inline-flex;padding:4px 8px;border-radius:999px;background:var(--ui-soft);font-size:11px;font-weight:700}
 .offer-invoices-actions{display:flex;justify-content:flex-end}
 @media(max-width:680px){.offer-invoice-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.offer-invoices-actions a{width:100%;text-align:center}}
+
+.phb-page-angebote .offer-details-work{display:flex;align-items:center;gap:8px;margin:14px 0;color:var(--ui-muted);font-size:13px}

@@ -111,6 +111,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
   );
 }
 export const useConfirm = () => useContext(ConfirmContext);
+export const EditorCoveredContext = createContext(false);
 export function Editor({
   opened,
   title,
@@ -118,6 +119,7 @@ export function Editor({
   busy,
   onClose,
   children,
+  zIndex,
 }: {
   opened: boolean;
   title: string;
@@ -125,21 +127,24 @@ export function Editor({
   busy?: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  zIndex?: number;
 }) {
   const ask = useConfirm(),
-    confirming = useModalLayer().blocked;
+    confirming = useModalLayer().blocked,
+    covered = useContext(EditorCoveredContext);
   return (
     <Modal
-      trapFocus={!confirming}
+      trapFocus={!confirming && !covered}
+      zIndex={zIndex}
       opened={opened}
       onClose={async () => {
         if (!busy && (!dirty || (await ask('Ungespeicherte Änderungen verwerfen?')))) onClose();
       }}
       title={title}
       closeOnClickOutside={false}
-      closeOnEscape={!busy && !confirming}
+      closeOnEscape={!busy && !confirming && !covered}
       withCloseButton
-      closeButtonProps={{ 'aria-label': 'Schließen', disabled: busy }}
+      closeButtonProps={{ 'aria-label': 'Schließen', disabled: busy || covered }}
       size="lg"
       centered
     >

@@ -413,7 +413,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
         await page
           .locator("main")
           .evaluate((node) => getComputedStyle(node).backgroundColor),
-        "rgb(16, 24, 34)",
+        "rgb(12, 24, 26)",
       );
       assert.equal(
         await page
@@ -423,7 +423,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
               .getPropertyValue("--mantine-color-body")
               .trim(),
           ),
-        "#1c2835",
+        "#152426",
       );
     }
     await visit("Kosten & Budget");
@@ -435,7 +435,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
             .getPropertyValue("--mantine-color-placeholder")
             .trim(),
         ),
-      "#9db2bd",
+      "#94a79c",
     );
     assert.equal(
       await page

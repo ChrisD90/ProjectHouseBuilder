@@ -77,24 +77,45 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
       0,
     );
     await frame
-      .locator("#offerDetailsContent summary")
-      .filter({ hasText: "To-dos & Notizen" })
+      .locator('#offerDetailsContent [data-work-open="offer"]')
+      .click();
+    const linked = page.getByRole("dialog", {
+      name: "To-dos & Notizen",
+      exact: true,
+    });
+    await linked
+      .getByRole("button", { name: "Neues To-do", exact: true })
       .click();
     const title = "Angebotsrückfrage " + token;
-    await frame.locator("[data-work-title]").fill(title);
-    await frame
-      .locator("[data-work-body]")
+    const editor = page.getByRole("dialog", {
+      name: "Neues To-do",
+      exact: true,
+    });
+    await editor
+      .getByRole("textbox", { name: "Titel", exact: true })
+      .fill(title);
+    await editor
+      .getByRole("textbox", { name: "Details", exact: true })
       .fill("Technische Werte bestätigen lassen");
-    await frame.locator("[data-work-create]").click();
-    await frame
-      .locator("[data-work-items]")
-      .getByText(title, { exact: true })
+    await editor
+      .getByRole("button", { name: "Speichern", exact: true })
+      .click();
+    await editor.waitFor({ state: "hidden" });
+    await linked
+      .getByRole("checkbox", {
+        name: "To-do abschließen: " + title,
+        exact: true,
+      })
+      .check();
+    await linked
+      .getByRole("checkbox", {
+        name: "To-do wieder öffnen: " + title,
+        exact: true,
+      })
       .waitFor();
-    await frame.locator("[data-work-items] input[type=checkbox]").check();
-    await frame
-      .locator(".linked-work-done")
-      .filter({ hasText: title })
-      .waitFor();
+    await linked
+      .getByRole("button", { name: "Schließen", exact: true })
+      .click();
     await frame.locator("#closeOfferDetails").click();
     await page
       .getByRole("link", { name: "To-dos & Notizen", exact: true })
@@ -122,7 +143,7 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
       })
       .click();
     await page
-      .getByRole("textbox", { name: "Notizen / Details", exact: true })
+      .getByRole("textbox", { name: "Details", exact: true })
       .fill("Auch Liefertermin klären");
     await page.getByRole("button", { name: "Speichern", exact: true }).click();
     await page.getByRole("dialog").waitFor({ state: "hidden" });
@@ -135,12 +156,14 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
     frame = page.frameLocator('iframe[title="Angebote"]:not([hidden])');
     await frame.locator("#offerDetailsDialog").waitFor();
     await frame
-      .locator("#offerDetailsContent summary")
-      .filter({ hasText: "To-dos & Notizen" })
+      .locator('#offerDetailsContent [data-work-open="offer"]')
       .click();
-    await frame
+    await linked
       .getByText("Auch Liefertermin klären", { exact: true })
       .waitFor();
+    await linked
+      .getByRole("button", { name: "Schließen", exact: true })
+      .click();
     await frame.locator("#closeOfferDetails").click();
     await frame.locator('[data-offer-edit="' + oid + '"]').click();
     await frame.locator("#reverseOfferAcceptance").click();
@@ -299,14 +322,22 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
     await edit
       .getByRole("button", { name: "To-dos & Notizen", exact: true })
       .click();
-    await edit
-      .getByRole("button", { name: "To-do oder Notiz hinzufügen", exact: true })
-      .click();
-    await page.waitForURL("**/aufgaben?*");
-    const work = page.getByRole("dialog", {
-      name: "Eintrag anlegen",
+    const fundingWork = page.getByRole("dialog", {
+      name: "To-dos & Notizen",
       exact: true,
     });
+    await fundingWork
+      .getByRole("button", { name: "Neues To-do", exact: true })
+      .click();
+    const work = page.getByRole("dialog", { name: "Neues To-do", exact: true });
+    await work.waitFor();
+    await page.keyboard.press("Escape");
+    await work.waitFor({ state: "hidden" });
+    await fundingWork.waitFor();
+    await edit.waitFor();
+    await fundingWork
+      .getByRole("button", { name: "Neues To-do", exact: true })
+      .click();
     await work
       .getByRole("textbox", { name: "Titel", exact: true })
       .fill("Förderantrag nachreichen " + token);
@@ -323,11 +354,14 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
           x.source_id === funding.id,
       ),
     );
+    await page.keyboard.press("Escape");
+    await fundingWork.waitFor({ state: "hidden" });
+    await edit.waitFor();
+    await edit.getByRole("button", { name: "Schließen", exact: true }).click();
     await page
-      .getByRole("button", { name: "Eintrag anlegen", exact: true })
+      .getByRole("link", { name: "To-dos & Notizen", exact: true })
       .click();
-    await page.getByRole("textbox", { name: "Art", exact: true }).click();
-    await page.getByRole("option", { name: "Notiz", exact: true }).click();
+    await page.getByRole("button", { name: "Neue Notiz", exact: true }).click();
     await page
       .getByRole("textbox", { name: "Titel", exact: true })
       .fill("Projektidee " + token);

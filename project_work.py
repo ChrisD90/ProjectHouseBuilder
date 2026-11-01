@@ -1,8 +1,15 @@
 """Project-wide todos and notes with validated, optional source links."""
 from datetime import date, datetime, timezone
 from flask import jsonify, request
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 from project_documents import plain
+
+
+def ensure_work_archive_schema(connection):
+    """Additive upgrade shared by Alembic and direct application startup."""
+    inspector = inspect(connection)
+    if inspector.has_table('project_work') and 'archived_at' not in {c['name'] for c in inspector.get_columns('project_work')}:
+        connection.execute(text('ALTER TABLE project_work ADD COLUMN archived_at TIMESTAMP'))
 
 
 def register_project_work(app, db, sources):
@@ -14,6 +21,7 @@ def register_project_work(app, db, sources):
         body = db.Column(db.Text, nullable=False, default='')
         due_on = db.Column(db.String(10), nullable=False, default='')
         completed_at = db.Column(db.DateTime, nullable=True)
+        archived_at = db.Column(db.DateTime, nullable=True)
         source_type = db.Column(db.String(20), nullable=False, default='')
         source_id = db.Column(db.Integer, nullable=True)
         source_label = db.Column(db.String(300), nullable=False, default='')
@@ -30,6 +38,8 @@ def register_project_work(app, db, sources):
         source = source_info(item.source_type, item.source_id)
         return dict(id=item.id, kind=item.kind, title=item.title, body=item.body,
                     due_on=item.due_on, done=bool(item.completed_at),
+                    archived=bool(item.archived_at),
+                    archived_at=item.archived_at.isoformat() if item.archived_at else '',
                     completed_at=item.completed_at.isoformat() if item.completed_at else '',
                     source_type=item.source_type, source_id=item.source_id,
                     source_label=source['label'] if source else item.source_label,
@@ -66,7 +76,7 @@ def register_project_work(app, db, sources):
             return jsonify(ok=True)
         data = request.get_json(silent=True)
         try:
-            if not isinstance(data, dict) or set(data) - {'kind', 'title', 'body', 'due_on', 'done', 'source_type', 'source_id'}:
+            if not isinstance(data, dict) or set(data) - {'kind', 'title', 'body', 'due_on', 'done', 'archived', 'source_type', 'source_id'}:
                 raise ValueError('Ungültige Eigenschaften.')
             for key, limit in [('title', 200), ('body', 10000), ('kind', 8), ('due_on', 10)]:
                 if key in data:
@@ -76,6 +86,10 @@ def register_project_work(app, db, sources):
             if item.due_on:
                 if date.fromisoformat(item.due_on).isoformat() != item.due_on:
                     raise ValueError('Ungültiges Fälligkeitsdatum.')
+            if 'archived' in data:
+                if type(data['archived']) is not bool:
+                    raise ValueError('Archiviert muss ein Wahrheitswert sein.')
+                item.archived_at = (item.archived_at or datetime.now(timezone.utc)) if data['archived'] else None
             if 'done' in data:
                 if type(data['done']) is not bool:
                     raise ValueError('Erledigt muss ein Wahrheitswert sein.')

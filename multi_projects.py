@@ -179,7 +179,7 @@ def register_project_routes(app, db, Project, *, initialize, summary, Task, Cost
                 totals = summary(db.session.scalars(select(CostItem)).all())
                 row.update(tasks=len(tasks),completed=sum(t.status=='Erledigt' for t in tasks),
                     forecast=totals['planned'],open_todos=db.session.query(ProjectWork).filter(
-                        ProjectWork.kind=='todo',ProjectWork.completed_at.is_(None)).count())
+                        ProjectWork.kind=='todo',ProjectWork.completed_at.is_(None),ProjectWork.archived_at.is_(None)).count())
             output.append(row)
         return jsonify(projects=output)
 

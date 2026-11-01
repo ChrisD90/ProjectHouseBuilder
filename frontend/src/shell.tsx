@@ -43,7 +43,7 @@ import { useBlocker, useLocation, useNavigate } from 'react-router-dom';
 import { error, hasWrites, useConfirm, Row } from './core';
 import { useServices } from './services';
 import { MasterData, Costs, Energy, Documents } from './pages';
-import { WorkPage } from './work';
+import { WorkPage, WorkProvider } from './work';
 const items = [
   ['/', 'Bauzeitenplan', IconCalendar],
   ['/aufgaben', 'To-dos & Notizen', IconListCheck],
@@ -271,284 +271,288 @@ export function App() {
       refreshing === location.pathname);
   return (
     <GuardContext.Provider value={register}>
-      <AppShell
-        header={{ height: { base: 64, sm: 70 } }}
-        navbar={{
-          width: { base: 254, sm: mini ? 78 : 254 },
-          breakpoint: 'sm',
-          collapsed: { mobile: !mobile },
-        }}
-        padding={0}
-      >
-        <AppShell.Navbar className="app-sidebar" p={mini ? 'xs' : 'md'}>
-          <Group justify={mini ? 'center' : 'space-between'} wrap="nowrap" h={52}>
-            <Anchor
-              href="/"
-              aria-label="Alle Projekte"
-              title="Zur Projektübersicht"
-              c="inherit"
-              underline="never"
-              style={{ minWidth: 0 }}
-            >
-              <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-                <IconBuildingCottage size={29} />
-                {!mini && (
-                  <Text
-                    fw={700}
-                    size="sm"
-                    className="app-brand"
-                    lineClamp={2}
-                    style={{ overflowWrap: 'anywhere' }}
-                  >
-                    {projectInfo.data?.project?.title ||
-                      (projectInfo.isError ? 'Projekt nicht verfügbar' : 'Projekt wird geladen …')}
-                  </Text>
-                )}
-              </Group>
-            </Anchor>
-          </Group>
-          <Divider color="var(--brand-line)" my="md" />
-          <Stack gap="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {navigationGroups.map((group, index) => (
-              <section key={group.label} aria-label={group.label}>
-                {mini ? (
-                  index > 0 && <Divider color="var(--brand-line)" mb="sm" />
-                ) : (
-                  <Text className="sidebar-group-label" size="xs" fw={700} mb={4} px="sm">
-                    {group.label}
-                  </Text>
-                )}
-                {items
-                  .filter(([path]) => group.paths.includes(path))
-                  .map(([path, label, Icon]) => (
-                    <Tooltip key={path} label={label} disabled={!mini} position="right">
-                      <NavLink
-                        component="a"
-                        href={workspaceURL(path)}
-                        onClick={(e) => {
-                          if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
-                            e.preventDefault();
-                            navigate(path);
-                          }
-                        }}
-                        label={mini ? undefined : label}
-                        leftSection={<Icon size={20} />}
-                        active={location.pathname === path}
-                        aria-label={label}
-                        styles={{
-                          root: {
-                            justifyContent: mini ? 'center' : undefined,
-                            padding: mini ? '8px' : '6px 12px',
-                          },
-                          section: { marginRight: mini ? 0 : undefined },
-                        }}
-                      />
-                    </Tooltip>
-                  ))}
-              </section>
-            ))}
-          </Stack>
-          <Group justify={mini ? 'center' : 'space-between'} mt="md">
-            <Tooltip label={mini ? 'Sidebar ausklappen' : 'Sidebar einklappen'}>
-              <ActionIcon
-                aria-label={mini ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
-                variant="subtle"
-                color="gray"
-                visibleFrom="sm"
-                onClick={() => setCollapsed(!collapsed)}
+      <WorkProvider>
+        <AppShell
+          header={{ height: { base: 64, sm: 70 } }}
+          navbar={{
+            width: { base: 254, sm: mini ? 78 : 254 },
+            breakpoint: 'sm',
+            collapsed: { mobile: !mobile },
+          }}
+          padding={0}
+        >
+          <AppShell.Navbar className="app-sidebar" p={mini ? 'xs' : 'md'}>
+            <Group justify={mini ? 'center' : 'space-between'} wrap="nowrap" h={52}>
+              <Anchor
+                href="/"
+                aria-label="Alle Projekte"
+                title="Zur Projektübersicht"
+                c="inherit"
+                underline="never"
+                style={{ minWidth: 0 }}
               >
-                {mini ? <IconChevronRight size={19} /> : <IconChevronLeft size={19} />}
-              </ActionIcon>
-            </Tooltip>
-            <form action="/logout" method="post">
-              <Tooltip label="Abmelden">
-                <ActionIcon type="submit" variant="subtle" color="gray" aria-label="Abmelden">
-                  <IconLogout size={19} />
-                </ActionIcon>
-              </Tooltip>
-            </form>
-          </Group>
-        </AppShell.Navbar>
-        <AppShell.Header px={{ base: 15, sm: 26 }}>
-          <Group h="100%" justify="space-between" wrap="nowrap">
-            <Group gap="sm" wrap="nowrap">
-              <Burger
-                aria-label={mobile ? 'Navigation schließen' : 'Navigation öffnen'}
-                opened={mobile}
-                onClick={() => setMobile(!mobile)}
-                hiddenFrom="sm"
-                size="sm"
-              />
-              <BrandLogo />
-            </Group>
-            <Group gap="xs" wrap="nowrap">
-              <Select
-                aria-label="Darstellung"
-                value={colorScheme}
-                onChange={(v) => setColorScheme((v || 'auto') as any)}
-                size="xs"
-                w={96}
-                visibleFrom="md"
-                data={[
-                  { value: 'auto', label: 'System' },
-                  { value: 'light', label: 'Hell' },
-                  { value: 'dark', label: 'Dunkel' },
-                ]}
-              />
-              <Tooltip label="ChatGPT-Verbindung">
-                <Button
-                  aria-label="ChatGPT-Verbindung"
-                  size="xs"
-                  variant={services.ai.sharing ? 'light' : 'default'}
-                  leftSection={<IconSparkles size={16} />}
-                  onClick={services.openAI}
-                >
-                  <Text size="xs" visibleFrom="sm">
-                    ChatGPT
-                  </Text>
-                  {services.ai.sharing && (
-                    <Badge size="xs" ml={5}>
-                      ✓
-                    </Badge>
-                  )}
-                </Button>
-              </Tooltip>
-              <Tooltip label="Verarbeitung & Prüfung">
-                <Button
-                  size="xs"
-                  variant="default"
-                  aria-label="Warteschlange"
-                  leftSection={<IconListCheck size={16} />}
-                  onClick={services.openQueue}
-                >
-                  {services.queueLabel || (
-                    <Text size="xs" visibleFrom="md">
-                      Warteschlange
+                <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
+                  <IconBuildingCottage size={29} />
+                  {!mini && (
+                    <Text
+                      fw={700}
+                      size="sm"
+                      className="app-brand"
+                      lineClamp={2}
+                      style={{ overflowWrap: 'anywhere' }}
+                    >
+                      {projectInfo.data?.project?.title ||
+                        (projectInfo.isError
+                          ? 'Projekt nicht verfügbar'
+                          : 'Projekt wird geladen …')}
                     </Text>
                   )}
-                </Button>
-              </Tooltip>
+                </Group>
+              </Anchor>
             </Group>
-          </Group>
-        </AppShell.Header>
-        <AppShell.Main className="app-main">
-          {projectInfo.error && (
-            <Alert color="red" m="lg" title="Projekt nicht verfügbar">
-              <Text size="sm">
-                Das Projekt wurde nicht gefunden oder konnte nicht geladen werden.
-              </Text>
-              <Button component="a" href="/" mt="sm" variant="light">
-                Zur Projektübersicht
-              </Button>
-            </Alert>
-          )}
-          <div
-            style={{
-              display: native.has(location.pathname) ? 'block' : 'none',
-            }}
-          >
-            {location.pathname === '/aufgaben' ? (
-              <WorkPage />
-            ) : location.pathname === '/stammdaten' ? (
-              <MasterData />
-            ) : location.pathname === '/kosten' ? (
-              <Costs />
-            ) : location.pathname === '/energieplanung' ? (
-              <Energy />
-            ) : location.pathname === '/dokumente' ? (
-              <Documents />
-            ) : null}
-          </div>
-          {!native.has(location.pathname) && !route && (
-            <div className="page">
-              <Text>Diese Ansicht wurde nicht gefunden.</Text>
-              <Button mt="md" onClick={() => navigate('/')}>
-                Zum Bauzeitenplan
-              </Button>
+            <Divider color="var(--brand-line)" my="md" />
+            <Stack gap="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              {navigationGroups.map((group, index) => (
+                <section key={group.label} aria-label={group.label}>
+                  {mini ? (
+                    index > 0 && <Divider color="var(--brand-line)" mb="sm" />
+                  ) : (
+                    <Text className="sidebar-group-label" size="xs" fw={700} mb={4} px="sm">
+                      {group.label}
+                    </Text>
+                  )}
+                  {items
+                    .filter(([path]) => group.paths.includes(path))
+                    .map(([path, label, Icon]) => (
+                      <Tooltip key={path} label={label} disabled={!mini} position="right">
+                        <NavLink
+                          component="a"
+                          href={workspaceURL(path)}
+                          onClick={(e) => {
+                            if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+                              e.preventDefault();
+                              navigate(path);
+                            }
+                          }}
+                          label={mini ? undefined : label}
+                          leftSection={<Icon size={20} />}
+                          active={location.pathname === path}
+                          aria-label={label}
+                          styles={{
+                            root: {
+                              justifyContent: mini ? 'center' : undefined,
+                              padding: mini ? '8px' : '6px 12px',
+                            },
+                            section: { marginRight: mini ? 0 : undefined },
+                          }}
+                        />
+                      </Tooltip>
+                    ))}
+                </section>
+              ))}
+            </Stack>
+            <Group justify={mini ? 'center' : 'space-between'} mt="md">
+              <Tooltip label={mini ? 'Sidebar ausklappen' : 'Sidebar einklappen'}>
+                <ActionIcon
+                  aria-label={mini ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
+                  variant="subtle"
+                  color="gray"
+                  visibleFrom="sm"
+                  onClick={() => setCollapsed(!collapsed)}
+                >
+                  {mini ? <IconChevronRight size={19} /> : <IconChevronLeft size={19} />}
+                </ActionIcon>
+              </Tooltip>
+              <form action="/logout" method="post">
+                <Tooltip label="Abmelden">
+                  <ActionIcon type="submit" variant="subtle" color="gray" aria-label="Abmelden">
+                    <IconLogout size={19} />
+                  </ActionIcon>
+                </Tooltip>
+              </form>
+            </Group>
+          </AppShell.Navbar>
+          <AppShell.Header px={{ base: 15, sm: 26 }}>
+            <Group h="100%" justify="space-between" wrap="nowrap">
+              <Group gap="sm" wrap="nowrap">
+                <Burger
+                  aria-label={mobile ? 'Navigation schließen' : 'Navigation öffnen'}
+                  opened={mobile}
+                  onClick={() => setMobile(!mobile)}
+                  hiddenFrom="sm"
+                  size="sm"
+                />
+                <BrandLogo />
+              </Group>
+              <Group gap="xs" wrap="nowrap">
+                <Select
+                  aria-label="Darstellung"
+                  value={colorScheme}
+                  onChange={(v) => setColorScheme((v || 'auto') as any)}
+                  size="xs"
+                  w={96}
+                  visibleFrom="md"
+                  data={[
+                    { value: 'auto', label: 'System' },
+                    { value: 'light', label: 'Hell' },
+                    { value: 'dark', label: 'Dunkel' },
+                  ]}
+                />
+                <Tooltip label="ChatGPT-Verbindung">
+                  <Button
+                    aria-label="ChatGPT-Verbindung"
+                    size="xs"
+                    variant={services.ai.sharing ? 'light' : 'default'}
+                    leftSection={<IconSparkles size={16} />}
+                    onClick={services.openAI}
+                  >
+                    <Text size="xs" visibleFrom="sm">
+                      ChatGPT
+                    </Text>
+                    {services.ai.sharing && (
+                      <Badge size="xs" ml={5}>
+                        ✓
+                      </Badge>
+                    )}
+                  </Button>
+                </Tooltip>
+                <Tooltip label="Verarbeitung & Prüfung">
+                  <Button
+                    size="xs"
+                    variant="default"
+                    aria-label="Warteschlange"
+                    leftSection={<IconListCheck size={16} />}
+                    onClick={services.openQueue}
+                  >
+                    {services.queueLabel || (
+                      <Text size="xs" visibleFrom="md">
+                        Warteschlange
+                      </Text>
+                    )}
+                  </Button>
+                </Tooltip>
+              </Group>
+            </Group>
+          </AppShell.Header>
+          <AppShell.Main className="app-main">
+            {projectInfo.error && (
+              <Alert color="red" m="lg" title="Projekt nicht verfügbar">
+                <Text size="sm">
+                  Das Projekt wurde nicht gefunden oder konnte nicht geladen werden.
+                </Text>
+                <Button component="a" href="/" mt="sm" variant="light">
+                  Zur Projektübersicht
+                </Button>
+              </Alert>
+            )}
+            <div
+              style={{
+                display: native.has(location.pathname) ? 'block' : 'none',
+              }}
+            >
+              {location.pathname === '/aufgaben' ? (
+                <WorkPage />
+              ) : location.pathname === '/stammdaten' ? (
+                <MasterData />
+              ) : location.pathname === '/kosten' ? (
+                <Costs />
+              ) : location.pathname === '/energieplanung' ? (
+                <Energy />
+              ) : location.pathname === '/dokumente' ? (
+                <Documents />
+              ) : null}
             </div>
-          )}
-          {failed === location.pathname && (
-            <Alert color="red" m="lg" title="Ansicht konnte nicht geladen werden">
-              <Text size="sm">
-                Die Verbindung oder ein benötigter Bestandteil der Ansicht war nicht verfügbar. Du
-                kannst erneut laden oder über die Sidebar einen anderen Bereich öffnen.
-              </Text>
-              <Button
-                mt="sm"
-                variant="light"
-                color="red"
-                onClick={() => {
-                  setFailed(null);
-                  const target = new URL(url, window.location.origin);
-                  target.searchParams.set('_react_retry', String(Date.now()));
-                  setFrames((previous) => ({
-                    ...previous,
-                    [location.pathname]: {
-                      ...previous[location.pathname],
-                      src: target.pathname + target.search + target.hash,
-                      ready: false,
-                    },
-                  }));
-                }}
-              >
-                Erneut laden
-              </Button>
-            </Alert>
-          )}
-          <div
-            className="frame-zone"
-            inert={pending}
-            style={{
-              display: native.has(location.pathname) ? 'none' : undefined,
-            }}
-          >
-            {pending && failed !== location.pathname && (
-              <Progress className="frame-progress" value={100} animated size={3} />
-            )}
-            {Object.entries(frames).map(([path, frame]) => (
-              <div key={path} className="frame-slot" hidden={display !== path}>
-                {[
-                  ...(frame.previousSrc && !frame.ready && frame.previousSrc !== frame.src
-                    ? [frame.previousSrc]
-                    : []),
-                  frame.src,
-                ].map((src) => (
-                  <iframe
-                    key={src}
-                    ref={
-                      src === frame.src
-                        ? (node) => {
-                            refs.current[path] = node;
-                          }
-                        : undefined
-                    }
-                    hidden={src === frame.src && !frame.ready}
-                    className="workflow-frame"
-                    title={items.find((i) => i[0] === path)?.[1] || path}
-                    src={classicURL(src)}
-                    onLoad={(event) => {
-                      const node = event.currentTarget;
-                      if (refs.current[path] !== node) return;
-                      try {
-                        if (node.contentWindow?.location.href === 'about:blank') return;
-                        if (node.contentWindow?.location.pathname === '/login')
-                          window.location.assign('/login');
-                        else if (!(node.contentWindow as any)?.PHBEmbed) setFailed(path);
-                      } catch {
-                        setFailed(path);
-                      }
-                    }}
-                  />
-                ))}
+            {!native.has(location.pathname) && !route && (
+              <div className="page">
+                <Text>Diese Ansicht wurde nicht gefunden.</Text>
+                <Button mt="md" onClick={() => navigate('/')}>
+                  Zum Bauzeitenplan
+                </Button>
               </div>
-            ))}
-            {pending && !display && failed !== location.pathname && (
-              <LoadingOverlay visible overlayProps={{ blur: 0, backgroundOpacity: 0.8 }} />
             )}
-          </div>
-        </AppShell.Main>
-        {services.overlays}
-      </AppShell>
+            {failed === location.pathname && (
+              <Alert color="red" m="lg" title="Ansicht konnte nicht geladen werden">
+                <Text size="sm">
+                  Die Verbindung oder ein benötigter Bestandteil der Ansicht war nicht verfügbar. Du
+                  kannst erneut laden oder über die Sidebar einen anderen Bereich öffnen.
+                </Text>
+                <Button
+                  mt="sm"
+                  variant="light"
+                  color="red"
+                  onClick={() => {
+                    setFailed(null);
+                    const target = new URL(url, window.location.origin);
+                    target.searchParams.set('_react_retry', String(Date.now()));
+                    setFrames((previous) => ({
+                      ...previous,
+                      [location.pathname]: {
+                        ...previous[location.pathname],
+                        src: target.pathname + target.search + target.hash,
+                        ready: false,
+                      },
+                    }));
+                  }}
+                >
+                  Erneut laden
+                </Button>
+              </Alert>
+            )}
+            <div
+              className="frame-zone"
+              inert={pending}
+              style={{
+                display: native.has(location.pathname) ? 'none' : undefined,
+              }}
+            >
+              {pending && failed !== location.pathname && (
+                <Progress className="frame-progress" value={100} animated size={3} />
+              )}
+              {Object.entries(frames).map(([path, frame]) => (
+                <div key={path} className="frame-slot" hidden={display !== path}>
+                  {[
+                    ...(frame.previousSrc && !frame.ready && frame.previousSrc !== frame.src
+                      ? [frame.previousSrc]
+                      : []),
+                    frame.src,
+                  ].map((src) => (
+                    <iframe
+                      key={src}
+                      ref={
+                        src === frame.src
+                          ? (node) => {
+                              refs.current[path] = node;
+                            }
+                          : undefined
+                      }
+                      hidden={src === frame.src && !frame.ready}
+                      className="workflow-frame"
+                      title={items.find((i) => i[0] === path)?.[1] || path}
+                      src={classicURL(src)}
+                      onLoad={(event) => {
+                        const node = event.currentTarget;
+                        if (refs.current[path] !== node) return;
+                        try {
+                          if (node.contentWindow?.location.href === 'about:blank') return;
+                          if (node.contentWindow?.location.pathname === '/login')
+                            window.location.assign('/login');
+                          else if (!(node.contentWindow as any)?.PHBEmbed) setFailed(path);
+                        } catch {
+                          setFailed(path);
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              ))}
+              {pending && !display && failed !== location.pathname && (
+                <LoadingOverlay visible overlayProps={{ blur: 0, backgroundOpacity: 0.8 }} />
+              )}
+            </div>
+          </AppShell.Main>
+          {services.overlays}
+        </AppShell>
+      </WorkProvider>
     </GuardContext.Provider>
   );
 }

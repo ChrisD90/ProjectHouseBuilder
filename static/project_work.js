@@ -1,9 +1,26 @@
-/* On-demand linked work, using the same records as the central React area. */
+/* Compact source buttons open the shared editor in the persistent React shell. */
 (()=>{
- const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- async function api(url,method='GET',data){const response=await fetch(url,{method,headers:data?{'Content-Type':'application/json'}:{},body:data?JSON.stringify(data):undefined});const result=await response.json();if(!response.ok)throw Error(result.error||'Eintrag konnte nicht gespeichert werden.');return result;}
- async function load(panel){const host=panel.querySelector('[data-work-items]');try{const {items}=await api('/api/project-work?source_type='+panel.dataset.workType+'&source_id='+panel.dataset.workId);host.innerHTML=items.map(x=>`<div class="linked-work-row">${x.kind==='todo'?`<input type="checkbox" data-work-toggle="${x.id}" ${x.done?'checked':''} aria-label="${esc((x.done?'Wieder öffnen: ':'Abschließen: ')+x.title)}">`:'<span>Notiz</span>'}<div><strong${x.done?' class="linked-work-done"':''}>${esc(x.title)}</strong>${x.body?`<p>${esc(x.body)}</p>`:''}</div></div>`).join('')||'<p class="muted">Noch keine To-dos oder Notizen.</p>';}catch(e){host.textContent=e.message;}}
- document.addEventListener('toggle',event=>{const panel=event.target;if(panel.matches?.('details[data-work-type]')&&panel.open)load(panel);},true);
- document.addEventListener('change',async event=>{const box=event.target;if(!box.matches('[data-work-toggle]'))return;box.disabled=true;try{await api('/api/project-work/'+box.dataset.workToggle,'PATCH',{done:box.checked});await load(box.closest('[data-work-type]'));}catch(e){box.checked=!box.checked;await window.PHBUI.alert(e.message);}finally{box.disabled=false;}});
- document.addEventListener('click',async event=>{const button=event.target.closest('[data-work-create]');if(!button||button.disabled)return;const panel=button.closest('[data-work-type]'),input=panel.querySelector('[data-work-title]'),body=panel.querySelector('[data-work-body]'),kind=panel.querySelector('[data-work-kind]');if(!input.value.trim()){input.focus();return;}button.disabled=true;try{await api('/api/project-work','POST',{title:input.value,body:body.value,kind:kind.value,source_type:panel.dataset.workType,source_id:Number(panel.dataset.workId)});input.value='';body.value='';await load(panel);}catch(e){await window.PHBUI.alert(e.message)}finally{button.disabled=false;}});
+ 'use strict';
+ const icon='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 2 2 3-4M11 6h10M3 13l2 2 3-4M11 13h10M3 20l2 2 3-4M11 20h10"/></svg>';
+ function button(type,id,extra=''){return `<button type="button" class="linked-work-button ${extra}" data-work-open="${type}" data-work-id="${Number(id)}" title="To-dos & Notizen" aria-label="To-dos & Notizen anzeigen">${icon}<span data-work-count class="linked-work-count" hidden></span></button>`;}
+ window.PHBWorkUI={button};
+ let fallback=[];
+ function controller(){try{return window.parent.PHBWork;}catch{return null;}}
+ function update(){const items=controller()?.items()||fallback;for(const node of document.querySelectorAll('[data-work-open]')){
+  const count=items.filter(x=>x.source_type===node.dataset.workOpen&&x.source_id===Number(node.dataset.workId)&&x.kind==='todo'&&!x.archived).length;
+  const label='To-dos & Notizen anzeigen'+(count?' · '+count+' To-do'+(count===1?'':'s'):'');
+  if(node.title!==label){node.title=label;node.setAttribute('aria-label',label);}
+  const badge=node.querySelector('[data-work-count]');if(badge){badge.hidden=!count;if(badge.textContent!==String(count))badge.textContent=String(count);}
+ }}
+ document.addEventListener('click',event=>{const node=event.target.closest('[data-work-open]');if(!node||node.disabled)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  const type=node.dataset.workOpen,id=Number(node.dataset.workId),work=controller();
+  if(work)work.open(type,id);
+  else location.assign((window.PHBProject?.id?'/p/'+window.PHBProject.id:'')+'/aufgaben?source_type='+encodeURIComponent(type)+'&source_id='+id+'&list=1');
+ },true);
+ document.addEventListener('phb-work-changed',update);
+ function start(){update();new MutationObserver(update).observe(document.body,{childList:true,subtree:true});
+  if(!controller())fetch('/api/project-work').then(r=>r.ok?r.json():Promise.reject()).then(data=>{fallback=data.items||[];update();}).catch(()=>{});
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();

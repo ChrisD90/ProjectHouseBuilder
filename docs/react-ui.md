@@ -10,7 +10,7 @@ Der gemeinsame Rahmen verwendet React, TypeScript, React Router und Mantine; Ser
 
 Bereits als native React-/Mantine-Komponenten umgesetzt:
 
-- To-dos & Notizen: freie oder kontextbezogene Einträge, Quellenverknüpfung, Fälligkeit, Abschließen/Wiederöffnen und Bearbeiten. Angebotseinträge erscheinen zusätzlich direkt im Angebotsdialog; dort werden dieselben Datensätze verwendet.
+- To-dos & Notizen: freie oder kontextbezogene Einträge, Quellenverknüpfung, Fälligkeit, Abschließen/Wiederöffnen und Bearbeiten. Angebote, Arbeitspakete und Bauphasen öffnen ihre Einträge über einen kompakten Button mit To-do-Zähler. Listen und Editor verwenden überall dieselben Dialoge. To-dos und Notizen lassen sich separat anlegen, archivieren, wiederherstellen und löschen; siehe [To-dos & Notizen](todos-and-notes.md).
 - Stammdaten: Firmen mit allen Kontaktfeldern, Gewerke und Kategorien, Suchen, Umbenennen, Löschen und Standardlisten wiederherstellen. ChatGPT-Recherche bleibt eine ausdrückliche Aktion; Ergebnisse werden vor dem Speichern ausgewählt und geprüft. Rückkehr zu einem zwischengespeicherten Rechnungsentwurf bleibt möglich.
 - Kosten & Budget: aggregierte Kennzahlen, Abrechnungskette, Hinweise, Gruppierung, Suche und Aufschlüsselung bis zu den Originalquellen. Keine neue Uploadstrecke und keine zusätzliche Buchungslogik.
 - Energetische Planung: manuelle Förderdatenerfassung mit Beträgen, Status, Fristen, Quellen und Zuordnung zu Angebot/Budgetposition. Förderunterlagen nutzen den vorhandenen Dokumenten-Upload. Ein ausdrücklicher KI-Fördercheck mit Voraussetzungen und Quellen ist für BAFA-Gebäudehülle und KfW 458 verfügbar; siehe [Förderprüfung](funding-estimates.md).
@@ -69,3 +69,5 @@ PHB_TEST_URL=http://127.0.0.1:5059 npm --prefix frontend run test:browser:featur
 Er prüft Angebot ↔ zentrale To-dos, Annahmerücknahme im Editor, Förderunterlagen mit Rückkehr nach Metadatenprüfung, vorausgesetzte Zustimmung und explizite Übernahme einer simulierten KI-Schätzung. Reale ChatGPT-Aufrufe erfolgen dabei nicht.
 
 Die gemeinsame Farbpalette liegt in `static/palette.css` und gilt für React und eingebettete Abläufe. Die Mantine-Grünabstufungen sind in `frontend/src/main.tsx` hinterlegt. Logos für beide Darstellungen können direkt in `static/branding/logo-light.svg` und `static/branding/logo-dark.svg` ersetzt werden; Hinweise stehen in [static/branding/README.md](../static/branding/README.md).
+
+Revision `0028` ergänzt den optionalen Archivzeitpunkt bestehender To-dos und Notizen. Inhalte, Verknüpfungen und Erledigt-Status bleiben erhalten. `npm --prefix frontend run test:browser:work` prüft die Buttons, Zähler, gemeinsamen Dialoge, Archivierung, Wiederherstellung, Löschung und verschachtelte Dialoge gegen einen separaten Testserver (`PHB_TEST_URL`).

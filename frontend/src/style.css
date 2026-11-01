@@ -160,3 +160,9 @@ input {
 @media (max-width: 380px) {
   .brand-logo { width:155px; height:24px; }
 }
+
+.work-editor-actions { flex-wrap:wrap; }
+.work-row-actions { flex:0 0 auto; }
+@media (max-width: 480px) {
+  .work-row-actions { max-width:30px; }
+}

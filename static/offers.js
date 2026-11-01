@@ -421,7 +421,7 @@
     const actions=accepted
       ? `<a class="mini" href="/?firmenvorschlaege=1" title="Arbeitspaket im Bauzeitenplan zuordnen">Arbeitspaket zuordnen</a><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>`
       : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
-    const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${accepted?`<button class="offer-tile-icon" type="button" data-offer-invoices="${o.id}" aria-label="Zugeordnete Rechnungen anzeigen: ${invoiceCount}" title="Zugeordnete Rechnungen anzeigen">${icon('receipt')}<span class="offer-icon-badge">${invoiceCount}</span></button>`:''}${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
+    const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${accepted?`<button class="offer-tile-icon" type="button" data-offer-invoices="${o.id}" aria-label="Zugeordnete Rechnungen anzeigen: ${invoiceCount}" title="Zugeordnete Rechnungen anzeigen">${icon('receipt')}<span class="offer-icon-badge">${invoiceCount}</span></button>`:''}${PHBWorkUI.button('offer',o.id,'offer-tile-icon')}${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
     return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
       ${corner}
       <button type="button" class="offer-tile-open" data-offer-details="${o.id}"
@@ -464,7 +464,7 @@
         ${o.deletion_reason?`<p class="offer-mapping">${esc(o.deletion_reason)}</p>`:''}${notice(o)}
       </section>
       ${(o.acceptance_reversals||[]).length?`<details class="offer-details"><summary>Zurückgenommene Annahmen (${o.acceptance_reversals.length})</summary>${o.acceptance_reversals.map(r=>`<p>${esc(r.reversed_at.slice(0,10))} · ${fmt(r.agreed_gross)}${r.document_id?` · <a href="/api/documents/${r.document_id}/preview" target="_blank" rel="noopener">Frühere Auftragsbestätigung ansehen</a>`:''}</p>`).join('')}</details>`:''}
-      <details class="offer-details" data-work-type="offer" data-work-id="${o.id}"><summary>To-dos & Notizen</summary><div data-work-items aria-live="polite"></div><div class="linked-work-create"><label>Art<select data-work-kind><option value="todo">To-do</option><option value="note">Notiz</option></select></label><label>Titel<input name="work_title" data-work-title maxlength="200"></label><label>Details (optional)<textarea name="work_body" data-work-body maxlength="10000"></textarea></label><button type="button" class="mini" data-work-create>Eintrag hinzufügen</button><a href="/aufgaben">Alle To-dos & Notizen öffnen →</a></div></details>
+      <div class="offer-details-work">${PHBWorkUI.button('offer',o.id)}<span>To-dos & Notizen</span></div>
       ${accepted?billingBlock(o):''}
       ${parsedPositions(o)}
       ${versionUpload(o)}${versionHistory(o)}`;

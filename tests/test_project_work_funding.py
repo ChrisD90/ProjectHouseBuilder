@@ -61,6 +61,60 @@ class ProjectWorkFundingTest(unittest.TestCase):
         self.assertEqual(db.session.query(ProjectWork).count(),1)
         self.assertEqual(self.client.get('/api/project-work?source_type=offer&source_id=bad').status_code,400)
 
+    def test_archive_restore_and_delete_todos_and_notes_preserve_state_and_links(self):
+        offer = self.offer()
+        for kind in ('todo', 'note'):
+            created = self.client.post('/api/project-work', json={
+                'kind': kind, 'title': 'Prüfen ' + kind, 'body': 'Details bleiben',
+                'done': kind == 'todo', 'source_type': 'offer', 'source_id': offer})
+            self.assertEqual(created.status_code, 201, created.json)
+            ident = created.json['item']['id']
+            self.assertFalse(created.json['item']['archived'])
+            response = self.client.patch(f'/api/project-work/{ident}', json={'archived': True})
+            self.assertEqual(response.status_code, 200, response.json)
+            item = response.json['item']
+            self.assertTrue(item['archived']); self.assertTrue(item['archived_at'])
+            self.assertEqual(item['done'], kind == 'todo')
+            self.assertEqual(item['source_id'], offer)
+            again = self.client.patch(f'/api/project-work/{ident}', json={'archived': True}).json['item']
+            self.assertEqual(again['archived_at'], item['archived_at'])
+            linked = self.client.get(f'/api/project-work?source_type=offer&source_id={offer}').json['items']
+            self.assertTrue(next(x for x in linked if x['id'] == ident)['archived'])
+            restored = self.client.patch(f'/api/project-work/{ident}', json={'archived': False}).json['item']
+            self.assertFalse(restored['archived']); self.assertEqual(restored['archived_at'], '')
+            self.assertEqual(restored['body'], 'Details bleiben')
+            self.assertEqual(restored['done'], kind == 'todo')
+            self.assertEqual(self.client.delete(f'/api/project-work/{ident}').status_code, 200)
+            self.assertEqual(self.client.get(f'/api/project-work?source_type=offer&source_id={offer}').json['items'], [])
+
+    def test_archive_validation_and_project_dashboard_counts(self):
+        ident = self.client.post('/api/project-work', json={'title': 'Offene Rückfrage'}).json['item']['id']
+        self.assertEqual(self.client.get('/api/projects').json['projects'][0]['open_todos'], 1)
+        for value in ('true', 1, None, []):
+            result = self.client.patch(f'/api/project-work/{ident}', json={'archived': value, 'title': 'Nicht speichern'})
+            self.assertEqual(result.status_code, 400)
+            item = self.client.get('/api/project-work').json['items'][0]
+            self.assertFalse(item['archived']); self.assertEqual(item['title'], 'Offene Rückfrage')
+        self.client.patch(f'/api/project-work/{ident}', json={'archived': True})
+        self.assertEqual(self.client.get('/api/projects').json['projects'][0]['open_todos'], 0)
+        other = self.client.post('/api/projects', json={'title': 'Anderes Projekt'}).json['project']['id']
+        self.assertEqual(self.client.patch(f'/api/project-work/{ident}', headers={'X-PHB-Project': str(other)}, json={'archived': False}).status_code, 404)
+        self.assertEqual(self.client.delete(f'/api/project-work/{ident}', headers={'X-PHB-Project': str(other)}).status_code, 404)
+        self.client.patch(f'/api/project-work/{ident}', json={'archived': False})
+        self.assertEqual(self.client.get('/api/projects').json['projects'][0]['open_todos'], 1)
+
+    def test_archive_schema_upgrade_is_additive_and_idempotent(self):
+        from sqlalchemy import create_engine, text, inspect
+        from project_work import ensure_work_archive_schema
+        engine = create_engine('sqlite:///:memory:')
+        with engine.begin() as connection:
+            connection.execute(text('CREATE TABLE project_work (id INTEGER PRIMARY KEY, title VARCHAR(200))'))
+            connection.execute(text("INSERT INTO project_work (id, title) VALUES (42, 'Bisherige Notiz')"))
+            ensure_work_archive_schema(connection); ensure_work_archive_schema(connection)
+            self.assertIn('archived_at', {c['name'] for c in inspect(connection).get_columns('project_work')})
+            self.assertEqual(tuple(connection.execute(text('SELECT id, title, archived_at FROM project_work')).one()), (42, 'Bisherige Notiz', None))
+        engine.dispose()
+
     def test_reversal_removes_only_unencumbered_order_and_preserves_history(self):
         ident=self.offer()
         result=self.client.post(f'/api/offers/{ident}/accept',data={'mode':'offer','confirm':'true'})

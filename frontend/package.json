@@ -10,7 +10,8 @@
     "format": "prettier --write src vite.config.ts",
     "test:browser": "node ../tests/browser_react_ui.cjs",
     "test:browser:features": "node ../tests/browser_project_work_funding.cjs",
-    "test:browser:projects": "node ../tests/browser_multi_projects.cjs"
+    "test:browser:projects": "node ../tests/browser_multi_projects.cjs",
+    "test:browser:work": "node ../tests/browser_work_dialogs.cjs"
   },
   "dependencies": {
     "@mantine/core": "^8.3.0",
