@@ -149,7 +149,14 @@ input {
 }
 
 .mantine-AppShell-header {background:var(--brand-surface);border-color:var(--brand-line)}
-.brand-logo {display:block;width:160px;height:24px;object-fit:contain;object-position:left center}
+.brand-logo {display:block;width:200px;height:30px;object-fit:contain;object-position:left center}
 .brand-logo-dark {display:none}
 [data-mantine-color-scheme="dark"] .brand-logo-light {display:none}
 [data-mantine-color-scheme="dark"] .brand-logo-dark {display:block}
+
+@media (max-width: 700px) {
+  .brand-logo { width:180px; height:27px; }
+}
+@media (max-width: 380px) {
+  .brand-logo { width:155px; height:24px; }
+}

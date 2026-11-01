@@ -379,12 +379,7 @@ export function App() {
                 hiddenFrom="sm"
                 size="sm"
               />
-              <div>
-                <BrandLogo />
-                <Text size="sm" fw={650}>
-                  {route?.[1] || 'Projekt'}
-                </Text>
-              </div>
+              <BrandLogo />
             </Group>
             <Group gap="xs" wrap="nowrap">
               <Select
