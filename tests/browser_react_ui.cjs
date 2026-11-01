@@ -75,6 +75,101 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
       1,
       "no repeated top-level document navigation",
     );
+    // Draft deletion must close the entire workflow only after a successful delete.
+    const draftIds = [];
+    for (let index = 0; index < 2; index++) {
+      const response = await page.request.post(base + "/api/offers/import", {
+        multipart: {
+          file: {
+            name: "UI-Angebot-" + Date.now() + "-" + index + ".pdf",
+            mimeType: "application/pdf",
+            buffer: Buffer.concat([
+              invoicePDF(),
+              Buffer.from("\n% offer " + index + "-" + Date.now()),
+            ]),
+          },
+        },
+      });
+      assert.equal(response.status(), 201, await response.text());
+      draftIds.push((await response.json()).id);
+    }
+    await visit("Angebote");
+    const offers = page.frameLocator('iframe[title="Angebote"]:not([hidden])');
+    await offers.locator("#openOfferDrafts").click();
+    const draft = offers.locator('[data-offer-card="' + draftIds[0] + '"]');
+    await draft.waitFor();
+    assert.equal(
+      await draft
+        .getByRole("button", { name: "PDF rechts anzeigen", exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(
+      await draft
+        .getByRole("link", { name: "Herunterladen", exact: true })
+        .count(),
+      0,
+    );
+    assert(await offers.locator("#offerPdfPane").isVisible());
+    await draft
+      .getByRole("button", { name: "Entwurf löschen", exact: true })
+      .click();
+    await offers
+      .locator("dialog.phb-messagebox[open]")
+      .getByRole("button", { name: "Abbrechen", exact: true })
+      .click();
+    assert(await offers.locator("#offerWorkflowDialog").isVisible());
+    const deleteURL = "**/api/offers/" + draftIds[0];
+    await page.route(deleteURL, (route) =>
+      route.request().method() === "DELETE"
+        ? route.fulfill({
+            status: 503,
+            json: { error: "Simulierter Löschfehler" },
+          })
+        : route.continue(),
+    );
+    await draft
+      .getByRole("button", { name: "Entwurf löschen", exact: true })
+      .click();
+    await offers
+      .locator("dialog.phb-messagebox[open]")
+      .getByRole("button", { name: "Bestätigen", exact: true })
+      .click();
+    await offers
+      .locator("dialog.phb-messagebox[open]")
+      .getByText("Simulierter Löschfehler", { exact: true })
+      .waitFor();
+    await offers
+      .locator("dialog.phb-messagebox[open]")
+      .getByRole("button", { name: "OK", exact: true })
+      .click();
+    assert(await offers.locator("#offerWorkflowDialog").isVisible());
+    await page.unroute(deleteURL);
+    await draft
+      .getByRole("button", { name: "Entwurf löschen", exact: true })
+      .click();
+    await offers
+      .locator("dialog.phb-messagebox[open]")
+      .getByRole("button", { name: "Bestätigen", exact: true })
+      .click();
+    await offers.locator("#offerWorkflowDialog").waitFor({ state: "hidden" });
+    await offers.locator("#openOfferDrafts").click();
+    await offers.locator('[data-offer-card="' + draftIds[1] + '"]').waitFor();
+    await offers
+      .getByRole("link", { name: "Kategorien verwalten ↗", exact: true })
+      .click();
+    await page.waitForURL("**/stammdaten#kategorien");
+    assert.equal(
+      await page
+        .getByRole("tab", { name: "Kategorien", exact: true })
+        .getAttribute("aria-selected"),
+      "true",
+    );
+    await visit("Angebote");
+    await offers.locator("#closeOfferWorkflow").click();
+    console.log(
+      "offer draft deletion, failure/cancel handling and category navigation passed",
+    );
     await visit("Stammdaten");
     await page
       .getByRole("button", { name: "Firma anlegen", exact: true })
@@ -144,15 +239,13 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
     await page
       .getByRole("button", { name: "Dokumente hochladen", exact: true })
       .click();
-    await page
-      .locator("input[type=file]")
-      .setInputFiles({
-        name: "Browser-Test-" + Date.now() + ".txt",
-        mimeType: "text/plain",
-        buffer: Buffer.from(
-          "Lokales Projektdokument für den UI-Browsertest. " + Date.now(),
-        ),
-      });
+    await page.locator("input[type=file]").setInputFiles({
+      name: "Browser-Test-" + Date.now() + ".txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from(
+        "Lokales Projektdokument für den UI-Browsertest. " + Date.now(),
+      ),
+    });
     await page
       .getByRole("button", { name: "Dateien einlesen", exact: true })
       .click();
@@ -169,13 +262,11 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
     await page
       .getByRole("button", { name: "Dokumente hochladen", exact: true })
       .click();
-    await page
-      .locator("input[type=file]")
-      .setInputFiles({
-        name: backgroundName,
-        mimeType: "text/plain",
-        buffer: Buffer.from("Background document " + Date.now()),
-      });
+    await page.locator("input[type=file]").setInputFiles({
+      name: backgroundName,
+      mimeType: "text/plain",
+      buffer: Buffer.from("Background document " + Date.now()),
+    });
     await page
       .getByRole("textbox", { name: "Verarbeitung", exact: true })
       .click();
@@ -261,13 +352,11 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
       'iframe[title="Rechnungen & Belege"]:not([hidden])',
     );
     await invoices.locator("#openReceiptWorkflow").click();
-    await invoices
-      .locator("#upload input[type=file]")
-      .setInputFiles({
-        name: "UI-Test-Rechnung-" + Date.now() + ".pdf",
-        mimeType: "application/pdf",
-        buffer: invoicePDF(),
-      });
+    await invoices.locator("#upload input[type=file]").setInputFiles({
+      name: "UI-Test-Rechnung-" + Date.now() + ".pdf",
+      mimeType: "application/pdf",
+      buffer: invoicePDF(),
+    });
     await invoices.locator("#receiptUploadButton").click();
     await page.waitForURL(
       (url) => url.pathname === "/belege" && url.searchParams.has("receipt_id"),
@@ -312,6 +401,53 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
       await page.locator("html").getAttribute("data-mantine-color-scheme"),
       "dark",
     );
+    for (const name of [
+      "Kosten & Budget",
+      "Energetische Planung",
+      "Stammdaten",
+      "Dokumente",
+    ]) {
+      await visit(name);
+      assert.equal(
+        await page
+          .locator("main")
+          .evaluate((node) => getComputedStyle(node).backgroundColor),
+        "rgb(16, 24, 34)",
+      );
+      assert.equal(
+        await page
+          .locator("html")
+          .evaluate((node) =>
+            getComputedStyle(node)
+              .getPropertyValue("--mantine-color-body")
+              .trim(),
+          ),
+        "#1c2835",
+      );
+    }
+    await visit("Kosten & Budget");
+    assert.equal(
+      await page
+        .locator("html")
+        .evaluate((node) =>
+          getComputedStyle(node)
+            .getPropertyValue("--mantine-color-placeholder")
+            .trim(),
+        ),
+      "#9db2bd",
+    );
+    assert.equal(
+      await page
+        .getByText("Rechnungen fachlich zuordnen", { exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(
+      await page
+        .getByText("Aufträge ohne Arbeitspaket", { exact: true })
+        .count(),
+      0,
+    );
     await page.screenshot({ path: "/tmp/phb-react-dark.png", fullPage: true });
 
     const mobile = await browser.newPage({
@@ -330,7 +466,9 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
       .getByRole("link", { name: "Kosten & Budget", exact: true })
       .click();
     await mobile.waitForURL("**/kosten");
-    await mobile.getByRole("button", { name: "Navigation öffnen", exact: true }).waitFor();
+    await mobile
+      .getByRole("button", { name: "Navigation öffnen", exact: true })
+      .waitFor();
     await mobile.waitForTimeout(350); // Allow the sidebar transition to settle before layout capture.
     assert(
       await mobile.evaluate(

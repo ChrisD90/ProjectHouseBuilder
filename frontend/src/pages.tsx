@@ -648,6 +648,9 @@ export function Costs() {
       g[key] += Number(r[key]) || 0;
   }
   const grouped = [...groups.values()].sort((a, b) => b.forecast - a.forecast);
+  const issues = (data.dashboard?.issues || []).filter(
+    (issue: Row) => !['unassigned', 'schedule'].includes(issue.kind),
+  );
   const gap = Number(summary.budget || 0) - Number(summary.planned || 0);
   return (
     <div className="page">
@@ -688,9 +691,9 @@ export function Costs() {
           ))}
         </SimpleGrid>
       </Paper>
-      {!!data.dashboard?.issues?.length && (
+      {!!issues.length && (
         <Stack mb="lg" gap="xs">
-          {data.dashboard.issues.map((issue: Row) => (
+          {issues.map((issue: Row) => (
             <Alert color="yellow" key={issue.title} title={issue.title}>
               <Group justify="space-between">
                 <Text size="sm">

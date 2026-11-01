@@ -27,11 +27,7 @@
     if(card)showOfferPreview(offers.find(x=>Number(x.id)===Number(card.dataset.offerCard))?.document_id);
   }
   $('offerDrafts').addEventListener('focusin',e=>previewOfferCard(e.target),true);
-  $('offerDrafts').addEventListener('click',e=>{
-    const button=e.target.closest('[data-preview-doc]');
-    if(button){e.preventDefault();showOfferPreview(Number(button.dataset.previewDoc));}
-  });
-  $('offerDrafts').addEventListener('click',e=>{if(!e.target.closest('[data-preview-doc]'))previewOfferCard(e.target);},true);
+  $('offerDrafts').addEventListener('click',e=>previewOfferCard(e.target),true);
 
   const acceptDialog=$('offerAcceptanceDialog');
   let acceptingOfferId=null,acceptanceBusy=false;
@@ -219,9 +215,6 @@
     return rows.join('');
   };
   const offerUrl = id => '/api/offers/'+encodeURIComponent(id);
-  const sourceLabel = o => o.document_id
-    ? `<button type="button" class="mini offer-preview-action" data-preview-doc="${o.document_id}">PDF rechts anzeigen</button> <a class="offer-document" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Herunterladen</a>`
-    : '<span class="muted">Manuell eingegeben</span>';
   const budgetLabel = o => budgets.find(b => b.id===o.budget_line_id)?.title || 'Keiner Planposition zugeordnet';
   const stage = o => ({Entwurf:['Noch prüfen','stage-draft'],Angebot:['Zum Vergleich','stage-listed'],Angenommen:['Angenommen','stage-accepted'],Beauftragt:['Angenommen','stage-accepted'],Abgelehnt:['Abgelehnt','stage-rejected']}[o.status] || [o.status,'stage-listed']);
   const notice = o => (o.warnings||[]).length
@@ -343,7 +336,7 @@
     return `<article class="offer-card offer-draft-card offer-version-draft" data-version-card="${id}:${v}">
       <div class="offer-card-head"><div><span class="offer-stage stage-draft">Neue Version ${v} – prüfen</span>
       <h3>${esc(o.current_vendor)} · ${esc(o.filename)}</h3>
-      <p>Bestehendes Angebot #${id} · <button type="button" class="mini" data-preview-doc="${o.document_id}">Neue PDF rechts anzeigen</button> <a class="offer-document" href="/api/documents/${o.document_id}/download" target="_blank" rel="noopener">Herunterladen</a></p></div></div>
+      <p>Bestehendes Angebot #${id}</p></div></div>
       <p class="offer-version-note">Die bisherige Version bleibt sichtbar und unverändert, bis du diese Version freigibst.</p>
       ${notice(o)}<form class="offer-review-form" data-version-review="${id}:${v}">${fields(o)}${positionEditor(o)}
       <div class="offer-form-actions"><button type="button" class="primary" data-version-activate="${id}:${v}">Version ${v} als aktuell übernehmen</button>
@@ -386,7 +379,7 @@
 
   function renderDraft(o) {
     const [label,color] = stage(o);
-    return `<article class="offer-card offer-draft-card" data-offer-card="${o.id}"><div class="offer-card-head"><div><span class="offer-stage ${color}">${label}</span><h3>${esc(o.filename)}</h3><p>${sourceLabel(o)} · Werte bitte vor der Übernahme prüfen.</p></div></div>
+    return `<article class="offer-card offer-draft-card" data-offer-card="${o.id}"><div class="offer-card-head"><div><span class="offer-stage ${color}">${label}</span><h3>${esc(o.filename)}</h3><p>Werte bitte vor der Übernahme prüfen.</p></div></div>
       ${notice(o)}<form class="offer-review-form" data-review="${o.id}">${fields(o)}${positionEditor(o)}
       <div class="offer-form-actions"><button type="button" class="primary" data-offer-promote="${o.id}">Geprüft – in Liste übernehmen</button><button type="submit" class="mini">Entwurf zwischenspeichern</button>${o.can_delete?`<button type="button" class="offer-text-danger" data-offer-delete="${o.id}">Entwurf löschen</button>`:''}</div></form></article>`;
   }
@@ -795,7 +788,10 @@
         button.disabled=true;
         try{
           if(!await PHBUI.confirm('Angebot einschließlich Originaldateien, Versionen und Einzelpositionen dauerhaft löschen? Diese Aktion kann nicht rückgängig gemacht werden.'))return;
-          await request(offerUrl(id),{method:'DELETE'});await reload();
+          const deletingDraft=Boolean(button.closest('#offerDrafts'));
+          await request(offerUrl(id),{method:'DELETE'});
+          if(deletingDraft)workflowFlow.finish();
+          await reload();
         }finally{button.disabled=false;}
       }
     } catch(err) {await PHBUI.alert(err.message)}

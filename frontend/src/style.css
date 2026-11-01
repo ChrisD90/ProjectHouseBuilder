@@ -21,7 +21,7 @@ input {
 .app-sidebar .mantine-NavLink-root {
   color: #c4d7da;
   border-radius: 9px;
-  margin: 3px 0;
+  margin: 2px 0;
 }
 .app-sidebar .mantine-NavLink-root[data-active] {
   color: #fff;
@@ -33,8 +33,13 @@ input {
 .app-sidebar .mantine-NavLink-label {
   font-size: 13px;
 }
+.sidebar-group-label {
+  color: #9db9bf;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
 .app-main {
-  background: light-dark(#f4f6f7, #12191d);
+  background: light-dark(#f5f8fa, #101822);
 }
 .page {
   max-width: 1500px;

@@ -4,7 +4,7 @@ Testbranch: `feature/react-mantine-ui`, auf Basis von `feature/synology-nas` (`8
 
 ## Aktueller Umfang
 
-Der gemeinsame Rahmen verwendet React, TypeScript, React Router und Mantine; Serverdaten werden über TanStack Query geladen. Sidebar, Header, Theme, ChatGPT-Verbindung und Warteschlange bleiben über die Navigation hinweg erhalten.
+Der gemeinsame Rahmen verwendet React, TypeScript, React Router und Mantine; Serverdaten werden über TanStack Query geladen. Sidebar, Header, Theme, ChatGPT-Verbindung und Warteschlange bleiben über die Navigation hinweg erhalten. Die Sidebar ist wieder in Projekt, Finanzen und Verwaltung gegliedert; eingeklappt trennen Linien die Gruppen. Native Ansichten und erhaltene Fachmasken verwenden im Dark Mode dieselbe blaugraue Farbpalette.
 
 Bereits als native React-/Mantine-Komponenten umgesetzt:
 
@@ -53,6 +53,6 @@ npm --prefix frontend exec -- playwright install chromium
 PHB_TEST_URL=http://127.0.0.1:5058 npm --prefix frontend run test:browser
 ```
 
-Der Browserlauf legt Firmen, Förderungen, Projektdokumente, Arbeitspakete, Kredite und eine lokal eingelesene und gebuchte Testrechnung an. Er darf nicht gegen das echte Bauprojekt laufen. `CHROMIUM_PATH` kann einen bereits installierten Browser angeben. Geprüft werden wiederholte Navigation mit derselben Sidebar-/Dienstinstanz, Entwurfswarnung bei Zurück, Native-Speichervorgänge, echter lokaler Upload mit anschließender Prüfung, erhaltene Arbeitspaket-/Kreditaktionen, Browserhistorie, Dark Mode und mobile Navigation ohne horizontales Überlaufen. Weitere Fälle prüfen einen fehlgeschlagenen Ansichtsaufruf mit erneutem Laden sowie den ChatGPT-Verbindungsdialog über einem Firmenentwurf. Vorder- und Hintergrundverarbeitung werden beide geprüft. OAuth und reale ChatGPT-Anfragen werden dabei nicht ausgelöst; der Verbindungstest nutzt simulierte Antworten.
+Der Browserlauf legt Firmen, Förderungen, Projektdokumente, Arbeitspakete, Kredite und eine lokal eingelesene und gebuchte Testrechnung an. Er darf nicht gegen das echte Bauprojekt laufen. `CHROMIUM_PATH` kann einen bereits installierten Browser angeben. Geprüft werden wiederholte Navigation mit derselben Sidebar-/Dienstinstanz, Entwurfswarnung bei Zurück, Native-Speichervorgänge, echter lokaler Upload mit anschließender Prüfung, erhaltene Arbeitspaket-/Kreditaktionen, Browserhistorie, Dark Mode und mobile Navigation ohne horizontales Überlaufen. Weitere Fälle prüfen einen fehlgeschlagenen Ansichtsaufruf mit erneutem Laden sowie den ChatGPT-Verbindungsdialog über einem Firmenentwurf. Vorder- und Hintergrundverarbeitung werden beide geprüft. Die Angebotsprüfung deckt außerdem das vollständige Schließen nach erfolgreichem Entwurfs-Löschen, den Erhalt bei Abbruch/Fehler und den direkten Link zur Kategorienverwaltung ab. OAuth und reale ChatGPT-Anfragen werden dabei nicht ausgelöst; der Verbindungstest nutzt simulierte Antworten.
 
 Automatisiert geprüft ist Chromium. Safari auf dem Intel-Mac sowie reale NAS-/Netzwerklatenzen bleiben Bestandteil des Nutzertests. Der nächste Migrationsschritt kann einzelne erhaltene Fachmasken durch React-Komponenten ersetzen, ohne den Rahmen oder die Server-APIs erneut umzubauen.

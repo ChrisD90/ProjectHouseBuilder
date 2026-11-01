@@ -45,10 +45,18 @@ const items = [
   ['/belege', 'Rechnungen & Belege', IconReceipt],
   ['/finanzierung', 'Kredite & Eigenkapital', IconBuildingBank],
   ['/energieplanung', 'Energetische Planung', IconLeaf],
-  ['/stammdaten', 'Stammdaten', IconUsers],
   ['/dokumente', 'Dokumente', IconFiles],
+  ['/stammdaten', 'Stammdaten', IconUsers],
   ['/daten', 'Daten & Sicherung', IconDatabase],
 ] as const;
+const navigationGroups = [
+  { label: 'Projekt', paths: ['/'] },
+  {
+    label: 'Finanzen',
+    paths: ['/kosten', '/angebote', '/belege', '/finanzierung', '/energieplanung'],
+  },
+  { label: 'Verwaltung', paths: ['/dokumente', '/stammdaten', '/daten'] },
+];
 const native = new Set(['/kosten', '/stammdaten', '/energieplanung', '/dokumente']);
 const GuardContext = createContext<(guard: () => boolean) => () => void>(() => () => {});
 export function useDirtyGuard(dirty: boolean) {
@@ -268,31 +276,44 @@ export function App() {
             </Group>
           </Group>
           <Divider color="#345058" my="md" />
-          <Stack gap={1} style={{ flex: 1 }}>
-            {items.map(([path, label, Icon]) => (
-              <Tooltip key={path} label={label} disabled={!mini} position="right">
-                <NavLink
-                  component="a"
-                  href={path}
-                  onClick={(e) => {
-                    if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
-                      e.preventDefault();
-                      navigate(path);
-                    }
-                  }}
-                  label={mini ? undefined : label}
-                  leftSection={<Icon size={20} />}
-                  active={location.pathname === path}
-                  aria-label={label}
-                  styles={{
-                    root: {
-                      justifyContent: mini ? 'center' : undefined,
-                      padding: mini ? '12px' : '11px 12px',
-                    },
-                    section: { marginRight: mini ? 0 : undefined },
-                  }}
-                />
-              </Tooltip>
+          <Stack gap="sm" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            {navigationGroups.map((group, index) => (
+              <section key={group.label} aria-label={group.label}>
+                {mini ? (
+                  index > 0 && <Divider color="#345058" mb="sm" />
+                ) : (
+                  <Text className="sidebar-group-label" size="xs" fw={700} mb="xs" px="sm">
+                    {group.label}
+                  </Text>
+                )}
+                {items
+                  .filter(([path]) => group.paths.includes(path))
+                  .map(([path, label, Icon]) => (
+                    <Tooltip key={path} label={label} disabled={!mini} position="right">
+                      <NavLink
+                        component="a"
+                        href={path}
+                        onClick={(e) => {
+                          if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+                            e.preventDefault();
+                            navigate(path);
+                          }
+                        }}
+                        label={mini ? undefined : label}
+                        leftSection={<Icon size={20} />}
+                        active={location.pathname === path}
+                        aria-label={label}
+                        styles={{
+                          root: {
+                            justifyContent: mini ? 'center' : undefined,
+                            padding: mini ? '10px' : '7px 12px',
+                          },
+                          section: { marginRight: mini ? 0 : undefined },
+                        }}
+                      />
+                    </Tooltip>
+                  ))}
+              </section>
             ))}
           </Stack>
           <Group justify={mini ? 'center' : 'space-between'} mt="md">
