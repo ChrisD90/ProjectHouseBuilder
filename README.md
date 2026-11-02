@@ -6,7 +6,7 @@ Die aktuelle Refactoring-Umsetzung (R01–R12), Migration 0031 und wiederholbare
 
 Der ChatGPT-Button im Header zeigt Logo, Verbindungsstatus und das aktuell verwendete Modell. Im Verbindungsdialog lässt sich das Modell wechseln; die Wahl bleibt im Browser nach einem Neuladen erhalten. Ist das gewählte Modell im aktuellen Konto nicht mehr verfügbar, verwendet die Anwendung ein verfügbares Modell und zeigt dessen Namen an.
 
-Der Info-Button neben der Modellwahl öffnet eine Sprechblase zur Aufgabeneignung und Token-Nutzung. Die allgemeine Einordnung nach Modellfamilie ist von tatsächlich gemeldeten Verbrauchswerten getrennt. Die letzte Anfrage wird nur beim dazugehörigen Modell angezeigt; feste Verbräuche oder verbleibende Modellkontingente werden nicht geschätzt.
+Jede Zeile im Modell-Dropdown besitzt einen eigenen Info-Button. Er öffnet die Modellinformationen, ohne die Auswahl zu ändern. Beim Verbinden wird der Katalog frisch geladen; verfügbare Beschreibungen, Fähigkeiten sowie Kontext-/Ausgabelimits des Anbieters werden pro Modell weitergereicht. Pauschale Familientexte entfallen. Die öffentliche OpenAI-Modellliste garantiert diese Zusatzangaben nicht: Fehlen sie in der konkreten Verbindung, wird dies ausdrücklich angezeigt. Die letzte Anfrage wird nur beim dazugehörigen Modell angezeigt; feste Verbräuche oder verbleibende Modellkontingente werden nicht geschätzt. Es werden keine zusätzlichen KI-Anfragen zur Erzeugung vermeintlicher Modelleigenschaften ausgeführt.
 
 
 ## Belegprüfung und Firmen im Bauzeitenplan

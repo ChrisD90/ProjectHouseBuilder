@@ -15,6 +15,22 @@ from sqlalchemy import select
 
 
 class ChatGPTLocalTests(unittest.TestCase):
+    def test_model_catalog_preserves_individual_provider_metadata(self):
+        from unittest.mock import Mock
+        response=Mock(status_code=200)
+        response.json.return_value={'models':[
+            {'slug':'first','display_name':'Erstes Modell','visibility':'list','description':'Schnelle Antworten','context_window':32000,'capabilities':['text']},
+            {'slug':'second','display_name':'Zweites Modell','visibility':'list','description':'Komplexe Planung','max_output_tokens':8000},
+            {'slug':'unknown','visibility':'list','context_window':True,'secret':'must-not-leak'},
+            {'slug':'hidden','visibility':'hidden','description':'Hidden'}]}
+        with patch.object(chatgpt,'token',return_value='test-only'),patch('chatgpt_local.requests.get',return_value=response):
+            result=chatgpt.models()
+        self.assertEqual([item['slug'] for item in result],['first','second','unknown'])
+        self.assertEqual(result[0]['description'],'Schnelle Antworten')
+        self.assertEqual(result[1]['description'],'Komplexe Planung')
+        self.assertEqual(result[0]['context_window'],32000)
+        self.assertNotIn('context_window',result[2]);self.assertNotIn('description',result[2]);self.assertNotIn('secret',result[2])
+
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
         self.home=Path(self.temp.name)/'credentials'

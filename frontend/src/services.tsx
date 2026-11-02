@@ -56,7 +56,7 @@ export function useServices(navigate: (url: string) => void) {
     queryKey: ['ai-models', aiQuery.data?.email || 'local'],
     queryFn: () => api('/api/ai/models'),
     enabled: !!aiQuery.data?.sharing,
-    staleTime: 300000,
+    staleTime: 0,
   });
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has('ai')) setAiOpen(true);
@@ -337,30 +337,36 @@ export function useServices(navigate: (url: string) => void) {
             )}
           </Group>
           {aiQuery.data?.sharing && (
-            <Group align="end" wrap="nowrap">
-              <Select
-                style={{ flex: 1, minWidth: 0 }}
-                label="Modell"
-                value={state.current.model}
-                comboboxProps={{ zIndex: 600 }}
-                onChange={(value) => {
-                  setModel(value);
-                  try {
-                    if (value) localStorage.setItem('phb-chatgpt-model', value);
-                    else localStorage.removeItem('phb-chatgpt-model');
-                  } catch {}
-                }}
-                data={(models.data?.models || []).map((m: Row) => ({
-                  value: m.slug,
-                  label: m.title || m.name || m.slug,
-                }))}
-              />
-              <ModelInfo
-                slug={currentModel || ''}
-                label={modelLabel || 'Modell'}
-                lastRequest={aiQuery.data?.usage?.last_request}
-              />
-            </Group>
+            <Select
+              style={{ flex: 1, minWidth: 0 }}
+              label="Modell"
+              value={state.current.model}
+              comboboxProps={{ zIndex: 600 }}
+              renderOption={({ option }) => (
+                <Group wrap="nowrap" gap="sm" style={{ width: '100%', minWidth: 0 }}>
+                  <Text size="sm" style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
+                    {option.label}
+                  </Text>
+                  <ModelInfo
+                    slug={option.value}
+                    label={option.label}
+                    metadata={catalog.find((item) => item.slug === option.value)}
+                    lastRequest={aiQuery.data?.usage?.last_request}
+                  />
+                </Group>
+              )}
+              onChange={(value) => {
+                setModel(value);
+                try {
+                  if (value) localStorage.setItem('phb-chatgpt-model', value);
+                  else localStorage.removeItem('phb-chatgpt-model');
+                } catch {}
+              }}
+              data={(models.data?.models || []).map((m: Row) => ({
+                value: m.slug,
+                label: m.title || m.name || m.slug,
+              }))}
+            />
           )}
           {models.error && (
             <Alert color="red">

@@ -1,50 +1,22 @@
 import { ActionIcon, Group, Popover, Stack, Text } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
-
-export function modelGuidance(slug: string) {
-  const value = slug.toLowerCase();
-  if (/codex/.test(value))
-    return {
-      tasks:
-        'Vor allem für Programmierung, Codeanalyse und technische Fehlersuche. Für Bauvorhaben ist meist ein allgemeines Modell passender.',
-      tokens:
-        'Bei umfangreichem Code und längeren Analysen können große Ein- und Ausgaben entstehen.',
-    };
-  if (/thinking|reasoning|^o[134](?:-|$)|pro(?:-|$)/.test(value))
-    return {
-      tasks:
-        'Für anspruchsvolle Planung, das Vergleichen mehrerer Varianten und komplexe Zusammenhänge.',
-      tokens:
-        'Modelle mit vertieftem Nachdenken können zusätzliche Reasoning-Tokens nutzen. Für einfache Listen ist dieser Aufwand oft nicht nötig.',
-    };
-  if (/mini|nano/.test(value))
-    return {
-      tasks:
-        'Für kurze Fragen, einfache Listen, Zusammenfassungen und erste Entwürfe. Komplexe Berechnungen und Fachdetails besonders sorgfältig prüfen.',
-      tokens:
-        'Kleine Modellvarianten sind häufig für schnelle, ressourcensparende Aufgaben ausgelegt. Eine geringere Token-Anzahl pro Antwort ist damit nicht garantiert.',
-    };
-  if (/gpt/.test(value))
-    return {
-      tasks:
-        'Für allgemeine Fragen, Material- und Werkzeuglisten, Dokumentauswertung und das gemeinsame Erarbeiten eines Vorgehens.',
-      tokens:
-        'Der Verbrauch hängt vor allem von Eingabelänge, Gesprächsverlauf und Antwortumfang ab. Lange Dokumente und ausführliche Antworten benötigen mehr Tokens.',
-    };
-  return {
-    tasks:
-      'Für dieses Modell liegt keine gesicherte Aufgabenbeschreibung vor. Beachte die Angaben des Anbieters und prüfe die Ergebnisse an deinem Vorhaben.',
-    tokens: 'Eine belastbare Verbrauchseinschätzung für dieses Modell ist nicht verfügbar.',
-  };
-}
+import { useState } from 'react';
 
 export function ModelInfo({
   slug,
   label,
+  metadata,
   lastRequest,
 }: {
   slug: string;
   label: string;
+  metadata?: {
+    description?: string;
+    context_window?: number;
+    max_context_tokens?: number;
+    max_output_tokens?: number;
+    capabilities?: string[];
+  };
   lastRequest?: {
     model?: string;
     input_tokens?: number;
@@ -52,13 +24,30 @@ export function ModelInfo({
     total_tokens?: number;
   };
 }) {
-  const info = modelGuidance(slug),
-    usage = lastRequest?.model === slug ? lastRequest : null;
+  const [opened, setOpened] = useState(false);
+  const usage = lastRequest?.model === slug ? lastRequest : null;
   return (
-    <Popover width={340} position="bottom-end" withArrow shadow="md" zIndex={650} trapFocus>
+    <Popover
+      opened={opened}
+      onChange={setOpened}
+      width={340}
+      position="bottom-end"
+      withArrow
+      shadow="md"
+      zIndex={650}
+    >
       <Popover.Target>
         <ActionIcon
           variant="subtle"
+          style={{ flexShrink: 0, alignSelf: 'center' }}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={(event) => {
+            event.stopPropagation();
+            setOpened((value) => !value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
+          }}
           aria-label={'Informationen zum Modell ' + label}
           title="Modellinformationen"
           disabled={!slug}
@@ -66,21 +55,46 @@ export function ModelInfo({
           <IconInfoCircle size={20} />
         </ActionIcon>
       </Popover.Target>
-      <Popover.Dropdown style={{ maxWidth: 'calc(100vw - 32px)' }}>
+      <Popover.Dropdown
+        onClick={(event) => event.stopPropagation()}
+        style={{ maxWidth: 'calc(100vw - 32px)', maxHeight: '70dvh', overflowY: 'auto' }}
+      >
         <Stack gap="sm">
           <Text fw={700}>{label}</Text>
           <div>
             <Text fw={600} size="sm">
               Wofür eignet es sich?
             </Text>
-            <Text size="sm">{info.tasks}</Text>
+            <Text size="sm">
+              {metadata?.description ||
+                'Diese Verbindung liefert für dieses Modell keine Aufgabenbeschreibung.'}
+            </Text>
           </div>
           <div>
             <Text fw={600} size="sm">
               Token-Nutzung
             </Text>
-            <Text size="sm">{info.tokens}</Text>
+            <Text size="sm">
+              Token-Verbrauch wird pro Anfrage ermittelt; einen festen Verbrauch pro Modell gibt es
+              nicht.
+            </Text>
           </div>
+          {(metadata?.context_window || metadata?.max_context_tokens) && (
+            <Text size="sm">
+              Gemeldetes Kontextfenster:{' '}
+              {(metadata.context_window || metadata.max_context_tokens)?.toLocaleString('de-DE')}{' '}
+              Tokens
+            </Text>
+          )}
+          {metadata?.max_output_tokens && (
+            <Text size="sm">
+              Gemeldete maximale Ausgabe: {metadata.max_output_tokens.toLocaleString('de-DE')}{' '}
+              Tokens
+            </Text>
+          )}
+          {!!metadata?.capabilities?.length && (
+            <Text size="sm">Gemeldete Fähigkeiten: {metadata.capabilities.join(', ')}</Text>
+          )}
           {usage ? (
             <div>
               <Text size="sm" fw={600}>
@@ -98,9 +112,9 @@ export function ModelInfo({
             </Text>
           )}
           <Text size="xs" c="dimmed">
-            Aufgabenhinweise sind eine allgemeine Einordnung nach Modellfamilie. Ein fester
-            Token-Verbrauch oder verbleibendes Modellkontingent lässt sich daraus nicht ableiten.
-            ChatGPT-Planlimits sind keine garantierten Token-Guthaben.
+            Beschreibung und Grenzen stammen aus der aktuellen Modellantwort des Anbieters. Fehlende
+            Angaben werden nicht geschätzt. ChatGPT-Planlimits sind keine garantierten
+            Token-Guthaben.
           </Text>
         </Stack>
       </Popover.Dropdown>

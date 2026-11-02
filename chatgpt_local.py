@@ -381,8 +381,21 @@ class ChatGPTLocal:
             res=requests.get(RESOURCE+'/models', headers={'Authorization':'Bearer '+self.token()},timeout=25)
             if res.status_code!=200:raise AIError('Verfügbare ChatGPT-Modelle konnten nicht abgerufen werden.')
             data=res.json()
-            return [{'slug':x['slug'],'name':x.get('display_name',x['slug'])}
-                    for x in data.get('models', []) if x.get('visibility')=='list' and isinstance(x.get('slug'),str)]
+            result=[]
+            for x in data.get('models', []):
+                if x.get('visibility')!='list' or not isinstance(x.get('slug'),str):continue
+                item={'slug':x['slug'],'name':x.get('display_name',x['slug'])}
+                # Preserve provider metadata instead of reducing every model to its name.
+                for key in ('description','model_description','summary'):
+                    if isinstance(x.get(key),str) and x[key].strip():
+                        item['description']=x[key][:6000];break
+                for key in ('context_window','max_context_tokens','max_output_tokens'):
+                    if type(x.get(key)) is int and 0<x[key]<=1000000000:item[key]=x[key]
+                caps=x.get('capabilities')
+                if isinstance(caps,list):item['capabilities']=[v[:100] for v in caps if isinstance(v,str)][:30]
+                elif isinstance(caps,dict):item['capabilities']=[k[:100] for k,v in caps.items() if isinstance(k,str) and v is True][:30]
+                result.append(item)
+            return result
         except (requests.RequestException,ValueError,KeyError) as exc:
             raise AIError('ChatGPT-Modellliste nicht verfügbar.') from exc
 

@@ -160,24 +160,23 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     await connection
       .getByRole("textbox", { name: "Modell", exact: true })
       .click();
-    await page
-      .getByRole("option", { name: "Testmodell 2", exact: true })
-      .click();
-    const modelInfo = connection.getByRole("button", {
+    const modelInfo = page.getByRole("button", {
       name: "Informationen zum Modell Testmodell 2",
       exact: true,
     });
     await modelInfo.click();
     await expect(
-      page.getByText("Token-Nutzung", { exact: true }),
+      page.getByText("Für komplexe Planung mit ausführlichen Antworten.", {
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(
-      page.getByText(
-        "Für dieses Modell wurde noch kein Token-Verbrauch gemeldet.",
-        { exact: true },
-      ),
-    ).toBeVisible();
+      connection.getByRole("textbox", { name: "Modell", exact: true }),
+    ).toHaveValue("Testmodell");
     await modelInfo.click();
+    await page
+      .getByRole("option", { name: /^Testmodell 2/ })
+      .click();
     await connection
       .getByRole("button", { name: "Schließen", exact: true })
       .click();
