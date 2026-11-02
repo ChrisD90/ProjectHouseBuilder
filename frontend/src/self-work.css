@@ -4,6 +4,43 @@
   gap: 12px;
   min-width: 0;
 }
+.self-work-supply-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 110px) max-content;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  padding: 12px;
+  background: var(--mantine-color-body);
+}
+.self-work-supply-row:hover {
+  background: var(--mantine-color-default-hover);
+}
+.self-work-supply-row:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: 2px;
+}
+.self-work-supply-title,
+.self-work-supply-quantity {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.self-work-supply-cost {
+  white-space: nowrap;
+  text-align: right;
+}
+@media (max-width: 450px) {
+  .self-work-supply-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 64px) max-content;
+    gap: 8px;
+    padding: 10px;
+  }
+}
 .self-work-page .self-work-card h3 {
   font-size: 19px;
   overflow-wrap: anywhere;

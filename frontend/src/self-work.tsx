@@ -51,6 +51,43 @@ type Listing = {
   tasks: { id: number; label: string }[];
   receipts: { id: number; label: string; status: string; amount: number }[];
 };
+function SupplyRow({
+  title,
+  quantity,
+  cost,
+  onClick,
+}: {
+  title: string;
+  quantity: string;
+  cost: number | null;
+  onClick: () => void;
+}) {
+  const shortTitle =
+    Array.from(title).length > 60 ? Array.from(title).slice(0, 60).join('') + '…' : title;
+  return (
+    <UnstyledButton
+      className="self-work-supply-row"
+      onClick={onClick}
+      aria-label={'Details: ' + title}
+    >
+      <Text component="span" className="self-work-supply-title" title={title}>
+        {shortTitle}
+      </Text>
+      <Text
+        component="span"
+        size="xs"
+        c="dimmed"
+        className="self-work-supply-quantity"
+        title={quantity}
+      >
+        {quantity}
+      </Text>
+      <Text component="span" size="sm" className="self-work-supply-cost">
+        {cost === null ? 'Kosten offen' : 'ca. ' + money(cost)}
+      </Text>
+    </UnstyledButton>
+  );
+}
 const numeric = (value: string | number): number | null => (value === '' ? null : Number(value));
 export function SelfWorkPage() {
   const [params] = useSearchParams();
@@ -76,6 +113,32 @@ export function SelfWorkPage() {
     initialValues: emptyPlan(),
     validate: { title: (value) => (value.trim() ? null : 'Bitte eine Bezeichnung eingeben.') },
   });
+  const [supplyDetail, setSupplyDetail] = useState<string | null>(null);
+  function addMaterial() {
+    const row: Material = {
+      id: newID(),
+      title: '',
+      notes: '',
+      quantity: null,
+      unit: '',
+      unit_price: null,
+      status: 'Benötigt',
+    };
+    form.setFieldValue('materials', [...form.values.materials, row]);
+    setSupplyDetail(row.id);
+  }
+  function addTool() {
+    const row: Tool = {
+      id: newID(),
+      title: '',
+      notes: '',
+      source: 'Noch offen',
+      cost: null,
+      ready: false,
+    };
+    form.setFieldValue('tools', [...form.values.tools, row]);
+    setSupplyDetail(row.id);
+  }
   useDirtyGuard(opened && form.isDirty());
   function edit(row?: Plan) {
     const values = row ? draftOf(row) : emptyPlan();
@@ -84,6 +147,7 @@ export function SelfWorkPage() {
     form.resetDirty(values);
     setID(row?.id || null);
     setTab('overview');
+    setSupplyDetail(null);
     setFailure(null);
     setOpened(true);
   }
@@ -100,6 +164,7 @@ export function SelfWorkPage() {
     for (const kind of ['steps', 'materials', 'tools'] as const) {
       if (form.values[kind].some((row) => !row.title.trim())) {
         setTab(kind);
+        setSupplyDetail(form.values[kind].find((row) => !row.title.trim())?.id || null);
         setFailure(Error('Bitte allen Listeneinträgen eine Bezeichnung geben.'));
         return;
       }
@@ -397,7 +462,15 @@ export function SelfWorkPage() {
           }}
         >
           <Stack>
-            <Tabs value={tab} onChange={setTab} keepMounted={false} className="self-work-tabs">
+            <Tabs
+              value={tab}
+              onChange={(value) => {
+                setTab(value);
+                setSupplyDetail(null);
+              }}
+              keepMounted={false}
+              className="self-work-tabs"
+            >
               <Tabs.List grow>
                 <Tabs.Tab value="overview">Vorhaben</Tabs.Tab>
                 <Tabs.Tab value="steps">Schritte ({form.values.steps.length})</Tabs.Tab>
@@ -612,115 +685,130 @@ export function SelfWorkPage() {
               </Tabs.Panel>
               <Tabs.Panel value="materials" pt="md">
                 <Stack>
+                  {supplyDetail && (
+                    <Button variant="subtle" onClick={() => setSupplyDetail(null)}>
+                      Zurück zur Materialliste
+                    </Button>
+                  )}
+                  {!supplyDetail &&
+                    form.values.materials.map((row) => (
+                      <SupplyRow
+                        key={row.id}
+                        title={row.title || 'Material ohne Bezeichnung'}
+                        quantity={
+                          row.quantity === null
+                            ? 'Menge offen'
+                            : row.quantity.toLocaleString('de-DE') + ' ' + row.unit
+                        }
+                        cost={
+                          row.quantity !== null && row.unit_price !== null
+                            ? row.quantity * row.unit_price
+                            : null
+                        }
+                        onClick={() => setSupplyDetail(row.id)}
+                      />
+                    ))}
                   {!form.values.materials.length && (
                     <Text size="sm" c="dimmed">
                       Was wird benötigt? Unbekannte Mengen und Preise kannst du zunächst
                       offenlassen.
                     </Text>
                   )}
-                  {form.values.materials.map((row, index) => (
-                    <Paper withBorder p="md" key={row.id}>
-                      <Stack gap="sm">
-                        <Group wrap="nowrap" align="end">
-                          <TextInput
-                            label={'Material ' + (index + 1)}
-                            required
-                            maxLength={200}
-                            value={row.title}
-                            style={{ flex: 1, minWidth: 0 }}
-                            onChange={(event) =>
-                              materialChange(index, { title: event.currentTarget.value })
-                            }
-                          />
-                          <Tooltip label="Material entfernen">
-                            <ActionIcon
-                              color="red"
-                              variant="subtle"
-                              aria-label={'Material ' + (index + 1) + ' entfernen'}
-                              onClick={() =>
-                                form.setFieldValue(
-                                  'materials',
-                                  form.values.materials.filter((r) => r.id !== row.id),
-                                )
+                  {form.values.materials.map(
+                    (row, index) =>
+                      row.id === supplyDetail && (
+                        <Paper withBorder p="md" key={row.id}>
+                          <Stack gap="sm">
+                            <Group wrap="nowrap" align="end">
+                              <TextInput
+                                label={'Material ' + (index + 1)}
+                                required
+                                maxLength={200}
+                                value={row.title}
+                                style={{ flex: 1, minWidth: 0 }}
+                                onChange={(event) =>
+                                  materialChange(index, { title: event.currentTarget.value })
+                                }
+                              />
+                              <Tooltip label="Material entfernen">
+                                <ActionIcon
+                                  color="red"
+                                  variant="subtle"
+                                  aria-label={'Material ' + (index + 1) + ' entfernen'}
+                                  onClick={() => {
+                                    form.setFieldValue(
+                                      'materials',
+                                      form.values.materials.filter((r) => r.id !== row.id),
+                                    );
+                                    setSupplyDetail(null);
+                                  }}
+                                >
+                                  <IconTrash size={17} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Group>
+                            <SimpleGrid cols={{ base: 1, sm: 3 }}>
+                              <NumberInput
+                                label="Menge"
+                                min={0}
+                                max={10000000}
+                                decimalScale={3}
+                                decimalSeparator=","
+                                value={row.quantity ?? ''}
+                                onChange={(value) =>
+                                  materialChange(index, { quantity: numeric(value) })
+                                }
+                              />
+                              <TextInput
+                                label="Einheit"
+                                placeholder="m², kg, Stück …"
+                                maxLength={30}
+                                value={row.unit}
+                                onChange={(event) =>
+                                  materialChange(index, { unit: event.currentTarget.value })
+                                }
+                              />
+                              <NumberInput
+                                label="Einzelpreis (€)"
+                                min={0}
+                                max={10000000}
+                                decimalScale={2}
+                                decimalSeparator=","
+                                value={row.unit_price ?? ''}
+                                onChange={(value) =>
+                                  materialChange(index, { unit_price: numeric(value) })
+                                }
+                              />
+                            </SimpleGrid>
+                            <Select
+                              label="Beschaffungsstatus"
+                              data={['Benötigt', 'Bestellt', 'Vorhanden']}
+                              value={row.status}
+                              onChange={(value) =>
+                                materialChange(index, { status: value || 'Benötigt' })
                               }
-                            >
-                              <IconTrash size={17} />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Group>
-                        <SimpleGrid cols={{ base: 1, sm: 3 }}>
-                          <NumberInput
-                            label="Menge"
-                            min={0}
-                            max={10000000}
-                            decimalScale={3}
-                            decimalSeparator=","
-                            value={row.quantity ?? ''}
-                            onChange={(value) =>
-                              materialChange(index, { quantity: numeric(value) })
-                            }
-                          />
-                          <TextInput
-                            label="Einheit"
-                            placeholder="m², kg, Stück …"
-                            maxLength={30}
-                            value={row.unit}
-                            onChange={(event) =>
-                              materialChange(index, { unit: event.currentTarget.value })
-                            }
-                          />
-                          <NumberInput
-                            label="Einzelpreis (€)"
-                            min={0}
-                            max={10000000}
-                            decimalScale={2}
-                            decimalSeparator=","
-                            value={row.unit_price ?? ''}
-                            onChange={(value) =>
-                              materialChange(index, { unit_price: numeric(value) })
-                            }
-                          />
-                        </SimpleGrid>
-                        <Select
-                          label="Beschaffungsstatus"
-                          data={['Benötigt', 'Bestellt', 'Vorhanden']}
-                          value={row.status}
-                          onChange={(value) =>
-                            materialChange(index, { status: value || 'Benötigt' })
-                          }
-                        />
-                        <Textarea
-                          label="Materialhinweise"
-                          autosize
-                          minRows={2}
-                          maxRows={5}
-                          maxLength={2000}
-                          value={row.notes}
-                          onChange={(event) =>
-                            materialChange(index, { notes: event.currentTarget.value })
-                          }
-                        />
-                      </Stack>
-                    </Paper>
-                  ))}
+                            />
+                            <Textarea
+                              label="Materialhinweise"
+                              autosize
+                              minRows={2}
+                              maxRows={5}
+                              maxLength={2000}
+                              value={row.notes}
+                              onChange={(event) =>
+                                materialChange(index, { notes: event.currentTarget.value })
+                              }
+                            />
+                          </Stack>
+                        </Paper>
+                      ),
+                  )}
                   <Button
+                    hidden={!!supplyDetail}
                     variant="light"
                     leftSection={<IconPlus size={16} />}
                     disabled={form.values.materials.length >= 100}
-                    onClick={() =>
-                      form.setFieldValue('materials', [
-                        ...form.values.materials,
-                        {
-                          id: newID(),
-                          title: '',
-                          notes: '',
-                          quantity: null,
-                          unit: '',
-                          unit_price: null,
-                          status: 'Benötigt',
-                        },
-                      ])
-                    }
+                    onClick={addMaterial}
                   >
                     Material hinzufügen
                   </Button>
@@ -728,101 +816,109 @@ export function SelfWorkPage() {
               </Tabs.Panel>
               <Tabs.Panel value="tools" pt="md">
                 <Stack>
+                  {supplyDetail && (
+                    <Button variant="subtle" onClick={() => setSupplyDetail(null)}>
+                      Zurück zur Werkzeugliste
+                    </Button>
+                  )}
+                  {!supplyDetail &&
+                    form.values.tools.map((row) => (
+                      <SupplyRow
+                        key={row.id}
+                        title={row.title || 'Werkzeug ohne Bezeichnung'}
+                        quantity={row.source}
+                        cost={row.cost}
+                        onClick={() => setSupplyDetail(row.id)}
+                      />
+                    ))}
                   {!form.values.tools.length && (
                     <Text size="sm" c="dimmed">
                       Sammle benötigte Werkzeuge und entscheide, wie du sie beschaffst.
                     </Text>
                   )}
-                  {form.values.tools.map((row, index) => (
-                    <Paper withBorder p="md" key={row.id}>
-                      <Stack gap="sm">
-                        <Group wrap="nowrap" align="end">
-                          <TextInput
-                            label={'Werkzeug ' + (index + 1)}
-                            required
-                            maxLength={200}
-                            value={row.title}
-                            style={{ flex: 1, minWidth: 0 }}
-                            onChange={(event) =>
-                              toolChange(index, { title: event.currentTarget.value })
-                            }
-                          />
-                          <Tooltip label="Werkzeug entfernen">
-                            <ActionIcon
-                              color="red"
-                              variant="subtle"
-                              aria-label={'Werkzeug ' + (index + 1) + ' entfernen'}
-                              onClick={() =>
-                                form.setFieldValue(
-                                  'tools',
-                                  form.values.tools.filter((r) => r.id !== row.id),
-                                )
+                  {form.values.tools.map(
+                    (row, index) =>
+                      row.id === supplyDetail && (
+                        <Paper withBorder p="md" key={row.id}>
+                          <Stack gap="sm">
+                            <Group wrap="nowrap" align="end">
+                              <TextInput
+                                label={'Werkzeug ' + (index + 1)}
+                                required
+                                maxLength={200}
+                                value={row.title}
+                                style={{ flex: 1, minWidth: 0 }}
+                                onChange={(event) =>
+                                  toolChange(index, { title: event.currentTarget.value })
+                                }
+                              />
+                              <Tooltip label="Werkzeug entfernen">
+                                <ActionIcon
+                                  color="red"
+                                  variant="subtle"
+                                  aria-label={'Werkzeug ' + (index + 1) + ' entfernen'}
+                                  onClick={() => {
+                                    form.setFieldValue(
+                                      'tools',
+                                      form.values.tools.filter((r) => r.id !== row.id),
+                                    );
+                                    setSupplyDetail(null);
+                                  }}
+                                >
+                                  <IconTrash size={17} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Group>
+                            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                              <Select
+                                label="Beschaffung"
+                                data={['Noch offen', 'Vorhanden', 'Kaufen', 'Mieten', 'Ausleihen']}
+                                value={row.source}
+                                onChange={(value) =>
+                                  toolChange(index, {
+                                    source: value || 'Noch offen',
+                                    ...(value === 'Vorhanden' ? { cost: 0 } : {}),
+                                  })
+                                }
+                              />
+                              <NumberInput
+                                label="Geplante Kosten (€)"
+                                min={0}
+                                max={10000000}
+                                decimalScale={2}
+                                decimalSeparator=","
+                                value={row.cost ?? ''}
+                                onChange={(value) => toolChange(index, { cost: numeric(value) })}
+                              />
+                            </SimpleGrid>
+                            <Checkbox
+                              label="Werkzeug ist einsatzbereit"
+                              checked={row.ready}
+                              onChange={(event) =>
+                                toolChange(index, { ready: event.currentTarget.checked })
                               }
-                            >
-                              <IconTrash size={17} />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Group>
-                        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                          <Select
-                            label="Beschaffung"
-                            data={['Noch offen', 'Vorhanden', 'Kaufen', 'Mieten', 'Ausleihen']}
-                            value={row.source}
-                            onChange={(value) =>
-                              toolChange(index, {
-                                source: value || 'Noch offen',
-                                ...(value === 'Vorhanden' ? { cost: 0 } : {}),
-                              })
-                            }
-                          />
-                          <NumberInput
-                            label="Geplante Kosten (€)"
-                            min={0}
-                            max={10000000}
-                            decimalScale={2}
-                            decimalSeparator=","
-                            value={row.cost ?? ''}
-                            onChange={(value) => toolChange(index, { cost: numeric(value) })}
-                          />
-                        </SimpleGrid>
-                        <Checkbox
-                          label="Werkzeug ist einsatzbereit"
-                          checked={row.ready}
-                          onChange={(event) =>
-                            toolChange(index, { ready: event.currentTarget.checked })
-                          }
-                        />
-                        <Textarea
-                          label="Werkzeughinweise"
-                          autosize
-                          minRows={2}
-                          maxRows={5}
-                          maxLength={2000}
-                          value={row.notes}
-                          onChange={(event) =>
-                            toolChange(index, { notes: event.currentTarget.value })
-                          }
-                        />
-                      </Stack>
-                    </Paper>
-                  ))}
+                            />
+                            <Textarea
+                              label="Werkzeughinweise"
+                              autosize
+                              minRows={2}
+                              maxRows={5}
+                              maxLength={2000}
+                              value={row.notes}
+                              onChange={(event) =>
+                                toolChange(index, { notes: event.currentTarget.value })
+                              }
+                            />
+                          </Stack>
+                        </Paper>
+                      ),
+                  )}
                   <Button
+                    hidden={!!supplyDetail}
                     variant="light"
                     leftSection={<IconPlus size={16} />}
                     disabled={form.values.tools.length >= 100}
-                    onClick={() =>
-                      form.setFieldValue('tools', [
-                        ...form.values.tools,
-                        {
-                          id: newID(),
-                          title: '',
-                          notes: '',
-                          source: 'Noch offen',
-                          cost: null,
-                          ready: false,
-                        },
-                      ])
-                    }
+                    onClick={addTool}
                   >
                     Werkzeug hinzufügen
                   </Button>

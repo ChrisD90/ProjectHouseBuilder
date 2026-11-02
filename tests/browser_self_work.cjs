@@ -100,6 +100,13 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     await editor
       .getByRole("textbox", { name: "Einzelpreis (€)", exact: true })
       .fill("12");
+    await editor.getByRole("button", {name:"Zurück zur Materialliste",exact:true}).click();
+    const materialRow=editor.getByRole("button", {name:"Details: Wandfarbe",exact:true});
+    await expect(materialRow).toContainText("5 l");
+    await expect(materialRow).toContainText("ca.");
+    await expect(editor.getByRole("textbox",{name:"Menge",exact:true})).toHaveCount(0);
+    await materialRow.click();
+    await expect(editor.getByRole("textbox",{name:"Menge",exact:true})).toHaveValue("5");
     await editor
       .getByRole("tab", { name: "Werkzeuge (0)", exact: true })
       .click();
@@ -116,6 +123,11 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     await editor
       .getByRole("textbox", { name: "Geplante Kosten (€)", exact: true })
       .fill("10");
+    await editor.getByRole("button",{name:"Zurück zur Werkzeugliste",exact:true}).click();
+    const toolRow=editor.getByRole("button",{name:"Details: Farbrolle",exact:true});
+    await expect(toolRow).toContainText("Mieten");
+    await toolRow.click();
+    await expect(editor.getByRole("textbox",{name:"Geplante Kosten (€)",exact:true})).toHaveValue("10");
     await editor
       .getByRole("button", { name: "Eigenleistung speichern", exact: true })
       .click();
