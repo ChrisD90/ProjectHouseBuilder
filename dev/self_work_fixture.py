@@ -5,9 +5,9 @@ from flask import request, jsonify
 def install(b):
     state={'sharing':False,'calls':0}
     b.chatgpt.status=lambda:dict(sharing=state['sharing'],connected=state['sharing'],credits_acknowledged=True)
-    b.chatgpt.models=lambda:[dict(slug='fixture-model',title='Testmodell')]
+    b.chatgpt.models=lambda:[dict(slug='fixture-model',title='Testmodell'),dict(slug='fixture-model-2',title='Testmodell 2')]
     def run(prompt,instruction,model='',**kwargs):
-        state['calls']+=1;payload=json.loads(prompt)
+        state['calls']+=1;state['last_model']=model;payload=json.loads(prompt)
         if '{answer:string' in instruction:
             ready='20' in payload['conversation'][-1]['content']
             return json.dumps(dict(answer='Damit können wir planen.' if ready else 'Für eine passende Materialmenge fehlt die Fläche.',questions=[] if ready else ['Wie groß ist die zu streichende Fläche?'],ready=ready))

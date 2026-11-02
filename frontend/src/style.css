@@ -243,3 +243,31 @@ input {
     align-self: center;
   }
 }
+
+.chatgpt-connection-button {
+  height: auto;
+  min-height: 38px;
+  padding-block: 5px;
+}
+.chatgpt-connection-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  max-width: 170px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.chatgpt-model-caption {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+}
+@media (max-width: 480px) {
+  .chatgpt-connection-caption {
+    max-width: 95px;
+    font-size: 10px;
+  }
+}

@@ -412,22 +412,43 @@ export function App() {
                     { value: 'dark', label: 'Dunkel' },
                   ]}
                 />
-                <Tooltip label="ChatGPT-Verbindung">
+                <Tooltip
+                  label={
+                    'ChatGPT · ' +
+                    (services.ai.sharing
+                      ? 'Verbunden'
+                      : services.ai.connected
+                        ? 'Freigabe fehlt'
+                        : 'Nicht verbunden') +
+                    (services.ai.sharing
+                      ? ' · ' + (services.modelLabel || 'Modell wird geladen')
+                      : '')
+                  }
+                >
                   <Button
                     aria-label="ChatGPT-Verbindung"
                     size="xs"
                     variant={services.ai.sharing ? 'light' : 'default'}
-                    leftSection={<IconSparkles size={16} />}
+                    className="chatgpt-connection-button"
+                    leftSection={
+                      <img src="/static/icons/chatgpt-mark.svg" alt="" width={22} height={22} />
+                    }
                     onClick={services.openAI}
                   >
-                    <Text size="xs" visibleFrom="sm">
-                      ChatGPT
-                    </Text>
-                    {services.ai.sharing && (
-                      <Badge size="xs" ml={5}>
-                        ✓
-                      </Badge>
-                    )}
+                    <span className="chatgpt-connection-caption">
+                      <span>
+                        {services.ai.sharing
+                          ? 'Verbunden'
+                          : services.ai.connected
+                            ? 'Freigabe fehlt'
+                            : 'Nicht verbunden'}
+                      </span>
+                      {services.ai.sharing && (
+                        <span className="chatgpt-model-caption">
+                          {services.modelLabel || 'Modell wird geladen …'}
+                        </span>
+                      )}
+                    </span>
                   </Button>
                 </Tooltip>
                 <Tooltip label="Verarbeitung & Prüfung">

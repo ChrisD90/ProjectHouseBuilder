@@ -21,7 +21,13 @@ export function useServices(navigate: (url: string) => void) {
     cache = useQueryClient(),
     [aiOpen, setAiOpen] = useState(false),
     [queueOpen, setQueueOpen] = useState(false),
-    [model, setModel] = useState<string | null>(null),
+    [model, setModel] = useState<string | null>(() => {
+      try {
+        return localStorage.getItem('phb-chatgpt-model');
+      } catch {
+        return null;
+      }
+    }),
     [wait, setWait] = useState('');
   useEffect(() => {
     setExternal(aiOpen || queueOpen || !!wait);
@@ -55,9 +61,15 @@ export function useServices(navigate: (url: string) => void) {
     if (new URLSearchParams(window.location.search).has('ai')) setAiOpen(true);
   }, []);
   const state = useRef<Row>({ ai: {}, model: '', jobs: [] });
+  const catalog: Row[] = models.data?.models || [];
+  const currentModel = catalog.some((item) => item.slug === model) ? model : catalog[0]?.slug || '';
+  const modelLabel =
+    catalog.find((item) => item.slug === currentModel)?.title ||
+    catalog.find((item) => item.slug === currentModel)?.name ||
+    currentModel;
   state.current = {
     ai: aiQuery.data || {},
-    model: model || (models.data?.models || [])[0]?.slug || '',
+    model: currentModel,
     jobs: jobsQuery.data?.jobs || [],
   };
   const running = useRef(new Set<string>()),
@@ -327,12 +339,27 @@ export function useServices(navigate: (url: string) => void) {
             <Select
               label="Modell"
               value={state.current.model}
-              onChange={setModel}
+              comboboxProps={{ zIndex: 600 }}
+              onChange={(value) => {
+                setModel(value);
+                try {
+                  if (value) localStorage.setItem('phb-chatgpt-model', value);
+                  else localStorage.removeItem('phb-chatgpt-model');
+                } catch {}
+              }}
               data={(models.data?.models || []).map((m: Row) => ({
                 value: m.slug,
                 label: m.title || m.name || m.slug,
               }))}
             />
+          )}
+          {models.error && (
+            <Alert color="red">
+              Die Modellliste konnte nicht geladen werden.{' '}
+              <Button variant="subtle" onClick={() => void models.refetch()}>
+                Erneut laden
+              </Button>
+            </Alert>
           )}
           <Alert color="yellow" title="Plannutzung und Credits">
             ChatGPT kann zusätzliche Credits verwenden, falls dies in deinem Konto erlaubt ist.
@@ -504,6 +531,7 @@ export function useServices(navigate: (url: string) => void) {
   );
   return {
     ai: aiQuery.data || {},
+    modelLabel,
     openAI: () => {
       setAiOpen(true);
       void cache.invalidateQueries({ queryKey: ['ai'] });

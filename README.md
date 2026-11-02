@@ -4,6 +4,8 @@ Die aktuelle Refactoring-Umsetzung (R01–R12), Migration 0031 und wiederholbare
 
 **Aktueller UI-Branch:** `feature/react-mantine-ui` (eine Codebasis, lokal auf dem Mac oder optional auf der NAS). Die empfohlene Betriebsart ist **SQLite lokal auf dem Mac**, ohne dauerhaften Server.
 
+Der ChatGPT-Button im Header zeigt Logo, Verbindungsstatus und das aktuell verwendete Modell. Im Verbindungsdialog lässt sich das Modell wechseln; die Wahl bleibt im Browser nach einem Neuladen erhalten. Ist das gewählte Modell im aktuellen Konto nicht mehr verfügbar, verwendet die Anwendung ein verfügbares Modell und zeigt dessen Namen an.
+
 
 ## Belegprüfung und Firmen im Bauzeitenplan
 

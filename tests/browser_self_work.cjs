@@ -151,6 +151,29 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     });
     await page.reload();
     await page
+      .getByRole("button", { name: "ChatGPT-Verbindung", exact: true })
+      .click();
+    const connection = page.getByRole("dialog", {
+      name: "ChatGPT-Verbindung",
+      exact: true,
+    });
+    await connection
+      .getByRole("textbox", { name: "Modell", exact: true })
+      .click();
+    await page
+      .getByRole("option", { name: "Testmodell 2", exact: true })
+      .click();
+    await connection
+      .getByRole("button", { name: "Schließen", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "ChatGPT-Verbindung", exact: true }),
+    ).toContainText("Testmodell 2");
+    await page.reload();
+    await expect(
+      page.getByRole("button", { name: "ChatGPT-Verbindung", exact: true }),
+    ).toContainText("Testmodell 2");
+    await page
       .getByRole("button", {
         name: "Eigenleistung bearbeiten: Wohnzimmer streichen",
         exact: true,
@@ -253,6 +276,14 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     assert.equal(saved.materials[0].unit_price, null);
     console.log(
       "PASS opt-in interactive ChatGPT, busy lock, mutual readiness, preview, explicit replacement, manual correction and save.",
+    );
+    assert.equal(
+      (
+        await (
+          await page.request.get(base + "/__fixture/self-work/state")
+        ).json()
+      ).last_model,
+      "fixture-model-2",
     );
     await page
       .getByRole("button", {
