@@ -1,6 +1,14 @@
-import { ActionIcon, Group, Popover, Stack, Text } from '@mantine/core';
+import { ActionIcon, Badge, Divider, Group, Popover, SimpleGrid, Stack, Text } from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
+import { getOpenAIModelGuide } from './openai-model-catalog';
+
+const usd = new Intl.NumberFormat('de-DE', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 export function ModelInfo({
   slug,
@@ -26,11 +34,15 @@ export function ModelInfo({
 }) {
   const [opened, setOpened] = useState(false);
   const usage = lastRequest?.model === slug ? lastRequest : null;
+  const guide = getOpenAIModelGuide(slug);
+  const contextWindow =
+    guide?.contextWindow || metadata?.context_window || metadata?.max_context_tokens;
+  const maxOutputTokens = guide?.maxOutputTokens || metadata?.max_output_tokens;
   return (
     <Popover
       opened={opened}
       onChange={setOpened}
-      width={340}
+      width={390}
       position="bottom-end"
       withArrow
       shadow="md"
@@ -60,16 +72,78 @@ export function ModelInfo({
         style={{ maxWidth: 'calc(100vw - 32px)', maxHeight: '70dvh', overflowY: 'auto' }}
       >
         <Stack gap="sm">
-          <Text fw={700}>{label}</Text>
+          <Group justify="space-between" align="flex-start" gap="xs">
+            <div>
+              <Text fw={700}>{label}</Text>
+              {guide && (
+                <Text size="xs" c="dimmed">
+                  {slug}
+                </Text>
+              )}
+            </div>
+            {guide && <Badge variant="light">{guide.title}</Badge>}
+          </Group>
           <div>
             <Text fw={600} size="sm">
-              Wofür eignet es sich?
+              Stärken
             </Text>
             <Text size="sm">
-              {metadata?.description ||
+              {guide?.strengths ||
+                metadata?.description ||
                 'Diese Verbindung liefert für dieses Modell keine Aufgabenbeschreibung.'}
             </Text>
           </div>
+          {guide && (
+            <>
+              <div>
+                <Text fw={600} size="sm">
+                  Gut geeignet für
+                </Text>
+                <Text size="sm">{guide.bestFor}</Text>
+              </div>
+              <div>
+                <Text fw={600} size="sm">
+                  Grenzen
+                </Text>
+                <Text size="sm">{guide.limitations}</Text>
+              </div>
+              <Divider />
+              <div>
+                <Text fw={600} size="sm">
+                  API-Kosten im Standardmodus
+                </Text>
+                <SimpleGrid cols={3} spacing="xs" mt={4}>
+                  <div>
+                    <Text size="xs" c="dimmed">
+                      Eingabe
+                    </Text>
+                    <Text size="sm" fw={600}>
+                      {usd.format(guide.inputUsdPerMillion)}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed">
+                      Ausgabe
+                    </Text>
+                    <Text size="sm" fw={600}>
+                      {usd.format(guide.outputUsdPerMillion)}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed">
+                      Cached
+                    </Text>
+                    <Text size="sm" fw={600}>
+                      {usd.format(guide.cachedInputUsdPerMillion)}
+                    </Text>
+                  </div>
+                </SimpleGrid>
+                <Text size="xs" c="dimmed" mt={3}>
+                  Je 1 Mio. Tokens · Stand {guide.sourceDate}
+                </Text>
+              </div>
+            </>
+          )}
           <div>
             <Text fw={600} size="sm">
               Token-Nutzung
@@ -79,17 +153,12 @@ export function ModelInfo({
               nicht.
             </Text>
           </div>
-          {(metadata?.context_window || metadata?.max_context_tokens) && (
-            <Text size="sm">
-              Gemeldetes Kontextfenster:{' '}
-              {(metadata.context_window || metadata.max_context_tokens)?.toLocaleString('de-DE')}{' '}
-              Tokens
-            </Text>
+          {contextWindow && (
+            <Text size="sm">Kontextfenster: {contextWindow.toLocaleString('de-DE')} Tokens</Text>
           )}
-          {metadata?.max_output_tokens && (
+          {maxOutputTokens && (
             <Text size="sm">
-              Gemeldete maximale Ausgabe: {metadata.max_output_tokens.toLocaleString('de-DE')}{' '}
-              Tokens
+              Maximale Ausgabe: {maxOutputTokens.toLocaleString('de-DE')} Tokens
             </Text>
           )}
           {!!metadata?.capabilities?.length && (
@@ -112,9 +181,9 @@ export function ModelInfo({
             </Text>
           )}
           <Text size="xs" c="dimmed">
-            Beschreibung und Grenzen stammen aus der aktuellen Modellantwort des Anbieters. Fehlende
-            Angaben werden nicht geschätzt. ChatGPT-Planlimits sind keine garantierten
-            Token-Guthaben.
+            {guide
+              ? 'Katalogangaben basieren auf der offiziellen OpenAI-Dokumentation. API-Preise sind keine ChatGPT-Abo-Kosten; dort gelten eigene, dynamische Limits.'
+              : 'Beschreibung und Grenzen stammen aus der aktuellen Modellantwort des Anbieters. Fehlende Angaben werden nicht geschätzt. ChatGPT-Planlimits sind keine garantierten Token-Guthaben.'}
           </Text>
         </Stack>
       </Popover.Dropdown>
