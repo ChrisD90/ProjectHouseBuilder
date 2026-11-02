@@ -154,7 +154,7 @@ def register_self_work(app, db, Task, *, ai_required, chatgpt, extract_json):
         context['task']=dict(id=task.id,name=task.name,trade=task.trade) if task else None
         history=body.get('history',[])
         if not isinstance(history,list) or len(history)>16: raise ValueError('Höchstens acht Gesprächsrunden. Bitte eine neue Planung beginnen.')
-        history=[dict(role=h['role'],content=plain(h['content'],'Nachricht',4000,required=True))
+        history=[dict(role=h['role'],content=plain(h['content'],'Nachricht',8000,required=True))
                  if isinstance(h,dict) and set(h)=={'role','content'} and h['role'] in ('user','assistant')
                  else (_ for _ in ()).throw(ValueError('Ungültiger Gesprächsverlauf.')) for h in history]
         model=plain(body.get('model',''),'Modell',100)
@@ -164,13 +164,13 @@ def register_self_work(app, db, Task, *, ai_required, chatgpt, extract_json):
     def digest(context,history):
         return sha256(json.dumps([current_project_id(),context,history],sort_keys=True,ensure_ascii=False).encode()).hexdigest()
 
-    def run_ai(context,history,model,instruction):
+    def run_ai(context,history,model,instruction, *, research=False):
         from work_leases import claim,Lease
         lease_key='project:'+str(current_project_id())+':self-work-ai'
         token=claim(db.engine,lease_key,current_project_id())
         if not token: raise ValueError('Für dieses Projekt läuft bereits eine Eigenleistungsplanung mit ChatGPT.')
         lease=Lease(db.engine,lease_key,token)
-        try: return extract_json(chatgpt.run(json.dumps(dict(context=context,conversation=history),ensure_ascii=False),instruction,model))
+        try: return extract_json(chatgpt.run(json.dumps(dict(context=context,conversation=history),ensure_ascii=False),instruction,model,**({'web_search':True} if research else {})))
         finally: lease.close()
 
     base_instruction=('Du unterstützt private Eigenleistungen in einem Bau-, Sanierungs- oder Gartenprojekt. '
@@ -185,10 +185,15 @@ def register_self_work(app, db, Task, *, ai_required, chatgpt, extract_json):
             body,context,history,model=ai_input()
             if not history or history[-1]['role']!='user': raise ValueError('Bitte das Vorhaben oder eine Antwort eingeben.')
             answer=run_ai(context,history,model,base_instruction+
-                'Erzeuge noch keinen Arbeitsplan. Kläre nur wesentliche fehlende Angaben mit höchstens vier gebündelten Rückfragen. '
-                'JSON: {answer:string,questions:string[],ready:boolean}. ready darf nur wahr sein, wenn die Angaben für einen brauchbaren Plan reichen; dann questions=[].')
+                'Beantworte die konkrete Frage zuerst direkt und hilfreich. Bei Fragen nach Werkzeugen, Materialien oder Vorgehen liefere eine konkrete, gegliederte Übersicht mit Zweck und möglichen Alternativen. '
+                'Wenn der Benutzer recherchieren oder zunächst einen Überblick haben möchte, recherchiere und liefere Ergebnisse statt eines Fragenkatalogs. Nenne bei Webrecherche verwendete Quellen als URLs in answer; erfinde keine Quellen. '
+                'Fehlende Maße verhindern keine allgemeine Werkzeug- oder Materialliste: kennzeichne Annahmen, lasse konkrete Mengen offen und erkläre Varianten kurz. '
+                'Stelle nur dann Rückfragen, wenn ohne die Antwort keine sinnvolle Auskunft möglich ist, höchstens zwei gebündelte Fragen. Keine Pflicht zur vollständigen Projektaufnahme für eine einfache Auskunft. '
+                'Ein strukturierter, speicherbarer Arbeitsplan wird erst auf ausdrücklichen Wunsch separat erzeugt. '
+                'JSON: {answer:string,questions:string[],ready:boolean}. ready bedeutet, dass ein sinnvoller vorläufiger Plan mit gekennzeichneten Annahmen möglich ist; fehlende Detailmaße allein verhindern das nicht. Bei ready=true questions=[].',
+                research=any(word in history[-1]['content'].casefold() for word in ('recherch','recherche','such im internet','suche im internet','online suchen','quellen')))
             if not isinstance(answer,dict) or type(answer.get('ready')) is not bool: raise ValueError('ChatGPT hat keine gültige Klärung geliefert.')
-            text=plain(answer.get('answer',''),'Antwort',2000,required=True)
+            text=plain(answer.get('answer',''),'Antwort',6000,required=True)
             questions=answer.get('questions',[])
             if not isinstance(questions,list) or len(questions)>4: raise ValueError('Ungültige Rückfragen von ChatGPT.')
             questions=[plain(q,'Rückfrage',400,required=True) for q in questions]

@@ -94,6 +94,17 @@ class SelfWorkTest(unittest.TestCase):
         response,runner=self.ai('consult',body,{'answer':'Welche Fläche?', 'questions':['Wie viele m²?'],'ready':True})
         self.assertEqual(response.status_code,200,response.json);self.assertFalse(response.json['ready']);self.assertEqual(response.json['token'],'')
 
+    def test_research_can_answer_directly_and_long_answers_allow_follow_up(self):
+        context=self.context();history=[dict(role='user',content='Recherchiere bitte, welche Werkzeuge ich benötigen könnte.')]
+        answer='Werkzeuge und Einsatz: '+('Rolle, Pinsel und Abdeckmaterial. '*140)+' Quelle: https://example.org'
+        result,runner=self.ai('consult',dict(context=context,history=history),dict(answer=answer,questions=[],ready=True))
+        self.assertEqual(result.status_code,200,result.json);self.assertEqual(result.json['answer'],answer)
+        self.assertTrue(runner.call_args.kwargs['web_search'])
+        history += [dict(role='assistant',content=answer),dict(role='user',content='Welche Materialien kommen noch infrage?')]
+        result,runner=self.ai('consult',dict(context=context,history=history),dict(answer='Grundierung abhängig vom Untergrund.',questions=[],ready=True))
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(self.client.get('/api/self-work').json['plans'],[])
+
     def test_ai_proposal_is_validated_project_bound_and_never_saved_implicitly(self):
         context=self.context();history=[{'role':'user','content':'20 m², Untergrund fest, zweimal streichen.'}]
         response,_=self.ai('consult',dict(context=context,history=history),dict(answer='Das reicht für den Vorschlag.',questions=[],ready=True))
