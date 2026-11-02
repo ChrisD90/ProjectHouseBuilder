@@ -1,4 +1,15 @@
-import { ActionIcon, Badge, Divider, Group, Popover, SimpleGrid, Stack, Text } from '@mantine/core';
+import {
+  ActionIcon,
+  Badge,
+  Box,
+  Divider,
+  Group,
+  Popover,
+  ScrollArea,
+  SimpleGrid,
+  Stack,
+  Text,
+} from '@mantine/core';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
 import { getOpenAIModelGuide } from './openai-model-catalog';
@@ -43,10 +54,12 @@ export function ModelInfo({
       opened={opened}
       onChange={setOpened}
       width={390}
-      position="bottom-end"
+      position="right-start"
       withArrow
       shadow="md"
       zIndex={650}
+      withinPortal
+      middlewares={{ flip: true, shift: { padding: 16 } }}
     >
       <Popover.Target>
         <ActionIcon
@@ -69,123 +82,141 @@ export function ModelInfo({
       </Popover.Target>
       <Popover.Dropdown
         onClick={(event) => event.stopPropagation()}
-        style={{ maxWidth: 'calc(100vw - 32px)', maxHeight: '70dvh', overflowY: 'auto' }}
+        onWheel={(event) => event.stopPropagation()}
+        onTouchMove={(event) => event.stopPropagation()}
+        p={0}
+        style={{
+          maxWidth: 'calc(100vw - 32px)',
+          maxHeight: 'calc(100dvh - 32px)',
+          overflow: 'hidden',
+        }}
       >
-        <Stack gap="sm">
-          <Group justify="space-between" align="flex-start" gap="xs">
-            <div>
-              <Text fw={700}>{label}</Text>
+        <ScrollArea.Autosize
+          mah="calc(100dvh - 32px)"
+          type="auto"
+          scrollbarSize={8}
+          overscrollBehavior="contain"
+        >
+          <Box p="md">
+            <Stack gap="sm">
+              <Group justify="space-between" align="flex-start" gap="xs">
+                <div>
+                  <Text fw={700}>{label}</Text>
+                  {guide && (
+                    <Text size="xs" c="dimmed">
+                      {slug}
+                    </Text>
+                  )}
+                </div>
+                {guide && <Badge variant="light">{guide.title}</Badge>}
+              </Group>
+              <div>
+                <Text fw={600} size="sm">
+                  Stärken
+                </Text>
+                <Text size="sm">
+                  {guide?.strengths ||
+                    metadata?.description ||
+                    'Diese Verbindung liefert für dieses Modell keine Aufgabenbeschreibung.'}
+                </Text>
+              </div>
               {guide && (
-                <Text size="xs" c="dimmed">
-                  {slug}
+                <>
+                  <div>
+                    <Text fw={600} size="sm">
+                      Gut geeignet für
+                    </Text>
+                    <Text size="sm">{guide.bestFor}</Text>
+                  </div>
+                  <div>
+                    <Text fw={600} size="sm">
+                      Grenzen
+                    </Text>
+                    <Text size="sm">{guide.limitations}</Text>
+                  </div>
+                  <Divider />
+                  <div>
+                    <Text fw={600} size="sm">
+                      API-Kosten im Standardmodus
+                    </Text>
+                    <SimpleGrid cols={3} spacing="xs" mt={4}>
+                      <div>
+                        <Text size="xs" c="dimmed">
+                          Eingabe
+                        </Text>
+                        <Text size="sm" fw={600}>
+                          {usd.format(guide.inputUsdPerMillion)}
+                        </Text>
+                      </div>
+                      <div>
+                        <Text size="xs" c="dimmed">
+                          Ausgabe
+                        </Text>
+                        <Text size="sm" fw={600}>
+                          {usd.format(guide.outputUsdPerMillion)}
+                        </Text>
+                      </div>
+                      <div>
+                        <Text size="xs" c="dimmed">
+                          Cached
+                        </Text>
+                        <Text size="sm" fw={600}>
+                          {usd.format(guide.cachedInputUsdPerMillion)}
+                        </Text>
+                      </div>
+                    </SimpleGrid>
+                    <Text size="xs" c="dimmed" mt={3}>
+                      Je 1 Mio. Tokens · Stand {guide.sourceDate}
+                    </Text>
+                  </div>
+                </>
+              )}
+              <div>
+                <Text fw={600} size="sm">
+                  Token-Nutzung
+                </Text>
+                <Text size="sm">
+                  Token-Verbrauch wird pro Anfrage ermittelt; einen festen Verbrauch pro Modell gibt
+                  es nicht.
+                </Text>
+              </div>
+              {contextWindow && (
+                <Text size="sm">
+                  Kontextfenster: {contextWindow.toLocaleString('de-DE')} Tokens
                 </Text>
               )}
-            </div>
-            {guide && <Badge variant="light">{guide.title}</Badge>}
-          </Group>
-          <div>
-            <Text fw={600} size="sm">
-              Stärken
-            </Text>
-            <Text size="sm">
-              {guide?.strengths ||
-                metadata?.description ||
-                'Diese Verbindung liefert für dieses Modell keine Aufgabenbeschreibung.'}
-            </Text>
-          </div>
-          {guide && (
-            <>
-              <div>
-                <Text fw={600} size="sm">
-                  Gut geeignet für
+              {maxOutputTokens && (
+                <Text size="sm">
+                  Maximale Ausgabe: {maxOutputTokens.toLocaleString('de-DE')} Tokens
                 </Text>
-                <Text size="sm">{guide.bestFor}</Text>
-              </div>
-              <div>
-                <Text fw={600} size="sm">
-                  Grenzen
+              )}
+              {!!metadata?.capabilities?.length && (
+                <Text size="sm">Gemeldete Fähigkeiten: {metadata.capabilities.join(', ')}</Text>
+              )}
+              {usage ? (
+                <div>
+                  <Text size="sm" fw={600}>
+                    Letzte gemeldete Anfrage dieses Modells
+                  </Text>
+                  <Group gap="xs">
+                    <Text size="sm">Eingabe: {usage.input_tokens ?? 'nicht gemeldet'}</Text>
+                    <Text size="sm">Ausgabe: {usage.output_tokens ?? 'nicht gemeldet'}</Text>
+                  </Group>
+                  <Text size="sm">Gesamt: {usage.total_tokens ?? 'nicht gemeldet'} Tokens</Text>
+                </div>
+              ) : (
+                <Text size="sm" c="dimmed">
+                  Für dieses Modell wurde noch kein Token-Verbrauch gemeldet.
                 </Text>
-                <Text size="sm">{guide.limitations}</Text>
-              </div>
-              <Divider />
-              <div>
-                <Text fw={600} size="sm">
-                  API-Kosten im Standardmodus
-                </Text>
-                <SimpleGrid cols={3} spacing="xs" mt={4}>
-                  <div>
-                    <Text size="xs" c="dimmed">
-                      Eingabe
-                    </Text>
-                    <Text size="sm" fw={600}>
-                      {usd.format(guide.inputUsdPerMillion)}
-                    </Text>
-                  </div>
-                  <div>
-                    <Text size="xs" c="dimmed">
-                      Ausgabe
-                    </Text>
-                    <Text size="sm" fw={600}>
-                      {usd.format(guide.outputUsdPerMillion)}
-                    </Text>
-                  </div>
-                  <div>
-                    <Text size="xs" c="dimmed">
-                      Cached
-                    </Text>
-                    <Text size="sm" fw={600}>
-                      {usd.format(guide.cachedInputUsdPerMillion)}
-                    </Text>
-                  </div>
-                </SimpleGrid>
-                <Text size="xs" c="dimmed" mt={3}>
-                  Je 1 Mio. Tokens · Stand {guide.sourceDate}
-                </Text>
-              </div>
-            </>
-          )}
-          <div>
-            <Text fw={600} size="sm">
-              Token-Nutzung
-            </Text>
-            <Text size="sm">
-              Token-Verbrauch wird pro Anfrage ermittelt; einen festen Verbrauch pro Modell gibt es
-              nicht.
-            </Text>
-          </div>
-          {contextWindow && (
-            <Text size="sm">Kontextfenster: {contextWindow.toLocaleString('de-DE')} Tokens</Text>
-          )}
-          {maxOutputTokens && (
-            <Text size="sm">
-              Maximale Ausgabe: {maxOutputTokens.toLocaleString('de-DE')} Tokens
-            </Text>
-          )}
-          {!!metadata?.capabilities?.length && (
-            <Text size="sm">Gemeldete Fähigkeiten: {metadata.capabilities.join(', ')}</Text>
-          )}
-          {usage ? (
-            <div>
-              <Text size="sm" fw={600}>
-                Letzte gemeldete Anfrage dieses Modells
+              )}
+              <Text size="xs" c="dimmed">
+                {guide
+                  ? 'Katalogangaben basieren auf der offiziellen OpenAI-Dokumentation. API-Preise sind keine ChatGPT-Abo-Kosten; dort gelten eigene, dynamische Limits.'
+                  : 'Beschreibung und Grenzen stammen aus der aktuellen Modellantwort des Anbieters. Fehlende Angaben werden nicht geschätzt. ChatGPT-Planlimits sind keine garantierten Token-Guthaben.'}
               </Text>
-              <Group gap="xs">
-                <Text size="sm">Eingabe: {usage.input_tokens ?? 'nicht gemeldet'}</Text>
-                <Text size="sm">Ausgabe: {usage.output_tokens ?? 'nicht gemeldet'}</Text>
-              </Group>
-              <Text size="sm">Gesamt: {usage.total_tokens ?? 'nicht gemeldet'} Tokens</Text>
-            </div>
-          ) : (
-            <Text size="sm" c="dimmed">
-              Für dieses Modell wurde noch kein Token-Verbrauch gemeldet.
-            </Text>
-          )}
-          <Text size="xs" c="dimmed">
-            {guide
-              ? 'Katalogangaben basieren auf der offiziellen OpenAI-Dokumentation. API-Preise sind keine ChatGPT-Abo-Kosten; dort gelten eigene, dynamische Limits.'
-              : 'Beschreibung und Grenzen stammen aus der aktuellen Modellantwort des Anbieters. Fehlende Angaben werden nicht geschätzt. ChatGPT-Planlimits sind keine garantierten Token-Guthaben.'}
-          </Text>
-        </Stack>
+            </Stack>
+          </Box>
+        </ScrollArea.Autosize>
       </Popover.Dropdown>
     </Popover>
   );

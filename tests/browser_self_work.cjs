@@ -174,6 +174,32 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
       connection.getByRole("textbox", { name: "Modell", exact: true }),
     ).toHaveValue("Testmodell");
     await modelInfo.click();
+    await page.setViewportSize({ width: 900, height: 480 });
+    const astraInfo = page.getByRole("button", {
+      name: "Informationen zum Modell GPT-6 Astra",
+      exact: true,
+    });
+    await astraInfo.click();
+    const guidePopover = page
+      .locator(".mantine-Popover-dropdown")
+      .filter({ hasText: "Maximale Qualität" });
+    await expect(guidePopover).toContainText("API-Kosten im Standardmodus");
+    const popoverBox = await guidePopover.boundingBox();
+    assert.ok(popoverBox && popoverBox.y >= 15);
+    assert.ok(popoverBox.y + popoverBox.height <= 465);
+    const guideViewport = guidePopover.locator(".mantine-ScrollArea-viewport");
+    await expect(guideViewport).toHaveCount(1);
+    assert.equal(
+      await guideViewport.evaluate((node) => node.scrollHeight > node.clientHeight),
+      true,
+    );
+    await guideViewport.hover();
+    await page.mouse.wheel(0, 700);
+    await expect
+      .poll(() => guideViewport.evaluate((node) => node.scrollTop))
+      .toBeGreaterThan(0);
+    await astraInfo.click();
+    await page.setViewportSize({ width: 1440, height: 1000 });
     await page
       .getByRole("option", { name: /^Testmodell 2/ })
       .click();
