@@ -56,6 +56,21 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     const row = frame
       .locator(".receipt-entry-row")
       .filter({ has: frame.locator('.entry[data-id="' + rid + '"]') });
+    const statusBox = await row
+      .locator(".receipt-entry-heading .status")
+      .boundingBox();
+    const toolBox = await row
+      .locator('.receipt-entry-heading [data-work-open="receipt"]')
+      .boundingBox();
+    const cardBox = await row.boundingBox();
+    assert(statusBox && toolBox && cardBox);
+    assert(toolBox.x >= statusBox.x + statusBox.width);
+    assert(
+      Math.abs(
+        statusBox.y + statusBox.height / 2 - (toolBox.y + toolBox.height / 2),
+      ) < 2,
+    );
+    assert(toolBox.x + toolBox.width <= cardBox.x + cardBox.width);
     await row.locator('[data-work-open="receipt"]').click();
     const linked = page.getByRole("dialog", {
       name: "To-dos & Notizen",

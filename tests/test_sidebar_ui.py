@@ -444,7 +444,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('/api/receipts/labor-export.zip?year=',script)
         self.assertIn('.receipt-search',styles)
         self.assertIn('.receipt-search input{display:block;width:100%;height:42px',styles)
-        self.assertIn('.entry .status{margin:0 0 8px 14px}',styles)
+        self.assertIn('.receipt-entry-heading .status{margin:0;float:none}',styles)
 
     def test_task_list_and_history_are_on_demand_and_do_not_take_page_space(self):
         page=self.render('index')
