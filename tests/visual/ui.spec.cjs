@@ -35,7 +35,7 @@ for (const theme of ["light", "dark"])
             trades: [],
             drafts: 0,
             booked_gross: 1250,
-            paid: 0,
+            paid: 1250,
             receipts: [
               {
                 id: 7101,
@@ -45,13 +45,13 @@ for (const theme of ["light", "dark"])
                 status: "Gebucht",
                 gross_amount: 1250,
                 counted_amount: 1250,
-                paid_amount: 0,
+                paid_amount: 1250,
                 category: "Dach",
                 assignment_type: "Eigenleistung",
                 document_date: "2026-01-15",
                 labor_amount: 250,
                 labor_source: "Manuell",
-                payment_assignment: "Nicht zugewiesen",
+                payment_assignment: "Zugewiesen",
                 unassigned_amount: 0,
               },
             ],
@@ -63,6 +63,17 @@ for (const theme of ["light", "dark"])
       const card = frame.locator(".receipt-entry-row").first();
       await expect(card).toBeVisible();
       await expect(card.locator("[data-work-open]")).toBeVisible();
+      const status = await card.locator(".status").boundingBox();
+      const assigned = await card
+        .locator(".receipt-payment-badge")
+        .boundingBox();
+      const todo = await card.locator("[data-work-open]").boundingBox();
+      const bounds = await card.boundingBox();
+      expect(assigned.x).toBeGreaterThan(status.x + status.width);
+      expect(todo.x).toBeGreaterThan(assigned.x + assigned.width);
+      expect(
+        Math.abs(bounds.x + bounds.width - todo.x - todo.width - 13),
+      ).toBeLessThan(2);
       await expect(card).toHaveScreenshot(
         `receipt-card-${theme}-${width}.png`,
         { style: "* { font-family: Arial, sans-serif !important; }" },

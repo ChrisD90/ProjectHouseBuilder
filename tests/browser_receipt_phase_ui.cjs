@@ -71,6 +71,8 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
       ) < 2,
     );
     assert(toolBox.x + toolBox.width <= cardBox.x + cardBox.width);
+    assert(Math.abs(statusBox.x - cardBox.x - 13) < 2);
+    assert(Math.abs(cardBox.x + cardBox.width - toolBox.x - toolBox.width - 13) < 2);
     await row.locator('[data-work-open="receipt"]').click();
     const linked = page.getByRole("dialog", {
       name: "To-dos & Notizen",

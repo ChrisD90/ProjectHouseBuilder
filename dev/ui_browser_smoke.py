@@ -39,7 +39,7 @@ def run(script):
                 env['PHB_TEST_URL']='http://127.0.0.1:'+found.group(1)
                 if script=='visual':
                     command=[str(ROOT/'frontend/node_modules/.bin/playwright'),'test','--config',str(ROOT/'frontend/playwright.config.cjs')]
-                    if os.environ.get('UPDATE_SCREENSHOTS')=='1':command+=['--update-snapshots']
+                    if os.environ.get('UPDATE_SCREENSHOTS')=='1':command+=['--update-snapshots=all']
                 else:command=['node',str(ROOT/script)]
                 subprocess.run(command,cwd=ROOT,env=env,check=True,timeout=240)
             except Exception:

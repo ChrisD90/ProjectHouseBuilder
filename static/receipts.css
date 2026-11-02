@@ -204,10 +204,12 @@ body.phb-app.phb-page-belege .receipt-assignment-fields{display:grid;grid-templa
 body.phb-app.phb-page-belege .receipt-assignment-fields>[hidden]{display:none!important}
 @media(max-width:650px){body.phb-app.phb-page-belege .receipt-assignment-fields{grid-template-columns:1fr}}
 
-/* Status and source tools share the card header; the review button stays separate. */
+/* Booking status stays left; financing assignment and source tools stay right. */
 body.phb-app.phb-page-belege .receipt-entry-row{border:1px solid var(--ui-line);border-radius:12px;background:var(--ui-soft);overflow:hidden}
 body.phb-app.phb-page-belege .receipt-entry-row.active{border-color:var(--ui-accent)}
-body.phb-app.phb-page-belege .receipt-entry-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 12px 0}
+body.phb-app.phb-page-belege .receipt-entry-heading{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;padding:10px 12px 0}
+body.phb-app.phb-page-belege .receipt-entry-tools{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
+body.phb-app.phb-page-belege .receipt-entry-tools .receipt-payment-badge{min-width:0;margin:0;overflow-wrap:anywhere;text-align:right}
 body.phb-app.phb-page-belege .receipt-entry-row .entry{background:transparent;border:0;border-radius:0;padding-top:8px;overflow-wrap:anywhere}
 body.phb-app.phb-page-belege .receipt-entry-heading .linked-work-button{margin:0;flex-shrink:0}
 body.phb-app.phb-page-belege .receipt-review-actions{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
