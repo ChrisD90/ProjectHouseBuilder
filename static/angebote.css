@@ -234,7 +234,7 @@ body.phb-app.phb-page-angebote .offer-drafts-icon{display:grid;place-items:cente
 .phb-page-angebote .offer-drafts-icon[hidden]{display:none!important}
 .phb-page-angebote .offer-drafts-icon:hover{background:var(--ui-soft)}
 .phb-page-angebote .offer-drafts-icon .phb-icon{width:18px;height:18px}
-.phb-page-angebote .offer-icon-badge{position:absolute;top:-6px;right:-6px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border:2px solid var(--ui-surface);border-radius:999px;background:var(--ui-danger);color:#fff;font-size:10px;font-weight:800;line-height:1}
+.phb-page-angebote .offer-icon-badge{position:absolute;top:-6px;right:-6px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border:2px solid var(--ui-surface);border-radius:999px;background:var(--ui-soft-accent);color:var(--ui-accent);font-size:10px;font-weight:800;line-height:1}
 @media(max-width:1050px){
   .phb-page-angebote #offerList{grid-template-columns:repeat(2,minmax(0,1fr));max-height:904px}
 }

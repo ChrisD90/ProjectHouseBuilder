@@ -550,15 +550,15 @@ function WorkRows({ rows, loading }: { rows: Row[]; loading?: boolean }) {
 export function SourceWork({ type, id }: { type: string; id: number }) {
   const { rows, open } = useWork();
   const count = rows.filter(
-    (x: Row) => matches(x, { type, id }) && x.kind === 'todo' && !x.archived,
+    (x: Row) => matches(x, { type, id }) && x.kind === 'todo' && !x.archived && !x.done,
   ).length;
   return (
     <Button
       variant="light"
       size="xs"
       leftSection={<IconListCheck size={16} />}
-      title={count + ' nicht archivierte To-dos (inklusive erledigter)'}
-      rightSection={count ? <Badge size="sm">{count}</Badge> : undefined}
+      title={count + ' offene To-dos'}
+      rightSection={count ? <Badge size="sm" color="red" variant="light">{count}</Badge> : undefined}
       onClick={() => open({ type, id })}
     >
       To-dos & Notizen

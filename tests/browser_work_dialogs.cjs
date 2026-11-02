@@ -124,6 +124,7 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
         exact: true,
       }),
     ).toBeChecked();
+    await expect(offerButton.locator("[data-work-count]")).toBeHidden();
     await list
       .getByRole("button", {
         name: "Eintrag bearbeiten: " + title,
