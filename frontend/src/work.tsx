@@ -547,18 +547,48 @@ function WorkRows({ rows, loading }: { rows: Row[]; loading?: boolean }) {
     </Stack>
   );
 }
-export function SourceWork({ type, id }: { type: string; id: number }) {
+export function SourceWork({
+  type,
+  id,
+  compact = false,
+}: {
+  type: string;
+  id: number;
+  compact?: boolean;
+}) {
   const { rows, open } = useWork();
   const count = rows.filter(
     (x: Row) => matches(x, { type, id }) && x.kind === 'todo' && !x.archived && !x.done,
   ).length;
+  if (compact)
+    return (
+      <Tooltip label={'To-dos & Notizen · ' + count + ' offene To-dos'}>
+        <ActionIcon
+          variant="default"
+          className="self-work-corner-icon"
+          aria-label={'To-dos & Notizen anzeigen · ' + count + ' offene To-dos'}
+          onClick={() => open({ type, id })}
+        >
+          <IconListCheck size={17} />
+          {count > 0 && (
+            <span className="self-work-action-count self-work-action-count-todo">{count}</span>
+          )}
+        </ActionIcon>
+      </Tooltip>
+    );
   return (
     <Button
       variant="light"
       size="xs"
       leftSection={<IconListCheck size={16} />}
       title={count + ' offene To-dos'}
-      rightSection={count ? <Badge size="sm" color="red" variant="light">{count}</Badge> : undefined}
+      rightSection={
+        count ? (
+          <Badge size="sm" color="red" variant="light">
+            {count}
+          </Badge>
+        ) : undefined
+      }
       onClick={() => open({ type, id })}
     >
       To-dos & Notizen

@@ -8,6 +8,38 @@
   font-size: 19px;
   overflow-wrap: anywhere;
 }
+.self-work-corner-actions {
+  flex-shrink: 0;
+}
+.self-work-corner-icon {
+  position: relative;
+  overflow: visible;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: var(--mantine-color-text);
+}
+.self-work-action-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 2px solid var(--mantine-color-body);
+  border-radius: 999px;
+  background: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-light-color);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+.self-work-action-count-todo {
+  background: var(--mantine-color-red-light);
+  color: var(--mantine-color-red-light-color);
+}
 .self-work-page .self-work-task-label {
   max-width: 100%;
   height: auto;

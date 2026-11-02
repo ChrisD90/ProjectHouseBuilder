@@ -292,15 +292,33 @@ export function SelfWorkPage() {
                   >
                     {row.status}
                   </StatusPill>
-                  <Tooltip label="Eigenleistung bearbeiten">
-                    <ActionIcon
-                      variant="subtle"
-                      aria-label={'Eigenleistung bearbeiten: ' + row.title}
-                      onClick={() => edit(row)}
-                    >
-                      <IconPencil size={18} />
-                    </ActionIcon>
-                  </Tooltip>
+                  <Group gap={8} wrap="nowrap" className="self-work-corner-actions">
+                    <Tooltip label="Eigenleistung bearbeiten">
+                      <ActionIcon
+                        variant="default"
+                        className="self-work-corner-icon"
+                        aria-label={'Eigenleistung bearbeiten: ' + row.title}
+                        onClick={() => edit(row)}
+                      >
+                        <IconPencil size={18} />
+                      </ActionIcon>
+                    </Tooltip>
+                    <Tooltip label={'Rechnungen & Kassenzettel: ' + row.receipt_ids.length}>
+                      <ActionIcon
+                        variant="default"
+                        className="self-work-corner-icon"
+                        onClick={() => {
+                          edit(row);
+                          setTab('receipts');
+                        }}
+                        aria-label={'Rechnungen zu ' + row.title + ': ' + row.receipt_ids.length}
+                      >
+                        <IconReceipt size={17} />
+                        <span className="self-work-action-count">{row.receipt_ids.length}</span>
+                      </ActionIcon>
+                    </Tooltip>
+                    <SourceWork type="self_work" id={row.id} compact />
+                  </Group>
                 </Group>
                 <UnstyledButton className="phb-primary-link" onClick={() => edit(row)}>
                   <Title order={3} lineClamp={2}>
@@ -349,21 +367,6 @@ export function SelfWorkPage() {
                 </Text>
                 <Group justify="space-between">
                   <Text size="sm">Ist: {money(row.actual_cost)}</Text>
-                  <Tooltip label={'Rechnungen & Kassenzettel: ' + row.receipt_ids.length}>
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      leftSection={<IconReceipt size={17} />}
-                      onClick={() => {
-                        edit(row);
-                        setTab('receipts');
-                      }}
-                      aria-label={'Rechnungen zu ' + row.title}
-                    >
-                      {row.receipt_ids.length || ''}
-                    </Button>
-                  </Tooltip>
-                  <SourceWork type="self_work" id={row.id} />
                 </Group>
                 <Text size="xs" c="dimmed">
                   Material bestellt / vorhanden: {money(row.procured_material_cost)}
