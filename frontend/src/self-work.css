@@ -4,6 +4,63 @@
   gap: 12px;
   min-width: 0;
 }
+.self-work-list-frame {
+  display: flex;
+  flex-direction: column;
+  height: clamp(200px, 45dvh, 480px);
+  min-width: 0;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+}
+.self-work-list-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  min-height: 48px;
+  padding: 8px 12px;
+  background: var(--mantine-color-body);
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+.self-work-list-header > :first-child {
+  min-width: 0;
+  flex: 1;
+}
+.self-work-list-header .mantine-Text-root {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.self-work-list-header > .mantine-Button-root {
+  flex-shrink: 0;
+}
+.self-work-list-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+}
+.self-work-step-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+}
+.self-work-step-link {
+  flex: 1;
+  min-width: 0;
+  padding-block: 8px;
+}
+.self-work-step-link:focus-visible {
+  outline: 2px solid var(--mantine-primary-color-filled);
+}
+.self-work-step-link > span {
+  display: block;
+}
 .self-work-supply-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 110px) max-content;

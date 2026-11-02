@@ -25,6 +25,7 @@ import {
   IconArchive,
   IconArchiveOff,
   IconArrowDown,
+  IconArrowLeft,
   IconArrowUp,
   IconPencil,
   IconPlus,
@@ -34,7 +35,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SourceWork } from './work';
 import { api, Editor, ErrorBox, money, success, useConfirm } from './core';
@@ -89,6 +90,68 @@ function SupplyRow({
   );
 }
 const numeric = (value: string | number): number | null => (value === '' ? null : Number(value));
+function ListFrame({
+  title,
+  backLabel,
+  addLabel,
+  onBack,
+  onAdd,
+  full,
+  children,
+}: {
+  title: string;
+  backLabel: string;
+  addLabel: string;
+  onBack?: () => void;
+  onAdd: () => void;
+  full: boolean;
+  children: ReactNode;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null),
+    listScroll = useRef(0);
+  const showingDetail = !!onBack;
+  useLayoutEffect(() => {
+    if (contentRef.current) contentRef.current.scrollTop = showingDetail ? 0 : listScroll.current;
+  }, [showingDetail]);
+  return (
+    <div className="self-work-list-frame">
+      <Group className="self-work-list-header" justify="space-between" wrap="nowrap">
+        <Group gap="xs" wrap="nowrap">
+          {onBack && (
+            <Tooltip label={backLabel}>
+              <ActionIcon variant="subtle" aria-label={backLabel} onClick={onBack}>
+                <IconArrowLeft size={18} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          <Text size="sm" fw={600}>
+            {title}
+          </Text>
+        </Group>
+        {!onBack && (
+          <Button
+            size="xs"
+            variant="light"
+            leftSection={<IconPlus size={16} />}
+            onClick={onAdd}
+            disabled={full}
+          >
+            {addLabel}
+          </Button>
+        )}
+      </Group>
+      <div
+        className="self-work-list-content"
+        ref={contentRef}
+        onScroll={(event) => {
+          if (!showingDetail) listScroll.current = event.currentTarget.scrollTop;
+        }}
+      >
+        <Stack gap="sm">{children}</Stack>
+      </div>
+    </div>
+  );
+}
 export function SelfWorkPage() {
   const [params] = useSearchParams();
   const query = useQuery({
@@ -114,6 +177,11 @@ export function SelfWorkPage() {
     validate: { title: (value) => (value.trim() ? null : 'Bitte eine Bezeichnung eingeben.') },
   });
   const [supplyDetail, setSupplyDetail] = useState<string | null>(null);
+  function addStep() {
+    const row: Step = { id: newID(), title: '', notes: '', done: false };
+    form.setFieldValue('steps', [...form.values.steps, row]);
+    setSupplyDetail(row.id);
+  }
   function addMaterial() {
     const row: Material = {
       id: newID(),
@@ -589,107 +657,134 @@ export function SelfWorkPage() {
                 </Stack>
               </Tabs.Panel>
               <Tabs.Panel value="steps" pt="md">
-                <Stack>
+                <ListFrame
+                  title={supplyDetail ? 'Arbeitsschritt bearbeiten' : 'Arbeitsschritte'}
+                  backLabel="Zurück zur Schrittliste"
+                  addLabel="Arbeitsschritt hinzufügen"
+                  onBack={supplyDetail ? () => setSupplyDetail(null) : undefined}
+                  onAdd={addStep}
+                  full={form.values.steps.length >= 100}
+                >
+                  {!supplyDetail &&
+                    form.values.steps.map((row, index) => (
+                      <div className="self-work-step-row" key={row.id}>
+                        <Checkbox
+                          checked={row.done}
+                          aria-label={'Schritt ' + (index + 1) + ' erledigt'}
+                          onChange={(event) =>
+                            stepChange(index, { done: event.currentTarget.checked })
+                          }
+                        />
+                        <UnstyledButton
+                          className="self-work-step-link"
+                          aria-label={'Details: ' + (row.title || 'Arbeitsschritt ' + (index + 1))}
+                          onClick={() => setSupplyDetail(row.id)}
+                        >
+                          <Text
+                            component="span"
+                            truncate
+                            title={row.title}
+                            td={row.done ? 'line-through' : undefined}
+                            c={row.done ? 'dimmed' : undefined}
+                          >
+                            {row.title || 'Arbeitsschritt ohne Bezeichnung'}
+                          </Text>
+                        </UnstyledButton>
+                      </div>
+                    ))}
                   {!form.values.steps.length && (
                     <Text size="sm" c="dimmed">
                       Plane deine Arbeit in einer sinnvollen Reihenfolge. Das Abhaken gilt nur für
                       diese Eigenleistung.
                     </Text>
                   )}
-                  {form.values.steps.map((row, index) => (
-                    <Paper withBorder p="md" key={row.id}>
-                      <Stack gap="sm">
-                        <Group justify="space-between">
-                          <Checkbox
-                            label={'Schritt ' + (index + 1) + ' erledigt'}
-                            checked={row.done}
-                            onChange={(event) =>
-                              stepChange(index, { done: event.currentTarget.checked })
-                            }
-                          />
-                          <Group gap={2}>
-                            <Tooltip label="Nach oben">
-                              <ActionIcon
-                                variant="subtle"
-                                aria-label={'Schritt ' + (index + 1) + ' nach oben'}
-                                disabled={index === 0}
-                                onClick={() => move(index, -1)}
-                              >
-                                <IconArrowUp size={16} />
-                              </ActionIcon>
-                            </Tooltip>
-                            <Tooltip label="Nach unten">
-                              <ActionIcon
-                                variant="subtle"
-                                aria-label={'Schritt ' + (index + 1) + ' nach unten'}
-                                disabled={index === form.values.steps.length - 1}
-                                onClick={() => move(index, 1)}
-                              >
-                                <IconArrowDown size={16} />
-                              </ActionIcon>
-                            </Tooltip>
-                            <Tooltip label="Schritt entfernen">
-                              <ActionIcon
-                                color="red"
-                                variant="subtle"
-                                aria-label={'Schritt ' + (index + 1) + ' entfernen'}
-                                onClick={() =>
-                                  form.setFieldValue(
-                                    'steps',
-                                    form.values.steps.filter((r) => r.id !== row.id),
-                                  )
+                  {form.values.steps.map(
+                    (row, index) =>
+                      row.id === supplyDetail && (
+                        <Paper withBorder p="md" key={row.id}>
+                          <Stack gap="sm">
+                            <Group justify="space-between">
+                              <Checkbox
+                                label={'Schritt ' + (index + 1) + ' erledigt'}
+                                checked={row.done}
+                                onChange={(event) =>
+                                  stepChange(index, { done: event.currentTarget.checked })
                                 }
-                              >
-                                <IconTrash size={16} />
-                              </ActionIcon>
-                            </Tooltip>
-                          </Group>
-                        </Group>
-                        <TextInput
-                          label={'Arbeitsschritt ' + (index + 1)}
-                          required
-                          maxLength={200}
-                          value={row.title}
-                          onChange={(event) =>
-                            stepChange(index, { title: event.currentTarget.value })
-                          }
-                        />
-                        <Textarea
-                          label="Vorgehen und Hinweise"
-                          autosize
-                          minRows={2}
-                          maxRows={6}
-                          maxLength={2000}
-                          value={row.notes}
-                          onChange={(event) =>
-                            stepChange(index, { notes: event.currentTarget.value })
-                          }
-                        />
-                      </Stack>
-                    </Paper>
-                  ))}
-                  <Button
-                    variant="light"
-                    leftSection={<IconPlus size={16} />}
-                    disabled={form.values.steps.length >= 100}
-                    onClick={() =>
-                      form.setFieldValue('steps', [
-                        ...form.values.steps,
-                        { id: newID(), title: '', notes: '', done: false },
-                      ])
-                    }
-                  >
-                    Arbeitsschritt hinzufügen
-                  </Button>
-                </Stack>
+                              />
+                              <Group gap={2}>
+                                <Tooltip label="Nach oben">
+                                  <ActionIcon
+                                    variant="subtle"
+                                    aria-label={'Schritt ' + (index + 1) + ' nach oben'}
+                                    disabled={index === 0}
+                                    onClick={() => move(index, -1)}
+                                  >
+                                    <IconArrowUp size={16} />
+                                  </ActionIcon>
+                                </Tooltip>
+                                <Tooltip label="Nach unten">
+                                  <ActionIcon
+                                    variant="subtle"
+                                    aria-label={'Schritt ' + (index + 1) + ' nach unten'}
+                                    disabled={index === form.values.steps.length - 1}
+                                    onClick={() => move(index, 1)}
+                                  >
+                                    <IconArrowDown size={16} />
+                                  </ActionIcon>
+                                </Tooltip>
+                                <Tooltip label="Schritt entfernen">
+                                  <ActionIcon
+                                    color="red"
+                                    variant="subtle"
+                                    aria-label={'Schritt ' + (index + 1) + ' entfernen'}
+                                    onClick={() => {
+                                      form.setFieldValue(
+                                        'steps',
+                                        form.values.steps.filter((r) => r.id !== row.id),
+                                      );
+                                      setSupplyDetail(null);
+                                    }}
+                                  >
+                                    <IconTrash size={16} />
+                                  </ActionIcon>
+                                </Tooltip>
+                              </Group>
+                            </Group>
+                            <TextInput
+                              label={'Arbeitsschritt ' + (index + 1)}
+                              required
+                              maxLength={200}
+                              value={row.title}
+                              onChange={(event) =>
+                                stepChange(index, { title: event.currentTarget.value })
+                              }
+                            />
+                            <Textarea
+                              label="Vorgehen und Hinweise"
+                              autosize
+                              minRows={2}
+                              maxRows={6}
+                              maxLength={2000}
+                              value={row.notes}
+                              onChange={(event) =>
+                                stepChange(index, { notes: event.currentTarget.value })
+                              }
+                            />
+                          </Stack>
+                        </Paper>
+                      ),
+                  )}
+                </ListFrame>
               </Tabs.Panel>
               <Tabs.Panel value="materials" pt="md">
-                <Stack>
-                  {supplyDetail && (
-                    <Button variant="subtle" onClick={() => setSupplyDetail(null)}>
-                      Zurück zur Materialliste
-                    </Button>
-                  )}
+                <ListFrame
+                  title={supplyDetail ? 'Material bearbeiten' : 'Materialien'}
+                  backLabel="Zurück zur Materialliste"
+                  addLabel="Material hinzufügen"
+                  onBack={supplyDetail ? () => setSupplyDetail(null) : undefined}
+                  onAdd={addMaterial}
+                  full={form.values.materials.length >= 100}
+                >
                   {!supplyDetail &&
                     form.values.materials.map((row) => (
                       <SupplyRow
@@ -803,24 +898,17 @@ export function SelfWorkPage() {
                         </Paper>
                       ),
                   )}
-                  <Button
-                    hidden={!!supplyDetail}
-                    variant="light"
-                    leftSection={<IconPlus size={16} />}
-                    disabled={form.values.materials.length >= 100}
-                    onClick={addMaterial}
-                  >
-                    Material hinzufügen
-                  </Button>
-                </Stack>
+                </ListFrame>
               </Tabs.Panel>
               <Tabs.Panel value="tools" pt="md">
-                <Stack>
-                  {supplyDetail && (
-                    <Button variant="subtle" onClick={() => setSupplyDetail(null)}>
-                      Zurück zur Werkzeugliste
-                    </Button>
-                  )}
+                <ListFrame
+                  title={supplyDetail ? 'Werkzeug bearbeiten' : 'Werkzeuge'}
+                  backLabel="Zurück zur Werkzeugliste"
+                  addLabel="Werkzeug hinzufügen"
+                  onBack={supplyDetail ? () => setSupplyDetail(null) : undefined}
+                  onAdd={addTool}
+                  full={form.values.tools.length >= 100}
+                >
                   {!supplyDetail &&
                     form.values.tools.map((row) => (
                       <SupplyRow
@@ -913,16 +1001,7 @@ export function SelfWorkPage() {
                         </Paper>
                       ),
                   )}
-                  <Button
-                    hidden={!!supplyDetail}
-                    variant="light"
-                    leftSection={<IconPlus size={16} />}
-                    disabled={form.values.tools.length >= 100}
-                    onClick={addTool}
-                  >
-                    Werkzeug hinzufügen
-                  </Button>
-                </Stack>
+                </ListFrame>
               </Tabs.Panel>
             </Tabs>
             {(form.values.materials.length > 0 || form.values.tools.length > 0) && (

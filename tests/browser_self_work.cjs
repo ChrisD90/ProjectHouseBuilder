@@ -84,6 +84,12 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     await editor
       .getByRole("checkbox", { name: "Schritt 1 erledigt", exact: true })
       .check();
+    await expect(editor.getByRole('button',{name:'Arbeitsschritt hinzufügen',exact:true})).toHaveCount(0);
+    await editor.getByRole('button',{name:'Zurück zur Schrittliste',exact:true}).click();
+    await editor.getByRole('checkbox',{name:'Schritt 1 erledigt',exact:true}).uncheck();
+    await editor.getByRole('checkbox',{name:'Schritt 1 erledigt',exact:true}).check();
+    await expect(editor.getByRole('textbox',{name:'Arbeitsschritt 1',exact:true})).toHaveCount(0);
+    await expect(editor.getByRole('button',{name:'Details: Abkleben',exact:true})).toBeVisible();
     await editor
       .getByRole("tab", { name: "Material (0)", exact: true })
       .click();
@@ -315,6 +321,7 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
       .getByRole("button", { name: "Bestätigen", exact: true })
       .click();
     await expect(ai).toHaveCount(0);
+    await edit.getByRole('button',{name:'Details: Flächen vorbereiten',exact:true}).click();
     await edit
       .getByRole("textbox", { name: "Arbeitsschritt 1", exact: true })
       .fill("Untergrund prüfen und abkleben");
@@ -415,6 +422,37 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
       .click();
     await expect(edit).toHaveCount(0);
     assert.equal((await read()).plans.length, 0);
+    const longPlan=await page.request.post(base+'/api/self-work',{headers,data:{title:'Lange Listen',
+      steps:Array.from({length:25},(_,i)=>({title:'Schritt '+(i+1),done:false})),
+      materials:Array.from({length:25},(_,i)=>({title:'Material '+(i+1),quantity:2,unit:'Stück',unit_price:5})),
+      tools:Array.from({length:25},(_,i)=>({title:'Werkzeug '+(i+1),source:'Kaufen',cost:10}))}});
+    assert.equal(longPlan.status(),201);
+    const longID=(await longPlan.json()).plan.id;
+    await page.setViewportSize({width:390,height:844});
+    await page.reload();
+    await page.getByRole('button',{name:'Eigenleistung bearbeiten: Lange Listen',exact:true}).click();
+    for(const [tabName,itemName,backName,addName] of [
+      ['Schritte (25)','Schritt 25','Zurück zur Schrittliste','Arbeitsschritt hinzufügen'],
+      ['Material (25)','Material 25','Zurück zur Materialliste','Material hinzufügen'],
+      ['Werkzeuge (25)','Werkzeug 25','Zurück zur Werkzeugliste','Werkzeug hinzufügen']]) {
+      await edit.getByRole('tab',{name:tabName,exact:true}).click();
+      const header=edit.locator('.self-work-list-header'),content=edit.locator('.self-work-list-content');
+      const beforeHeader=await header.boundingBox();
+      assert(await content.evaluate(n=>n.scrollHeight>n.clientHeight));
+      await content.evaluate(n=>n.scrollTop=n.scrollHeight);
+      const afterHeader=await header.boundingBox();
+      assert(Math.abs(beforeHeader.y-afterHeader.y)<1);
+      await expect(header.getByRole('button',{name:addName,exact:true})).toBeVisible();
+      if(tabName.startsWith('Schritte')) await edit.getByRole('checkbox',{name:'Schritt 25 erledigt',exact:true}).check();
+      await edit.getByRole('button',{name:'Details: '+itemName,exact:true}).click();
+      await expect(header.getByRole('button',{name:addName,exact:true})).toHaveCount(0);
+      await header.getByRole('button',{name:backName,exact:true}).click();
+      assert(await edit.evaluate(n=>n.scrollWidth<=n.clientWidth+1));
+    }
+    await edit.getByRole('button',{name:'Eigenleistung speichern',exact:true}).click();
+    await expect(edit).toHaveCount(0);
+    assert.equal((await read()).plans[0].steps[24].done,true);
+    await page.request.delete(base+'/api/self-work/'+longID,{headers});
     assert.deepEqual(errors, []);
     console.log("PASS archive/reopen/delete and responsive light/dark DIY UI.");
   } finally {
