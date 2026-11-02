@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import { Editor, ErrorBox, Row, api, money } from './core';
 import { Metrics, PageHeader } from './page-layout';
 import { RowAction, SearchField, useViewState } from './ui';
+import { LegacyCosts } from './legacy-costs';
 export function Costs() {
   const query = useQuery({
       queryKey: ['cost-dashboard'],
@@ -29,6 +30,7 @@ export function Costs() {
   const [search, setSearch] = useViewState('search', ''),
     [group, setGroup] = useState<string | null>('category'),
     [detail, setDetail] = useState<Row | null>(null);
+  const [legacy, setLegacy] = useState<Row | null>(null);
   const data = query.data || {},
     rows: Row[] = data.dashboard?.rows || [],
     summary = data.summary || {};
@@ -69,6 +71,20 @@ export function Costs() {
         title="Kosten & Budget"
         description="Angebote, Rechnungen und Zahlungen – zusammengeführt zum aktuellen Kostenstand."
       />
+      <Group justify="flex-end" mb="sm">
+        <Button variant="subtle" size="xs" onClick={() => setLegacy({})}>
+          Alte Planpositionen bereinigen
+        </Button>
+      </Group>
+      {legacy && (
+        <LegacyCosts
+          selected={legacy}
+          onClose={() => {
+            setLegacy(null);
+            setDetail(null);
+          }}
+        />
+      )}
       {query.isPending ? <Loader /> : <ErrorBox value={query.error} />}
       <Metrics
         loading={query.isPending}
@@ -208,6 +224,11 @@ export function Costs() {
                   size="xs"
                   rightSection={<IconArrowRight size={15} />}
                   onClick={() => {
+                    if (r.legacy) {
+                      setDetail(null);
+                      setLegacy(r.legacy);
+                      return;
+                    }
                     setDetail(null);
                     navigate(r.url);
                   }}

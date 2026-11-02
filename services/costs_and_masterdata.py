@@ -197,6 +197,76 @@ def register(runtime: ModuleType):
 
     runtime.budget_summary = budget_summary
 
+    def legacy_references(obj):
+        """Inspect every live FK, including drafts and cancelled documents."""
+        table=obj.__table__
+        result=[]
+        labels={'receipt':'Beleg','offer':'Angebot','document':'Dokument','cost_item':'Kostenposition','offer_section':'Angebotsabschnitt','funding_detail':'Förderung'}
+        for mapper in runtime.db.Model.registry.mappers:
+            model=mapper.class_
+            for fk in mapper.local_table.foreign_keys:
+                if fk.column.table.name!=table.name or fk.column.name!='id':continue
+                field=fk.parent.name
+                for item in runtime.db.session.scalars(runtime.select(model).where(getattr(model,field)==obj.id)):
+                    ident=getattr(item,'id',None)
+                    # Some extension tables use funding_id as their primary key.
+                    pk=list(mapper.primary_key)
+                    key=pk[0].name if len(pk)==1 else None
+                    if key: ident=getattr(item,key)
+                    title=next((getattr(item,k) for k in ('title','invoice_number','original_name','vendor','name') if getattr(item,k,None)),str(ident))
+                    if mapper.local_table.name=='funding_detail':
+                        funding=runtime.db.session.get(runtime.Funding,item.funding_id)
+                        if funding:title=funding.name
+                    result.append(dict(table=mapper.local_table.name,key=key,id=ident,field=field,
+                        label=labels.get(mapper.local_table.name,mapper.local_table.name)+' · '+str(title),
+                        detachable=bool(fk.parent.nullable and key)))
+        if table.name=='budget_line' and obj.code:
+            for child in runtime.db.session.scalars(runtime.select(runtime.BudgetLine).where(runtime.BudgetLine.parent_code==obj.code)):
+                result.append(dict(table='budget_line',key='id',id=child.id,field='parent_code',label='Unterposition · '+child.title,detachable=True))
+        return result
+
+    @runtime.app.get('/api/cost-dashboard/legacy')
+    def legacy_cost_list():
+        rows=[dict(kind='line',id=x.id,title=x.title,amount=x.estimate,active=x.active,group=x.is_group) for x in runtime.all_budget_lines()]
+        rows += [dict(kind='item',id=x.id,title=x.title,amount=runtime.effective_offer(x),active=True,group=False) for x in runtime.db.session.scalars(runtime.select(runtime.CostItem).where(runtime.CostItem.offer_id.is_(None)))]
+        return runtime.jsonify(rows=runtime.wire(rows))
+
+    @runtime.app.route('/api/budget/lines/<int:ident>/cleanup',methods=['GET','POST','DELETE'])
+    @runtime.app.route('/api/costs/<int:ident>/cleanup',methods=['GET','POST','DELETE'])
+    def legacy_cost_cleanup(ident):
+        is_line='/budget/lines/' in runtime.request.path
+        model=runtime.BudgetLine if is_line else runtime.CostItem
+        obj=runtime.db.session.get(model,ident)
+        if not obj:return runtime.jsonify(error='Position nicht gefunden.'),404
+        if not is_line and obj.offer_id:return runtime.jsonify(error='Diese Position gehört zu einem Angebot.'),409
+        refs=legacy_references(obj)
+        has_payments=not is_line and bool(obj.paid)
+        if runtime.request.method=='DELETE':
+            if has_payments:return runtime.jsonify(error='Diese Kostenposition enthält direkte Zahlungen. Bitte diese zuerst fachlich prüfen; Zahlungen werden hier nicht gelöscht.'),409
+            if refs:return runtime.jsonify(error='Zuerst die angezeigten Zuordnungen lösen.',references=refs),409
+            runtime.db.session.delete(obj);runtime.db.session.commit()
+            return runtime.jsonify(ok=True)
+        if runtime.request.method=='POST':
+            body=runtime.request.get_json(silent=True) or {}
+            if not isinstance(body,dict):return runtime.jsonify(error='Ungültige Zuordnung.'),400
+            ref=next((r for r in refs if r['table']==body.get('table') and r['id']==body.get('id') and r['field']==body.get('field')),None)
+            if not ref or not ref['detachable']:return runtime.jsonify(error='Diese Zuordnung kann hier nicht gelöst werden.'),409
+            target=next(m.class_ for m in runtime.db.Model.registry.mappers if m.local_table.name==ref['table'])
+            linked=runtime.db.session.get(target,ref['id'])
+            setattr(linked,ref['field'],'' if ref['field']=='parent_code' else None)
+            if ref['table']=='receipt' and ref['field']=='cost_item_id' and linked.assignment_type in ('Angebot','Kostenposition'):
+                linked.assignment_type='Betrieb' if linked.contractor_id else ''
+            if ref['table']=='offer':runtime._sync_current_version(linked)
+            elif ref['table']=='offer_section':
+                offer=runtime.db.session.get(runtime.Offer,linked.offer_id)
+                if offer:runtime._sync_current_version(offer)
+            runtime.db.session.commit()
+            refs=legacy_references(obj)
+        return runtime.jsonify(title=obj.title,amount=runtime.wire(obj.estimate if is_line else runtime.effective_offer(obj)),
+            references=refs,can_delete=not refs and not has_payments,
+            blocked_reason='Enthält direkte Zahlungen. Diese müssen zunächst fachlich geprüft werden.' if has_payments else '',
+            **({'budget_lines':[runtime.budget_dict(obj)]} if is_line else {'items':[runtime.as_dict(obj,runtime.COST_FIELDS)]}))
+
     def cost_dashboard(items, summary):
         """Build read-only, de-duplicated rows for the cost overview."""
         lines = {x.id: x for x in runtime.all_budget_lines() if x.active and (not x.is_group)}
@@ -259,6 +329,10 @@ def register(runtime: ModuleType):
                 target['company'] = contractor.name if contractor else receipt.supplier or ''
         result = []
         for row in rows.values():
+            if row['id'].startswith(('line:','item:')) and row['source']!='Angebot':
+                kind,ident=row['id'].split(':')
+                row['legacy']={'kind':kind,'id':int(ident),'title':row['title']}
+                row['url']=''
             for key in ('forecast', 'committed', 'invoiced', 'paid'):
                 row[key] = runtime.rounded(row[key])
             row['open'] = runtime.rounded(max(row['forecast'] - row['paid'], 0))
@@ -549,6 +623,9 @@ def register(runtime: ModuleType):
             return (runtime.jsonify(error='Diese Position stammt aus dem Angebotsimport. Bitte den Angebotsabschnitt bearbeiten.'), 409)
         try:
             if runtime.request.method == 'DELETE':
+                if obj.paid:return runtime.jsonify(error='Direkte Zahlungen vorhanden. Bitte zuerst fachlich prüfen.'),409
+                if legacy_references(obj):
+                    return runtime.jsonify(error='Diese Position hat noch Zuordnungen. Bitte unter Kosten & Budget bereinigen.'),409
                 if runtime.db.session.scalar(runtime.select(runtime.Receipt.id).where(runtime.Receipt.cost_item_id == item_id, runtime.Receipt.status == 'Gebucht').limit(1)):
                     return (runtime.jsonify(error='Gebuchte Belege zugeordnet. Bitte die Buchung zuerst zurücknehmen.'), 409)
                 if runtime.db.session.scalar(runtime.select(runtime.Document.id).where(runtime.Document.cost_item_id == item_id).limit(1)):
@@ -621,6 +698,8 @@ def register(runtime: ModuleType):
             return (runtime.jsonify(error='Kostenplanposition nicht gefunden.'), 404)
         try:
             if runtime.request.method == 'DELETE':
+                if legacy_references(obj):
+                    return runtime.jsonify(error='Diese Planposition hat noch Zuordnungen. Bitte unter Kosten & Budget bereinigen.'),400
                 if runtime.db.session.scalar(runtime.select(runtime.FundingDetail.funding_id).where(runtime.FundingDetail.budget_line_id == line_id).limit(1)):
                     raise ValueError('Förderung verknüpft. Zuerst die Zuordnung in Energetische Planung entfernen.')
                 if runtime.db.session.scalar(runtime.select(runtime.CostItem.id).where(runtime.CostItem.budget_line_id == line_id).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Document.id).where(runtime.Document.budget_line_id == line_id).limit(1)):

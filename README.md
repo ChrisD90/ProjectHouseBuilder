@@ -11,6 +11,8 @@ Jede Zeile im Modell-Dropdown besitzt einen eigenen Info-Button. Er öffnet die 
 
 ## Belegprüfung und Firmen im Bauzeitenplan
 
+In **Kosten & Budget → Alte Planpositionen bereinigen** lassen sich frühere Kostenplanzeilen (auch Gruppen und inaktive Einträge) sowie manuelle Kostenpositionen ohne Angebot prüfen. Die Details zeigen alle aktuellen Verknüpfungen einschließlich Entwürfen und stornierten Belegen. Zuordnungen werden einzeln nach Bestätigung gelöst; die Originaldatensätze und ihre Zahlungen bleiben erhalten. Erst unverknüpfte Positionen ohne direkte Zahlungen sind löschbar. Änderungen wirken sich auf die Projektprognose aus. Es erfolgt keine automatische Datenbereinigung.
+
 - Bei **Angeboten** die hochgeladenen PDF-Dateien im Prüf-Dialog direkt neben den erkannten Beträgen und Positionen ansehen. Neue Versionen erhalten dieselbe Vorschau. Auch bei **Rechnungen & Belegen** wird das Original (PDF oder Foto) neben dem Eingabeformular angezeigt.
 - Ein Arbeitspaket per Klick öffnen und mit **Abschließen** beenden. Die Anwendung setzt `Erledigt`, `100 %` und das aktuelle **Ist-Ende**, protokolliert den Abschluss aber ändert nicht die geplante Dauer.
 - Bei **angenommenen Angeboten** erscheint ein Link **Firma im Bauzeitenplan zuordnen**. Im Bauzeitenplan listet **Firmenvorschläge** mögliche Gewerke/Firmen auf, abgeleitet aus akzeptierten Angeboten und beauftragten Kostenpositionen. Nur nach Bestätigung werden Zuordnungen gespeichert; Eigenleistungen und bestehende Zuordnungen bleiben unberührt.

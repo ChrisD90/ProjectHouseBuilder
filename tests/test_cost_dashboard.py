@@ -17,6 +17,58 @@ class CostDashboardTest(unittest.TestCase):
     def tearDown(self):
         db.session.remove();self.ctx.pop()
 
+    def test_legacy_cleanup_preserves_linked_receipts_and_rejects_stale_writes(self):
+        line=BudgetLine(code='OLD',title='Alter Kostenplan',category='Sonstiges',estimate=500)
+        db.session.add(line);db.session.flush()
+        receipt=Receipt(digest='old-plan',original_name='beleg.pdf',stored_name='old.pdf',gross_amount=80,status='Storniert',budget_line_id=line.id)
+        db.session.add(receipt);db.session.commit()
+        path=f'/api/budget/lines/{line.id}/cleanup'
+        result=self.client.get(path)
+        version=result.json['_versions'][f'/api/budget/lines/{line.id}']
+        self.assertFalse(result.json['can_delete'])
+        self.assertEqual(self.client.delete(path).status_code,409)
+        ref=result.json['references'][0]
+        body={k:ref[k] for k in ('table','id','field')}
+        detached=self.client.post(path,json=body,headers={'If-Match':version})
+        self.assertEqual(detached.status_code,200,detached.json)
+        self.assertTrue(detached.json['can_delete'])
+        self.assertEqual(self.client.delete(path,headers={'If-Match':version}).status_code,409)
+        self.assertEqual(db.session.get(Receipt,receipt.id).status,'Storniert')
+        self.assertIsNone(db.session.get(Receipt,receipt.id).budget_line_id)
+        self.assertEqual(self.client.delete(path).status_code,200)
+        self.assertIsNotNone(db.session.get(Receipt,receipt.id))
+
+    def test_legacy_list_includes_hidden_rows_and_manual_payments_are_protected(self):
+        line=BudgetLine(code='HIDDEN',title='Inaktive Gruppe',category='Sonstiges',estimate=400,is_group=True,active=False)
+        item=CostItem(title='Direkt bezahlt',category='Sonstiges',paid=60)
+        db.session.add_all([line,item]);db.session.commit()
+        listing=self.client.get('/api/cost-dashboard/legacy').json['rows']
+        self.assertTrue(any(x['id']==line.id and x['kind']=='line' and not x['active'] for x in listing))
+        path=f'/api/costs/{item.id}/cleanup'
+        self.assertFalse(self.client.get(path).json['can_delete'])
+        self.assertEqual(self.client.delete(path).status_code,409)
+        self.assertEqual(db.session.get(CostItem,item.id).paid,60)
+
+    def test_legacy_funding_and_subposition_links_are_detached_without_deletion(self):
+        from app import Funding,FundingDetail
+        line=BudgetLine(code='GROUP',title='Gruppe',category='Sonstiges',is_group=True)
+        child=BudgetLine(code='CHILD',title='Unterposition',category='Sonstiges',parent_code='GROUP')
+        funding=Funding(name='Förderung Altbestand',confirmed=200)
+        db.session.add_all([line,child,funding]);db.session.flush()
+        db.session.add(FundingDetail(funding_id=funding.id,budget_line_id=line.id));db.session.commit()
+        path=f'/api/budget/lines/{line.id}/cleanup'
+        refs=self.client.get(path).json['references']
+        self.assertEqual(len(refs),2)
+        self.assertTrue(any('Förderung Altbestand' in r['label'] for r in refs))
+        other=self.client.post('/api/projects',json={'title':'Anderes Projekt'}).json['project']['id']
+        self.assertEqual(self.client.delete(path,headers={'X-PHB-Project':str(other)}).status_code,404)
+        for ref in refs:
+            response=self.client.post(path,json={k:ref[k] for k in ('table','id','field')})
+            self.assertEqual(response.status_code,200,response.json)
+        self.assertEqual(self.client.delete(path).status_code,200)
+        self.assertEqual(db.session.get(Funding,funding.id).confirmed,200)
+        self.assertEqual(db.session.get(BudgetLine,child.id).parent_code,'')
+
     def test_assigned_invoice_enriches_order_without_double_counting_forecast(self):
         phase=BuildPhase(title='Innenausbau',start_date=date(2027,5,1),position=1)
         company=Contractor(name='Musterbau GmbH',trade='Trockenbau')

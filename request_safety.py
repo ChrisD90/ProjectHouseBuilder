@@ -47,6 +47,10 @@ def register(app,db,Project,models):
     children={'offer':{'offer_position','offer_section','order_acceptance'},
               'receipt':{'finance_receipt_payment','receipt_cancellation','receipt_cancellation_reversal'},
               'funding':{'funding_plan','funding_plan_offer','funding_document','funding_assessment'}}
+    for table in db.metadata.tables.values():
+        for fk in table.foreign_keys:
+            if fk.column.table.name in ('budget_line','cost_item'):
+                children.setdefault(fk.column.table.name,set()).add(table.name)
     def resource(path):
         match=re.match(r'^/api/(.+?)/(\d+)(?:/|$)',path)
         if not match:return None
