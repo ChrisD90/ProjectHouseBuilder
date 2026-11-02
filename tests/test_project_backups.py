@@ -90,6 +90,23 @@ class ProjectBackupTest(unittest.TestCase):
         with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED) as z:
             for name,value in files.items():z.writestr(name,value)
 
+    def test_pre_0031_archive_adds_only_known_job_lease_defaults(self):
+        job=b.ImportJob(batch_id='a'*32,kind='documents',filename='Alt.pdf',stored_name='already-processed.pdf',status='Fertig',analysis_mode='local')
+        b.db.session.add(job);b.db.session.commit();ident=job.id
+        path=self.create()
+        def old_schema(data):
+            for row in data['tables']['import_job']:
+                row.pop('lease_owner');row.pop('lease_until')
+        self.rewrite(path,old_schema)
+        _,rows=backups.load_rows(path,b.db,1)
+        self.assertEqual(rows['import_job'][0]['lease_owner'],'')
+        result=self.start_restore(path)
+        self.assertEqual(result['state'],'done',result)
+        # Restore runs in its own app context, just as in the background thread.
+        b.db.session.remove()
+        restored=b.db.session.get(b.ImportJob,ident)
+        self.assertEqual(restored.status,'Fertig');self.assertEqual(restored.lease_owner,'');self.assertIsNone(restored.lease_until)
+
     def test_archives_lists_and_retention_contain_only_selected_project(self):
         other=self.create(self.other)
         for _ in range(4):path=self.create()

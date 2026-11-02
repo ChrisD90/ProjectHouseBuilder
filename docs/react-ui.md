@@ -6,7 +6,7 @@ Testbranch: `feature/react-mantine-ui`, auf Basis von `feature/synology-nas` (`8
 
 Der Einstieg zeigt jetzt eine [Projektübersicht](multiple-projects.md); der folgende gemeinsame Rahmen gilt innerhalb eines Projekts.
 
-Der gemeinsame Rahmen verwendet React, TypeScript, React Router und Mantine; Serverdaten werden über TanStack Query geladen. Sidebar, Header, Theme, ChatGPT-Verbindung und Warteschlange bleiben über die Navigation hinweg erhalten. Die Sidebar ist wieder in Projekt, Finanzen und Verwaltung gegliedert; eingeklappt trennen Linien die Gruppen. Native Ansichten und erhaltene Fachmasken verwenden im Dark Mode dieselbe blaugraue Farbpalette.
+Der gemeinsame Rahmen verwendet React, TypeScript, React Router und Mantine; Serverdaten werden über TanStack Query geladen. Sidebar, Header, Theme, ChatGPT-Verbindung und Warteschlange bleiben über die Navigation hinweg erhalten. Die Sidebar ist wieder in Projekt, Finanzen und Verwaltung gegliedert; eingeklappt trennen Linien die Gruppen. Native Ansichten und erhaltene Fachmasken verwenden im Dark Mode dieselbe grüne Farbpalette.
 
 Bereits als native React-/Mantine-Komponenten umgesetzt:
 
@@ -77,3 +77,5 @@ Revision `0028` ergänzt den optionalen Archivzeitpunkt bestehender To-dos und N
 Förderunterlagen werden im Header des Förderbereichs hochgeladen und dort geprüft; Hintergrundjobs speichern diesen Rücksprung als Teil ihres projektbezogenen Jobs. Allgemeine Dokument-Uploads behalten ihren bisherigen Ablauf. [Förderplanung: Umsetzungsvorschlag](funding-planning-proposal.md).
 
 Der vorgelagerte Förderplanungsdialog unterstützt speicherbare Entwürfe, mehrere Angebote/Positionen, programmabhängige Checklisten und bestätigte Übernahme einer KI-Spanne. [Bedienung und Grenzen](funding-planning.md).
+
+Die gemeinsame Transportschicht, Konfliktbehandlung, Fachmodule und CI-Bildprüfungen sind unter [Refactoring R01–R12](REFACTORING_IMPLEMENTATION_2026-11-02.md) beschrieben.

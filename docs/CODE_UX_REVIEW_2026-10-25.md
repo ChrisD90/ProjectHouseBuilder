@@ -1,4 +1,6 @@
 # ProjectHouseBuilder – Code-, CSS- und Workflow-Review
+
+> Historischer Stand. Die aktuelle Architektur und Umsetzung stehen in [Refactoring R01–R12](REFACTORING_IMPLEMENTATION_2026-11-02.md).
 Stand: 25.10.2026 · Basis: `feature/synology-nas` · Schwerpunkt: produktive Synology-Version
 
 ## Prüfumfang und Einschränkungen

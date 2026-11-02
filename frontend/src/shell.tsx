@@ -1,48 +1,47 @@
-import { BrandLogo } from './brand';
-import { projectID, workspaceURL, fundingDocumentOnly } from './project-context';
-import { useQuery } from '@tanstack/react-query';
-import { api } from './core';
-import { useMediaQuery } from '@mantine/hooks';
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import {
-  AppShell,
-  Group,
-  Text,
   ActionIcon,
-  Anchor,
-  NavLink,
-  Stack,
-  Burger,
-  Tooltip,
-  Button,
-  Badge,
-  Select,
-  Progress,
-  Divider,
-  useMantineColorScheme,
-  LoadingOverlay,
   Alert,
+  Anchor,
+  AppShell,
+  Badge,
+  Burger,
+  Button,
+  Divider,
+  Group,
+  LoadingOverlay,
+  NavLink,
+  Progress,
+  Select,
+  Stack,
+  Text,
+  Tooltip,
+  useMantineColorScheme,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import {
+  IconBuildingBank,
   IconBuildingCottage,
   IconCalendar,
   IconChartBar,
-  IconFiles,
-  IconReceipt,
-  IconBuildingBank,
-  IconLeaf,
-  IconUsers,
-  IconDatabase,
   IconChevronLeft,
   IconChevronRight,
-  IconSparkles,
+  IconDatabase,
+  IconFiles,
+  IconLeaf,
   IconListCheck,
   IconLogout,
+  IconReceipt,
+  IconSparkles,
+  IconUsers,
 } from '@tabler/icons-react';
+import { useQuery } from '@tanstack/react-query';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useBlocker, useLocation, useNavigate } from 'react-router-dom';
-import { error, hasWrites, useConfirm, Row } from './core';
+import { BrandLogo } from './brand';
+import { api, error, hasWrites, useConfirm } from './core';
+import { Costs, Documents, Energy, MasterData } from './pages';
+import { fundingDocumentOnly, projectID, workspaceURL } from './project-context';
 import { useServices } from './services';
-import { MasterData, Costs, Energy, Documents } from './pages';
 import { WorkPage, WorkProvider } from './work';
 const items = [
   ['/', 'Bauzeitenplan', IconCalendar],

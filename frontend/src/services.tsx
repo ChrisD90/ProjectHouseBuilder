@@ -1,21 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Alert,
+  Badge,
   Button,
+  Checkbox,
   Group,
+  Loader,
+  Modal,
+  Paper,
+  ScrollArea,
+  Select,
   Stack,
   Text,
-  Checkbox,
-  Select,
-  Alert,
-  Modal,
-  Loader,
-  Paper,
-  Badge,
-  Accordion,
-  ScrollArea,
 } from '@mantine/core';
-import { api, Row, error, success, useConfirm, useConfirmVisible, useModalLayer } from './core';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
+import { api, error, Row, success, useConfirm, useConfirmVisible, useModalLayer } from './core';
 export function useServices(navigate: (url: string) => void) {
   const { setExternal } = useModalLayer();
   const confirming = useConfirmVisible(),

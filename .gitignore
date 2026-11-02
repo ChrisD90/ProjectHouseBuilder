@@ -42,3 +42,6 @@ instance/
 # Frontend dependencies and development artifacts
 frontend/node_modules/
 frontend/.vite/
+
+/test-results/
+/frontend/playwright-report/

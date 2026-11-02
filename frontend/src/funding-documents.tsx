@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from '@mantine/form';
 import { Alert, Anchor, Button, FileInput, Select, Stack, Text } from '@mantine/core';
-import { projectURL } from './project-context';
+import { useForm } from '@mantine/form';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { api, Editor, ErrorBox, Row, success } from './core';
 import { DocumentFields, emptyDocument } from './document-fields';
+import { projectURL } from './project-context';
 import { useDirtyGuard } from './shell';
 
 /** Same local queue and metadata editor as documents, with a durable funding review route. */
@@ -53,6 +53,7 @@ export function FundingDocumentIntake({
     if (opened) {
       const values = { ...emptyDocument, area: 'Energetische Planung', category: 'iSFP' };
       metadata.setValues(values);
+      metadata.setInitialValues(values);
       metadata.resetDirty(values);
       setFiles([]);
       setFailure(null);
@@ -66,6 +67,7 @@ export function FundingDocumentIntake({
     if (!record || initialized.current === reviewId) return;
     const values = { ...emptyDocument, ...record, area: 'Energetische Planung' };
     edit.setValues(values);
+    edit.setInitialValues(values);
     edit.resetDirty(values);
     initialized.current = reviewId;
     setFailure(null);
@@ -192,6 +194,8 @@ export function FundingDocumentIntake({
         opened={!!reviewId}
         title="Förderunterlage prüfen"
         dirty={edit.isDirty()}
+        changes={edit.values}
+        original={edit.getInitialValues()}
         busy={busy}
         onClose={() => onReview(null)}
         zIndex={260}

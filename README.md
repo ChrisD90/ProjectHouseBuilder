@@ -1,6 +1,8 @@
 # ProjectHouseBuilder – Sanierungsprojekt
 
-**Aktuelle Version:** `feature/synology-nas` (eine Codebasis, lokal auf dem Mac oder optional auf der NAS). Die empfohlene Betriebsart ist **SQLite lokal auf dem Mac**, ohne dauerhaften Server.
+Die aktuelle Refactoring-Umsetzung (R01–R12), Migration 0031 und wiederholbaren Browserprüfungen sind [hier dokumentiert](docs/REFACTORING_IMPLEMENTATION_2026-11-02.md).
+
+**Aktueller UI-Branch:** `feature/react-mantine-ui` (eine Codebasis, lokal auf dem Mac oder optional auf der NAS). Die empfohlene Betriebsart ist **SQLite lokal auf dem Mac**, ohne dauerhaften Server.
 
 
 ## Belegprüfung und Firmen im Bauzeitenplan

@@ -1,6 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useForm } from '@mantine/form';
 import {
   Accordion,
   Alert,
@@ -17,6 +14,9 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { useForm } from '@mantine/form';
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { api, ErrorBox, money, Row } from './core';
 const yesNo = [
   { value: 'yes', label: 'Ja' },
@@ -104,13 +104,16 @@ export function FundingCheck({
   return (
     <Accordion variant="contained">
       <Accordion.Item value="check">
-        <Accordion.Control>Förderhöhe unverbindlich schätzen</Accordion.Control>
+        <Accordion.Control>Antragsnahe Förderhöhe unverbindlich schätzen</Accordion.Control>
         <Accordion.Panel>
           <Stack>
             <Text size="sm" c="dimmed">
-              Für private Eigentümer bestehender Wohngebäude: BAFA Gebäudehülle oder KfW 458
-              Heizung. Weitere Programme weiterhin manuell erfassen. Vor Antragstellung die aktuelle
-              Richtlinie mit Energieberatung oder Fachbetrieb prüfen.
+              Dieser antragsnahe Check benötigt die fachliche Bestätigung von Technik,
+              Energieberatung und TPB/BzA. Für eine frühe Orientierung mit noch offenen Fachangaben
+              nutze „Förderung planen“ im Förderbereich. Für private Eigentümer bestehender
+              Wohngebäude: BAFA Gebäudehülle oder KfW 458 Heizung. Weitere Programme weiterhin
+              manuell erfassen. Vor Antragstellung die aktuelle Richtlinie mit Energieberatung oder
+              Fachbetrieb prüfen.
             </Text>
             <Alert color="yellow">
               Unverbindliche KI-Schätzung ohne Gewähr, keine Förderzusage. Bewilligung und

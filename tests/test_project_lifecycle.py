@@ -104,7 +104,7 @@ class ProjectLifecycleTest(unittest.TestCase):
         self.assertEqual(self.remove().status_code,409)
 
     def test_delete_is_blocked_during_own_restore(self):
-        with patch.object(b,'_BACKUP_RESTORE_STATE',{'project_id':1}):
+        with patch.object(b,'_BACKUP_RESTORE_STATE',{'state':'running','project_id':1}):
             b._BACKUP_RESTORE_LOCK.acquire()
             try:self.assertEqual(self.client.delete('/api/projects/1',json={'confirmed':True,'confirmation':'Mein bestehendes Projekt'}).status_code,503)
             finally:b._BACKUP_RESTORE_LOCK.release()

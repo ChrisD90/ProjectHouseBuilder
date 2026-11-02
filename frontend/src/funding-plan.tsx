@@ -1,6 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from '@mantine/form';
 import {
   Accordion,
   Alert,
@@ -22,7 +19,10 @@ import {
   Title,
   UnstyledButton,
 } from '@mantine/core';
-import { IconPlus, IconDeviceFloppy } from '@tabler/icons-react';
+import { useForm } from '@mantine/form';
+import { IconDeviceFloppy, IconPlus } from '@tabler/icons-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { api, Editor, ErrorBox, money, Row, success } from './core';
 import { useDirtyGuard } from './shell';
 import { SourceWork } from './work';
@@ -102,6 +102,7 @@ export function FundingPlanDialog({
       answers: data.answers,
     };
     form.setValues(values);
+    form.setInitialValues(values);
     form.resetDirty(values);
     setSaved(data);
     initialized.current = data.id;
@@ -120,6 +121,7 @@ export function FundingPlanDialog({
     setAmount('');
     initialized.current = null;
     form.setValues(empty);
+    form.setInitialValues(empty);
     form.resetDirty(empty);
   }, [opened, planId]);
   useEffect(() => {
@@ -355,6 +357,8 @@ export function FundingPlanDialog({
       opened={opened}
       title={id ? 'Förderung planen' : 'Neue Förderplanung'}
       dirty={form.isDirty()}
+      changes={form.values}
+      original={form.getInitialValues()}
       busy={busy}
       suspended={suspended}
       onClose={onClose}

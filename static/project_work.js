@@ -8,7 +8,7 @@
  function controller(){try{return window.parent.PHBWork;}catch{return null;}}
  function update(){const items=controller()?.items()||fallback;for(const node of document.querySelectorAll('[data-work-open]')){
   const count=items.filter(x=>x.source_type===node.dataset.workOpen&&x.source_id===Number(node.dataset.workId)&&x.kind==='todo'&&!x.archived).length;
-  const label='To-dos & Notizen anzeigen'+(count?' · '+count+' To-do'+(count===1?'':'s'):'');
+  const label='To-dos & Notizen anzeigen'+(count?' · '+count+' nicht archivierte To-do'+(count===1?'':'s')+' (inklusive erledigter)':'');
   if(node.title!==label){node.title=label;node.setAttribute('aria-label',label);}
   const badge=node.querySelector('[data-work-count]');if(badge){badge.hidden=!count;if(badge.textContent!==String(count))badge.textContent=String(count);}
  }}

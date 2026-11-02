@@ -61,6 +61,36 @@ class BuildPhaseTests(unittest.TestCase):
         self.assertEqual(final['tasks'][0]['start'],before['tasks'][0]['start'])
         self.assertEqual(final['phases'][0]['end_date'],before['phases'][0]['end_date'])
 
+    def test_project_start_defaults_to_shifting_both_directions_with_project_isolation(self):
+        phase=self.phase().json['phase']['id']
+        first=self.task(phase_id=phase,earliest_start='2027-04-07',planned_end='2027-04-25').json['id']
+        second=self.task(code='T-2',predecessors=['T-1'],planned_end='2027-05-05').json['id']
+        self.client.post(f'/api/tasks/{first}/complete')
+        other=self.client.post('/api/projects',json={'title':'Unverändert','start_date':'2028-02-29'}).json['project']['id']
+        headers={'X-PHB-Project':str(other)}
+        self.client.post('/api/phases',headers=headers,json={'title':'Andere Bauphase','start_date':'2028-03-02'})
+        untouched=self.client.get('/api/project',headers=headers).json
+        before=self.client.get('/api/project').json
+        start=date.fromisoformat(before['start'])
+        for delta in (timedelta(days=-400),timedelta(days=33)):
+            previous=self.client.get('/api/project').json
+            new_start=date.fromisoformat(previous['start'])+delta
+            result=self.client.patch('/api/project',json={'start':new_start.isoformat()})
+            self.assertEqual(result.status_code,200,result.json)
+            after=self.client.get('/api/project').json
+            self.assertEqual(after['phases'][0]['end_date'],'')
+            self.assertEqual(after['phases'][0]['start_date'],(date.fromisoformat(previous['phases'][0]['start_date'])+delta).isoformat())
+            for old,new in zip(previous['tasks'],after['tasks']):
+                for field in ('start','end','planned_end','earliest_start'):
+                    self.assertEqual(new[field],(date.fromisoformat(old[field])+delta).isoformat() if old[field] else '')
+                for field in ('actual_start','actual_end','status','predecessors','duration'):
+                    self.assertEqual(new[field],old[field])
+            self.assertIsNone(next(t for t in after['tasks'] if t['id']==second)['phase_id'])
+            self.assertEqual(self.client.get('/api/project',headers=headers).json,untouched)
+        # Restoring the original start reproduces the original planned schedule.
+        self.assertEqual(self.client.patch('/api/project',json={'start':start.isoformat()}).status_code,200)
+        self.assertEqual(self.client.get('/api/project').json['tasks'],before['tasks'])
+
     def test_phase_completion_finishes_only_its_tasks_and_keeps_old_dates(self):
         phase=self.phase().json['phase']['id']
         first=self.task(phase_id=phase).json['id']

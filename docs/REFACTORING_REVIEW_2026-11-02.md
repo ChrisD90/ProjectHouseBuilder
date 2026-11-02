@@ -6,7 +6,7 @@ Stand: 02.11.2026 · Branch `feature/react-mantine-ui`
 
 Nur der ausdrücklich gewünschte Rechnungsbutton wurde umgesetzt: To-dos/Notizen stehen innerhalb der Rechnungskachel direkt rechts neben dem Status, mit dem bisherigen Zähler und dem bisherigen Dialog. Status und Button sind gemeinsam ausgerichtet; es gibt keine ineinander verschachtelten Buttons.
 
-**Die nachfolgenden Vorschläge sind nicht umgesetzt.** Sie sind unabhängig auswählbar. „Nachgewiesen“ bedeutet durch Code und einen isolierten Lauf bestätigt. „Risiko“ bezeichnet eine konkrete technische Schwachstelle ohne nachgewiesenen Schaden an Nutzerdaten. „Verbesserung“ ist eine Änderung an Gestaltung, Ablauf oder Wartbarkeit.
+**Historische Bestandsaufnahme vor Freigabe.** Alle Punkte wurden anschließend freigegeben; der aktuelle Stand ist in [Umsetzung R01–R12](REFACTORING_IMPLEMENTATION_2026-11-02.md) dokumentiert. „Nachgewiesen“ bedeutet durch Code und einen isolierten Lauf bestätigt. „Risiko“ bezeichnet eine konkrete technische Schwachstelle ohne nachgewiesenen Schaden an Nutzerdaten. „Verbesserung“ ist eine Änderung an Gestaltung, Ablauf oder Wartbarkeit.
 
 Die Bestandsaufnahme umfasst Projekte und Backups, Bauzeitenplan, Angebote, Rechnungen, Finanzierung/Mittelabrufe, Förderplanung, Stammdaten, Dokumente, To-dos/Notizen sowie die gemeinsamen UI-, API- und Jobmechanismen. Geprüft wurden Quellcode, vorhandene Tests und isolierte Abläufe. Reale Bankvorgänge, eine echte ChatGPT-Verbindung und die konkrete Mac-/NAS-Installation waren nicht Teil dieser Prüfung.
 

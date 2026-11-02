@@ -1,7 +1,3 @@
-import { BrandLogo } from './brand';
-import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from '@mantine/form';
 import {
   ActionIcon,
   Alert,
@@ -21,17 +17,22 @@ import {
   Tooltip,
   useMantineColorScheme,
 } from '@mantine/core';
+import { useForm } from '@mantine/form';
 import {
-  IconPlus,
-  IconPencil,
-  IconMoon,
-  IconSun,
-  IconLogout,
   IconArchive,
   IconArchiveOff,
+  IconLogout,
+  IconMoon,
+  IconPencil,
+  IconPlus,
+  IconSun,
   IconTrash,
 } from '@tabler/icons-react';
-import { api, Editor, ErrorBox, Row, money, success } from './core';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { BrandLogo } from './brand';
+import type { ProjectsResponse } from './contracts';
+import { Editor, ErrorBox, Row, api, money, success } from './core';
 const empty: Row = {
   title: '',
   kind: 'Sanierung',
@@ -41,7 +42,7 @@ const empty: Row = {
 export function ProjectDashboard() {
   const query = useQuery({
       queryKey: ['projects'],
-      queryFn: () => api('/api/projects'),
+      queryFn: () => api<ProjectsResponse>('/api/projects'),
       staleTime: 0,
     }),
     cache = useQueryClient();
@@ -72,6 +73,7 @@ export function ProjectDashboard() {
     const values = { ...empty, ...row };
     setID(row?.id || null);
     form.setValues(values);
+    form.setInitialValues(values);
     form.resetDirty(values);
     setFailure(null);
     setOpened(true);
@@ -406,6 +408,8 @@ export function ProjectDashboard() {
           title={id ? 'Projekt bearbeiten' : 'Neues Projekt'}
           opened={opened}
           dirty={form.isDirty()}
+          changes={form.values}
+          original={form.getInitialValues()}
           busy={busy}
           onClose={() => setOpened(false)}
         >

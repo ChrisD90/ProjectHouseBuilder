@@ -1,6 +1,3 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from '@mantine/form';
 import {
   ActionIcon,
   Badge,
@@ -18,27 +15,30 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
+import { useForm } from '@mantine/form';
 import {
-  IconPlus,
-  IconPencil,
-  IconTrash,
-  IconSearch,
   IconArchive,
   IconArchiveOff,
   IconListCheck,
   IconNotes,
+  IconPencil,
+  IconPlus,
+  IconSearch,
+  IconTrash,
 } from '@tabler/icons-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   api,
   Editor,
+  EditorCoveredContext,
+  error,
   ErrorBox,
   Row,
   success,
   useConfirm,
-  error,
   useModalLayer,
-  EditorCoveredContext,
 } from './core';
 import { useDirtyGuard } from './shell';
 
@@ -98,6 +98,7 @@ export function WorkProvider({ children }: { children: React.ReactNode }) {
     if (locking.current) return;
     const values = { ...initial, ...row };
     form.setValues(values);
+    form.setInitialValues(values);
     form.resetDirty(values);
     setFailure(null);
     setItem(values);
@@ -296,6 +297,8 @@ export function WorkProvider({ children }: { children: React.ReactNode }) {
         }
         opened={!!item}
         dirty={form.isDirty()}
+        changes={form.values}
+        original={form.getInitialValues()}
         busy={busy}
         onClose={() => setItem(null)}
         zIndex={280}
@@ -554,6 +557,7 @@ export function SourceWork({ type, id }: { type: string; id: number }) {
       variant="light"
       size="xs"
       leftSection={<IconListCheck size={16} />}
+      title={count + ' nicht archivierte To-dos (inklusive erledigter)'}
       rightSection={count ? <Badge size="sm">{count}</Badge> : undefined}
       onClick={() => open({ type, id })}
     >

@@ -1,5 +1,7 @@
 # Gemeinsame Dialog- und Workflow-Architektur
 
+> Historischer Stand. Die aktuelle Architektur und Umsetzung stehen in [Refactoring R01–R12](REFACTORING_IMPLEMENTATION_2026-11-02.md).
+
 Stand: 25.10.2026 · Zielbranch: `feature/synology-nas`
 
 ## Was jetzt tatsächlich implementiert ist

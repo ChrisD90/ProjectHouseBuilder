@@ -43,7 +43,8 @@ server.serve_forever()
 def main():
     with tempfile.TemporaryDirectory(prefix='phb-plan-browser-') as folder:
         root=Path(folder);source=root/'server.py';source.write_text(SERVER)
-        environment={**os.environ,'DATABASE_URL':'sqlite:///'+str(root/'test.db'),'PHB_CHATGPT_HOME':str(root/'auth'),'APP_PASSWORD':''}
+        (root/'static').symlink_to(ROOT/'static',target_is_directory=True)
+        environment={**os.environ,'DATABASE_URL':'sqlite:///'+str(root/'test.db'),'PHB_APP_ROOT':str(root),'PHB_CHATGPT_HOME':str(root/'auth'),'APP_PASSWORD':''}
         with (root/'server.log').open('w') as output:
             process=subprocess.Popen([sys.executable,str(source),str(ROOT),str(root)],cwd=ROOT,env=environment,stdout=output,stderr=subprocess.STDOUT)
             try:

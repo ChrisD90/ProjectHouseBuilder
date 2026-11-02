@@ -120,24 +120,60 @@ def main():
             assert (b.RECEIPT_ROOT/'pg-1.pdf').read_bytes()==b'%PDF-test-1'
             print('PASS PostgreSQL 17: project-only backup/restore, other project unchanged, stable IDs and sequences')
             print('PASS PostgreSQL '+version+': fresh startup, project sequence, scoped identifiers, totals, links and files')
+            from concurrent.futures import ThreadPoolExecutor
+            from threading import Barrier
+            equity=b.EquityAccount(name='Paralleltest',opening_balance=100,reserve=0)
+            b.db.session.add(equity);parallel=[]
+            for index in range(2):
+                receipt=b.Receipt(digest='parallel-'+str(index),original_name='r.pdf',stored_name='parallel-'+str(index)+'.pdf',supplier='Paralleltest',document_date='2026-11-02',status='Gebucht',gross_amount=100,paid_amount=0,assignment_type='Eigenleistung')
+                b.db.session.add(receipt);parallel.append(receipt)
+            b.db.session.commit();equity_id=equity.id;parallel_ids=[row.id for row in parallel]
+            barrier=Barrier(2)
+            def pay(ident):
+                with b.app.test_client() as browser:
+                    barrier.wait()
+                    result=browser.post('/api/financing/payments',json=dict(receipt_id=ident,source='equity',equity_id=equity_id,amount=100,payment_date='2026-11-02'))
+                    return result.status_code,result.json
+            with ThreadPoolExecutor(max_workers=2) as pool:results=list(pool.map(pay,parallel_ids))
+            assert sorted(status for status,_ in results)==[201,400],results
+            b.db.session.expire_all()
+            assert sum(b.db.session.get(b.Receipt,ident).paid_amount for ident in parallel_ids)==100
+            print('PASS PostgreSQL 17: independent requests cannot consume the same account funds twice')
+            target=next(ident for ident in parallel_ids if b.db.session.get(b.Receipt,ident).paid_amount==0)
+            payment=dict(receipt_id=target,source='unassigned',amount=10,payment_date='2026-11-02')
+            key={'Idempotency-Key':'postgres-repeat-operation-000001'}
+            first=client.post('/api/financing/payments',json=payment,headers=key)
+            repeated=client.post('/api/financing/payments',json=payment,headers=key)
+            assert first.status_code==201 and repeated.json['id']==first.json['id'],(first.json,repeated.json)
+            path='/api/receipts/'+str(target);etag=client.get(path).json['_versions'][path]
+            assert client.patch(path,json={'notes':'Aktuell'},headers={'If-Match':etag}).status_code==200
+            assert client.patch(path,json={'notes':'Veraltet'},headers={'If-Match':etag}).status_code==409
+            print('PASS PostgreSQL 17: idempotent payment receipts and stale-write conflict protection')
+
 
         legacy_name='phb_legacy_'+uuid4().hex[:12]
         with psycopg.connect(host=url.host,port=url.port or 5432,user=url.username,password=url.password,dbname='postgres',autocommit=True) as admin:
             admin.execute(psycopg.sql.SQL('CREATE DATABASE {}').format(psycopg.sql.Identifier(legacy_name)))
         legacy_engine=sa.create_engine(url.set(database=legacy_name))
+        from money_values import MONEY_COLUMNS,migrate_money
         old=sa.MetaData();tables={}
         for name,table in b.db.metadata.tables.items():
             if name in ('project','planning_browser_state'):continue
             tables[name]=sa.Table(name,old,*[column._copy() for column in table.columns if column.name!='project_id'])
+            for field in MONEY_COLUMNS.get(name,()):tables[name].c[field].type=sa.Float()
             if name in SCOPED_UNIQUE:tables[name].append_constraint(sa.UniqueConstraint(SCOPED_UNIQUE[name],name='uq_legacy_'+name))
         with legacy_engine.begin() as connection:
             old.create_all(connection)
             connection.execute(tables['setting'].insert().values(key='start',value='2020-04-01'))
             connection.execute(tables['category'].insert().values(id=77,name='Historisch'))
             connection.execute(tables['task'].insert().values(id=88,code='AP-001',name='Altes Paket'))
+            connection.execute(tables['cost_item'].insert().values(id=99,title='Alter Geldwert',estimate=1234.56789012))
             for name in ('category','task'):
                 connection.execute(sa.text("SELECT setval(pg_get_serial_sequence(:table_name,'id'),(SELECT MAX(id) FROM "+name+"),true)"),{'table_name':name})
             upgrade_project_schema(connection)
+            migrate_money(connection)
+            assert isinstance(next(c['type'] for c in sa.inspect(connection).get_columns('cost_item') if c['name']=='estimate'),sa.Numeric)
+            assert connection.scalar(sa.text('SELECT estimate FROM cost_item WHERE id=99'))==Decimal('1234.567890120000')
             assert connection.execute(sa.text('SELECT id,code,project_id FROM task')).all()==[(88,'AP-001',1)]
             assert connection.execute(sa.text('SELECT project_id,key,value FROM setting')).all()==[(1,'start','2020-04-01')]
             inserted=connection.execute(b.Project.__table__.insert().values(title='Neuer Garten',kind='Garten',description='')).inserted_primary_key[0]
@@ -147,7 +183,7 @@ def main():
             assert connection.execute(sa.text('SELECT project_id FROM task ORDER BY id')).all()==[(1,),(2,)]
             assert connection.execute(sa.text("SELECT value FROM setting WHERE key='start' ORDER BY project_id")).all()==[('2020-04-01',),('2027-05-01',)]
         legacy_engine.dispose()
-        print('PASS PostgreSQL 17: legacy schema migration preserves IDs/settings and scopes unique keys')
+        print('PASS PostgreSQL 17: legacy schema and Float-to-Numeric migration preserve IDs, values and settings')
 
 
 if __name__=='__main__':main()

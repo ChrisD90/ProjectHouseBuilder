@@ -1,3 +1,4 @@
+from funding_rules import technical_requirements
 """Bounded, opt-in funding orientation. Never changes awards or financing bookings."""
 from datetime import date
 from calendar import monthrange
@@ -64,9 +65,8 @@ def readiness(inputs, offer, documents, basis_gross=None):
         require(built <= date(applied.year-5, applied.month, min(applied.day,monthrange(applied.year-5,applied.month)[1])), 'Bauantrag/Bauanzeige muss mindestens fünf Jahre vor dem geplanten Antrag liegen.')
     except (ValueError, TypeError):
         require(False, 'Datum von Bauantrag/Bauanzeige und geplantem Förderantrag vollständig angeben.')
-    require(inputs.get('technical_verified') == 'yes', 'Technische Mindestanforderungen mit Energieberatung/Fachbetrieb prüfen und bestätigen.')
-    require(inputs.get('expert_involved') == 'yes', 'Erforderliche Energieberatung bzw. Fachbetrieb einbinden.')
-    require(inputs.get('proof') in ('prepared', 'available'), 'Technischen Projektnachweis (TPB bei BAFA bzw. BzA bei KfW) vorhanden oder in Vorbereitung bestätigen.')
+    for _,title,ok,detail in technical_requirements(inputs):
+        require(ok,title+': '+detail)
     require(inputs.get('contract') in ('not_signed', 'conditional'), 'Vorhabenbeginn prüfen: kein unbedingter Liefer-/Leistungsvertrag; förderkonforme Bedingung klären.')
     require(inputs.get('started') == 'no', 'Für diese Vorschau darf die Ausführung noch nicht begonnen haben; laufende/abgeschlossene Vorhaben individuell prüfen.')
     require(inputs.get('cumulation_reviewed') == 'yes', 'Weitere Förderungen und Steuerermäßigungen (z. B. § 35c) auf Doppelförderung prüfen.')

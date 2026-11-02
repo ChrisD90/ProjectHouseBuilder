@@ -1,5 +1,5 @@
+import { Select, SimpleGrid, TextInput, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { TextInput, Textarea, Select, SimpleGrid } from '@mantine/core';
 import { Row } from './core';
 export const emptyDocument: Row = {
   title: '',

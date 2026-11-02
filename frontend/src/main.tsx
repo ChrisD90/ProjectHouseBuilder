@@ -1,17 +1,18 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import { MantineProvider, createTheme } from '@mantine/core';
-import { Notifications } from '@mantine/notifications';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { DialogProvider } from './core';
-import { App } from './shell';
-import { ProjectDashboard } from './projects';
-import { workspaceBase } from './project-context';
+import { createTheme, MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
+import { Notifications } from '@mantine/notifications';
 import '@mantine/notifications/styles.css';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createRoot } from 'react-dom/client';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import '../../static/components.css';
 import '../../static/palette.css';
+import '../../static/request.js';
+import { DialogProvider } from './core';
+import { workspaceBase } from './project-context';
+import { ProjectDashboard } from './projects';
+import { App } from './shell';
 import './style.css';
 const client = new QueryClient({
   defaultOptions: {

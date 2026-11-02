@@ -329,6 +329,12 @@ async function open(id){
  const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();
  $('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
+ const returned=new URLSearchParams(location.search).get('new_company_id');
+ if(returned && !x.supplier && !x.contractor_id && [...$('receiptSupplierCompany').options].some(option=>option.value===returned)){
+  $('receiptSupplierCompany').value=returned;$('receiptSupplierCompany').dispatchEvent(new Event('change',{bubbles:true}));
+  notice('Neue Firma als Lieferant vorgeschlagen. Bitte die Zuordnung prüfen und anschließend speichern.');
+ }
+
  $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Daten bleiben bearbeitbar; Original und Historie bleiben erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Rechnungsdaten können weiterhin geprüft und korrigiert werden.':'Entwurf: Du kannst jederzeit zwischenspeichern, auch ohne Firma, Betrag oder Zahlungsziel.');
  }catch(e){notice(e.message,true)}
 }

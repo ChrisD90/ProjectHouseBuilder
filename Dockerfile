@@ -3,6 +3,7 @@ WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
+COPY static/palette.css static/request.js static/components.css /build/static/
 RUN npm run build
 
 FROM python:3.12-slim-trixie
@@ -23,4 +24,4 @@ RUN mkdir -p /app/private && chown -R project:project /app
 USER project
 RUN python ocr_runtime.py --check
 EXPOSE 5000
-CMD ["sh","-c","python ocr_runtime.py --check && python -c 'from app import app, initialize; ctx=app.app_context(); ctx.push(); initialize(); ctx.pop()' && exec gunicorn --bind 0.0.0.0:5000 --workers $WEB_CONCURRENCY --threads $GUNICORN_THREADS --timeout 120 app:app"]
+CMD ["sh","-c","python ocr_runtime.py --check && python -c 'from app import app, initialize; ctx=app.app_context(); ctx.push(); initialize(); ctx.pop()' && exec gunicorn --config gunicorn.conf.py --bind 0.0.0.0:5000 --workers $WEB_CONCURRENCY --threads $GUNICORN_THREADS --timeout 120 app:app"]

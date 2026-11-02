@@ -240,6 +240,8 @@ def load_rows(path, db, owner):
         total += len(rows)
         if total > MAX_ROWS: raise ValueError('Zu viele Datensätze im Backup.')
         for row in rows:
+            if name=='import_job' and set(table.c.keys())-set(row)<= {'lease_owner','lease_until'}:
+                row={**{'lease_owner':'','lease_until':None},**row}
             if set(row) != set(table.c.keys()): raise ValueError('Backup-Felder passen nicht zu ' + name)
             row = {key: _value(table.c[key], value) for key, value in row.items()}
             key = tuple(row[c.name] for c in table.primary_key)
@@ -295,6 +297,8 @@ def check_other_references(connection, db, owner, incoming=None):
 
 
 def clear_rows(connection, db, owner):
+    from request_safety import invalidate_operations
+    invalidate_operations(connection,owner)
     tables = owned_tables(db)
     check_other_references(connection, db, owner)
     for table in tables.values():

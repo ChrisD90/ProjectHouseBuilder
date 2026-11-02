@@ -44,14 +44,7 @@ def percent(value):
         raise ValueError('Prozentwert muss zwischen 0 und 100 liegen (max. drei Nachkommastellen).')
 
 
-def iso_date(value, *, optional=False):
-    s = str(value or '').strip()
-    if optional and not s:
-        return ''
-    try:
-        return date.fromisoformat(s).isoformat()
-    except ValueError:
-        raise ValueError('Bitte ein gültiges Datum im Format JJJJ-MM-TT angeben.')
+from validation import iso_date
 
 
 def name(value, label='Bezeichnung', length=160):

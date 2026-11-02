@@ -1,7 +1,8 @@
-import { projectID } from './project-context';
-import React, { createContext, useContext, useRef, useState } from 'react';
-import { Modal, Button, Group, Text, TextInput, Stack, Alert } from '@mantine/core';
+import { Alert, Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import React, { createContext, useContext, useRef, useState } from 'react';
+import { projectID } from './project-context';
+import { ChangePreview } from './ui';
 export type Row = Record<string, any>;
 let writes = 0;
 export async function api<T = Row>(
@@ -27,7 +28,18 @@ export async function api<T = Row>(
       location.assign('/login');
       throw Error('Bitte erneut anmelden.');
     }
-    const data = await r.json();
+    let data;
+    try {
+      data = await r.json();
+    } catch {
+      throw Error(
+        r.status === 413
+          ? 'Die Dateien sind zu groß. Bitte Dateigröße und Anzahl reduzieren.'
+          : 'Der Server konnte die Anfrage nicht abschließen (HTTP ' +
+              r.status +
+              '). Bitte den aktuellen Stand prüfen.',
+      );
+    }
     if (!r.ok) throw Error(data.error || 'Anfrage fehlgeschlagen.');
     return data;
   } finally {
@@ -61,6 +73,18 @@ const ConfirmContext = createContext<(q: Question | string) => Promise<string | 
 );
 export function DialogProvider({ children }: { children: React.ReactNode }) {
   const [external, setExternal] = useState(false);
+  React.useEffect(() => {
+    const opened = () => setExternal(true),
+      closed = () => setExternal(false);
+    document.addEventListener('phb-request-conflict', opened);
+    document.addEventListener('phb-request-uncertain', opened);
+    document.addEventListener('phb-request-notice-closed', closed);
+    return () => {
+      document.removeEventListener('phb-request-conflict', opened);
+      document.removeEventListener('phb-request-uncertain', opened);
+      document.removeEventListener('phb-request-notice-closed', closed);
+    };
+  }, []);
   const [question, setQuestion] = useState<Question | null>(null),
     [text, setText] = useState('');
   const resolve = useRef<(v: string | boolean) => void>(() => {});
@@ -121,6 +145,8 @@ export function Editor({
   children,
   zIndex,
   suspended,
+  changes,
+  original,
 }: {
   opened: boolean;
   title: string;
@@ -130,10 +156,17 @@ export function Editor({
   children: React.ReactNode;
   zIndex?: number;
   suspended?: boolean;
+  changes?: Record<string, unknown>;
+  original?: Record<string, unknown>;
 }) {
   const ask = useConfirm(),
     confirming = useModalLayer().blocked,
     covered = useContext(EditorCoveredContext) || suspended;
+  const fieldset = useRef<HTMLFieldSetElement>(null);
+  React.useEffect(() => {
+    if (opened && !dirty)
+      (window as any).PHBRequests?.snapshot(fieldset.current?.closest('[role=dialog]'),original);
+  }, [opened, JSON.stringify(original)]);
   return (
     <Modal
       trapFocus={!confirming && !covered}
@@ -150,7 +183,12 @@ export function Editor({
       size="lg"
       centered
     >
-      <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+      {dirty && changes && original && <ChangePreview original={original} changes={changes} />}
+      <fieldset
+        ref={fieldset}
+        disabled={busy}
+        style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
+      >
         {children}
       </fieldset>
     </Modal>

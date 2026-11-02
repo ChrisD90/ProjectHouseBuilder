@@ -42,7 +42,7 @@
   const current=()=>JSON.stringify(forms.map(signature));
   const isBusy=()=>busy||Boolean(config.isBusy?.());
   const dirty=()=>Boolean(config.track!==false&&forms.length&&baseline!==current());
-  const snapshot=()=>{baseline=current();};
+  const snapshot=()=>{baseline=current();window.PHBRequests?.snapshot(dialog);for(const form of forms){window.PHBRequests?.snapshot(form);window.PHBComponents?.snapshot(form);}};
   let steps=null;
   if(titles.length>1){
    steps=document.createElement('nav');
@@ -156,5 +156,5 @@
   event.preventDefault();
   event.returnValue='';
  });
- window.PHBFlow={manage,get:id=>registry.get($(id)?.id),inspect:()=>({busy:[...registry.values()].some(flow=>flow.isBusy()),dirty:[...registry.values()].some(flow=>flow.dialog.open&&flow.dirty())})};
+ window.PHBFlow={signature,manage,get:id=>registry.get($(id)?.id),inspect:()=>({busy:[...registry.values()].some(flow=>flow.isBusy()),dirty:[...registry.values()].some(flow=>flow.dialog.open&&flow.dirty())})};
 })();

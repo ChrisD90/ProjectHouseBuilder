@@ -153,6 +153,7 @@ class ImportJobsTest(unittest.TestCase):
     def test_recovery_does_not_silently_repeat_ai_uploads(self):
         r=self.enqueue()
         ident=r.json['jobs'][0]['id']
+        running=db.session.get(ImportJob,ident);running.status='Läuft';running.lease_owner='expired-worker';running.lease_until=None;db.session.commit()
         _recover_interrupted_imports()
         obj=db.session.get(ImportJob,ident)
         self.assertEqual(obj.status,'Unterbrochen')
