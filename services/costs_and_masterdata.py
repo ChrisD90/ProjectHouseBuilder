@@ -134,10 +134,13 @@ def register(runtime: ModuleType):
         previews, basis, extras = runtime.forecast_lines(lines, items)
         previews = {key: runtime.dec(value) for key, value in previews.items()}
         booked = runtime.db.session.scalars(runtime.select(runtime.Receipt).where(runtime.Receipt.status == 'Gebucht')).all()
+        diy = runtime.self_work_costs()
+        diy_receipts = {r['id'] for p in diy for r in p['receipts']}
         receipt_by_line = {}
         receipt_line = {}
         unplanned_receipts = []
         for receipt in booked:
+            if receipt.id in diy_receipts: continue
             item = runtime.db.session.get(runtime.CostItem, receipt.cost_item_id) if receipt.cost_item_id else None
             line_id = receipt.budget_line_id if receipt.budget_line_id in previews else item.budget_line_id if item and item.budget_line_id in previews else None
             if line_id:
@@ -162,7 +165,8 @@ def register(runtime: ModuleType):
                 booked_by_item[receipt.cost_item_id] = booked_by_item.get(receipt.cost_item_id, 0) + runtime.dec(runtime._receipt_increment(receipt))
         outside = sum((max(runtime.dec(runtime.effective_offer(x)), booked_by_item.get(x.id, 0)) for x in extras))
         extra_receipts = sum((runtime.dec(runtime._receipt_increment(x)) for x in unplanned_receipts))
-        forecast = sum(previews.values()) + outside + extra_receipts
+        diy_forecast = sum((max(runtime.dec(p['estimated_cost']),runtime.dec(p['actual_cost'])) for p in diy),runtime.dec(0))
+        forecast = sum(previews.values()) + outside + extra_receipts + diy_forecast
         spent = sum((runtime.dec(x.paid) for x in items)) + sum((runtime.dec(x.paid_amount or 0) for x in booked))
         committed = sum((runtime.dec(x.committed) for x in items if x.state in ('Beauftragt', 'Abgeschlossen')))
         funds = runtime.db.session.scalars(runtime.select(runtime.Funding)).all()
@@ -180,13 +184,16 @@ def register(runtime: ModuleType):
             group['planned'] += max(runtime.dec(runtime.effective_offer(x)), booked_by_item.get(x.id, 0))
             group['paid'] += runtime.dec(x.paid)
         for r in booked:
-            category = next((line.category for line in active if line.id == receipt_line.get(r.id)), r.category)
+            category = 'Eigenleistungen' if r.id in diy_receipts else next((line.category for line in active if line.id == receipt_line.get(r.id)), r.category)
             group = grouped.setdefault(category, {'category': category, 'estimate': runtime.dec(0), 'planned': runtime.dec(0), 'paid': runtime.dec(0)})
             group['paid'] += runtime.dec(r.paid_amount or 0)
         for r in unplanned_receipts:
             group = grouped.setdefault(r.category, {'category': r.category, 'estimate': runtime.dec(0), 'planned': runtime.dec(0), 'paid': runtime.dec(0)})
             group['planned'] += runtime.dec(runtime._receipt_increment(r))
-        return runtime.wire({'budget': runtime.rounded(budget), 'planned': runtime.rounded(forecast), 'overrun': runtime.rounded(forecast - budget), 'paid': runtime.rounded(spent), 'remaining': runtime.rounded(forecast - spent), 'committed': runtime.rounded(committed), 'funding_confirmed': runtime.rounded(funding_confirmed), 'funding_expected': runtime.rounded(funding_expected), 'net_after_confirmed': runtime.rounded(forecast - funding_confirmed), 'own_budget': runtime.rounded(sum((previews[x.id] for x in active if x.kind == 'Eigenleistung')) + sum((runtime.dec(runtime.effective_offer(x)) for x in extras if x.kind == 'Eigenleistung'))), 'own_hours': round(sum((runtime.dec(x.own_hours) for x in valid if x.kind == 'Eigenleistung')), 1), 'own_imputed_value': runtime.rounded(sum((runtime.dec(x.own_hours) * runtime.dec(x.own_hourly) for x in valid if x.kind == 'Eigenleistung'))), 'receipt_booked': runtime.rounded(sum((runtime.dec(runtime._receipt_increment(x)) for x in booked))), 'receipt_paid': runtime.rounded(sum((runtime.dec(x.paid_amount or 0) for x in booked))), 'receipt_drafts': runtime.db.session.scalar(runtime.select(runtime.db.func.count(runtime.Receipt.id)).where(runtime.Receipt.status == 'Entwurf')) or 0, 'categories': [{'category': k, 'estimate': runtime.rounded(v['estimate']), 'planned': runtime.rounded(v['planned']), 'paid': runtime.rounded(v['paid'])} for k, v in grouped.items()], 'line_forecasts': previews, 'line_basis': basis, 'additional_items': len(extras)})
+        if diy:
+            group=grouped.setdefault('Eigenleistungen', {'category':'Eigenleistungen','estimate':runtime.dec(0),'planned':runtime.dec(0),'paid':runtime.dec(0)})
+            group['planned']+=diy_forecast
+        return runtime.wire({'budget': runtime.rounded(budget), 'planned': runtime.rounded(forecast), 'overrun': runtime.rounded(forecast - budget), 'paid': runtime.rounded(spent), 'remaining': runtime.rounded(forecast - spent), 'committed': runtime.rounded(committed), 'funding_confirmed': runtime.rounded(funding_confirmed), 'funding_expected': runtime.rounded(funding_expected), 'net_after_confirmed': runtime.rounded(forecast - funding_confirmed), 'own_budget': runtime.rounded(diy_forecast + sum((previews[x.id] for x in active if x.kind == 'Eigenleistung')) + sum((runtime.dec(runtime.effective_offer(x)) for x in extras if x.kind == 'Eigenleistung'))), 'own_hours': round(sum((runtime.dec(x.own_hours) for x in valid if x.kind == 'Eigenleistung')), 1), 'own_imputed_value': runtime.rounded(sum((runtime.dec(x.own_hours) * runtime.dec(x.own_hourly) for x in valid if x.kind == 'Eigenleistung'))), 'receipt_booked': runtime.rounded(sum((runtime.dec(runtime._receipt_increment(x)) for x in booked))), 'receipt_paid': runtime.rounded(sum((runtime.dec(x.paid_amount or 0) for x in booked))), 'receipt_drafts': runtime.db.session.scalar(runtime.select(runtime.db.func.count(runtime.Receipt.id)).where(runtime.Receipt.status == 'Entwurf')) or 0, 'categories': [{'category': k, 'estimate': runtime.rounded(v['estimate']), 'planned': runtime.rounded(v['planned']), 'paid': runtime.rounded(v['paid'])} for k, v in grouped.items()], 'line_forecasts': previews, 'line_basis': basis, 'additional_items': len(extras)})
 
     runtime.budget_summary = budget_summary
 
@@ -226,7 +233,13 @@ def register(runtime: ModuleType):
             target['paid'] += runtime.dec(item.paid or 0)
         booked = runtime.db.session.scalars(runtime.select(runtime.Receipt).where(runtime.Receipt.status == 'Gebucht').order_by(runtime.Receipt.id)).all()
         item_by_id = {x.id: x for x in items}
+        diy = runtime.self_work_costs()
+        diy_receipts = {r['id'] for p in diy for r in p['receipts']}
+        for p in diy:
+            paid=sum((runtime.dec(r.paid_amount or 0) for r in booked if r.id in p['receipt_ids']),runtime.dec(0))
+            rows[f"self-work:{p['id']}"]={'id':f"self-work:{p['id']}",'title':p['title'],'category':'Eigenleistungen','trade':'','kind':'Eigenleistung','phase':'','task':p['task_label'],'company':'','forecast':max(runtime.dec(p['estimated_cost']),runtime.dec(p['actual_cost'])),'committed':runtime.dec(0),'invoiced':runtime.dec(p['actual_cost']),'paid':paid,'basis':'Material & Werkzeuge / Belege','source':'Eigenleistung','url':f"/eigenleistungen?plan_id={p['id']}"}
         for receipt in booked:
+            if receipt.id in diy_receipts: continue
             item = item_by_id.get(receipt.cost_item_id)
             line_id = receipt.budget_line_id or (item.budget_line_id if item else None)
             target = rows.get(f'line:{line_id}') if line_id else rows.get(f'item:{receipt.cost_item_id}')

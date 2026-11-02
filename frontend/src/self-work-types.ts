@@ -28,12 +28,15 @@ export type PlanDraft = {
   tools: Tool[];
   notes: string;
   archived: boolean;
+  receipt_ids: number[];
 };
 export type Plan = PlanDraft & {
   id: number;
   task_label: string;
   task_missing: boolean;
   estimated_cost: number;
+  actual_cost: number;
+  procured_material_cost: number;
   costs_complete: boolean;
   updated_at: string;
 };
@@ -59,6 +62,7 @@ export const emptyPlan = (): PlanDraft => ({
   tools: [],
   notes: '',
   archived: false,
+  receipt_ids: [],
 });
 export function draftOf(plan: Plan): PlanDraft {
   const draft = emptyPlan();

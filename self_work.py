@@ -1,4 +1,4 @@
-"""Independent, project-owned DIY plans. Never mutate schedule, costs or payments."""
+"""Project-owned DIY plans, receipt links and cost forecasts; no implicit payments."""
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
@@ -61,7 +61,13 @@ def rows(value, kind):
     return result
 
 
-def register_self_work(app, db, Task, *, ai_required, chatgpt, extract_json):
+def register_self_work(app, db, Task, Receipt, *, ai_required, chatgpt, extract_json, receipt_amount):
+    class SelfWorkReceipt(db.Model):
+        __tablename__ = 'self_work_receipt'
+        id = db.Column(db.Integer, primary_key=True)
+        plan_id = db.Column(db.Integer, db.ForeignKey('self_work_plan.id'), nullable=False)
+        receipt_id = db.Column(db.Integer, db.ForeignKey('receipt.id'), nullable=False, unique=True)
+
     class SelfWorkPlan(db.Model):
         __tablename__ = 'self_work_plan'
         id = db.Column(db.Integer, primary_key=True)
@@ -87,18 +93,37 @@ def register_self_work(app, db, Task, *, ai_required, chatgpt, extract_json):
         known = sum((Decimal(str(r['quantity']))*Decimal(str(r['unit_price'])) for r in materials
                      if r['quantity'] is not None and r['unit_price'] is not None), Decimal(0))
         known += sum((Decimal(str(r['cost'])) for r in tools if r['cost'] is not None), Decimal(0))
+        receipts = linked_receipts(item.id)
+        actual = sum((Decimal(str(receipt_amount(r))) for r in receipts if r.status == 'Gebucht'), Decimal(0))
+        procured = sum((Decimal(str(r['quantity']))*Decimal(str(r['unit_price'])) for r in materials
+                        if r['status'] in ('Bestellt','Vorhanden') and r['quantity'] is not None and r['unit_price'] is not None), Decimal(0))
         return dict(id=item.id, title=item.title, description=item.description, location=item.location,
                     experience=item.experience, status=item.status, task_id=item.task_id,
                     task_label=(task.code+' · '+task.name) if task else '', task_missing=bool(item.task_id and not task),
                     steps=steps, materials=materials, tools=tools, notes=item.notes, archived=item.archived,
                     estimated_cost=float(rounded(known)),
+                    actual_cost=float(rounded(actual)), procured_material_cost=float(rounded(procured)),
+                    receipt_ids=[r.id for r in receipts],
+                    receipts=[receipt_dict(r) for r in receipts],
                     costs_complete=bool(materials or tools) and all(r['quantity'] is not None and r['unit_price'] is not None for r in materials) and all(r['cost'] is not None for r in tools),
                     updated_at=item.updated_at.isoformat())
+
+    def linked_receipts(ident):
+        ids=list(db.session.scalars(select(SelfWorkReceipt.receipt_id).where(SelfWorkReceipt.plan_id==ident)))
+        return list(db.session.scalars(select(Receipt).where(Receipt.id.in_(ids),Receipt.cost_item_id.is_(None),Receipt.budget_line_id.is_(None)))) if ids else []
+
+    def receipt_dict(r):
+        return dict(id=r.id,label=(r.invoice_number or r.original_name)+' · '+(r.supplier or 'Ohne Lieferant'),
+                    status=r.status,amount=float(rounded(Decimal(str(receipt_amount(r))))))
+
+    def costs():
+        return [serialize(x) for x in db.session.scalars(select(SelfWorkPlan))]
 
     @app.get('/api/self-work')
     def self_work_list():
         return jsonify(plans=[serialize(row) for row in db.session.scalars(select(SelfWorkPlan).order_by(SelfWorkPlan.id.desc()))],
-                       tasks=[dict(id=t.id, label=t.code+' · '+t.name) for t in db.session.scalars(select(Task).order_by(Task.position, Task.id))])
+                       tasks=[dict(id=t.id, label=t.code+' · '+t.name) for t in db.session.scalars(select(Task).order_by(Task.position, Task.id))],
+                       receipts=[receipt_dict(r) for r in db.session.scalars(select(Receipt)) if not r.cost_item_id and not r.budget_line_id])
 
     @app.post('/api/self-work')
     @app.route('/api/self-work/<int:ident>', methods=['GET', 'PATCH', 'DELETE'])
@@ -107,10 +132,12 @@ def register_self_work(app, db, Task, *, ai_required, chatgpt, extract_json):
         if item is None: return jsonify(error='Eigenleistung nicht gefunden.'), 404
         if request.method == 'GET': return jsonify(plan=serialize(item))
         if request.method == 'DELETE':
+            for link in db.session.scalars(select(SelfWorkReceipt).where(SelfWorkReceipt.plan_id==item.id)):
+                db.session.delete(link)
             db.session.delete(item); db.session.commit(); return jsonify(ok=True)
         try:
             body = request.get_json(silent=True)
-            allowed = {'title','description','location','experience','status','task_id','steps','materials','tools','notes','archived'}
+            allowed = {'title','description','location','experience','status','task_id','steps','materials','tools','notes','archived','receipt_ids'}
             if not isinstance(body, dict) or set(body)-allowed: raise ValueError('Ungültige Planungsdaten.')
             for key, limit in [('title',200), ('description',6000), ('location',200), ('notes',6000)]:
                 if key in body: setattr(item,key,plain(body[key],key,limit,required=key=='title'))
@@ -133,7 +160,22 @@ def register_self_work(app, db, Task, *, ai_required, chatgpt, extract_json):
                 if type(body['archived']) is not bool: raise ValueError('Archiviert muss ein Wahrheitswert sein.')
                 item.archived=body['archived']
             item.updated_at=datetime.now(timezone.utc)
-            db.session.add(item); db.session.commit()
+            db.session.add(item); db.session.flush()
+            if 'receipt_ids' in body:
+                ids=body['receipt_ids']
+                if not isinstance(ids,list) or len(ids)>500 or any(type(x) is not int or x<=0 for x in ids) or len(set(ids))!=len(ids):
+                    raise ValueError('Ungültige Rechnungsauswahl.')
+                for rid in ids:
+                    r=db.session.get(Receipt,rid)
+                    if not r or r.cost_item_id or r.budget_line_id:
+                        raise ValueError('Die Rechnung ist nicht verfügbar oder bereits einem Angebot/Kostenplan zugeordnet. Bitte diese Zuordnung zuerst im Beleg ändern.')
+                    other=db.session.scalar(select(SelfWorkReceipt).where(SelfWorkReceipt.receipt_id==rid))
+                    if other and other.plan_id!=item.id: raise ValueError('Diese Rechnung gehört bereits zu einer anderen Eigenleistung.')
+                for link in db.session.scalars(select(SelfWorkReceipt).where(SelfWorkReceipt.plan_id==item.id)):
+                    if link.receipt_id not in ids: db.session.delete(link)
+                existing=set(db.session.scalars(select(SelfWorkReceipt.receipt_id).where(SelfWorkReceipt.plan_id==item.id)))
+                for rid in set(ids)-existing: db.session.add(SelfWorkReceipt(plan_id=item.id,receipt_id=rid))
+            db.session.commit()
             return jsonify(plan=serialize(item)), 200 if ident else 201
         except (ValueError,TypeError,InvalidOperation) as error:
             db.session.rollback(); return jsonify(error=str(error)),400
@@ -234,4 +276,4 @@ def register_self_work(app, db, Task, *, ai_required, chatgpt, extract_json):
             return jsonify(proposal=proposal)
         except (ValueError,TypeError,KeyError) as error: return jsonify(error=str(error)),400
 
-    return SelfWorkPlan
+    return SelfWorkPlan, SelfWorkReceipt, costs

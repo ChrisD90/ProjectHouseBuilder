@@ -41,13 +41,41 @@ class SelfWorkTest(unittest.TestCase):
         self.assertEqual(updated.status_code,200,updated.json)
         self.assertTrue(self.client.get(path).json['plan']['steps'][0]['done'])
         self.assertEqual(self.client.get('/api/project').json,schedule)
-        self.assertEqual(self.client.get('/api/costs').json,budget)
+        self.assertEqual(self.client.get('/api/costs').json['summary']['planned'],11.2)
         self.assertEqual(self.client.patch(path,json={'archived':True}).status_code,200)
         self.assertTrue(self.client.get('/api/self-work').json['plans'][0]['archived'])
         self.assertEqual(self.client.patch(path,json={'archived':False}).status_code,200)
         self.assertEqual(self.client.delete(path).status_code,200)
         self.assertEqual(self.client.get(path).status_code,404)
         self.assertEqual(self.client.get('/api/project').json,schedule)
+
+    def test_receipts_forecast_cancellation_and_project_isolation(self):
+        with project_context(1):
+            r=b.Receipt(digest='diy-receipt',original_name='Farbe.pdf',stored_name='diy.pdf',supplier='Baumarkt',gross_amount=150,status='Gebucht',paid_amount=50)
+            b.db.session.add(r);b.db.session.commit();rid=r.id
+        made=self.create(materials=[dict(title='Farbe',quantity=2,unit_price=50,status='Bestellt')],receipt_ids=[rid])
+        self.assertEqual(made.status_code,201,made.json)
+        plan=made.json['plan'];path='/api/self-work/'+str(plan['id'])
+        self.assertEqual(plan['actual_cost'],150)
+        self.assertEqual(plan['procured_material_cost'],100)
+        summary=self.client.get('/api/costs').json['summary']
+        self.assertEqual(summary['planned'],150)
+        self.assertEqual(summary['receipt_booked'],150)
+        self.assertEqual(summary['own_budget'],150)
+        self.assertEqual(summary['paid'],50)
+        dashboard=self.client.get('/api/cost-dashboard').json
+        self.assertEqual(dashboard['dashboard']['rows'][0]['kind'],'Eigenleistung')
+        self.assertEqual(self.create(receipt_ids=[rid]).status_code,400)
+        todo=self.client.post('/api/project-work',json=dict(kind='todo',title='Farbe abholen',source_type='self_work',source_id=plan['id']))
+        self.assertEqual(todo.status_code,201,todo.json)
+        with project_context(1):
+            r=b.db.session.get(b.Receipt,rid);r.status='Storniert';r.paid_amount=0;b.db.session.commit()
+        self.assertEqual(self.client.get(path).json['plan']['actual_cost'],0)
+        self.assertEqual(self.client.get('/api/costs').json['summary']['planned'],100)
+        other=self.client.post('/api/projects',json={'title':'Garten'}).json['project']['id']
+        self.assertEqual(self.client.post('/api/self-work',headers={'X-PHB-Project':str(other)},json={'title':'Fremd','receipt_ids':[rid]}).status_code,400)
+        self.assertEqual(self.client.delete(path).status_code,200)
+        with project_context(1):self.assertIsNotNone(b.db.session.get(b.Receipt,rid))
 
     def test_invalid_lists_and_numbers_roll_back_and_unknown_prices_stay_unknown(self):
         made=self.create(materials=[dict(title='Farbe',quantity=None,unit_price=None)],tools=[dict(title='Leiter')])

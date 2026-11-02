@@ -231,7 +231,10 @@ def load_rows(path, db, owner):
     expected = set(tables) - EPHEMERAL
     # Backups from revision 0028 predate both plan tables; they legitimately contain no plans.
     missing=expected-set(payload['tables'])
-    # Revision 0032 adds an independent, initially empty planning area.
+    # New project-owned DIY data defaults to empty in older archives.
+    if 'self_work_receipt' in missing:
+        payload['tables']['self_work_receipt']=[]
+        missing.remove('self_work_receipt')
     if 'self_work_plan' in missing:
         payload['tables']['self_work_plan']=[]
         missing.remove('self_work_plan')

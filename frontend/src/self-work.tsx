@@ -5,6 +5,7 @@ import {
   Button,
   Checkbox,
   Group,
+  MultiSelect,
   NumberInput,
   Paper,
   Progress,
@@ -27,13 +28,15 @@ import {
   IconArrowUp,
   IconPencil,
   IconPlus,
+  IconReceipt,
   IconSparkles,
   IconTool,
   IconTrash,
 } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { SourceWork } from './work';
 import { api, Editor, ErrorBox, money, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { useDirtyGuard } from './shell';
@@ -43,9 +46,14 @@ import { draftOf, emptyPlan, newID } from './self-work-types';
 import type { Material, Plan, PlanDraft, Proposal, Step, Tool } from './self-work-types';
 import './self-work.css';
 
-type Listing = { plans: Plan[]; tasks: { id: number; label: string }[] };
+type Listing = {
+  plans: Plan[];
+  tasks: { id: number; label: string }[];
+  receipts: { id: number; label: string; status: string; amount: number }[];
+};
 const numeric = (value: string | number): number | null => (value === '' ? null : Number(value));
 export function SelfWorkPage() {
+  const [params] = useSearchParams();
   const query = useQuery({
     queryKey: ['self-work'],
     queryFn: () => api<Listing>('/api/self-work'),
@@ -79,6 +87,10 @@ export function SelfWorkPage() {
     setFailure(null);
     setOpened(true);
   }
+  useEffect(() => {
+    const target = query.data?.plans.find((x) => x.id === Number(params.get('plan_id')));
+    if (target) edit(target);
+  }, [params.get('plan_id'), !!query.data]);
   async function save(archived?: boolean) {
     if (pending.current) return;
     if (form.validate().hasErrors) {
@@ -102,6 +114,9 @@ export function SelfWorkPage() {
       });
       setOpened(false);
       await cache.invalidateQueries({ queryKey: ['self-work'] });
+      await cache.invalidateQueries({ queryKey: ['cost-dashboard'] });
+      await cache.invalidateQueries({ queryKey: ['projects'] });
+      await cache.invalidateQueries({ queryKey: ['work-sources'] });
       success('Eigenleistung gespeichert.');
     } catch (error) {
       setFailure(error);
@@ -124,6 +139,9 @@ export function SelfWorkPage() {
       await api('/api/self-work/' + id, 'DELETE');
       setOpened(false);
       await cache.invalidateQueries({ queryKey: ['self-work'] });
+      await cache.invalidateQueries({ queryKey: ['cost-dashboard'] });
+      await cache.invalidateQueries({ queryKey: ['projects'] });
+      await cache.invalidateQueries({ queryKey: ['work-sources'] });
       success('Eigenleistung gelöscht.');
     } catch (error) {
       setFailure(error);
@@ -323,11 +341,32 @@ export function SelfWorkPage() {
                 )}
                 <Text size="sm" c="dimmed" mt="auto">
                   {row.costs_complete
-                    ? 'Geschätzt: '
+                    ? 'Plan: '
                     : row.estimated_cost
-                      ? 'Bisher geschätzt: '
+                      ? 'Plan (unvollständig): '
                       : 'Kosten noch offen'}
                   {(row.costs_complete || !!row.estimated_cost) && money(row.estimated_cost)}
+                </Text>
+                <Group justify="space-between">
+                  <Text size="sm">Ist: {money(row.actual_cost)}</Text>
+                  <Tooltip label={'Rechnungen & Kassenzettel: ' + row.receipt_ids.length}>
+                    <Button
+                      variant="subtle"
+                      size="xs"
+                      leftSection={<IconReceipt size={17} />}
+                      onClick={() => {
+                        edit(row);
+                        setTab('receipts');
+                      }}
+                      aria-label={'Rechnungen zu ' + row.title}
+                    >
+                      {row.receipt_ids.length || ''}
+                    </Button>
+                  </Tooltip>
+                  <SourceWork type="self_work" id={row.id} />
+                </Group>
+                <Text size="xs" c="dimmed">
+                  Material bestellt / vorhanden: {money(row.procured_material_cost)}
                 </Text>
               </Paper>
             );
@@ -335,8 +374,8 @@ export function SelfWorkPage() {
         </SimpleGrid>
       )}
       <Text size="xs" c="dimmed" mt="lg">
-        Die Planung bleibt in diesem Bereich. Termine, Arbeitspaketstatus und Buchungen im übrigen
-        Projekt ändern sich dadurch nicht.
+        Plan-Kosten aus Material und Werkzeugen fließen in die Projektprognose ein. Ist-Kosten
+        entstehen durch gebuchte Belege. Der Beschaffungsstatus löst keine Zahlung aus.
       </Text>
       <Editor
         opened={opened}
@@ -361,7 +400,55 @@ export function SelfWorkPage() {
                 <Tabs.Tab value="steps">Schritte ({form.values.steps.length})</Tabs.Tab>
                 <Tabs.Tab value="materials">Material ({form.values.materials.length})</Tabs.Tab>
                 <Tabs.Tab value="tools">Werkzeuge ({form.values.tools.length})</Tabs.Tab>
+                <Tabs.Tab value="receipts">Rechnungen ({form.values.receipt_ids.length})</Tabs.Tab>
               </Tabs.List>
+              <Tabs.Panel value="receipts" pt="md">
+                <Stack>
+                  <Alert>
+                    Ordne Rechnungen und Kassenzettel zu. Nur gebuchte Belege zählen als Ist-Kosten.
+                    Eine Zuordnung zu einem Angebot oder Kostenplan muss zuvor im Beleg gelöst
+                    werden.
+                  </Alert>
+                  <MultiSelect
+                    label="Rechnungen & Kassenzettel"
+                    searchable
+                    clearable
+                    placeholder="Beleg suchen und zuordnen"
+                    value={form.values.receipt_ids.map(String)}
+                    onChange={(value) => form.setFieldValue('receipt_ids', value.map(Number))}
+                    data={(query.data?.receipts || [])
+                      .filter(
+                        (r) =>
+                          !query.data?.plans.some(
+                            (p) => p.id !== id && p.receipt_ids.includes(r.id),
+                          ),
+                      )
+                      .map((r) => ({
+                        value: String(r.id),
+                        label: r.label + ' · ' + money(r.amount) + ' · ' + r.status,
+                      }))}
+                  />
+                  {form.values.receipt_ids.map((rid) => {
+                    const r = query.data?.receipts.find((x) => x.id === rid);
+                    return r ? (
+                      <Group key={rid} justify="space-between">
+                        <Text size="sm">{r.label}</Text>
+                        <Button
+                          component={Link}
+                          to={'/belege?receipt_id=' + rid}
+                          variant="subtle"
+                          size="xs"
+                        >
+                          Beleg öffnen
+                        </Button>
+                      </Group>
+                    ) : null;
+                  })}
+                  <Button component={Link} to="/belege" variant="light">
+                    Rechnungen & Kassenzettel erfassen
+                  </Button>
+                </Stack>
+              </Tabs.Panel>
               <Tabs.Panel value="overview" pt="md">
                 <Stack>
                   <TextInput

@@ -131,9 +131,9 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
       await (await page.request.get(base + "/api/project", { headers })).json(),
       before,
     );
-    assert.deepEqual(
-      await (await page.request.get(base + "/api/costs", { headers })).json(),
-      costs,
+    assert.equal(
+      (await (await page.request.get(base + "/api/costs", { headers })).json()).summary.planned,
+      costs.summary.planned + 70,
     );
     assert.equal(
       (
@@ -144,7 +144,7 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
       0,
     );
     console.log(
-      "PASS offline DIY plan, steps, materials, tool rental and optional task link; schedule and budget untouched.",
+      "PASS offline DIY plan, steps, materials, tool rental and optional task link; schedule untouched and forecast includes planned DIY costs.",
     );
     await page.request.post(base + "/__fixture/self-work/connection", {
       data: { sharing: true },

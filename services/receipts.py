@@ -560,6 +560,9 @@ def register(runtime: ModuleType):
         if runtime.db.session.scalar(runtime.select(runtime.ReceiptFinancingPayment.id).where(runtime.ReceiptFinancingPayment.receipt_id == rid).limit(1)) is not None:
             return (runtime.jsonify(error='Zuerst Finanzierungszahlungen entfernen.'), 409)
         path = runtime.RECEIPT_ROOT / r.stored_name
+        for link in runtime.db.session.scalars(runtime.select(runtime.SelfWorkReceipt).where(runtime.SelfWorkReceipt.receipt_id == rid)):
+            runtime.db.session.delete(link)
+        runtime.db.session.flush()
         runtime.db.session.delete(r)
         runtime.db.session.commit()
         path.unlink(missing_ok=True)

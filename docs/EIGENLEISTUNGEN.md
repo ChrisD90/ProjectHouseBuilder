@@ -1,6 +1,6 @@
 # Eigenleistungen – erste Ausbaustufe
 
-Der neue Bereich **Eigenleistungen** steht in der Sidebar unter „Projekt“ und unter `/p/<Projekt-ID>/eigenleistungen`. Er verwendet eigene Projektdatensätze. Bestehende Angebote, Rechnungen, To-dos, Kosten, Kreditbewegungen und Bauzeitenpläne werden durch seine Bedienung nicht verändert.
+Der Bereich **Eigenleistungen** steht in der Sidebar unter „Projekt“ und unter `/p/<Projekt-ID>/eigenleistungen`. Plan-Kosten stammen aus Material und Werkzeugen, Ist-Kosten aus zugeordneten gebuchten Belegen (inkrementeller Betrag bei Schlussrechnungen). Bestelltes und vorhandenes Material wird separat als beschaffter Planwert gezeigt und löst keine Zahlung aus. Fehlende Preise bleiben offen. Die Projektprognose berücksichtigt je Eigenleistung den höheren Plan-/Ist-Wert, zugeordnete Belege werden nicht zusätzlich gezählt. Auch archivierte Vorhaben behalten ihre Kostenwirkung. To-dos und Notizen nutzen die zentrale Quellenzuordnung. Angebots-/Kostenplanzuordnungen haben Vorrang: Wird ein zugeordneter Beleg später dort eingeplant, zählt er nicht mehr zur Eigenleistung. Das Löschen einer Eigenleistung löscht keine Belege; diese werden wieder als normale Belege berücksichtigt.
 
 ## Manuell planen
 
@@ -11,7 +11,7 @@ Der neue Bereich **Eigenleistungen** steht in der Sidebar unter „Projekt“ un
 5. Im Reiter „Werkzeuge“ zwischen „Noch offen“, „Vorhanden“, „Kaufen“, „Mieten“ und „Ausleihen“ wählen, Kosten schätzen und die Einsatzbereitschaft markieren.
 6. „Eigenleistung speichern“ übernimmt den Entwurf. Der Status des Vorhabens wird unabhängig vom Bauzeitenplan gepflegt.
 
-Die kompakte Kachel zeigt Status, Schrittfortschritt und eine Kostenschätzung. Unbekannte Preise werden ausdrücklich als offen behandelt; eine Teilsumme wird als „bisher geschätzt“ bezeichnet. Geldwerte werden auf Cent gerundet und die Summe mit Decimal berechnet. Es entstehen daraus keine Budgetpositionen oder Buchungen. Archivieren, Zurückholen und endgültiges Löschen betreffen ausschließlich die jeweilige Eigenleistung.
+Die kompakte Kachel zeigt Status, Schrittfortschritt sowie Plan- und Ist-Kosten. Unbekannte Preise werden ausdrücklich als offen behandelt; eine Teilsumme wird als unvollständiger Plan bezeichnet. Geldwerte werden auf Cent gerundet und die Summe mit Decimal berechnet. Die Prognose im Projekt berücksichtigt die Planung; daraus entstehen keine Zahlungen.
 
 Wird ein verknüpftes Arbeitspaket gelöscht oder der Zeitplan geleert, bleibt die Eigenleistung erhalten. Eine nicht mehr verfügbare Verknüpfung wird entsprechend angezeigt und kann entfernt oder geändert werden. Sie blockiert die bisherigen Löschwege nicht.
 
@@ -45,4 +45,4 @@ Der Browserlauf nutzt eine temporäre Projektdatenbank und simulierte KI. Er pr�
 
 Abschlussstand: 453 Python-Tests, Typecheck/Produktionsbuild, 7 Frontend-Tests, 5 Workflow-Tests, alle kritischen Browserabläufe und 12 Bildvergleiche erfolgreich. PostgreSQL 17 bestätigt neue Eigenleistungsdatensätze, Rundung, Projektgrenzen sowie die bisherigen Backup-, Finanzierungs- und Migrationsabläufe. Die acht bisherigen Bildreferenzen mussten nicht geändert werden.
 
-Glossar, gemeinsame Einkaufsliste, Materialbestand, Fotodokumentation, automatische To-do-Erzeugung und Kostenübernahme sind spätere Ausbaustufen. Die erste Runde bleibt bewusst eigenständig.
+Glossar, gemeinsame Einkaufsliste, Materialbestand, Fotodokumentation und automatische To-do-Erzeugung sind spätere Ausbaustufen.

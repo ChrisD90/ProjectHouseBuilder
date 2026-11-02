@@ -626,7 +626,7 @@ OfferAcceptanceReversal = register_offer_reversals(app, db, Offer, CostItem, Ord
     has_dependencies=_offer_has_dependencies, sync_costs=_sync_offer_costs,
     sync_version=_sync_current_version, serialize=offer_dict)
 from project_work import register_project_work
-ProjectWork, project_work_dict = register_project_work(app, db, {
+work_sources = {
     'offer': (Offer, lambda x: 'Angebot · '+x.vendor, lambda x: '/angebote?offer_id='+str(x.id)),
     'receipt': (Receipt, lambda x: 'Beleg · '+(x.supplier or x.original_name), lambda x: '/belege?receipt_id='+str(x.id)),
     'task': (Task, lambda x: 'Arbeitspaket · '+x.name, lambda x: '/?task_id='+str(x.id)),
@@ -634,7 +634,8 @@ ProjectWork, project_work_dict = register_project_work(app, db, {
     'funding': (Funding, lambda x: 'Förderung · '+x.name, lambda x: '/energieplanung?funding_id='+str(x.id)),
     'loan': (Loan, lambda x: 'Kredit · '+x.name, lambda x: '/finanzierung?loan_id='+str(x.id)),
     'document': (ProjectDocument, lambda x: 'Dokument · '+x.title, lambda x: '/dokumente?document_id='+str(x.id)),
-})
+}
+ProjectWork, project_work_dict = register_project_work(app, db, work_sources)
 from cost_plan_imports import register_cost_plan_imports
 CostPlanImport, cost_plan_upload = register_cost_plan_imports(
     app, db, BudgetLine, Document, document_root=lambda: DOCUMENT_ROOT,
@@ -653,9 +654,10 @@ ReceiptCancellation, ReceiptCancellationReversal = register_cancellations(
     payment_source_exists=finance_services['payment_source_exists'])
 
 
-# Independent DIY plans: registration adds no writes to existing domain records.
+# DIY plans contribute to forecasts through project-owned receipt links.
 from self_work import register_self_work
-SelfWorkPlan=register_self_work(app,db,Task,ai_required=_ai_request_required,chatgpt=chatgpt,extract_json=extract_json)
+SelfWorkPlan, SelfWorkReceipt, self_work_costs = register_self_work(app,db,Task,Receipt,ai_required=_ai_request_required,chatgpt=chatgpt,extract_json=extract_json,receipt_amount=_receipt_increment)
+work_sources['self_work']=(SelfWorkPlan,lambda x:'Eigenleistung · '+x.title,lambda x:'/eigenleistungen?plan_id='+str(x.id))
 
 # Backup settings belong to the server; a browser can only select reachable/mounted paths.
 PlanningBrowserState, planning_get, planning_put, planning_pop = register_planning_state(db)

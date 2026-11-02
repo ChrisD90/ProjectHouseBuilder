@@ -27,10 +27,11 @@
 }
 @media (max-width: 650px) {
   .self-work-tabs .mantine-Tabs-list {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
   .self-work-tabs .mantine-Tabs-tab {
     min-width: 0;
+    flex-basis: 30%;
     padding-inline: 6px;
     font-size: 12px;
   }
