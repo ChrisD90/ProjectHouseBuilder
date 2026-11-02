@@ -6,6 +6,8 @@ Die aktuelle Refactoring-Umsetzung (R01–R12), Migration 0031 und wiederholbare
 
 Der ChatGPT-Button im Header zeigt Logo, Verbindungsstatus und das aktuell verwendete Modell. Im Verbindungsdialog lässt sich das Modell wechseln; die Wahl bleibt im Browser nach einem Neuladen erhalten. Ist das gewählte Modell im aktuellen Konto nicht mehr verfügbar, verwendet die Anwendung ein verfügbares Modell und zeigt dessen Namen an.
 
+Der Info-Button neben der Modellwahl öffnet eine Sprechblase zur Aufgabeneignung und Token-Nutzung. Die allgemeine Einordnung nach Modellfamilie ist von tatsächlich gemeldeten Verbrauchswerten getrennt. Die letzte Anfrage wird nur beim dazugehörigen Modell angezeigt; feste Verbräuche oder verbleibende Modellkontingente werden nicht geschätzt.
+
 
 ## Belegprüfung und Firmen im Bauzeitenplan
 

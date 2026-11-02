@@ -163,6 +163,21 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     await page
       .getByRole("option", { name: "Testmodell 2", exact: true })
       .click();
+    const modelInfo = connection.getByRole("button", {
+      name: "Informationen zum Modell Testmodell 2",
+      exact: true,
+    });
+    await modelInfo.click();
+    await expect(
+      page.getByText("Token-Nutzung", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Für dieses Modell wurde noch kein Token-Verbrauch gemeldet.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await modelInfo.click();
     await connection
       .getByRole("button", { name: "Schließen", exact: true })
       .click();

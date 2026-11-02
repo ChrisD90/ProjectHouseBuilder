@@ -15,6 +15,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, error, Row, success, useConfirm, useConfirmVisible, useModalLayer } from './core';
+import { ModelInfo } from './model-info';
 export function useServices(navigate: (url: string) => void) {
   const { setExternal } = useModalLayer();
   const confirming = useConfirmVisible(),
@@ -336,22 +337,30 @@ export function useServices(navigate: (url: string) => void) {
             )}
           </Group>
           {aiQuery.data?.sharing && (
-            <Select
-              label="Modell"
-              value={state.current.model}
-              comboboxProps={{ zIndex: 600 }}
-              onChange={(value) => {
-                setModel(value);
-                try {
-                  if (value) localStorage.setItem('phb-chatgpt-model', value);
-                  else localStorage.removeItem('phb-chatgpt-model');
-                } catch {}
-              }}
-              data={(models.data?.models || []).map((m: Row) => ({
-                value: m.slug,
-                label: m.title || m.name || m.slug,
-              }))}
-            />
+            <Group align="end" wrap="nowrap">
+              <Select
+                style={{ flex: 1, minWidth: 0 }}
+                label="Modell"
+                value={state.current.model}
+                comboboxProps={{ zIndex: 600 }}
+                onChange={(value) => {
+                  setModel(value);
+                  try {
+                    if (value) localStorage.setItem('phb-chatgpt-model', value);
+                    else localStorage.removeItem('phb-chatgpt-model');
+                  } catch {}
+                }}
+                data={(models.data?.models || []).map((m: Row) => ({
+                  value: m.slug,
+                  label: m.title || m.name || m.slug,
+                }))}
+              />
+              <ModelInfo
+                slug={currentModel || ''}
+                label={modelLabel || 'Modell'}
+                lastRequest={aiQuery.data?.usage?.last_request}
+              />
+            </Group>
           )}
           {models.error && (
             <Alert color="red">
