@@ -43,6 +43,7 @@ import { PageHeader } from './page-layout';
 import { useDirtyGuard } from './shell';
 import { ActionBar, SearchField, StatusPill, useViewState } from './ui';
 import { SelfWorkAI } from './self-work-ai';
+import { SelfWorkSteps } from './self-work-steps';
 import { draftOf, emptyPlan, newID } from './self-work-types';
 import type { Material, Plan, PlanDraft, Proposal, Step, Tool } from './self-work-types';
 import './self-work.css';
@@ -177,6 +178,7 @@ export function SelfWorkPage() {
     validate: { title: (value) => (value.trim() ? null : 'Bitte eine Bezeichnung eingeben.') },
   });
   const [supplyDetail, setSupplyDetail] = useState<string | null>(null);
+  const [draggingStep, setDraggingStep] = useState(false);
   function addStep() {
     const row: Step = { id: newID(), title: '', notes: '', done: false };
     form.setFieldValue('steps', [...form.values.steps, row]);
@@ -521,6 +523,7 @@ export function SelfWorkPage() {
         original={form.getInitialValues()}
         busy={busy}
         suspended={aiOpen}
+        closeOnEscape={!draggingStep}
         onClose={() => setOpened(false)}
       >
         <form
@@ -665,33 +668,15 @@ export function SelfWorkPage() {
                   onAdd={addStep}
                   full={form.values.steps.length >= 100}
                 >
-                  {!supplyDetail &&
-                    form.values.steps.map((row, index) => (
-                      <div className="self-work-step-row" key={row.id}>
-                        <Checkbox
-                          checked={row.done}
-                          aria-label={'Schritt ' + (index + 1) + ' erledigt'}
-                          onChange={(event) =>
-                            stepChange(index, { done: event.currentTarget.checked })
-                          }
-                        />
-                        <UnstyledButton
-                          className="self-work-step-link"
-                          aria-label={'Details: ' + (row.title || 'Arbeitsschritt ' + (index + 1))}
-                          onClick={() => setSupplyDetail(row.id)}
-                        >
-                          <Text
-                            component="span"
-                            truncate
-                            title={row.title}
-                            td={row.done ? 'line-through' : undefined}
-                            c={row.done ? 'dimmed' : undefined}
-                          >
-                            {row.title || 'Arbeitsschritt ohne Bezeichnung'}
-                          </Text>
-                        </UnstyledButton>
-                      </div>
-                    ))}
+                  {!supplyDetail && (
+                    <SelfWorkSteps
+                      onDraggingChange={setDraggingStep}
+                      steps={form.values.steps}
+                      onChange={(rows) => form.setFieldValue('steps', rows)}
+                      onOpen={setSupplyDetail}
+                      disabled={busy}
+                    />
+                  )}
                   {!form.values.steps.length && (
                     <Text size="sm" c="dimmed">
                       Plane deine Arbeit in einer sinnvollen Reihenfolge. Das Abhaken gilt nur für

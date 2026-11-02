@@ -436,6 +436,31 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
       ['Material (25)','Material 25','Zurück zur Materialliste','Material hinzufügen'],
       ['Werkzeuge (25)','Werkzeug 25','Zurück zur Werkzeugliste','Werkzeug hinzufügen']]) {
       await edit.getByRole('tab',{name:tabName,exact:true}).click();
+      if(tabName.startsWith('Schritte')) {
+        const first=await edit.getByRole('button',{name:'Arbeitsschritt 1 verschieben',exact:true}).boundingBox();
+        const third=await edit.getByRole('button',{name:'Arbeitsschritt 3 verschieben',exact:true}).boundingBox();
+        await page.mouse.move(first.x+first.width/2,first.y+first.height/2);
+        await page.mouse.down();
+        await page.mouse.move(third.x+third.width/2,third.y+third.height/2,{steps:12});
+        await page.mouse.up();
+        await expect(edit.locator('.self-work-step-link').first()).toHaveText('Schritt 2');
+        await expect(edit.locator('.self-work-step-link').nth(2)).toHaveText('Schritt 1');
+        const grip=edit.getByRole('button',{name:'Arbeitsschritt 3 verschieben',exact:true});
+        await grip.focus();await page.keyboard.press('Space');
+        await expect(grip).toHaveAttribute('aria-pressed','true');
+        await page.keyboard.press('ArrowUp');
+        await expect(page.locator('[id^="DndLiveRegion-"]')).toContainText('Neue Position 2.');
+        await page.keyboard.press('Space');
+        await expect(edit.locator('.self-work-step-link').nth(1)).toHaveText('Schritt 1');
+        const cancelGrip=edit.getByRole('button',{name:'Arbeitsschritt 2 verschieben',exact:true});
+        await cancelGrip.focus();await page.keyboard.press('Space');
+        await expect(cancelGrip).toHaveAttribute('aria-pressed','true');
+        await page.keyboard.press('ArrowDown');
+        await expect(page.locator('[id^="DndLiveRegion-"]')).toContainText('Neue Position 3.');
+        await page.keyboard.press('Escape');
+        await expect(edit.locator('.self-work-step-link').nth(1)).toHaveText('Schritt 1');
+        await expect(edit.locator('.self-work-step-number').first()).toHaveText('1.');
+      }
       const header=edit.locator('.self-work-list-header'),content=edit.locator('.self-work-list-content');
       const beforeHeader=await header.boundingBox();
       assert(await content.evaluate(n=>n.scrollHeight>n.clientHeight));
@@ -452,6 +477,7 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     await edit.getByRole('button',{name:'Eigenleistung speichern',exact:true}).click();
     await expect(edit).toHaveCount(0);
     assert.equal((await read()).plans[0].steps[24].done,true);
+    assert.deepEqual((await read()).plans[0].steps.slice(0,3).map(x=>x.title),['Schritt 2','Schritt 1','Schritt 3']);
     await page.request.delete(base+'/api/self-work/'+longID,{headers});
     assert.deepEqual(errors, []);
     console.log("PASS archive/reopen/delete and responsive light/dark DIY UI.");

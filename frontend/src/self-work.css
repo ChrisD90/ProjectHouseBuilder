@@ -50,6 +50,33 @@
   border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--mantine-radius-md);
 }
+.self-work-sortable-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.self-work-step-row {
+  position: relative;
+  background: var(--mantine-color-body);
+  gap: 8px;
+}
+.self-work-step-number {
+  min-width: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.self-work-step-grip {
+  touch-action: none;
+  cursor: grab;
+  flex-shrink: 0;
+}
+.self-work-step-grip:active {
+  cursor: grabbing;
+}
+.self-work-step-dragging {
+  z-index: 2;
+  box-shadow: var(--mantine-shadow-md);
+  border-color: var(--mantine-primary-color-filled);
+}
 .self-work-step-link {
   flex: 1;
   min-width: 0;

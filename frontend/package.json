@@ -21,6 +21,9 @@
     "test:visual": "../.venv/bin/python ../dev/ui_browser_smoke.py visual"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@mantine/core": "^8.3.0",
     "@mantine/dates": "^8.3.0",
     "@mantine/form": "^8.3.0",

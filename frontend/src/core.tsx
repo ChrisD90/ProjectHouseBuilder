@@ -147,6 +147,7 @@ export function Editor({
   suspended,
   changes,
   original,
+  closeOnEscape = true,
 }: {
   opened: boolean;
   title: string;
@@ -158,6 +159,7 @@ export function Editor({
   suspended?: boolean;
   changes?: Record<string, unknown>;
   original?: Record<string, unknown>;
+  closeOnEscape?: boolean;
 }) {
   const ask = useConfirm(),
     confirming = useModalLayer().blocked,
@@ -165,7 +167,7 @@ export function Editor({
   const fieldset = useRef<HTMLFieldSetElement>(null);
   React.useEffect(() => {
     if (opened && !dirty)
-      (window as any).PHBRequests?.snapshot(fieldset.current?.closest('[role=dialog]'),original);
+      (window as any).PHBRequests?.snapshot(fieldset.current?.closest('[role=dialog]'), original);
   }, [opened, JSON.stringify(original)]);
   return (
     <Modal
@@ -177,7 +179,7 @@ export function Editor({
       }}
       title={title}
       closeOnClickOutside={false}
-      closeOnEscape={!busy && !confirming && !covered}
+      closeOnEscape={closeOnEscape && !busy && !confirming && !covered}
       withCloseButton
       closeButtonProps={{ 'aria-label': 'Schließen', disabled: busy || covered }}
       size="lg"
