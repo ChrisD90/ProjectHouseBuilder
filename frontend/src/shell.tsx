@@ -33,6 +33,7 @@ import {
   IconReceipt,
   IconSparkles,
   IconUsers,
+  IconTool,
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -43,9 +44,11 @@ import { Costs, Documents, Energy, MasterData } from './pages';
 import { fundingDocumentOnly, projectID, workspaceURL } from './project-context';
 import { useServices } from './services';
 import { WorkPage, WorkProvider } from './work';
+import { SelfWorkPage } from './self-work';
 const items = [
   ['/', 'Bauzeitenplan', IconCalendar],
   ['/aufgaben', 'To-dos & Notizen', IconListCheck],
+  ['/eigenleistungen', 'Eigenleistungen', IconTool],
   ['/kosten', 'Kosten & Budget', IconChartBar],
   ['/angebote', 'Angebote', IconFiles],
   ['/belege', 'Rechnungen & Belege', IconReceipt],
@@ -56,14 +59,21 @@ const items = [
   ['/daten', 'Daten & Sicherung', IconDatabase],
 ] as const;
 const navigationGroups = [
-  { label: 'Projekt', paths: ['/', '/aufgaben'] },
+  { label: 'Projekt', paths: ['/', '/aufgaben', '/eigenleistungen'] },
   {
     label: 'Finanzen',
     paths: ['/kosten', '/angebote', '/belege', '/finanzierung', '/energieplanung'],
   },
   { label: 'Verwaltung', paths: ['/dokumente', '/stammdaten', '/daten'] },
 ];
-const native = new Set(['/aufgaben', '/kosten', '/stammdaten', '/energieplanung', '/dokumente']);
+const native = new Set([
+  '/aufgaben',
+  '/kosten',
+  '/stammdaten',
+  '/energieplanung',
+  '/dokumente',
+  '/eigenleistungen',
+]);
 const GuardContext = createContext<(guard: () => boolean) => () => void>(() => () => {});
 export function useDirtyGuard(dirty: boolean) {
   const register = useContext(GuardContext);
@@ -456,6 +466,8 @@ export function App() {
             >
               {location.pathname === '/aufgaben' ? (
                 <WorkPage />
+              ) : location.pathname === '/eigenleistungen' ? (
+                <SelfWorkPage />
               ) : location.pathname === '/stammdaten' ? (
                 <MasterData />
               ) : location.pathname === '/kosten' ? (

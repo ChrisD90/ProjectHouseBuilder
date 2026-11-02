@@ -22,7 +22,7 @@ def content_status(db, owner, categories, trades):
         'trade':'eigene Gewerke','setting':'Projekteinstellungen','project_work':'To-dos oder Notizen',
         'offer':'Angebote','receipt':'Rechnungen oder Belege','import_job':'Importdaten','schedule_history':'Planungshistorien',
         'project_document':'Dokumente','document':'Angebotsdokumente','funding':'Förderungen',
-        'funding_plan':'Förderplanungen','planning_browser_state':'KI-Planungsentwürfe'}
+        'funding_plan':'Förderplanungen','planning_browser_state':'KI-Planungsentwürfe','self_work_plan':'Eigenleistungen'}
     for table in db.metadata.tables.values():
         if 'project_id' not in table.c:continue
         query=select(table).where(table.c.project_id==owner)

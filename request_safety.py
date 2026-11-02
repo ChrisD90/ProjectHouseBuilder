@@ -39,7 +39,7 @@ def register(app,db,Project,models):
         'categories':'Category','trades':'Trade','receipts':'Receipt','offers':'Offer',
         'project-documents':'ProjectDocument','project-work':'ProjectWork','funding':'Funding',
         'costs':'CostItem','budget/lines':'BudgetLine','financing/loans':'Loan',
-        'financing/equity':'EquityAccount'}.items() if name in models}
+        'financing/equity':'EquityAccount','self-work':'SelfWorkPlan'}.items() if name in models}
     fields={'project':'projects','projects':'projects','tasks':'tasks','phases':'phases',
         'contractors':'contractors','categories':'categories','trades':'trades','receipts':'receipts',
         'offers':'offers','documents':'project-documents','funding':'funding','loans':'financing/loans',
@@ -185,6 +185,7 @@ def register(app,db,Project,models):
                         if token:versions['/api/'+family+'/'+str(ident)]=token
                     for key,entry in value.items():
                         next_family=fields.get(key)
+                        if key in ('plan','plans') and request.path.startswith('/api/self-work'):next_family='self-work'
                         if key in ('items','entries') and request.path.startswith('/api/project-work'):next_family='project-work'
                         if key=='items' and request.path.startswith('/api/costs'):next_family='costs'
                         if key=='documents' and request.path.startswith('/api/offers'):next_family=None

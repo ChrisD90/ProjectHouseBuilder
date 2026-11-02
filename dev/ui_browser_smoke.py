@@ -11,6 +11,9 @@ import backup_manager
 root=Path(sys.argv[2]);backups=root.parent/'backups';backups.mkdir(exist_ok=True)
 backup_manager.ROOT=root;backup_manager.CONFIG_PATH=root/'backup-config.json'
 backup_manager.configure(str(backups))
+if __import__('os').environ.get('PHB_UI_FIXTURE')=='self-work':
+ from dev.self_work_fixture import install
+ install(b)
 with b.app.app_context():b.initialize()
 from werkzeug.serving import make_server
 server=make_server('127.0.0.1',0,b.app,threaded=True)
@@ -24,6 +27,8 @@ def run(script):
         (root/'static').symlink_to(ROOT/'static',target_is_directory=True)
         source=work/'server.py';source.write_text(SERVER)
         env={**os.environ,'DATABASE_URL':'sqlite:///'+str(work/'test.db'),'PHB_APP_ROOT':str(root),'PHB_CHATGPT_HOME':str(work/'auth'),'APP_PASSWORD':''}
+        env.pop('PHB_UI_FIXTURE',None)
+        if script=='tests/browser_self_work.cjs':env['PHB_UI_FIXTURE']='self-work'
         if not env.get('CHROMIUM_PATH'):
             import shutil
             env['CHROMIUM_PATH']=shutil.which('chromium') or subprocess.check_output(['node','-e',"console.log(require('./frontend/node_modules/playwright').chromium.executablePath())"],cwd=ROOT,text=True).strip()
@@ -47,5 +52,5 @@ def run(script):
             finally:process.terminate();process.wait(timeout=10)
 
 if __name__=='__main__':
-    scripts=sys.argv[1:] or ['tests/browser_react_ui.cjs','tests/browser_multi_projects.cjs','tests/browser_project_lifecycle.cjs','tests/browser_receipt_phase_ui.cjs','tests/browser_project_start.cjs','tests/browser_project_backups.cjs','tests/browser_request_safety.cjs','visual']
+    scripts=sys.argv[1:] or ['tests/browser_react_ui.cjs','tests/browser_multi_projects.cjs','tests/browser_project_lifecycle.cjs','tests/browser_receipt_phase_ui.cjs','tests/browser_project_start.cjs','tests/browser_project_backups.cjs','tests/browser_request_safety.cjs','tests/browser_self_work.cjs','visual']
     for script in scripts:run(script)

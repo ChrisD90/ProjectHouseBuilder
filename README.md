@@ -50,6 +50,8 @@ Die Git-Regeln schließen unter anderem `sanierung.db`, `*.db`, `*.db-wal`, `*.d
 
 ## Funktionen
 
+Der neue eigenständige Bereich **Eigenleistungen** bietet Arbeitsschritte, Material- und Werkzeuglisten, optionale Arbeitspaket-Verknüpfungen sowie eine interaktive ChatGPT-Planung mit Vorschau und manueller Prüfung. Bestehende Termine und Buchungen bleiben unabhängig. [Ablauf und Datenhaltung](docs/EIGENLEISTUNGEN.md).
+
 - **Bauzeitenplan (`/`):** Arbeitspakete und Bauphasen können manuell gepflegt werden. Bei leerem Plan kann ChatGPT aus der Projektbeschreibung einen prüfbaren Erstvorschlag mit Abhängigkeiten erstellen; übernommen wird er erst nach ausdrücklicher Freigabe. Aufgaben können danach bearbeitet, gelöscht und nach Eigen-/Fremdleistung gefiltert werden.
 - **Kosten & Budget:** automatisch aggregierte Kostenprognose mit Finanzierungsrahmen, Auftrags-, Rechnungs- und Zahlungsstand.
 - **Angebote (`/angebote`):** Zwei Erfassungswege: PDF hochladen, analysierte Werte prüfen und in die Angebotsliste übernehmen; oder ein Angebot direkt mit Anbieter, Kategorie und Bruttosumme manuell erfassen. Dort vergleichen, jederzeit korrigieren, annehmen oder ablehnen. Abgelehnte Angebote liegen in einer eingeklappten Liste; die Übersicht zeigt die Gesamtsumme aller angenommenen Aufträge. Nur angenommene Angebote beeinflussen die Kostenprognose. Rechnungen und Zahlungen bleiben im Belegjournal.

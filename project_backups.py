@@ -231,6 +231,10 @@ def load_rows(path, db, owner):
     expected = set(tables) - EPHEMERAL
     # Backups from revision 0028 predate both plan tables; they legitimately contain no plans.
     missing=expected-set(payload['tables'])
+    # Revision 0032 adds an independent, initially empty planning area.
+    if 'self_work_plan' in missing:
+        payload['tables']['self_work_plan']=[]
+        missing.remove('self_work_plan')
     if missing=={'funding_plan','funding_plan_offer'} and not (set(payload['tables'])-expected):
         for name in missing:payload['tables'][name]=[]
     if set(payload['tables']) != expected: raise ValueError('Backup-Schema passt nicht zur Anwendung. Bitte die passende App-Version verwenden.')

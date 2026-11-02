@@ -107,6 +107,15 @@ class ProjectBackupTest(unittest.TestCase):
         restored=b.db.session.get(b.ImportJob,ident)
         self.assertEqual(restored.status,'Fertig');self.assertEqual(restored.lease_owner,'');self.assertIsNone(restored.lease_until)
 
+    def test_pre_0032_archive_adds_only_empty_self_work_table(self):
+        path=self.create()
+        self.rewrite(path,lambda data:data['tables'].pop('self_work_plan'))
+        _,rows=backups.load_rows(path,b.db,1)
+        self.assertEqual(rows['self_work_plan'],[])
+        self.rewrite(path,lambda data:data['tables'].pop('task'))
+        with self.assertRaisesRegex(ValueError,'Schema'):
+            backups.load_rows(path,b.db,1)
+
     def test_archives_lists_and_retention_contain_only_selected_project(self):
         other=self.create(self.other)
         for _ in range(4):path=self.create()

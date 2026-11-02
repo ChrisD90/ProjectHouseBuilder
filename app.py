@@ -95,7 +95,7 @@ def logout():
 
 # React owns the shared frame; the reviewed classic workflows remain available
 # as isolated same-origin documents while their native components are migrated.
-REACT_ROUTES={'/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben'}
+REACT_ROUTES={'/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen'}
 
 @app.before_request
 def react_frontend():
@@ -652,6 +652,10 @@ ReceiptCancellation, ReceiptCancellationReversal = register_cancellations(
     validate_ledger=finance_services['validate_ledger'],
     payment_source_exists=finance_services['payment_source_exists'])
 
+
+# Independent DIY plans: registration adds no writes to existing domain records.
+from self_work import register_self_work
+SelfWorkPlan=register_self_work(app,db,Task,ai_required=_ai_request_required,chatgpt=chatgpt,extract_json=extract_json)
 
 # Backup settings belong to the server; a browser can only select reachable/mounted paths.
 PlanningBrowserState, planning_get, planning_put, planning_pop = register_planning_state(db)

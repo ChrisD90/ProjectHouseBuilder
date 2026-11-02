@@ -1,0 +1,37 @@
+.self-work-page .self-work-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.self-work-page .self-work-card h3 {
+  font-size: 19px;
+  overflow-wrap: anywhere;
+}
+.self-work-page .self-work-task-label {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding-block: 5px;
+}
+.self-work-page .self-work-empty {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.self-work-page .self-work-empty > svg {
+  color: var(--brand-accent);
+}
+@media (max-width: 650px) {
+  .self-work-tabs .mantine-Tabs-list {
+    flex-wrap: nowrap;
+  }
+  .self-work-tabs .mantine-Tabs-tab {
+    min-width: 0;
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+}

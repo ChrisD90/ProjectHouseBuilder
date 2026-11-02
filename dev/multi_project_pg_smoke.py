@@ -53,6 +53,15 @@ def main():
                     b.db.session.commit()
                     b.RECEIPT_ROOT.mkdir(parents=True,exist_ok=True)
                     (b.RECEIPT_ROOT/('pg-'+str(owner)+'.pdf')).write_bytes(b'%PDF-test-'+str(owner).encode())
+            diy=[]
+            for owner,task in zip((1,pid),tasks):
+                result=client.post('/api/self-work',headers=headers(owner),json=dict(title='Eigenleistung '+str(owner),task_id=task,
+                    steps=[dict(title='Vorbereitung',done=False)],materials=[dict(title='Material',quantity=2.5,unit='kg',unit_price=3.25)],tools=[]))
+                assert result.status_code==201,result.json;diy.append(result.json['plan']['id'])
+                assert result.json['plan']['estimated_cost']==8.13
+            assert len(client.get('/api/self-work',headers=headers(pid)).json['plans'])==1
+            assert client.patch('/api/self-work/'+str(diy[0]),headers=headers(pid),json={'notes':'Fremdes Projekt'}).status_code==404
+            print('PASS PostgreSQL 17: independent DIY plans, Decimal estimates and scoped task references')
             assert client.post(f'/api/offers/{offers[1]}/accept',headers=headers(pid),data={'mode':'offer','confirm':'true'}).status_code==201
             assert client.get('/api/costs').json['summary']['planned']==0
             assert client.get('/api/costs',headers=headers(pid)).json['summary']['planned']==1000
