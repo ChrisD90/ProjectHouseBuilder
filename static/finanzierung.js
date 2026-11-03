@@ -40,14 +40,15 @@ function fundingReceipts(source,id,finance=state){
  return amounts;
 }
 function fundingReceiptButton(source,id){
- const prefix=source==='loan'?'loan':'equity',close=$('close'+(source==='loan'?'Loan':'Equity'));
- let button=$(prefix+'ReceiptButton');
+ const prefix=source==='loan'?'loan':'equity';
+ const card=document.querySelector(`[data-${prefix}="${id}"]`)?.closest('article');
+ if(!card)return;
+ let button=card.querySelector('.finance-receipt-button');
  if(!button){
-  const actions=document.createElement('div');actions.className='finance-detail-actions';close.before(actions);actions.append(close);
-  button=document.createElement('button');button.type='button';button.id=prefix+'ReceiptButton';button.className='finance-receipt-button';actions.prepend(button);
-  button.onclick=()=>openFundingReceipts(source,Number($(prefix+'Form').elements.namedItem('id').value),button);
+  button=document.createElement('button');button.type='button';button.className='finance-receipt-button';card.append(button);
+  button.dataset.receiptSource=source;button.dataset.accountId=id;
+  button.onclick=event=>{event.stopPropagation();openFundingReceipts(source,id,button);};
  }
- button.hidden=!id;
  const count=id?fundingReceipts(source,id).size:0;
  button.title=button.ariaLabel='Zugeordnete Rechnungen & Belege: '+count;
  button.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z"/><path d="M9 7h6M9 11h6M9 15h3"/></svg><span class="finance-receipt-count">'+count+'</span>';
@@ -131,6 +132,8 @@ function render(){
  $('usageHistory').innerHTML=(state.usages||[]).map(u=>`<article class="usage-history-row ${u.status==='Zurückgenommen'?'is-reversed':''}"><div><strong>${esc(usageKinds[u.kind]||'Kreditverwendung')} · ${euro(u.amount)}</strong><span>${esc(u.usage_date)} · ${esc(u.loan_name)} · ${esc(u.purpose)}${u.receipt_name?' · '+esc(u.receipt_name):''}${u.notes?' · '+esc(u.notes):''}${u.document?` · <a href="${esc(fileView(u.document.download_url,u.document.filename))}" target="_blank" rel="noopener">${esc(u.document.filename)}</a>`:''}</span></div><div><span class="drawdown-status-badge">${esc(u.status)}</span>${u.status==='Aktiv'?`<button type="button" class="danger" data-reverse-usage="${u.id}">Zurücknehmen</button>`:''}</div></article>`).join('')||'<p class="hint">Noch keine Kreditverwendung erfasst.</p>';
 
  fillOptions();
+ state.loans.forEach(account=>fundingReceiptButton('loan',account.id));
+ state.equity.forEach(account=>fundingReceiptButton('equity',account.id));
  document.querySelectorAll('[data-loan]').forEach(el=>el.onclick=()=>openLoan(Number(el.dataset.loan)));
  document.querySelectorAll('[data-use-loan]').forEach(el=>el.onclick=()=>openUsage(Number(el.dataset.useLoan)));
  document.querySelectorAll('[data-equity]').forEach(el=>el.onclick=()=>openEquity(Number(el.dataset.equity)));
@@ -195,11 +198,10 @@ function openLoan(id=null){
  $('loanAiDetails').open=false;
  $('loanDocUploadDetails').open=false;
  updateLoanEditorMode(id);
- fundingReceiptButton('loan',id);
  if(loan){documentRows(loan);showLoanDrawdownProfile(loan);}
  loanFlow.open();
 }
-function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;fundingReceiptButton('equity',id);equityFlow.open()}
+function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;equityFlow.open()}
 $('newLoan').onclick=()=>openLoan();$('newEquity').onclick=()=>openEquity();
 
 function usageAction(){return $('usageForm').elements.namedItem('action').value}

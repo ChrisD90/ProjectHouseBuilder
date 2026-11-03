@@ -273,10 +273,14 @@
 :root[data-phb-theme="dark"] .phb-page-finanzierung .status-abgelehnt{background:#46272a;color:var(--ui-danger)!important}
 :root[data-phb-theme="dark"] .phb-page-finanzierung .status-zurückgenommen{background:#303b47;color:var(--ui-muted)!important}
 :root[data-phb-theme="dark"] .phb-page-finanzierung :is(.drawdown-ai,#drawdownStatus:not(:empty)){background:var(--ui-soft-accent);border-color:var(--ui-line);color:var(--ui-ink-soft)}
-/* Receipt actions stay in the account detail header, matching other source dialogs. */
-.phb-page-finanzierung .finance-detail-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.phb-page-finanzierung .modal-head>h2{min-width:0;overflow-wrap:anywhere}
-.phb-page-finanzierung button.finance-receipt-button{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-height:32px;padding:0;border:1px solid var(--ui-line);border-radius:9px;background:var(--ui-surface);color:var(--ui-ink);overflow:visible}
+/* Receipt actions sit in the top-right corner of each financing card. */
+.phb-page-finanzierung :is(.loan-overview-card,.equity-overview-card){position:relative}
+.phb-page-finanzierung .loan-card-head{padding-right:44px}
+.phb-page-finanzierung .equity-overview-card{display:grid;grid-template-columns:minmax(0,1fr)}
+.phb-page-finanzierung .equity-overview-card>div{padding-right:44px}
+.phb-page-finanzierung .equity-overview-card>[data-equity]{justify-self:end}
+.phb-page-finanzierung :is(.loan-card-head,.equity-overview-card)>div{min-width:0;overflow-wrap:anywhere}
+.phb-page-finanzierung button.finance-receipt-button{position:absolute;top:14px;right:14px;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-height:32px;padding:0;border:1px solid var(--ui-line);border-radius:9px;background:var(--ui-surface);color:var(--ui-ink);overflow:visible}
 .phb-page-finanzierung .finance-receipt-button[hidden]{display:none}
 .phb-page-finanzierung .finance-receipt-count{position:absolute;top:-7px;right:-7px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 3px;border:2px solid var(--ui-surface);border-radius:999px;background:var(--ui-soft-accent);color:var(--ui-accent);font-size:10px;font-weight:700;line-height:1}
 .phb-page-finanzierung .funding-receipt-dialog{width:min(920px,95vw)}
