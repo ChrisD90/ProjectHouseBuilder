@@ -20,6 +20,7 @@ import { Editor, ErrorBox, Row, api, money } from './core';
 import { Metrics, PageHeader } from './page-layout';
 import { RowAction, SearchField, useViewState } from './ui';
 import { LegacyCosts } from './legacy-costs';
+import { SortSelect, compareDate, compareText } from './list-sorting';
 export function Costs() {
   const query = useQuery({
       queryKey: ['cost-dashboard'],
@@ -28,6 +29,7 @@ export function Costs() {
     }),
     navigate = useNavigate();
   const [search, setSearch] = useViewState('search', ''),
+    [sort, setSort] = useViewState('sort', 'forecast-desc'),
     [group, setGroup] = useState<string | null>('category'),
     [detail, setDetail] = useState<Row | null>(null);
   const [legacy, setLegacy] = useState<Row | null>(null);
@@ -42,6 +44,20 @@ export function Costs() {
     ),
   );
   const groups = new Map<string, Row>();
+  function compareCost(a: Row, b: Row) {
+    if (sort === 'az') return compareText(a.name ?? a.title, b.name ?? b.title);
+    if (sort === 'za') return compareText(b.name ?? b.title, a.name ?? a.title);
+    if (sort === 'newest' || sort === 'oldest')
+      return (
+        compareDate(a.created_at, b.created_at, sort === 'newest') ||
+        compareText(a.name ?? a.title, b.name ?? b.title)
+      );
+    const key = sort === 'open-desc' ? 'open' : 'forecast';
+    return (
+      (sort === 'forecast-asc' ? 1 : -1) * (Number(a[key]) - Number(b[key])) ||
+      compareText(a.name ?? a.title, b.name ?? b.title)
+    );
+  }
   for (const r of filtered) {
     const name =
       (group === 'category' ? r.trade || r.category : r[group || 'category']) || 'Nicht zugeordnet';
@@ -60,7 +76,15 @@ export function Costs() {
     for (const key of ['forecast', 'committed', 'invoiced', 'paid', 'open'])
       g[key] += Number(r[key]) || 0;
   }
-  const grouped = [...groups.values()].sort((a, b) => b.forecast - a.forecast);
+  for (const g of groups.values()) {
+    g.rows.sort(compareCost);
+    const dates = g.rows
+      .map((r: Row) => r.created_at)
+      .filter(Boolean)
+      .sort();
+    g.created_at = sort === 'oldest' ? dates[0] : dates.at(-1);
+  }
+  const grouped = [...groups.values()].sort(compareCost);
   const issues = (data.dashboard?.issues || []).filter(
     (issue: Row) => !['unassigned', 'schedule'].includes(issue.kind),
   );
@@ -159,6 +183,15 @@ export function Costs() {
                 { value: 'company', label: 'Firma' },
               ]}
             />
+            <SortSelect
+              value={sort}
+              onChange={setSort}
+              extra={[
+                { value: 'forecast-desc', label: 'Höchste Prognose' },
+                { value: 'forecast-asc', label: 'Niedrigste Prognose' },
+                { value: 'open-desc', label: 'Höchster offener Betrag' },
+              ]}
+            />
           </Group>
         </Group>
         <Table.ScrollContainer minWidth={760}>
@@ -208,41 +241,44 @@ export function Costs() {
         onClose={() => setDetail(null)}
       >
         <Stack>
-          {detail?.rows.map((r: Row, i: number) => (
-            <Paper key={i} withBorder p="md">
-              <Group justify="space-between">
-                <div>
-                  <Text size="sm" fw={600}>
-                    {r.title}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {[r.source, r.company, r.basis].filter(Boolean).join(' · ')}
-                  </Text>
-                </div>
-                <Button
-                  variant="subtle"
-                  size="xs"
-                  rightSection={<IconArrowRight size={15} />}
-                  onClick={() => {
-                    if (r.legacy) {
+          {detail?.rows
+            .slice()
+            .sort(compareCost)
+            .map((r: Row, i: number) => (
+              <Paper key={i} withBorder p="md">
+                <Group justify="space-between">
+                  <div>
+                    <Text size="sm" fw={600}>
+                      {r.title}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {[r.source, r.company, r.basis].filter(Boolean).join(' · ')}
+                    </Text>
+                  </div>
+                  <Button
+                    variant="subtle"
+                    size="xs"
+                    rightSection={<IconArrowRight size={15} />}
+                    onClick={() => {
+                      if (r.legacy) {
+                        setDetail(null);
+                        setLegacy(r.legacy);
+                        return;
+                      }
                       setDetail(null);
-                      setLegacy(r.legacy);
-                      return;
-                    }
-                    setDetail(null);
-                    navigate(r.url);
-                  }}
-                >
-                  Öffnen
-                </Button>
-              </Group>
-              <Group mt="sm">
-                <Text size="xs">Prognose {money(r.forecast)}</Text>
-                <Text size="xs">Abgerechnet {money(r.invoiced)}</Text>
-                <Text size="xs">Bezahlt {money(r.paid)}</Text>
-              </Group>
-            </Paper>
-          ))}
+                      navigate(r.url);
+                    }}
+                  >
+                    Öffnen
+                  </Button>
+                </Group>
+                <Group mt="sm">
+                  <Text size="xs">Prognose {money(r.forecast)}</Text>
+                  <Text size="xs">Abgerechnet {money(r.invoiced)}</Text>
+                  <Text size="xs">Bezahlt {money(r.paid)}</Text>
+                </Group>
+              </Paper>
+            ))}
         </Stack>
       </Editor>
     </div>

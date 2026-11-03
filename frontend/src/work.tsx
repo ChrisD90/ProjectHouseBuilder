@@ -41,6 +41,8 @@ import {
   useModalLayer,
 } from './core';
 import { useDirtyGuard } from './shell';
+import { SortSelect, compareText, compareDate } from './list-sorting';
+import { useViewState } from './ui';
 
 type Source = { type: string; id: number; label?: string };
 const initial: Row = {
@@ -425,17 +427,29 @@ function WorkTabs({
     </Tabs>
   );
 }
-function WorkRows({ rows, loading }: { rows: Row[]; loading?: boolean }) {
+function WorkRows({
+  rows,
+  loading,
+  sort = 'default',
+}: {
+  rows: Row[];
+  loading?: boolean;
+  sort?: string;
+}) {
   const { edit, mutate, busy, pendingDone, goToSource } = useWork();
   return (
     <Stack gap="sm">
       {[...rows]
-        .sort(
-          (a, b) =>
-            Number(a.done) - Number(b.done) ||
-            (a.due_on || '9999').localeCompare(b.due_on || '9999') ||
-            b.id - a.id,
-        )
+        .sort((a, b) => {
+          if (sort === 'az') return compareText(a.title, b.title) || a.id - b.id;
+          if (sort === 'za') return compareText(b.title, a.title) || a.id - b.id;
+          if (sort === 'newest') return b.id - a.id;
+          if (sort === 'oldest') return a.id - b.id;
+          if (sort === 'due') return compareDate(a.due_on, b.due_on) || b.id - a.id;
+          if (sort === 'status')
+            return Number(a.done) - Number(b.done) || compareText(a.title, b.title) || a.id - b.id;
+          return Number(a.done) - Number(b.done) || compareDate(a.due_on, b.due_on) || b.id - a.id;
+        })
         .map((item) => (
           <Paper withBorder p="md" radius="md" key={item.id}>
             <Group align="start" wrap="nowrap">
@@ -597,10 +611,14 @@ export function SourceWork({
 }
 export function WorkPage() {
   const { rows, query, sources, create, open, busy } = useWork();
+  const [todoSort, setTodoSort] = useViewState('sort', 'default');
+  const [noteSort, setNoteSort] = useViewState('note-sort', 'newest');
   const [search, setSearch] = useState(''),
     [tab, setTab] = useState<string | null>('todo'),
     [showDone, setShowDone] = useState(false),
     [archived, setArchived] = useState(false);
+  const sort = tab === 'todo' ? todoSort : noteSort,
+    setSort = tab === 'todo' ? setTodoSort : setNoteSort;
   const [params, setParams] = useSearchParams(),
     handled = useRef('');
   useEffect(() => {
@@ -648,13 +666,28 @@ export function WorkPage() {
       <Paper className="paper">
         <Group justify="space-between" mb="md">
           <WorkTabs value={tab} onChange={setTab} />
-          <TextInput
-            aria-label="Einträge suchen"
-            placeholder="Einträge suchen"
-            leftSection={<IconSearch size={16} />}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <Group>
+            <TextInput
+              aria-label="Einträge suchen"
+              placeholder="Einträge suchen"
+              leftSection={<IconSearch size={16} />}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <SortSelect
+              value={sort}
+              onChange={setSort}
+              defaultLabel={tab === 'todo' ? 'Offene & Fälligkeit' : undefined}
+              extra={
+                tab === 'todo'
+                  ? [
+                      { value: 'due', label: 'Fälligkeit' },
+                      { value: 'status', label: 'Offene zuerst' },
+                    ]
+                  : []
+              }
+            />
+          </Group>
         </Group>
         <Group mb="md">
           <Checkbox
@@ -671,6 +704,7 @@ export function WorkPage() {
           )}
         </Group>
         <WorkRows
+          sort={sort}
           loading={query.isPending}
           rows={rows.filter(
             (x: Row) =>

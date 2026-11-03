@@ -47,6 +47,7 @@ import { SelfWorkInvoices } from './self-work-invoices';
 import { draftOf, emptyPlan, newID } from './self-work-types';
 import type { Material, Plan, PlanDraft, Proposal, Step, Tool } from './self-work-types';
 import './self-work.css';
+import { SortSelect, compareText } from './list-sorting';
 
 type Listing = {
   plans: Plan[];
@@ -174,6 +175,7 @@ export function SelfWorkPage() {
     [failure, setFailure] = useState<unknown>(null),
     [tab, setTab] = useState<string | null>('overview');
   const [search, setSearch] = useViewState('self-work-search', ''),
+    [sort, setSort] = useViewState('sort', 'newest'),
     [status, setStatus] = useViewState('self-work-status', 'all'),
     [archive, setArchive] = useViewState('self-work-archive', 'active');
   const [invoicePlanID, setInvoicePlanID] = useState<number | null>(null);
@@ -348,14 +350,32 @@ export function SelfWorkPage() {
     setAIOpen(false);
     setTab('steps');
   }
-  const records = (query.data?.plans || []).filter(
-    (row) =>
-      row.archived === (archive === 'archived') &&
-      (status === 'all' || row.status === status) &&
-      [row.title, row.description, row.location, row.task_label].some((value) =>
-        value.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de')),
-      ),
-  );
+  const records = (query.data?.plans || [])
+    .filter(
+      (row) =>
+        row.archived === (archive === 'archived') &&
+        (status === 'all' || row.status === status) &&
+        [row.title, row.description, row.location, row.task_label].some((value) =>
+          value.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de')),
+        ),
+    )
+    .sort((a, b) => {
+      const title = compareText(a.title, b.title);
+      if (sort === 'az') return title || a.id - b.id;
+      if (sort === 'za') return -title || a.id - b.id;
+      if (sort === 'oldest') return a.id - b.id;
+      if (sort === 'status')
+        return (
+          ['Geplant', 'In Arbeit', 'Erledigt'].indexOf(a.status) -
+            ['Geplant', 'In Arbeit', 'Erledigt'].indexOf(b.status) ||
+          title ||
+          a.id - b.id
+        );
+      if (sort === 'planned-desc')
+        return b.estimated_cost - a.estimated_cost || title || a.id - b.id;
+      if (sort === 'actual-desc') return b.actual_cost - a.actual_cost || title || a.id - b.id;
+      return b.id - a.id;
+    });
   const taskOptions = (query.data?.tasks || []).map((task) => ({
     value: String(task.id),
     label: task.label,
@@ -403,6 +423,16 @@ export function SelfWorkPage() {
             data={[
               { value: 'active', label: 'Aktuelle Vorhaben' },
               { value: 'archived', label: 'Archiv' },
+            ]}
+          />
+          <SortSelect
+            label
+            value={sort}
+            onChange={setSort}
+            extra={[
+              { value: 'status', label: 'Status' },
+              { value: 'planned-desc', label: 'Höchste Plankosten' },
+              { value: 'actual-desc', label: 'Höchste Ist-Kosten' },
             ]}
           />
         </Group>

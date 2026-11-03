@@ -106,7 +106,7 @@ def register_self_work(app, db, Task, Receipt, *, ai_required, chatgpt, extract_
                     receipt_ids=[r.id for r in receipts],
                     receipts=[receipt_dict(r) for r in receipts],
                     costs_complete=bool(materials or tools) and all(r['quantity'] is not None and r['unit_price'] is not None for r in materials) and all(r['cost'] is not None for r in tools),
-                    updated_at=item.updated_at.isoformat())
+                    created_at=item.created_at.isoformat(), updated_at=item.updated_at.isoformat())
 
     def linked_receipts(ident):
         ids=list(db.session.scalars(select(SelfWorkReceipt.receipt_id).where(SelfWorkReceipt.plan_id==ident)))

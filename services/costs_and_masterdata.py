@@ -327,8 +327,19 @@ def register(runtime: ModuleType):
             if not target['company']:
                 contractor = contractors.get(receipt.contractor_id)
                 target['company'] = contractor.name if contractor else receipt.supplier or ''
+        receipt_by_id = {r.id: r for r in booked}
+        diy_by_id = {p['id']: p for p in diy}
         result = []
         for row in rows.values():
+            kind, ident = row['id'].split(':')
+            source = (lines.get(int(ident)) if kind == 'line' else
+                      item_by_id.get(int(ident)) if kind == 'item' else
+                      receipt_by_id.get(int(ident)) if kind == 'receipt' else None)
+            if kind == 'item' and source and source.offer_id:
+                source = offers.get(source.offer_id)
+            created = getattr(source, 'created_at', None)
+            row['created_at'] = created.isoformat() if created else (
+                diy_by_id.get(int(ident), {}).get('created_at', '') if kind == 'self-work' else '')
             if row['id'].startswith(('line:','item:')) and row['source']!='Angebot':
                 kind,ident=row['id'].split(':')
                 row['legacy']={'kind':kind,'id':int(ident),'title':row['title']}

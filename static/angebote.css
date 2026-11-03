@@ -341,3 +341,7 @@ body.phb-app.phb-page-angebote .offer-progress{background:var(--ui-line)}
 body.phb-app.phb-page-angebote .offer-progress>span{background:var(--ui-success)}
 body.phb-app.phb-page-angebote .offer-billing-warning .offer-progress>span{background:var(--ui-warning)}
 body.phb-app.phb-page-angebote .offer-billing-overrun .offer-progress>span{background:var(--ui-danger)}
+.offers-list-filters{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.offers-list-filters .offers-filter{min-width:0}
+.offers-list-filters select{width:210px;max-width:100%;height:36px;border-radius:8px;background:var(--ui-surface);border:1px solid var(--ui-line-strong);color:var(--ui-ink);font-size:14px}
+@media(max-width:600px){.offers-list-filters{width:100%}.offers-list-filters .offers-filter{flex:1 1 180px}.offers-list-filters select{width:100%;min-width:0}}

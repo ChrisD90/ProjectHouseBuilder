@@ -5,6 +5,36 @@
   const icon = name => `<svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#${name}"></use></svg>`;
   if (!$('offerImportForm') || !$('offerList')) return;
   let offers = [], categories = [], budgets = [], contractors = [], versionDrafts = [];
+  const sortKey='phb-offers-sort:'+(window.PHBProject?.id||new URLSearchParams(location.search).get('project_id')||'default');
+  const sortOptions=[['default','Gewerk & Status'],['az','A–Z'],['za','Z–A'],['newest','Neueste zuerst'],['oldest','Älteste zuerst'],['amount-desc','Höchster Betrag'],['amount-asc','Niedrigster Betrag'],['status','Status']];
+  const sortLabel=document.createElement('label');sortLabel.className='offers-filter offers-sort';sortLabel.textContent='Sortierung';
+  const sortSelect=document.createElement('select');sortSelect.id='offerSort';sortSelect.setAttribute('aria-label','Sortierung');
+  sortSelect.innerHTML=sortOptions.map(([value,label])=>`<option value="${value}">${label}</option>`).join('');
+  sortLabel.append(sortSelect);
+  const filterLabel=$('offerCategoryFilter').closest('label'),filters=document.createElement('div');filters.className='offers-list-filters';
+  filterLabel.before(filters);filters.append(filterLabel,sortLabel);
+  try{const saved=localStorage.getItem(sortKey);if(sortOptions.some(([value])=>value===saved))sortSelect.value=saved;}catch{}
+  function compareOffers(a,b){
+    const text=(x,y)=>String(x||'').localeCompare(String(y||''),'de',{numeric:true,sensitivity:'base'});
+    const name=text(a.vendor,b.vendor)||text(a.number,b.number);
+    const status={Angebot:0,Angenommen:1,Beauftragt:1,Abgelehnt:2};
+    const amount=(x,y,descending)=>{
+      const first=x.agreed_gross??x.gross,second=y.agreed_gross??y.gross;
+      if(first==null)return second==null?0:1;if(second==null)return -1;
+      return (Number(first)-Number(second))*(descending?-1:1);
+    };
+    switch(sortSelect.value){
+      case 'az':return name||a.id-b.id;
+      case 'za':return -name||a.id-b.id;
+      case 'newest':return b.id-a.id;
+      case 'oldest':return a.id-b.id;
+      case 'amount-desc':return amount(a,b,true)||name||a.id-b.id;
+      case 'amount-asc':return amount(a,b,false)||name||a.id-b.id;
+      case 'status':return (status[a.status]??9)-(status[b.status]??9)||name||a.id-b.id;
+      default:return text(a.category,b.category)||(status[a.status]??9)-(status[b.status]??9)||amount(a,b,false)||a.id-b.id;
+    }
+  }
+  sortSelect.onchange=()=>{try{localStorage.setItem(sortKey,sortSelect.value);}catch{}refreshUI();};
   let comparingOffers = false;
   let offerUploading = false;
   let currentPreviewDocument=null;
@@ -495,10 +525,9 @@
     filter.innerHTML=option('','Alle Kategorien',prev)+categories.map(c=>option(c,c,prev)).join('');
     filter.value=categories.includes(prev)?prev:'';
     const visible=offers.filter(o=>o.status!=='Entwurf'&&o.status!=='Abgelehnt'&&(!filter.value||o.category===filter.value));
-    const order={Angebot:0,Angenommen:1,Beauftragt:1};
-    visible.sort((a,b)=>a.category.localeCompare(b.category,'de')||(order[a.status]??9)-(order[b.status]??9)||(a.gross??Infinity)-(b.gross??Infinity));
+    visible.sort(compareOffers);
     $('offerList').innerHTML=visible.length ? visible.map(renderListed).join('') : '<p class="offer-empty">Noch keine Angebote in der Liste. Du kannst oben manuell ein Angebot anlegen oder ein PDF hochladen und prüfen.</p>';
-    $('rejectedOfferList').innerHTML=rejected.length?rejected.map(renderListed).join(''):'<p class="offer-empty">Keine abgelehnten Angebote.</p>';
+    $('rejectedOfferList').innerHTML=rejected.length?rejected.sort(compareOffers).map(renderListed).join(''):'<p class="offer-empty">Keine abgelehnten Angebote.</p>';
     if ($('aiOfferChoices')) {
       const previous=new Set([...$('aiOfferChoices').querySelectorAll('input:checked')].map(x=>Number(x.value)));
       $('aiOfferChoices').innerHTML=visible.map(o=>`<label><input type="checkbox" name="ai-compare" value="${o.id}" ${previous.has(o.id)?'checked':''}><span>${esc(o.vendor)} · ${esc(o.category)} · ${fmt(o.gross)}</span></label>`).join('')||'<p class="offer-empty">Mindestens zwei geprüfte Angebote benötigt.</p>';
