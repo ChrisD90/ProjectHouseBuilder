@@ -11,7 +11,9 @@ Der Alternativtext ist in `frontend/src/brand.tsx` hinterlegt und kann beim endg
 
 ## ChatGPT-Verbindung
 
-- `logo-active.svg`: ChatGPT verbunden und für die Anwendung freigegeben.
-- `logo-inactive.svg`: Nicht verbunden oder Freigabe fehlt.
+- `logo-active-light.svg`: Verbunden und freigegeben, helles Theme.
+- `logo-active-dark.svg`: Verbunden und freigegeben, dunkles Theme.
+- `logo-inactive-light.svg`: Nicht verbunden oder Freigabe fehlt, helles Theme.
+- `logo-inactive-dark.svg`: Nicht verbunden oder Freigabe fehlt, dunkles Theme.
 
-Diese beiden Dateien enthalten vorerst das bisherige Symbol als Platzhalter. Sie können durch die bereitgestellten Statuslogos ersetzt werden. Der Header wechselt die Datei automatisch, ohne Neubau der Oberfläche. Beide Logos werden mit 22 × 22 px dargestellt; transparente SVGs mit demselben Seitenverhältnis eignen sich dafür. Ohne Verbindung zeigt der Button nur das Logo; der Status ist weiterhin im Tooltip verfügbar.
+Diese vier Dateien enthalten vorerst das bisherige Symbol als Platzhalter. Sie können durch die bereitgestellten Statuslogos ersetzt werden. Der Header wechselt die Datei automatisch je nach Verbindungsstatus und tatsächlich angezeigtem Theme, ohne Neubau der Oberfläche. Bei „System“ folgt das Logo auch einem Wechsel des Betriebssystem-Themes. Alle Varianten werden mit 22 × 22 px dargestellt; transparente SVGs mit demselben Seitenverhältnis eignen sich dafür. Ohne Verbindung zeigt der Button nur das Logo; der Status ist weiterhin im Tooltip verfügbar.

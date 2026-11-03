@@ -15,6 +15,7 @@ import {
   Text,
   Tooltip,
   useMantineColorScheme,
+  useComputedColorScheme,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import {
@@ -107,6 +108,7 @@ export function App() {
   const refs = useRef<Record<string, HTMLIFrameElement | null>>({}),
     guards = useRef<Set<() => boolean>>(new Set());
   const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const logoTheme = useComputedColorScheme('light');
   const route = items.find((i) => i[0] === location.pathname),
     url = location.pathname + location.search + location.hash;
   const syncing = useRef<string | null>(null);
@@ -506,6 +508,8 @@ export function App() {
                         src={
                           '/static/branding/logo-' +
                           (services.ai.sharing ? 'active' : 'inactive') +
+                          '-' +
+                          logoTheme +
                           '.svg'
                         }
                         alt=""
