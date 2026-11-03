@@ -387,16 +387,27 @@ def register(runtime: ModuleType):
         runtime.date.fromisoformat(r.document_date)
         total=Decimal(str(runtime._receipt_increment(r)))
         remaining=total-Decimal(str(r.paid_amount or 0))
-        if remaining>0:
-            recorded=sum((Decimal(str(p.amount)) for p in runtime.db.session.scalars(runtime.select(runtime.ReceiptFinancingPayment).where(runtime.ReceiptFinancingPayment.receipt_id==r.id))),Decimal(0))
-            if source!='unassigned' and recorded!=Decimal(str(r.paid_amount or 0)):
-                raise ValueError('Bestehende Zahlung zunächst nachträglich einer Quelle zuordnen.')
-            runtime.db.session.add(runtime.ReceiptFinancingPayment(receipt_id=r.id,source=source,amount=remaining,
+        payments=list(runtime.db.session.scalars(runtime.select(runtime.ReceiptFinancingPayment).where(runtime.ReceiptFinancingPayment.receipt_id==r.id)))
+        recorded=sum((Decimal(str(p.amount)) for p in payments),Decimal(0))
+        if recorded>Decimal(str(r.paid_amount or 0)) or remaining<0:
+            raise ValueError('Zahlungsvermerke passen nicht zum Kassenzettel. Bitte zunächst die Beträge prüfen.')
+        amount=remaining
+        if source!='unassigned':
+            for payment in payments:
+                if payment.source!='unassigned' and (payment.source!=source or (payment.equity_id if source=='equity' else payment.loan_id)!=ref):
+                    raise ValueError('Eine Zahlung ist bereits einer anderen Quelle zugeordnet. Bitte diese zuerst prüfen.')
+                if payment.source=='unassigned':
+                    payment.source=source;payment.equity_id=ref if source=='equity' else None;payment.loan_id=ref if source=='loan' else None
+            # Assign legacy paid amounts as well as the newly confirmed remainder.
+            # This allocates existing money instead of paying the receipt twice.
+            amount=total-recorded
+        if amount>0:
+            runtime.db.session.add(runtime.ReceiptFinancingPayment(receipt_id=r.id,source=source,amount=amount,
                 equity_id=ref if source=='equity' else None,loan_id=ref if source=='loan' else None,
                 payment_date=r.document_date,notes='Kassenzettel: beim Einkauf bezahlt.'+(' Finanzierungsquelle noch nicht zugewiesen.' if source=='unassigned' else '')))
-            r.paid_amount=total
-            runtime.db.session.flush()
-            runtime.finance_services['validate_ledger']()
+        r.paid_amount=total
+        runtime.db.session.flush()
+        runtime.finance_services['validate_ledger']()
 
     def assign_self_work_receipt(r,data):
         links=list(runtime.db.session.scalars(runtime.select(runtime.SelfWorkReceipt).where(runtime.SelfWorkReceipt.receipt_id==r.id)))
@@ -417,11 +428,12 @@ def register(runtime: ModuleType):
         else:runtime.db.session.add(runtime.SelfWorkReceipt(plan_id=target.id,receipt_id=r.id))
 
     @runtime.app.patch('/api/receipts/<int:rid>')
-    def receipt_edit(rid):
+    def receipt_edit(rid,data_override=None):
         r = runtime.db.session.get(runtime.Receipt, rid)
         if not r:
             return (runtime.jsonify(error='Beleg nicht gefunden.'), 404)
-        data = runtime.request.get_json(silent=True) or {}
+        data = data_override if data_override is not None else runtime.request.get_json(silent=True) or {}
+        if not isinstance(data,dict):return runtime.jsonify(error='Ungültige Belegdaten.'),400
         if data.get('book_now') is True and r.status != 'Entwurf':
             return (runtime.jsonify(error='Nur ein noch nicht gebuchter Entwurf kann verbindlich gebucht werden.'), 409)
         try:
@@ -514,6 +526,13 @@ def register(runtime: ModuleType):
             return (runtime.jsonify(error=str(err)), 400)
 
     runtime.receipt_edit = receipt_edit
+
+    @runtime.app.post('/api/receipts/<int:rid>/book-till')
+    def receipt_till_book(rid):
+        data=runtime.request.get_json(silent=True)
+        if not isinstance(data,dict) or data.get('kind')!='Kassenzettel' or not isinstance(data.get('till_financing'),dict):
+            return runtime.jsonify(error='Kassenzettel und Finanzierungsquelle gemeinsam bestätigen.'),400
+        return receipt_edit(rid,{**data,'book_now':True})
 
     @runtime.app.patch('/api/receipts/<int:rid>/assignment')
     def receipt_assignment_edit(rid):

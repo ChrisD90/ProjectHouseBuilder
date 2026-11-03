@@ -45,7 +45,7 @@ class DialogAuditTests(unittest.TestCase):
         start=js.index("$('book').onclick=async()=>{")
         end=js.index("$('unbook').onclick",start)
         booking=js[start:end]
-        self.assertLess(booking.index('await PHBUI.confirm('),booking.index("method:'PATCH'"))
+        self.assertLess(booking.index('await PHBUI.confirm('),booking.index('await api('))
         self.assertIn('receiptBusy',booking)
         self.assertIn('receiptBusy=true;',js)
         self.assertIn("receiptDialog.addEventListener('cancel'",js)

@@ -229,6 +229,33 @@ class ImportJobsTest(unittest.TestCase):
         payment=db.session.scalar(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==rid))
         self.assertEqual(payment.loan_id,loan);self.assertEqual(payment.source,'loan')
 
+    def test_till_source_also_applies_to_an_already_paid_draft(self):
+        from app import ReceiptFinancingPayment
+        account=self.client.post('/api/financing/equity',json={'name':'Baukonto','opening_balance':1000,'reserve':0}).json['id']
+        row=Receipt(digest='paid-draft',original_name='bon.pdf',stored_name='paid-draft.pdf',kind='Kassenzettel',assignment_type='Eigenleistung',status='Entwurf',supplier='Baumarkt',document_date='2026-11-03',gross_amount=119,paid_amount=119)
+        db.session.add(row);db.session.commit();rid=row.id
+        result=self.client.patch('/api/receipts/'+str(rid),json={'book_now':True,'till_financing':{'source':'equity','equity_id':account}})
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(result.json['payment_assignment'],'Zugewiesen')
+        payments=list(db.session.scalars(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==rid)))
+        self.assertEqual(len(payments),1);self.assertEqual(payments[0].equity_id,account)
+        self.assertEqual(result.json['paid_amount'],119)
+        for index,(paid,recorded) in enumerate([(119,119),(40,40),(40,0)]):
+            row=Receipt(digest='paid-draft-'+str(index),original_name='bon.pdf',stored_name='paid-draft-'+str(index)+'.pdf',kind='Kassenzettel',assignment_type='Eigenleistung',status='Entwurf',supplier='Baumarkt',document_date='2026-11-03',gross_amount=119,paid_amount=paid)
+            db.session.add(row);db.session.flush();ident=row.id
+            old=None
+            if recorded:
+                old=ReceiptFinancingPayment(receipt_id=ident,source='unassigned',amount=recorded,payment_date='2026-11-03')
+                db.session.add(old);db.session.flush()
+            old_id=old.id if old else None;db.session.commit()
+            response=self.client.post('/api/receipts/'+str(ident)+'/book-till',json={'kind':'Kassenzettel','till_financing':{'source':'equity','equity_id':account}})
+            self.assertEqual(response.status_code,200,response.json)
+            self.assertEqual(response.json['payment_assignment'],'Zugewiesen');self.assertEqual(response.json['paid_amount'],119)
+            entries=list(db.session.scalars(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==ident)))
+            self.assertEqual(sum(float(p.amount) for p in entries),119)
+            self.assertTrue(all(p.equity_id==account for p in entries))
+            if old_id:self.assertIn(old_id,[p.id for p in entries])
+
     def test_self_work_receipt_context_survives_background_processing(self):
         from app import Task,SelfWorkReceipt
         task=Task(code='DIY',name='Malerarbeiten',trade='Sonstiges',execution_type='Eigenleistung')

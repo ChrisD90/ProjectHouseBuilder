@@ -368,13 +368,14 @@ $('receiptAnalysisMode').addEventListener('change',()=>{
  $('receiptUploadButton').textContent=ai?'Mit ChatGPT analysieren':'Datei lokal analysieren';
 });
 
-async function api(path,opts={}){const res=await fetch(path,opts);let data=await res.json();if(!res.ok)throw new Error(data.error||'Anfrage fehlgeschlagen');return data}
+async function api(path,opts={}){const res=await fetch(path,opts);let data=await res.json();if(!res.ok){const error=new Error(data.error||'Anfrage fehlgeschlagen');error.status=res.status;error.code=data.code;throw error;}return data}
 function notice(msg,err=false){for(const id of ['message','receiptSaveStatus']){$(id).textContent=msg;$(id).classList.toggle('error',err)}}
 function inputs({booking=false}={}){
  PHBUI.currency.normalizeForm($('review'));
   const result=Object.fromEntries(new FormData($('review')));
-  // Payment is always recorded separately after booking.
+  // The backend records till payment and funding together when booking.
   delete result.paid_amount;
+ result.kind=$('review').elements.namedItem('kind').value;
  delete result.till_financing_choice;
  if(booking&&result.kind==='Kassenzettel'){
    if(tillFinanceSelect.disabled)throw Error('Bitte die Finanzierungsquellen zuerst laden.');
@@ -704,10 +705,15 @@ $('book').onclick=async()=>{
  const sourceLabel=tillFinanceSelect.selectedOptions[0]?.textContent||'Nicht zugewiesen';
  if(!await PHBUI.confirm(till?'Kassenzettel verbindlich buchen und '+money(fields.gross_amount)+' als beim Einkauf bezahlt erfassen? Finanzierungsquelle: '+sourceLabel+'.':'Rechnungsdaten speichern und den Beleg verbindlich buchen? Unbezahlte Rechnungen bleiben offen.'))return;
  await receiptAction(async()=>{
-  await api('/api/receipts/'+selected,{
-   method:'PATCH',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({...fields,book_now:true})
-  });
+  try{
+   await api('/api/receipts/'+selected+(till?'/book-till':''),{
+    method:till?'POST':'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({...fields,book_now:true})
+   });
+  }catch(error){
+   if(till&&error.code==='http_404')throw Error('Der laufende App-Server unterstützt die gemeinsame Kassenzettel- und Finanzierungsbuchung noch nicht. Bitte die App neu starten und erneut buchen. Es wurde nichts gebucht.');
+   throw error;
+  }
  },$('book'),till?'Kassenzettel gebucht und als bezahlt erfasst · '+sourceLabel+'.':'Rechnung gebucht. Zahlungen kannst du anschließend separat erfassen.');
 };
 $('unbook').onclick=async()=>{
