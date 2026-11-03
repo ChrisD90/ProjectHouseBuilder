@@ -1,5 +1,19 @@
 'use strict';
 const $=id=>document.getElementById(id);
+// A running server or an already rendered dialog can still supply the older
+// template after a static-script update. Upgrade this optional field before
+// wiring listeners; a missing extension must never stop the receipt journal.
+if(!$('receiptSelfWork')&&$('receiptAssignmentType')){
+ const wrapper=document.createElement('label');
+ wrapper.id='receiptSelfWorkWrap';wrapper.hidden=true;
+ wrapper.append(document.createTextNode('Eigenleistung'));
+ const select=document.createElement('select');
+ select.id='receiptSelfWork';select.name='self_work_id';
+ select.add(new Option('Keine konkrete Eigenleistung',''));
+ wrapper.append(select);
+ const container=$('receiptAssignmentType').closest('.receipt-assignment-fields')||$('receiptAssignmentType').parentElement.parentElement;
+ container.append(wrapper);
+}
 const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
 let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;

@@ -52,5 +52,5 @@ def run(script):
             finally:process.terminate();process.wait(timeout=10)
 
 if __name__=='__main__':
-    scripts=sys.argv[1:] or ['tests/browser_react_ui.cjs','tests/browser_multi_projects.cjs','tests/browser_project_lifecycle.cjs','tests/browser_receipt_phase_ui.cjs','tests/browser_project_start.cjs','tests/browser_project_backups.cjs','tests/browser_request_safety.cjs','tests/browser_self_work.cjs','tests/browser_self_work_upload.cjs','tests/browser_legacy_costs.cjs','visual']
+    scripts=sys.argv[1:] or ['tests/browser_react_ui.cjs','tests/browser_multi_projects.cjs','tests/browser_project_lifecycle.cjs','tests/browser_receipt_phase_ui.cjs','tests/browser_receipt_template_upgrade.cjs','tests/browser_project_start.cjs','tests/browser_project_backups.cjs','tests/browser_request_safety.cjs','tests/browser_self_work.cjs','tests/browser_self_work_upload.cjs','tests/browser_legacy_costs.cjs','visual']
     for script in scripts:run(script)
