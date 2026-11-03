@@ -38,8 +38,11 @@ Nutzerdaten bleiben bei Updates und bei der Deinstallation erhalten.
 PDFs in neuen Fenstern öffnen über einen lokalen Anmeldeschritt im Standardbrowser.
 ChatGPT ist optional; dessen bestehende OAuth-Anmeldung läuft im App-Fenster.
 Ob OpenAI die Anmeldung in dieser eingebetteten Laufzeit zulässt, muss auf einem
-echten Windows-Rechner geprüft werden. Für diesen Test ist die Funktion nicht als
-verifiziert zugesagt. Ohne ChatGPT bleiben alle lokalen Funktionen verfügbar.
+echten Windows-Rechner geprüft werden. Falls der Anbieter die Anmeldung im Fenster
+ablehnt: **Ansicht → Im Browser öffnen**, dort anmelden, anschließend im App-Fenster
+**Ansicht → Projektübersicht** wählen, um den Verbindungsstatus neu zu laden.
+Für diesen Test ist die Anmeldung noch nicht als verifiziert zugesagt. Ohne
+ChatGPT bleiben alle lokalen Funktionen verfügbar.
 
 ## Was der Build automatisch prüft
 

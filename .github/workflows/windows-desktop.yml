@@ -10,7 +10,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     env:
-      PHB_OCR_ENV: ${{ runner.temp }}\phb-ocr
+      PHB_OCR_ENV: ${{ github.workspace }}\desktop\generated\ocr-env
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

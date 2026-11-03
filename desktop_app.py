@@ -148,11 +148,18 @@ def main(argv=None):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         import webview
+        from webview.menu import Menu, MenuAction
+        import webbrowser
         webview.settings['ALLOW_DOWNLOADS'] = True
         webview.settings['OPEN_EXTERNAL_LINKS_IN_BROWSER'] = True
         url = 'http://127.0.0.1:' + str(server.server_port) + '/_desktop/bootstrap?' + urlencode({'token': token})
-        webview.create_window('ProjectHouseBuilder', url, width=1280, height=900, min_size=(900, 640))
-        webview.start(gui='edgechromium', private_mode=False, storage_path=str(home / 'webview'))
+        window = webview.create_window('ProjectHouseBuilder', url, width=1280, height=900, min_size=(900, 640))
+        menu = [Menu('Ansicht', [
+            MenuAction('Projektübersicht', lambda: window.load_url(url)),
+            MenuAction('Zurück', lambda: window.evaluate_js('history.back()')),
+            MenuAction('Im Browser öffnen', lambda: webbrowser.open(url)),
+        ])]
+        webview.start(gui='edgechromium', private_mode=False, storage_path=str(home / 'webview'), menu=menu)
         return 0
     except Exception as error:
         logging.exception('Desktop-Start fehlgeschlagen')
