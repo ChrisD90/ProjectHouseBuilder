@@ -19,6 +19,39 @@ const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR
 let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;
 let receiptSearchText='',receiptLaborFilter='all',receiptYearFilter='';
 const receiptDialog=$('receiptWorkflowDialog');
+let uploadReceiptKind='Rechnung';
+// Also support a still-rendered older template during an application update.
+if(!$('openTillReceiptWorkflow')){
+ const button=document.createElement('button');button.id='openTillReceiptWorkflow';button.type='button';
+ button.className='primary';button.dataset.importKind='receipts';button.textContent='+ Kassenzettel erfassen';
+ $('openReceiptWorkflow').after(button);
+}
+$('openReceiptWorkflow').textContent='+ Rechnung erfassen';
+const tillInfo=document.createElement('p');tillInfo.className='note receipt-till-info';tillInfo.hidden=true;
+tillInfo.textContent='Kassenzettel sind beim Einkauf bezahlt. Beim bestätigten Buchen wird der Gesamtbetrag als bezahlt erfasst – Finanzierung zunächst „Nicht zugewiesen“. Eine Finanzierungsquelle kannst du später ergänzen.';
+const tillExtras=document.createElement('button');tillExtras.type='button';tillExtras.className='subtle receipt-till-extras';tillExtras.textContent='Weitere Angaben anzeigen';tillExtras.hidden=true;
+$('review').prepend(tillInfo,tillExtras);
+tillExtras.onclick=()=>{
+ const expanded=receiptDialog.classList.toggle('show-till-extras');
+ tillExtras.textContent=expanded?'Weitere Angaben ausblenden':'Weitere Angaben anzeigen';
+ tillExtras.setAttribute('aria-expanded',String(expanded));
+};
+function applyTillMode(enabled){
+ receiptDialog.classList.toggle('is-till-receipt',enabled);
+ receiptDialog.classList.remove('show-till-extras');tillExtras.textContent='Weitere Angaben anzeigen';tillExtras.setAttribute('aria-expanded','false');
+ tillInfo.hidden=!enabled||!receiptDialog.classList.contains('is-reviewing');tillExtras.hidden=tillInfo.hidden;
+ for(const name of ['due_date','budget_line_id','trade'])$('review').elements.namedItem(name)?.closest('label')?.setAttribute('data-till-extra','');
+ for(const node of [$('receiptSupplierCompany')?.closest('label'),$('review').querySelector('.receipt-billing'),$('review').querySelector('.receipt-labor')])node?.setAttribute('data-till-extra','');
+ if(enabled&&receiptDialog.classList.contains('is-reviewing')){
+   $('receiptWorkflowTitle').textContent=currentReceipt?.status==='Entwurf'?'Kassenzettel prüfen':currentReceipt?.status==='Storniert'?'Stornierter Kassenzettel':'Gebuchter Kassenzettel';
+   $('receiptReviewTitle').textContent=$('receiptWorkflowTitle').textContent;
+   if(currentReceipt?.status==='Entwurf')$('receiptReviewHelp').textContent='Lieferant, Bonnummer, Datum und Beträge prüfen. Erst beim bestätigten Buchen wird der Kassenzettel als bezahlt erfasst.';
+ }
+ $('book').textContent=enabled?'Kassenzettel buchen':'Verbindlich buchen';
+ $('payReceipt').textContent=enabled?'Finanzierung zuordnen (optional)':'Zahlung erfassen';
+ const paymentStep=receiptDialog.querySelector('[data-flow-step="2"] .phb-flow-step-label');
+ if(paymentStep)paymentStep.textContent=enabled?'Finanzierung (optional)':'Bezahlen';
+}
 function showReceiptPreview(item){
  const pane=$('receiptPdfPane'),frame=$('receiptPdfFrame'),image=$('receiptImagePreview');
  const name=item?.original_name||item?.filename||'';
@@ -42,7 +75,8 @@ const receiptFlow=PHBFlow.manage({
 });
 function openReceiptDialog(review=false){
   receiptDialog.classList.toggle('is-reviewing',Boolean(review));
-  if(!review)$('receiptWorkflowTitle').textContent='Beleg hochladen und prüfen';
+  if(!review)$('receiptWorkflowTitle').textContent=uploadReceiptKind==='Kassenzettel'?'Kassenzettel hochladen':'Rechnung hochladen und prüfen';
+  applyTillMode(review?currentReceipt?.kind==='Kassenzettel':uploadReceiptKind==='Kassenzettel');
   if(!receiptDialog.open)receiptFlow.open({step:review?1:0});
   else receiptFlow.stage(review?1:0);
   if(review){
@@ -52,10 +86,15 @@ function openReceiptDialog(review=false){
   }
 }
 $('openReceiptWorkflow').onclick=()=>{
+  uploadReceiptKind='Rechnung';
   linkSelfWork=null;$('uploadStatus').textContent='';
   selected=null;
   $('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);
   openReceiptDialog(false);
+};
+$('openTillReceiptWorkflow').onclick=()=>{
+  $('openReceiptWorkflow').onclick();uploadReceiptKind='Kassenzettel';openReceiptDialog(false);
+  $('uploadStatus').textContent='Kassenzettel werden als Eigenleistung / Material vorbelegt. Prüfen und buchen erfolgt nach der Analyse; der Einkauf wird dann automatisch als bezahlt erfasst.';
 };
 $('closeReceiptWorkflow').onclick=()=>{if(!uploading&&!receiptBusy)receiptDialog.close();};
 receiptDialog.addEventListener('cancel',event=>{if(uploading||receiptBusy)event.preventDefault();});
@@ -67,6 +106,7 @@ let linkSelfWork=null;
 async function activateReceiptNavigation(){
  const params=new URLSearchParams(location.search);
  if(params.get('upload')==='1'&&!params.get('receipt_id')){
+   uploadReceiptKind=params.get('receipt_kind')==='Kassenzettel'?'Kassenzettel':'Rechnung';
    const ident=Number(params.get('self_work_id'))||null;
    let plan=null;
    if(ident){plan=(await api('/api/self-work/'+ident)).plan;}
@@ -273,6 +313,7 @@ $('review').elements.namedItem('supplier').addEventListener('input',event=>{
 $('costItems').addEventListener('change',updateInvoiceControls);
 $('receiptSelfWork').addEventListener('change',()=>{if($('receiptSelfWork').value)$('budgetLines').value='';updateInvoiceControls();});
 $('billingType').addEventListener('change',()=>{if($('billingType').value!=='Schlussrechnung')$('advanceDeduction').value='0';updateInvoiceControls();});
+$('review').elements.namedItem('kind').addEventListener('change',event=>applyTillMode(event.currentTarget.value==='Kassenzettel'));
 $('receiptAnalysisMode').addEventListener('change',()=>{
  const ai=$('receiptAnalysisMode').value==='ai';
  $('receiptAIHint').hidden=!ai;
@@ -368,6 +409,7 @@ async function open(id){
    $('costItems').value=String(linkedCostItem);
  }
  updateInvoiceControls();
+ applyTillMode(x.kind==='Kassenzettel');
  const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();
  $('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
@@ -447,6 +489,7 @@ async function showReceiptPayments(){
  const allocations=paymentState.payments.filter(p=>p.receipt_id===selected);
  const legacy=Math.max(0,Number(receipt.paid)-allocations.reduce((sum,p)=>sum+Number(p.amount),0));
  $('receiptPaymentsPanel').hidden=false;receiptFlow.stage(2);$('receiptReviewLayout').hidden=true;$('receiptReviewStage').hidden=true;
+ $('receiptPaymentTitle').textContent=currentReceipt?.kind==='Kassenzettel'?'Zahlung / Finanzierung verwalten':'Rechnung bezahlen';
  $('receiptPaymentTotals').innerHTML='<span>Rechnungsbetrag: <b>'+money(receipt.gross)+'</b></span><span>Bereits bezahlt: <b>'+money(receipt.paid)+'</b></span><span>Noch offen: <b>'+money(receipt.open)+'</b></span><span>Nicht zugewiesen: <b>'+money(receipt.unassigned)+'</b></span>';
  paymentForm.hidden=receipt.open<=0;paymentForm.elements.namedItem('payment_date').disabled=false;paymentForm.elements.namedItem('notes').disabled=false;$('receiptPaymentSource').value='unassigned';
  $('receiptPaymentSource').querySelector('[value=unassigned]').disabled=false;
@@ -540,7 +583,7 @@ $('upload').onsubmit=async e=>{
    if(ai)model=window.PHBAI?.selection()?.model||'';
    const result=await window.PHBImports.run({
      form:$('upload'),kind:'receipts',files:$('upload').elements.namedItem('files').files,
-     analysisMode:ai?'ai':'local',model,fields:linkSelfWork?{self_work_id:linkSelfWork}:{}
+     analysisMode:ai?'ai':'local',model,fields:{...(linkSelfWork?{self_work_id:linkSelfWork}:{}),...(uploadReceiptKind==='Kassenzettel'?{receipt_kind:'Kassenzettel'}:{})}
    });
    $('upload').reset();
    $('receiptAIHint').hidden=true;
@@ -600,13 +643,14 @@ $('book').onclick=async()=>{
  if(!$('review').reportValidity())return;
  let fields;try{fields=inputs({booking:true});}catch(error){notice(error.message,true);return;}
  // A cancelled confirmation must never mutate the draft.
- if(!await PHBUI.confirm('Rechnungsdaten speichern und den Beleg verbindlich buchen? Unbezahlte Rechnungen bleiben offen.'))return;
+ const till=fields.kind==='Kassenzettel';
+ if(!await PHBUI.confirm(till?'Kassenzettel verbindlich buchen und '+money(fields.gross_amount)+' als beim Einkauf bezahlt erfassen? Die Finanzierungsquelle bleibt zunächst „Nicht zugewiesen“.':'Rechnungsdaten speichern und den Beleg verbindlich buchen? Unbezahlte Rechnungen bleiben offen.'))return;
  await receiptAction(async()=>{
   await api('/api/receipts/'+selected,{
    method:'PATCH',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({...fields,book_now:true})
   });
- },$('book'),'Rechnung gebucht. Zahlungen kannst du anschließend separat erfassen.');
+ },$('book'),till?'Kassenzettel gebucht und als bezahlt erfasst · Finanzierung nicht zugewiesen.':'Rechnung gebucht. Zahlungen kannst du anschließend separat erfassen.');
 };
 $('unbook').onclick=async()=>{
  if(!selected||receiptBusy||!await PHBUI.confirm('Buchung zurücknehmen? Die Belegausgaben werden aus der Übersicht entfernt.'))return;

@@ -3,6 +3,10 @@
 .category-form{display:flex;align-items:end;gap:12px;flex-wrap:wrap}.category-form label{flex:1;min-width:210px}.category-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:7px;margin-top:16px}.category-row{display:flex;align-items:center;gap:7px;padding:8px;border:1px solid #e0eaed;border-radius:8px}.category-row span{flex:1;overflow-wrap:anywhere}
 
 /* Invoice upload and assignment options: consistent vertical rhythm. */
+.phb-page-belege .is-till-receipt:not(.show-till-extras) [data-till-extra]{display:none!important}
+.phb-page-belege .is-till-receipt:not([data-phb-stage="2"]) [data-flow-step="2"]{display:none!important}
+.phb-page-belege .receipt-till-info{padding:12px;border-radius:9px;background:var(--ui-soft-accent);color:var(--ui-ink)}
+.phb-page-belege .receipt-till-extras{margin-bottom:14px}
 .phb-page-belege .receipt-upload-panel h2{margin-bottom:16px}
 .phb-page-belege #upload{display:grid;grid-template-columns:minmax(220px,1.5fr) minmax(210px,1fr) auto;gap:14px;align-items:end}
 .phb-page-belege #upload label{min-width:0}

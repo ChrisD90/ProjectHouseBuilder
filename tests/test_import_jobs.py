@@ -135,6 +135,51 @@ class ImportJobsTest(unittest.TestCase):
         receipt=db.session.get(Receipt,final['result_id'])
         self.assertEqual(receipt.status,'Entwurf')
 
+    def test_till_upload_defaults_and_atomic_paid_booking_without_account(self):
+        from app import ReceiptFinancingPayment
+        queued=self.enqueue(extra={'receipt_kind':'Kassenzettel'})
+        self.assertEqual(queued.status_code,202,queued.json)
+        jid=queued.json['jobs'][0]['id']
+        self.assertEqual(json.loads(db.session.get(ImportJob,jid).extra_json)['receipt_kind'],'Kassenzettel')
+        with patch('app.extract_text',return_value=('OBI\nBon 1234\nGesamtbetrag 119,00 EUR','PDF-Text')):
+            _run_import_job(jid)
+        job=db.session.get(ImportJob,jid);self.assertEqual(job.status,'Fertig',job.error)
+        rid=job.result_id;path='/api/receipts/'+str(rid)
+        initial=self.client.get(path).json
+        self.assertEqual(initial['kind'],'Kassenzettel');self.assertEqual(initial['assignment_type'],'Eigenleistung')
+        self.assertEqual(initial['category'],'Eigenleistungen / Material');self.assertEqual(initial['paid_amount'],0)
+        invalid=self.client.patch(path,json={'book_now':True,'document_date':''})
+        self.assertEqual(invalid.status_code,400)
+        self.assertEqual(db.session.query(ReceiptFinancingPayment).count(),0)
+        self.assertEqual(self.client.get(path).json['status'],'Entwurf')
+        result=self.client.patch(path,json={'supplier':'OBI','invoice_number':'BON-1234','document_date':'2026-11-03','gross_amount':119,'net_amount':100,'vat_amount':19,'book_now':True})
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertEqual(result.json['paid_amount'],119);self.assertEqual(result.json['payment_assignment'],'Nicht zugewiesen')
+        payments=list(db.session.scalars(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==rid)))
+        self.assertEqual(len(payments),1);self.assertEqual(payments[0].source,'unassigned');self.assertEqual(payments[0].payment_date,'2026-11-03')
+        self.assertEqual(self.client.post(path+'/book').status_code,200)
+        self.assertEqual(db.session.query(ReceiptFinancingPayment).count(),1)
+        preview=self.client.get(path+'/cancel-preview').json
+        cancelled=self.client.post(path+'/cancel',json={'confirm':True,'plan_digest':preview['plan_digest']})
+        self.assertEqual(cancelled.status_code,200,cancelled.json)
+        self.assertEqual(self.client.get(path).json['paid_amount'],0)
+        self.assertEqual(db.session.query(ReceiptFinancingPayment).count(),0)
+        reversal=self.client.get(path+'/cancel-reversal-preview').json
+        restored=self.client.post(path+'/cancel-reversal',json={'confirm':True,'plan_digest':reversal['plan_digest']})
+        self.assertEqual(restored.status_code,200,restored.json)
+        self.assertEqual(self.client.get(path).json['paid_amount'],119)
+        self.assertEqual(db.session.query(ReceiptFinancingPayment).count(),1)
+
+    def test_invoice_booking_keeps_payment_step_and_till_type_is_validated(self):
+        r=Receipt(digest='normal-invoice',original_name='Rechnung.pdf',stored_name='normal.pdf',supplier='Firma',document_date='2026-11-03',gross_amount=50,status='Entwurf',kind='Rechnung',assignment_type='Eigenleistung')
+        db.session.add(r);db.session.commit()
+        response=self.client.post('/api/receipts/'+str(r.id)+'/book')
+        self.assertEqual(response.status_code,200,response.json);self.assertEqual(response.json['paid_amount'],0)
+        self.assertEqual(self.enqueue(extra={'receipt_kind':'Unbekannt'}).status_code,400)
+        with patch('app.extract_text',return_value=('Gutschrift','PDF-Text')),patch('app.parse_receipt',return_value={'kind':'Gutschrift','warnings':[]}):
+            rejected=self.client.post('/api/receipts',data={'receipt_kind':'Kassenzettel','file':(io.BytesIO(b'%PDF-1.4\nCredit'),'retoure.pdf')})
+        self.assertEqual(rejected.status_code,400,rejected.json)
+
     def test_self_work_receipt_context_survives_background_processing(self):
         from app import Task,SelfWorkReceipt
         task=Task(code='DIY',name='Malerarbeiten',trade='Sonstiges',execution_type='Eigenleistung')

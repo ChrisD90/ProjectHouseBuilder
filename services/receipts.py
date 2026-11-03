@@ -189,6 +189,9 @@ def register(runtime: ModuleType):
 
     @runtime.app.post('/api/receipts')
     def receipt_upload():
+        requested_kind=runtime.request.form.get('receipt_kind','')
+        if requested_kind not in ('','Rechnung','Kassenzettel'):return runtime.jsonify(error='Unbekannte Belegart für den Upload.'),400
+        till=requested_kind=='Kassenzettel'
         self_work_id=runtime.request.form.get('self_work_id','')
         if self_work_id and (not self_work_id.isdigit() or runtime.db.session.get(runtime.SelfWorkPlan,int(self_work_id)) is None):
             return runtime.jsonify(error='Zugehörige Eigenleistung nicht gefunden.'),400
@@ -233,6 +236,8 @@ def register(runtime: ModuleType):
                 content = ''
                 source = 'Nicht ausgelesen'
                 guessed = {'supplier': '', 'invoice_number': '', 'document_date': '', 'gross_amount': None, 'net_amount': None, 'vat_amount': None, 'labor_amount': None, 'category': 'Sonstiges', 'warnings': ['Lokale Erkennung fehlgeschlagen: ' + str(err)[:180]]}
+        if till and guessed.get('kind')=='Gutschrift':
+            return runtime.jsonify(error='Der Beleg wurde als Gutschrift erkannt. Bitte über den Rechnungsupload als Korrektur prüfen; keine automatische Zahlung für Kassenzettel.'),400
         runtime.RECEIPT_ROOT.mkdir(parents=True, exist_ok=True)
         stored = runtime.uuid4().hex + ext
         target = runtime.RECEIPT_ROOT / stored
@@ -240,6 +245,10 @@ def register(runtime: ModuleType):
         try:
             row = runtime.Receipt(digest=digest, original_name=name, stored_name=stored, source=source, ocr_text=content, warnings=runtime.json.dumps(guessed['warnings'], ensure_ascii=False), supplier=guessed['supplier'], invoice_number=guessed['invoice_number'], document_date=guessed['document_date'], due_date=guessed.get('due_date', ''), kind=guessed.get('kind', 'Rechnung'), billing_type=guessed.get('billing_type', 'Normal'), gross_amount=runtime._receipt_amount(guessed['gross_amount'], 'Bruttobetrag'), net_amount=runtime._receipt_amount(guessed['net_amount'], 'Nettobetrag'), vat_amount=runtime._receipt_amount(guessed['vat_amount'], 'Umsatzsteuer'), labor_amount=runtime._receipt_amount(guessed.get('labor_amount'), 'Arbeitslohn'), labor_source='Erkannt' if guessed.get('labor_amount') not in (None, '') else '', category=guessed['category'] if guessed['category'] in runtime.category_names() else 'Sonstiges')
             runtime.db.session.add(row)
+            if till:
+                row.kind='Kassenzettel';row.billing_type='Normal';row.due_date=''
+                row.assignment_type='Eigenleistung';row.labor_amount=None;row.labor_source=''
+                if 'Eigenleistungen / Material' in runtime.category_names():row.category='Eigenleistungen / Material'
             if self_work_id:
                 plan=runtime.db.session.get(runtime.SelfWorkPlan,int(self_work_id))
                 if plan is None:raise ValueError('Eigenleistung inzwischen gelöscht.')
@@ -248,7 +257,7 @@ def register(runtime: ModuleType):
                 row.trade=task.trade if task and runtime.db.session.scalar(runtime.select(runtime.Trade.id).where(runtime.Trade.name==task.trade)) else ''
                 if task and task.trade and not row.trade:
                     row.warnings=runtime.json.dumps(guessed['warnings']+['Gewerk des Arbeitspakets ist nicht mehr in den Stammdaten vorhanden: '+task.trade+'. Bitte neu auswählen.'],ensure_ascii=False)
-                if task and task.trade in runtime.category_names():row.category=task.trade
+                if not till and task and task.trade in runtime.category_names():row.category=task.trade
                 row.notes='Eigenleistung: '+plan.title+(' · '+plan.location if plan.location else '')
                 runtime.db.session.flush()
                 runtime.db.session.add(runtime.SelfWorkReceipt(plan_id=plan.id,receipt_id=row.id))
@@ -353,6 +362,22 @@ def register(runtime: ModuleType):
         return response
 
     runtime.receipt_preview = receipt_preview
+
+    def book_till_payment(r):
+        """Confirm an already paid shop purchase in the same transaction as booking."""
+        if r.kind!='Kassenzettel':return
+        if r.billing_type!='Normal' or r.advance_deduction:
+            raise ValueError('Kassenzettel können nicht als Abschlags- oder Schlussrechnung gebucht werden.')
+        from decimal import Decimal
+        runtime.date.fromisoformat(r.document_date)
+        total=Decimal(str(runtime._receipt_increment(r)))
+        remaining=total-Decimal(str(r.paid_amount or 0))
+        if remaining>0:
+            runtime.db.session.add(runtime.ReceiptFinancingPayment(receipt_id=r.id,source='unassigned',amount=remaining,
+                payment_date=r.document_date,notes='Kassenzettel: beim Einkauf bezahlt; Finanzierungsquelle noch nicht zugewiesen.'))
+            r.paid_amount=total
+            runtime.db.session.flush()
+            runtime.finance_services['validate_ledger']()
 
     def assign_self_work_receipt(r,data):
         links=list(runtime.db.session.scalars(runtime.select(runtime.SelfWorkReceipt).where(runtime.SelfWorkReceipt.receipt_id==r.id)))
@@ -459,6 +484,7 @@ def register(runtime: ModuleType):
                     if already:
                         raise ValueError('Mögliche Doppelbuchung: Lieferant und Rechnungsnummer bereits gebucht (#' + str(already) + ').')
                 r.status = 'Gebucht'
+                book_till_payment(r)
             assign_self_work_receipt(r,data)
             if data.get('reviewed') is True:
                 runtime._mark_import_reviewed('receipts', rid)
@@ -557,6 +583,7 @@ def register(runtime: ModuleType):
                 if other:
                     raise ValueError('Mögliche Doppelbuchung: Lieferant und Rechnungsnummer bereits gebucht (#' + str(other) + ').')
             r.status = 'Gebucht'
+            book_till_payment(r)
             runtime._mark_import_reviewed('receipts', rid)
             runtime.db.session.commit()
             return runtime.jsonify(runtime._receipt_json(r))

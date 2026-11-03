@@ -17,7 +17,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
     page.on('pageerror',e=>{errors.push(e.message);console.log('PAGE ERROR: '+e.message);});
     if(legacy)await page.route('**/belege?**',async route=>{
       const response=await route.fetch();
-      await route.fulfill({response,body:(await response.text()).replace(/<label id="receiptSelfWorkWrap"[^]*?<\/label>/,'')});
+      await route.fulfill({response,body:(await response.text()).replace(/<label id="receiptSelfWorkWrap"[^]*?<\/label>/,'').replace(/<button[^>]*id="openTillReceiptWorkflow"[^]*?<\/button>/,'')});
     });
     await page.goto(base+'/p/'+owner+'/belege');
     const frame=page.frameLocator('iframe[title="Rechnungen & Belege"]:not([hidden])');
@@ -25,6 +25,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
     await frame.locator('.entry[data-id="'+rid+'"]').click();
     await expect(frame.locator('#receiptWorkflowDialog')).toBeVisible();
     await expect(frame.locator('#receiptSelfWork')).toHaveCount(1);
+    await expect(frame.locator('#openTillReceiptWorkflow')).toHaveCount(1);
     assert.deepEqual(errors,[]);
     await page.close();
   }
