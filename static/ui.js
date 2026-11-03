@@ -149,7 +149,22 @@
       }).finally(()=>end(id));
     }catch(error){end(id);throw error;}
   };
+  function decorateSelect(select,kind='filter'){
+    if(!select||select.closest('.phb-select-control'))return;
+    const label=select.closest('label');
+    const caption=label?[...label.childNodes].filter(node=>node!==select&&!node.contains?.(select)):[];
+    const name=select.getAttribute('aria-label')||caption.map(node=>node.textContent).join(' ').trim()||(kind==='sort'?'Sortierung':'Filter');
+    select.setAttribute('aria-label',name);
+    const wrapper=document.createElement('span');wrapper.className='phb-select-control';wrapper.title=name;wrapper.dataset.selectKind=kind;
+    const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('class','phb-icon phb-select-icon');icon.setAttribute('aria-hidden','true');
+    const use=document.createElementNS('http://www.w3.org/2000/svg','use');use.setAttribute('href','/static/icons/ui-icons.svg#'+(kind==='sort'?'sort':'filter'));icon.append(use);
+    select.before(wrapper);wrapper.append(icon,select);
+    if(caption.length){const hidden=document.createElement('span');hidden.className='phb-select-caption';label.prepend(hidden);hidden.append(...caption);}
+  }
   function setup(){
+    for(const select of document.querySelectorAll('select[data-control-kind],#offerCategoryFilter,#offerSort,#receiptLaborFilter,#receiptYearFilter,#phase,#workType,#costGroup,#docFilterArea,#docFilterStatus,#linkedDocType')){
+      decorateSelect(select,select.dataset.controlKind||(select.id==='offerSort'?'sort':'filter'));
+    }
     const select=document.getElementById('phbThemeMode');
     if(select){select.value=mode;select.addEventListener('change',()=>setTheme(select.value));}
     topIndicator=document.getElementById('phbLoadTrack');
@@ -280,6 +295,7 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bindButtons,{once:true});else bindButtons();
 
   window.PHBUI={
+    decorateSelect,
     setTheme,currentTheme:selectedTheme,
     activeRequests:()=>active,
     pendingWrites:()=>[...inflight.values()].some(x=>x.lock),

@@ -13,6 +13,9 @@
   sortLabel.append(sortSelect);
   const filterLabel=$('offerCategoryFilter').closest('label'),filters=document.createElement('div');filters.className='offers-list-filters';
   filterLabel.before(filters);filters.append(filterLabel,sortLabel);
+  const listHeader=filters.closest('.panelbar');listHeader.classList.add('offers-list-header');listHeader.querySelector('p')?.remove();listHeader.append(filters);
+  window.PHBUI?.decorateSelect($('offerCategoryFilter'),'filter');
+  window.PHBUI?.decorateSelect(sortSelect,'sort');
   try{const saved=localStorage.getItem(sortKey);if(sortOptions.some(([value])=>value===saved))sortSelect.value=saved;}catch{}
   function compareOffers(a,b){
     const text=(x,y)=>String(x||'').localeCompare(String(y||''),'de',{numeric:true,sensitivity:'base'});

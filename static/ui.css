@@ -453,3 +453,8 @@ body.phb-app .gantt-row .bartext{color:var(--ui-ink)}
 body.phb-app :is(.loan-progress-used){background:var(--ui-accent)}
 body.phb-app .loan-progress-available{background:var(--brand-bar)}
 body.phb-app input[type=checkbox],body.phb-app input[type=radio]{accent-color:var(--brand-button)}
+/* Icons inside list controls use the same position as search-field magnifiers. */
+body.phb-app .phb-select-control{position:relative;display:block;min-width:0;font-size:inherit;font-weight:inherit;letter-spacing:normal;text-transform:none}
+body.phb-app .phb-select-control>.phb-select-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--ui-muted);pointer-events:none;z-index:1}
+body.phb-app .phb-select-control>select{display:block;width:100%;min-width:0;margin:0;padding-inline-start:37px!important}
+body.phb-app .phb-select-caption{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}

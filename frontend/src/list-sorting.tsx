@@ -1,4 +1,5 @@
 import { Select } from '@mantine/core';
+import { IconArrowsSort } from '@tabler/icons-react';
 
 export const basicSortOptions = [
   { value: 'az', label: 'A–Z' },
@@ -22,18 +23,19 @@ export function SortSelect({
   onChange,
   extra = [],
   defaultLabel,
-  label = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   extra?: { value: string; label: string }[];
   defaultLabel?: string;
-  label?: boolean;
 }) {
   return (
     <Select
       aria-label="Sortierung"
-      label={label ? 'Sortierung' : undefined}
+      data-control-kind="sort"
+      title="Sortierung"
+      leftSection={<IconArrowsSort size={17} aria-hidden="true" />}
+      leftSectionPointerEvents="none"
       value={value}
       onChange={(v) => onChange(v || (defaultLabel ? 'default' : 'newest'))}
       allowDeselect={false}

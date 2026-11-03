@@ -1,6 +1,6 @@
-import type { BadgeProps, TextInputProps } from '@mantine/core';
-import { Badge, TextInput, UnstyledButton } from '@mantine/core';
-import { IconSearch } from '@tabler/icons-react';
+import type { BadgeProps, TextInputProps, SelectProps } from '@mantine/core';
+import { Badge, Select, TextInput, UnstyledButton } from '@mantine/core';
+import { IconSearch, IconFilter } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -38,6 +38,19 @@ export function SearchField(props: TextInputProps) {
       leftSection={<IconSearch size={17} />}
       aria-label={typeof props.label === 'string' ? props.label : props.placeholder || 'Suchen'}
       {...props}
+    />
+  );
+}
+export function FilterSelect({ label, ...props }: SelectProps) {
+  const name = props['aria-label'] || (typeof label === 'string' ? label : 'Filter');
+  return (
+    <Select
+      {...props}
+      aria-label={name}
+      title={name}
+      data-control-kind="filter"
+      leftSection={<IconFilter size={17} aria-hidden="true" />}
+      leftSectionPointerEvents="none"
     />
   );
 }

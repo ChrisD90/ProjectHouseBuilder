@@ -5,7 +5,6 @@ import {
   Loader,
   Paper,
   Progress,
-  Select,
   SimpleGrid,
   Stack,
   Table,
@@ -18,7 +17,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Editor, ErrorBox, Row, api, money } from './core';
 import { Metrics, PageHeader } from './page-layout';
-import { RowAction, SearchField, useViewState } from './ui';
+import { RowAction, SearchField, useViewState, FilterSelect } from './ui';
 import { LegacyCosts } from './legacy-costs';
 import { SortSelect, compareDate, compareText } from './list-sorting';
 export function Costs() {
@@ -171,7 +170,7 @@ export function Costs() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <Select
+            <FilterSelect
               aria-label="Kosten gruppieren"
               value={group}
               onChange={setGroup}

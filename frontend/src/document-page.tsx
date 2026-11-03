@@ -27,6 +27,7 @@ import {
   StatusPill,
   useViewState,
   useDialogRouteCleanup,
+  FilterSelect,
 } from './ui';
 import { SourceWork } from './work';
 export function Documents() {
@@ -216,7 +217,7 @@ export function Documents() {
             />
             {tab === 'project' ? (
               <>
-                <Select
+                <FilterSelect
                   aria-label="Bereich"
                   placeholder="Alle Bereiche"
                   clearable
@@ -224,7 +225,7 @@ export function Documents() {
                   value={area}
                   onChange={setArea}
                 />
-                <Select
+                <FilterSelect
                   aria-label="Dokumentstatus"
                   placeholder="Alle Status"
                   clearable
@@ -234,7 +235,7 @@ export function Documents() {
                 />
               </>
             ) : (
-              <Select
+              <FilterSelect
                 aria-label="Dokumentquelle"
                 placeholder="Alle Bereiche"
                 clearable

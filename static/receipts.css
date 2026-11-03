@@ -36,7 +36,7 @@
 .phb-page-belege .receipt-search input::-webkit-search-cancel-button{cursor:pointer;opacity:.7}
 .phb-page-belege .receipt-search input:focus{outline:0!important;box-shadow:0 0 0 3px var(--ui-ring)!important;border-color:var(--ui-accent)!important}
 .phb-page-belege .receipt-filter{display:grid;gap:5px;min-width:0;margin:0}
-.phb-page-belege .receipt-filter>span{font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--ui-muted);text-transform:uppercase}
+.phb-page-belege .receipt-filter>span:not(.phb-select-control){font-size:10px;font-weight:750;letter-spacing:.04em;color:var(--ui-muted);text-transform:uppercase}
 .phb-page-belege .receipt-filter select{height:42px;min-height:42px!important;padding-block:8px!important}
 .phb-page-belege .receipt-labor-summary{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:-2px 0 14px;padding:13px 15px;border:1px solid var(--ui-line);border-radius:11px;background:var(--ui-soft)}
 .phb-page-belege .receipt-labor-summary>div{display:grid;grid-template-columns:auto auto;align-items:baseline;gap:2px 12px;min-width:0}

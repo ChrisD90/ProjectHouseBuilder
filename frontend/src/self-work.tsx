@@ -40,7 +40,14 @@ import { SourceWork } from './work';
 import { api, Editor, ErrorBox, money, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { useDirtyGuard } from './shell';
-import { ActionBar, SearchField, StatusPill, useViewState, useDialogRouteCleanup } from './ui';
+import {
+  ActionBar,
+  SearchField,
+  StatusPill,
+  useViewState,
+  useDialogRouteCleanup,
+  FilterSelect,
+} from './ui';
 import { SelfWorkAI } from './self-work-ai';
 import { SelfWorkSteps } from './self-work-steps';
 import { SelfWorkInvoices } from './self-work-invoices';
@@ -405,19 +412,19 @@ export function SelfWorkPage() {
       <Paper withBorder p="md" mb="lg">
         <Group align="end">
           <SearchField
-            label="Eigenleistungen suchen"
+            aria-label="Eigenleistungen suchen"
             placeholder="Titel, Ort oder Arbeitspaket"
             value={search}
             onChange={(event) => setSearch(event.currentTarget.value)}
             style={{ flex: '1 1 240px' }}
           />
-          <Select
+          <FilterSelect
             label="Status"
             value={status}
             onChange={(value) => setStatus(value || 'all')}
             data={[{ value: 'all', label: 'Alle Status' }, 'Geplant', 'In Arbeit', 'Erledigt']}
           />
-          <Select
+          <FilterSelect
             label="Ansicht"
             value={archive}
             onChange={(value) => setArchive(value || 'active')}
@@ -427,7 +434,6 @@ export function SelfWorkPage() {
             ]}
           />
           <SortSelect
-            label
             value={sort}
             onChange={setSort}
             extra={[
