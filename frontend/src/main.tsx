@@ -53,6 +53,7 @@ const theme = createTheme({
   fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   headings: { fontWeight: '650' },
   components: {
+    Accordion: { defaultProps: { chevronPosition: 'left' } },
     Modal: {
       defaultProps: {
         closeOnClickOutside: false,

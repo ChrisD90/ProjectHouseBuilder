@@ -236,11 +236,19 @@
   workflow.addEventListener('cancel',event=>{if(offerUploading)event.preventDefault();});
 
   const defaultCompareLabel = 'Ausgewählte Angebote mit KI vergleichen';
+  let compareConnected=false;
+  document.addEventListener('phb-ai-status',event=>{
+    compareConnected=!!event.detail?.sharing;
+    updateAICompareSelection();
+  });
   function updateAICompareSelection() {
     const choices=$('aiOfferChoices'),button=$('aiCompareOffers');
     if(!choices||!button)return;
     const count=choices.querySelectorAll('input:checked').length;
-    button.disabled=comparingOffers||count<2||count>8;
+    const connected=window.PHBAI?.connected?.()??compareConnected;
+    button.disabled=comparingOffers||!connected||count<2||count>8;
+    button.title=!connected?'Zum Vergleichen bitte zuerst ChatGPT verbinden.':count<2||count>8?'Bitte zwischen 2 und 8 Angebote auswählen.':'Ausgewählte Angebote vergleichen';
+    const hint=$('aiCompareConnectionHint');if(hint)hint.hidden=connected;
     button.textContent=comparingOffers?'Vergleich läuft …':defaultCompareLabel;
     button.setAttribute('aria-busy',String(comparingOffers));
     const indicator=$('aiCompareSelectionCount');

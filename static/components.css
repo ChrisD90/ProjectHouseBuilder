@@ -29,3 +29,15 @@
 .phb-request-notice label{display:flex;align-items:flex-start;gap:10px;margin:8px 0;line-height:1.5}
 .phb-request-notice input[type=checkbox]{width:18px;height:18px;flex-shrink:0}
 .phb-request-notice textarea{width:100%;min-height:130px;background:var(--brand-soft);color:var(--brand-ink);border:1px solid var(--brand-line);border-radius:8px;padding:10px}
+/* Native disclosures keep their keyboard behavior and expose a clear leading toggle. */
+details>summary{--phb-disclosure-inset:0px;position:relative;list-style:none;cursor:pointer;min-height:26px;padding-inline-start:calc(var(--phb-disclosure-inset) + 34px)!important}
+details.panel>summary{--phb-disclosure-inset:18px}
+details>summary::-webkit-details-marker{display:none}
+details>summary::marker{content:''}
+details>summary::before{content:'';position:absolute;left:var(--phb-disclosure-inset);top:50%;width:24px;height:24px;border:1px solid var(--brand-line);border-radius:7px;background:var(--brand-soft);transform:translateY(-50%);transition:transform .18s ease;pointer-events:none}
+details>summary::after{content:'';position:absolute;left:calc(var(--phb-disclosure-inset) + 8px);top:50%;width:7px;height:7px;border-top:2px solid var(--brand-ink);border-right:2px solid var(--brand-ink);transform:translateY(-50%) rotate(45deg);transition:transform .18s ease;pointer-events:none}
+details[open]>summary::before{transform:translateY(-50%) rotate(90deg)}
+details[open]>summary::after{transform:translateY(-50%) rotate(135deg)}
+details>summary:focus-visible{outline:2px solid var(--brand-accent);outline-offset:3px;border-radius:7px}
+.mantine-Accordion-chevron{border:1px solid var(--brand-line);border-radius:7px;background:var(--brand-soft);color:var(--brand-ink)}
+@media(prefers-reduced-motion:reduce){details>summary::before,details>summary::after{transition:none}}

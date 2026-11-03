@@ -55,6 +55,7 @@ if __name__=='__main__':
     scripts=sys.argv[1:] or ['tests/browser_react_ui.cjs','tests/browser_multi_projects.cjs','tests/browser_project_lifecycle.cjs','tests/browser_receipt_phase_ui.cjs','tests/browser_receipt_template_upgrade.cjs','tests/browser_till_receipts.cjs','tests/browser_project_start.cjs','tests/browser_project_backups.cjs','tests/browser_request_safety.cjs','tests/browser_self_work.cjs','tests/browser_self_work_upload.cjs','tests/browser_legacy_costs.cjs','visual']
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_till_receipts.cjs')+1,'tests/browser_financing_receipts.cjs')
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_financing_receipts.cjs')+1,'tests/browser_unassigned_financing.cjs')
+    if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_list_sorting.cjs')+1,'tests/browser_offer_panels.cjs')
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_self_work_upload.cjs')+1,'tests/browser_list_sorting.cjs')
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_receipt_phase_ui.cjs')+1,'tests/browser_dialog_navigation.cjs')
     for script in scripts:run(script)
