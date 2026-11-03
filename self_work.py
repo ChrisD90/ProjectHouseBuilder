@@ -114,7 +114,9 @@ def register_self_work(app, db, Task, Receipt, *, ai_required, chatgpt, extract_
 
     def receipt_dict(r):
         return dict(id=r.id,label=(r.invoice_number or r.original_name)+' · '+(r.supplier or 'Ohne Lieferant'),
-                    status=r.status,amount=float(rounded(Decimal(str(receipt_amount(r))))))
+                    status=r.status,amount=float(rounded(Decimal(str(receipt_amount(r))))),
+                    gross=float(r.gross_amount or 0),paid=float(r.paid_amount or 0),number=r.invoice_number or r.original_name,
+                    supplier=r.supplier,date=r.document_date,kind=r.kind,billing_type=r.billing_type)
 
     def costs():
         return [serialize(x) for x in db.session.scalars(select(SelfWorkPlan))]

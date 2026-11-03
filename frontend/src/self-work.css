@@ -5,6 +5,18 @@
   gap: 12px;
   min-width: 0;
 }
+.self-work-page .self-work-status {
+  height: auto;
+  min-height: 26px;
+  padding-block: 3px;
+  background: var(--badge-bg);
+  color: var(--badge-color);
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 999px;
+  text-transform: none;
+  letter-spacing: 0;
+  padding-inline: 10px;
+}
 .self-work-list-frame {
   display: flex;
   flex-direction: column;

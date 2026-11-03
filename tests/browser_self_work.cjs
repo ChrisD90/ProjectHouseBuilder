@@ -135,7 +135,7 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     await toolRow.click();
     await expect(editor.getByRole("textbox",{name:"Geplante Kosten (€)",exact:true})).toHaveValue("10");
     await editor
-      .getByRole("button", { name: "Eigenleistung speichern", exact: true })
+      .getByRole("button", { name: "Speichern", exact: true })
       .click();
     await expect(editor).toHaveCount(0);
     const read = async () =>
@@ -326,7 +326,7 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
       .getByRole("textbox", { name: "Arbeitsschritt 1", exact: true })
       .fill("Untergrund prüfen und abkleben");
     await edit
-      .getByRole("button", { name: "Eigenleistung speichern", exact: true })
+      .getByRole("button", { name: "Speichern", exact: true })
       .click();
     await expect(edit).toHaveCount(0);
     saved = (await read()).plans[0];
@@ -474,7 +474,7 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
       await header.getByRole('button',{name:backName,exact:true}).click();
       assert(await edit.evaluate(n=>n.scrollWidth<=n.clientWidth+1));
     }
-    await edit.getByRole('button',{name:'Eigenleistung speichern',exact:true}).click();
+    await edit.getByRole('button',{name:'Speichern',exact:true}).click();
     await expect(edit).toHaveCount(0);
     assert.equal((await read()).plans[0].steps[24].done,true);
     assert.deepEqual((await read()).plans[0].steps.slice(0,3).map(x=>x.title),['Schritt 2','Schritt 1','Schritt 3']);

@@ -100,6 +100,8 @@ def register(runtime: ModuleType):
         reversal = runtime.db.session.scalar(runtime.select(runtime.ReceiptCancellationReversal).where(runtime.ReceiptCancellationReversal.receipt_id == r.id).order_by(runtime.ReceiptCancellationReversal.id.desc()).limit(1))
         obj = {'id': r.id, 'filename': r.original_name, 'source': r.source, 'supplier': r.supplier, 'invoice_number': r.invoice_number, 'document_date': r.document_date, 'due_date': r.due_date, 'gross_amount': float(r.gross_amount) if r.gross_amount is not None else None, 'net_amount': float(r.net_amount) if r.net_amount is not None else None, 'vat_amount': float(r.vat_amount) if r.vat_amount is not None else None, 'labor_amount': float(r.labor_amount) if r.labor_amount is not None else None, 'labor_source': r.labor_source or '', 'category': r.category, 'kind': r.kind, 'billing_type': r.billing_type, 'advance_deduction': float(r.advance_deduction or 0), 'counted_amount': float(runtime._receipt_increment(r)), 'notes': r.notes, 'status': r.status, 'paid_amount': float(r.paid_amount or 0), 'budget_line_id': r.budget_line_id, 'cost_item_id': r.cost_item_id, 'trade': r.trade, 'contractor_id': r.contractor_id, 'assignment_type': r.assignment_type or ('Angebot' if runtime._accepted_receipt_offer(r) else 'Kostenposition' if r.cost_item_id else ''), 'offer_id': runtime._accepted_receipt_offer(r).id if runtime._accepted_receipt_offer(r) else None, 'warnings': runtime.json.loads(r.warnings or '[]'), 'created_at': r.created_at.isoformat()}
         obj.update(assigned_amount=round(assigned, 2), unassigned_amount=unassigned, payment_assignment='Nicht zugewiesen' if unassigned > 0 and (not assigned) else 'Teilweise zugewiesen' if unassigned > 0 else 'Zugewiesen' if assigned else 'Unbezahlt', cancellation={'date': cancellation.created_at.isoformat(), 'reason': cancellation.reason, 'previous_paid': float(runtime.json.loads(cancellation.snapshot_json)['receipt'].get('paid_amount') or 0)} if cancellation else None, cancellation_reversal={'date': reversal.reversed_at.isoformat(), 'reason': reversal.reason, 'canceled_at': reversal.cancellation_created_at.isoformat(), 'restored_paid': float(runtime.json.loads(reversal.cancellation_snapshot_json)['receipt'].get('paid_amount') or 0)} if reversal else None)
+        link=runtime.db.session.scalar(runtime.select(runtime.SelfWorkReceipt).where(runtime.SelfWorkReceipt.receipt_id==r.id))
+        obj['self_work_id']=link.plan_id if link and not r.cost_item_id and not r.budget_line_id else None
         if include_text:
             obj['ocr_text'] = r.ocr_text
         return obj
@@ -262,7 +264,7 @@ def register(runtime: ModuleType):
     @runtime.app.get('/api/receipts')
     def receipt_list():
         rows = runtime.db.session.scalars(runtime.select(runtime.Receipt).order_by(runtime.Receipt.id.desc())).all()
-        return runtime.jsonify(receipts=[runtime._receipt_json(r) for r in rows], categories=runtime.category_names(), trades=[t.name for t in runtime.db.session.scalars(runtime.select(runtime.Trade).order_by(runtime.Trade.name))], booked_gross=round(sum((float(r.gross_amount or 0) for r in rows if r.status == 'Gebucht')), 2), paid=round(sum((float(r.paid_amount or 0) for r in rows if r.status == 'Gebucht')), 2), drafts=sum((r.status == 'Entwurf' for r in rows)))
+        return runtime.jsonify(receipts=[runtime._receipt_json(r) for r in rows], self_work_plans=[dict(id=p.id,title=p.title+(' · Archiv' if p.archived else '')) for p in runtime.db.session.scalars(runtime.select(runtime.SelfWorkPlan).order_by(runtime.SelfWorkPlan.title))], categories=runtime.category_names(), trades=[t.name for t in runtime.db.session.scalars(runtime.select(runtime.Trade).order_by(runtime.Trade.name))], booked_gross=round(sum((float(r.gross_amount or 0) for r in rows if r.status == 'Gebucht')), 2), paid=round(sum((float(r.paid_amount or 0) for r in rows if r.status == 'Gebucht')), 2), drafts=sum((r.status == 'Entwurf' for r in rows)))
 
     runtime.receipt_list = receipt_list
 
@@ -352,6 +354,24 @@ def register(runtime: ModuleType):
 
     runtime.receipt_preview = receipt_preview
 
+    def assign_self_work_receipt(r,data):
+        links=list(runtime.db.session.scalars(runtime.select(runtime.SelfWorkReceipt).where(runtime.SelfWorkReceipt.receipt_id==r.id)))
+        if 'self_work_id' not in data:
+            if 'assignment_type' in data and r.assignment_type!='Eigenleistung':
+                for link in links:runtime.db.session.delete(link)
+            return
+        raw=data['self_work_id']
+        if raw in ('',None):
+            for link in links:runtime.db.session.delete(link)
+            return
+        if isinstance(raw,bool) or not str(raw).isdigit():raise ValueError('Ungültige Eigenleistung.')
+        target=runtime.db.session.get(runtime.SelfWorkPlan,int(raw))
+        if not target:raise ValueError('Eigenleistung nicht gefunden.')
+        if r.assignment_type!='Eigenleistung' or r.cost_item_id or r.budget_line_id:
+            raise ValueError('Für eine Eigenleistung bitte die Zuordnungsart Eigenleistung wählen und die Angebots-/Budgetzuordnung entfernen.')
+        if links:links[0].plan_id=target.id
+        else:runtime.db.session.add(runtime.SelfWorkReceipt(plan_id=target.id,receipt_id=r.id))
+
     @runtime.app.patch('/api/receipts/<int:rid>')
     def receipt_edit(rid):
         r = runtime.db.session.get(runtime.Receipt, rid)
@@ -439,6 +459,7 @@ def register(runtime: ModuleType):
                     if already:
                         raise ValueError('Mögliche Doppelbuchung: Lieferant und Rechnungsnummer bereits gebucht (#' + str(already) + ').')
                 r.status = 'Gebucht'
+            assign_self_work_receipt(r,data)
             if data.get('reviewed') is True:
                 runtime._mark_import_reviewed('receipts', rid)
             runtime.db.session.commit()
@@ -460,7 +481,7 @@ def register(runtime: ModuleType):
         data = runtime.request.get_json(silent=True) or {}
         if not isinstance(data, dict):
             return (runtime.jsonify(error='Ungültige Zuordnungsdaten.'), 400)
-        allowed = {'assignment_type', 'cost_item_id', 'contractor_id', 'budget_line_id'}
+        allowed = {'assignment_type', 'cost_item_id', 'contractor_id', 'budget_line_id', 'self_work_id'}
         if not set(data).issubset(allowed):
             return (runtime.jsonify(error='Es dürfen nur Kosten- und Angebotszuordnungen geändert werden.'), 400)
         try:
@@ -477,6 +498,7 @@ def register(runtime: ModuleType):
             linked_offer = runtime._validate_accepted_invoice_link(r)
             runtime._validate_invoice_advance(r, linked_offer)
             runtime._validate_receipt_booking(r)
+            assign_self_work_receipt(r,data)
             runtime.db.session.commit()
             return runtime.jsonify(runtime._receipt_json(r))
         except (ValueError, TypeError) as err:

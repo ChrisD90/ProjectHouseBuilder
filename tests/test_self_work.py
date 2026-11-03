@@ -77,6 +77,33 @@ class SelfWorkTest(unittest.TestCase):
         self.assertEqual(self.client.delete(path).status_code,200)
         with project_context(1):self.assertIsNotNone(b.db.session.get(b.Receipt,rid))
 
+    def test_receipt_assignment_chooses_and_changes_self_work_without_changing_money(self):
+        first=self.create().json['plan']['id']
+        second=self.create(title='Boden verlegen').json['plan']['id']
+        with project_context(1):
+            receipt=b.Receipt(digest='self-work-assignment',original_name='Material.pdf',stored_name='material.pdf',supplier='Baumarkt',document_date='2026-11-03',gross_amount=200,paid_amount=60,status='Gebucht',assignment_type='Eigenleistung',notes='Originalnotiz')
+            b.db.session.add(receipt);b.db.session.commit();rid=receipt.id
+        path='/api/receipts/'+str(rid)+'/assignment'
+        resource='/api/receipts/'+str(rid)
+        old_version=self.client.get(resource).json['_versions'][resource]
+        result=self.client.patch(path,json={'assignment_type':'Eigenleistung','self_work_id':first},headers={'If-Match':old_version})
+        self.assertEqual(result.status_code,200,result.json);self.assertEqual(result.json['self_work_id'],first)
+        stale=self.client.patch(path,json={'assignment_type':'Eigenleistung','self_work_id':second},headers={'If-Match':old_version})
+        self.assertEqual(stale.status_code,409,stale.json)
+        changed=self.client.patch(path,json={'assignment_type':'Eigenleistung','self_work_id':second})
+        self.assertEqual(changed.status_code,200,changed.json)
+        self.assertEqual(changed.json['gross_amount'],200);self.assertEqual(changed.json['paid_amount'],60)
+        self.assertEqual(changed.json['notes'],'Originalnotiz')
+        self.assertEqual(self.client.get('/api/self-work/'+str(first)).json['plan']['receipt_ids'],[])
+        self.assertEqual(self.client.get('/api/self-work/'+str(second)).json['plan']['actual_cost'],200)
+        other=self.client.post('/api/projects',json={'title':'Anderes Projekt'}).json['project']['id']
+        foreign=self.client.post('/api/self-work',headers={'X-PHB-Project':str(other)},json={'title':'Fremde Eigenleistung'}).json['plan']['id']
+        denied=self.client.patch(path,json={'assignment_type':'Eigenleistung','self_work_id':foreign})
+        self.assertEqual(denied.status_code,400)
+        self.assertEqual(self.client.get('/api/receipts/'+str(rid)).json['self_work_id'],second)
+        detached=self.client.patch(path,json={'assignment_type':'Eigenleistung','self_work_id':None})
+        self.assertEqual(detached.status_code,200,detached.json);self.assertIsNone(detached.json['self_work_id'])
+
     def test_invalid_lists_and_numbers_roll_back_and_unknown_prices_stay_unknown(self):
         made=self.create(materials=[dict(title='Farbe',quantity=None,unit_price=None)],tools=[dict(title='Leiter')])
         self.assertEqual(made.status_code,201,made.json);plan=made.json['plan'];self.assertFalse(plan['costs_complete'])

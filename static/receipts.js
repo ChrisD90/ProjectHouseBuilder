@@ -200,6 +200,8 @@ function updateInvoiceControls(){
  const mode=$('receiptAssignmentType').value;
  const frozen=false;
  $('receiptOfferWrap').hidden=mode!=='Angebot'&&mode!=='Kostenposition';
+ $('receiptSelfWorkWrap').hidden=mode!=='Eigenleistung';
+ $('receiptSelfWork').disabled=mode!=='Eigenleistung';
  $('receiptContractorWrap').hidden=true;
  $('receiptContractorHint').hidden=mode!=='Betrieb';
  $('costItems').disabled=frozen||(mode!=='Angebot'&&mode!=='Kostenposition');
@@ -229,11 +231,12 @@ function updateInvoiceControls(){
  hint.textContent=isAccepted
    ? `Mit dem angenommenen Angebot „${offer.vendor}“ verknüpft. Abschläge und Schlussrechnung werden zum Vertragsbetrag von ${money(offer.agreed_gross??offer.gross)} addiert, ohne verrechnete Abschläge doppelt zu zählen.`
    : mode==='Betrieb'?'Direkt einem Betrieb zugeordnet; keine automatische Verknüpfung zu einem Angebot. Die Rechnung wird nur einmal als Ausgabe berücksichtigt.'
-   : mode==='Eigenleistung'?'Eigenleistung/Material: Keine Verknüpfung zu einem Handwerker oder Angebot. Falls vorhanden, die passende Budgetposition auswählen.'
+   : mode==='Eigenleistung'?'Wähle das zugehörige Vorhaben. Gebuchte Belege zählen dort als Ist-Kosten; Entwürfe und stornierte Belege bleiben als Unterlagen sichtbar.'
    : mode==='Kostenposition'?'Historische Kostenpositionszuordnung. Für Änderungen kann ein regulärer Zuordnungstyp ausgewählt werden.'
    : 'Firma und Kostenkategorie lassen sich unabhängig zuordnen. Bei einem Angebot wird die Firma automatisch übernommen.';
 }
 $('receiptAssignmentType').addEventListener('change',()=>{
+  if($('receiptAssignmentType').value!=='Eigenleistung')$('receiptSelfWork').value='';
   if($('receiptAssignmentType').value!=='Angebot'&&$('receiptAssignmentType').value!=='Kostenposition'){$('costItems').value='';$('advanceDeduction').value='0';}
   if($('receiptAssignmentType').value!=='Betrieb')$('receiptContractor').value='';
   updateInvoiceControls();
@@ -254,6 +257,7 @@ $('review').elements.namedItem('supplier').addEventListener('input',event=>{
  }
 });
 $('costItems').addEventListener('change',updateInvoiceControls);
+$('receiptSelfWork').addEventListener('change',()=>{if($('receiptSelfWork').value)$('budgetLines').value='';updateInvoiceControls();});
 $('billingType').addEventListener('change',()=>{if($('billingType').value!=='Schlussrechnung')$('advanceDeduction').value='0';updateInvoiceControls();});
 $('receiptAnalysisMode').addEventListener('change',()=>{
  const ai=$('receiptAnalysisMode').value==='ai';
@@ -274,6 +278,7 @@ function inputs({booking=false}={}){
  if(booking&&mode==='Angebot'&&!$('costItems').value)throw Error('Bitte ein angenommenes Angebot auswählen.');
  if(booking&&mode==='Betrieb'&&!$('receiptContractor').value)throw Error('Bitte einen Betrieb auswählen.');
  result.assignment_type=mode;
+ result.self_work_id=mode==='Eigenleistung'?$('receiptSelfWork').value||null:null;
  result.cost_item_id=(mode==='Angebot'||mode==='Kostenposition')?$('costItems').value:null;
  result.contractor_id=mode==='Betrieb'?$('receiptContractor').value:null;
  result.advance_deduction=$('billingType').value==='Schlussrechnung'?$('advanceDeduction').value:'0';
@@ -288,6 +293,7 @@ async function reload(keepId=selected,reopen=true){
  $('receiptTrade').innerHTML='<option value="">Ohne Gewerk</option>'+(r.trades||[]).map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('');
  $('stats').innerHTML=`<span>Entwürfe: <b>${r.drafts}</b></span><span>Gebucht brutto: <b>${money(r.booked_gross)}</b></span><span>Bezahlt: <b>${money(r.paid)}</b></span><span>Lohnanteil erfasst: <b>${list.filter(x=>x.labor_amount!==null).length} Belege</b></span>`;
  $('categories').innerHTML=r.categories.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');
+ fillSelect($('receiptSelfWork'),r.self_work_plans||[],x=>x.title);
  fillSelect($('budgetLines'),c.budget_lines.filter(x=>x.active&&!x.is_group),x=>x.category+' · '+x.title);
  renderCostItems();
  renderReceiptFilters();
@@ -366,7 +372,7 @@ function setAssignmentEditing(enabled){
  $('editReceiptAssignment').hidden=enabled;
  $('saveReceiptAssignment').hidden=!enabled;
  $('cancelReceiptAssignment').hidden=!enabled;
- for(const id of ['receiptAssignmentType','costItems','receiptContractor','budgetLines'])$(id).disabled=!enabled;
+ for(const id of ['receiptAssignmentType','costItems','receiptContractor','budgetLines','receiptSelfWork'])$(id).disabled=!enabled;
  updateInvoiceControls();
  if(enabled){
   $('receiptReviewHelp').textContent='Korrigiere nur die Zuordnung. Rechnungsbetrag, Zahlungsstand und Stornonachweis bleiben unverändert.';
@@ -380,6 +386,7 @@ $('saveReceiptAssignment').onclick=async()=>{
  const mode=$('receiptAssignmentType').value;
  if(!mode){notice('Bitte eine Zuordnungsart auswählen.',true);return;}
  const fields={assignment_type:mode,
+   self_work_id:mode==='Eigenleistung'?$('receiptSelfWork').value||null:null,
    cost_item_id:(mode==='Angebot'||mode==='Kostenposition')?$('costItems').value:null,
    contractor_id:mode==='Betrieb'?$('receiptContractor').value:null,
    budget_line_id:$('budgetLines').value||null};

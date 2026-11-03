@@ -31,6 +31,19 @@ export type PlanDraft = {
   receipt_ids: number[];
 };
 export type Plan = PlanDraft & {
+  receipts: {
+    id: number;
+    label: string;
+    status: string;
+    amount: number;
+    gross: number;
+    paid: number;
+    number: string;
+    supplier: string;
+    date: string;
+    kind: string;
+    billing_type: string;
+  }[];
   id: number;
   task_label: string;
   task_missing: boolean;

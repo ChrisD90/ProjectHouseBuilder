@@ -5,7 +5,6 @@ import {
   Button,
   Checkbox,
   Group,
-  MultiSelect,
   NumberInput,
   Paper,
   Progress,
@@ -44,6 +43,7 @@ import { useDirtyGuard } from './shell';
 import { ActionBar, SearchField, StatusPill, useViewState } from './ui';
 import { SelfWorkAI } from './self-work-ai';
 import { SelfWorkSteps } from './self-work-steps';
+import { SelfWorkInvoices } from './self-work-invoices';
 import { draftOf, emptyPlan, newID } from './self-work-types';
 import type { Material, Plan, PlanDraft, Proposal, Step, Tool } from './self-work-types';
 import './self-work.css';
@@ -174,7 +174,10 @@ export function SelfWorkPage() {
     [failure, setFailure] = useState<unknown>(null),
     [tab, setTab] = useState<string | null>('overview');
   const [search, setSearch] = useViewState('self-work-search', ''),
+    [status, setStatus] = useViewState('self-work-status', 'all'),
     [archive, setArchive] = useViewState('self-work-archive', 'active');
+  const [invoicePlanID, setInvoicePlanID] = useState<number | null>(null);
+  const invoicePlan = query.data?.plans.find((row) => row.id === invoicePlanID);
   const form = useForm<PlanDraft>({
     initialValues: emptyPlan(),
     validate: { title: (value) => (value.trim() ? null : 'Bitte eine Bezeichnung eingeben.') },
@@ -215,19 +218,9 @@ export function SelfWorkPage() {
   useEffect(() => {
     if (uploadTarget && !opened) navigate('/belege?upload=1&self_work_id=' + uploadTarget);
   }, [uploadTarget, opened, navigate]);
-  async function startReceiptUpload() {
+  function startReceiptUpload(target: number) {
     if (pending.current) return;
-    let target = id;
-    if (!id || form.isDirty()) {
-      if (
-        !(await ask(
-          'Eigenleistung vor dem Beleg-Upload speichern und die Angaben für die Zuordnung übernehmen?',
-        ))
-      )
-        return;
-      target = (await save()) || null;
-      if (!target) return;
-    }
+    setInvoicePlanID(null);
     setOpened(false);
     setUploadTarget(target);
   }
@@ -358,6 +351,7 @@ export function SelfWorkPage() {
   const records = (query.data?.plans || []).filter(
     (row) =>
       row.archived === (archive === 'archived') &&
+      (status === 'all' || row.status === status) &&
       [row.title, row.description, row.location, row.task_label].some((value) =>
         value.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de')),
       ),
@@ -397,6 +391,12 @@ export function SelfWorkPage() {
             style={{ flex: '1 1 240px' }}
           />
           <Select
+            label="Status"
+            value={status}
+            onChange={(value) => setStatus(value || 'all')}
+            data={[{ value: 'all', label: 'Alle Status' }, 'Geplant', 'In Arbeit', 'Erledigt']}
+          />
+          <Select
             label="Ansicht"
             value={archive}
             onChange={(value) => setArchive(value || 'active')}
@@ -414,7 +414,7 @@ export function SelfWorkPage() {
         <Paper withBorder p="xl" className="self-work-empty">
           <IconTool size={34} />
           <Title order={3}>
-            {search
+            {search || status !== 'all'
               ? 'Keine passenden Eigenleistungen'
               : archive === 'archived'
                 ? 'Noch keine archivierten Vorhaben'
@@ -425,7 +425,7 @@ export function SelfWorkPage() {
               ? 'Archivierte Eigenleistungen kannst du hier wieder öffnen.'
               : 'Zum Beispiel einen Raum streichen, den Boden verlegen oder ein Hochbeet bauen.'}
           </Text>
-          {!search && archive !== 'archived' && (
+          {!search && status === 'all' && archive !== 'archived' && (
             <Button mt="sm" onClick={() => edit()}>
               Erste Eigenleistung planen
             </Button>
@@ -453,9 +453,10 @@ export function SelfWorkPage() {
               >
                 <Group justify="space-between" wrap="nowrap">
                   <StatusPill
+                    className="self-work-status"
                     color={
                       row.status === 'Erledigt'
-                        ? 'teal'
+                        ? 'green'
                         : row.status === 'In Arbeit'
                           ? 'blue'
                           : 'gray'
@@ -478,10 +479,7 @@ export function SelfWorkPage() {
                       <ActionIcon
                         variant="default"
                         className="self-work-corner-icon"
-                        onClick={() => {
-                          edit(row);
-                          setTab('receipts');
-                        }}
+                        onClick={() => setInvoicePlanID(row.id)}
                         aria-label={'Rechnungen zu ' + row.title + ': ' + row.receipt_ids.length}
                       >
                         <IconReceipt size={17} />
@@ -583,74 +581,7 @@ export function SelfWorkPage() {
                 <Tabs.Tab value="steps">Schritte ({form.values.steps.length})</Tabs.Tab>
                 <Tabs.Tab value="materials">Material ({form.values.materials.length})</Tabs.Tab>
                 <Tabs.Tab value="tools">Werkzeuge ({form.values.tools.length})</Tabs.Tab>
-                <Tabs.Tab value="receipts">Rechnungen ({form.values.receipt_ids.length})</Tabs.Tab>
               </Tabs.List>
-              <Tabs.Panel value="receipts" pt="md">
-                <Stack>
-                  <Group justify="space-between">
-                    <Text size="sm" fw={600}>
-                      Rechnungen & Kassenzettel
-                    </Text>
-                    <Button
-                      variant="light"
-                      size="xs"
-                      disabled={busy}
-                      onClick={() => void startReceiptUpload()}
-                    >
-                      Rechnungen & Kassenzettel erfassen
-                    </Button>
-                  </Group>
-                  <Alert>
-                    Ordne Rechnungen und Kassenzettel zu. Nur gebuchte Belege zählen als Ist-Kosten.
-                    Eine Zuordnung zu einem Angebot oder Kostenplan muss zuvor im Beleg gelöst
-                    werden.
-                  </Alert>
-                  <MultiSelect
-                    label="Vorhandene Belege zuordnen"
-                    searchable
-                    clearable
-                    placeholder="Beleg suchen und zuordnen"
-                    value={form.values.receipt_ids.map(String)}
-                    onChange={(value) => form.setFieldValue('receipt_ids', value.map(Number))}
-                    data={(query.data?.receipts || [])
-                      .filter(
-                        (r) =>
-                          !query.data?.plans.some(
-                            (p) => p.id !== id && p.receipt_ids.includes(r.id),
-                          ),
-                      )
-                      .map((r) => ({
-                        value: String(r.id),
-                        label: r.label + ' · ' + money(r.amount) + ' · ' + r.status,
-                      }))}
-                  />
-                  {form.values.receipt_ids.map((rid) => {
-                    const r = query.data?.receipts.find((x) => x.id === rid);
-                    return r ? (
-                      <Paper key={rid} withBorder p="sm">
-                        <Group justify="space-between">
-                          <div>
-                            <Text size="sm" fw={600}>
-                              {r.label}
-                            </Text>
-                            <Text size="xs" c="dimmed">
-                              {r.status} · {money(r.amount)}
-                            </Text>
-                          </div>
-                          <Button
-                            component={Link}
-                            to={'/belege?receipt_id=' + rid}
-                            variant="subtle"
-                            size="xs"
-                          >
-                            Beleg öffnen
-                          </Button>
-                        </Group>
-                      </Paper>
-                    ) : null;
-                  })}
-                </Stack>
-              </Tabs.Panel>
               <Tabs.Panel value="overview" pt="md">
                 <Stack>
                   <TextInput
@@ -1111,12 +1042,19 @@ export function SelfWorkPage() {
                 </Group>
               )}
               <Button type="submit" loading={busy}>
-                Eigenleistung speichern
+                Speichern
               </Button>
             </ActionBar>
           </Stack>
         </form>
       </Editor>
+      {invoicePlan && (
+        <SelfWorkInvoices
+          plan={invoicePlan}
+          onClose={() => setInvoicePlanID(null)}
+          onCreate={() => startReceiptUpload(invoicePlan.id)}
+        />
+      )}
       <SelfWorkAI
         opened={aiOpen}
         model={aiModel}
