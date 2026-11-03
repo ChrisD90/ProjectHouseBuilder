@@ -256,7 +256,7 @@ export function ProjectDashboard() {
     <div style={{ minHeight: '100dvh', background: 'var(--brand-bg)' }}>
       <div className="page" style={{ maxWidth: 1280, paddingTop: 36 }}>
         <Group justify="space-between" mb={42}>
-          <Group gap="sm">
+          <Group gap="sm" className="app-header-brand">
             <BrandLogo />
           </Group>
           <Group gap="xs">
