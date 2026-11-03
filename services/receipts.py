@@ -187,6 +187,9 @@ def register(runtime: ModuleType):
 
     @runtime.app.post('/api/receipts')
     def receipt_upload():
+        self_work_id=runtime.request.form.get('self_work_id','')
+        if self_work_id and (not self_work_id.isdigit() or runtime.db.session.get(runtime.SelfWorkPlan,int(self_work_id)) is None):
+            return runtime.jsonify(error='Zugehörige Eigenleistung nicht gefunden.'),400
         file = runtime.request.files.get('file')
         if not file or not file.filename:
             return (runtime.jsonify(error='Bitte einen Beleg auswählen.'), 400)
@@ -235,6 +238,18 @@ def register(runtime: ModuleType):
         try:
             row = runtime.Receipt(digest=digest, original_name=name, stored_name=stored, source=source, ocr_text=content, warnings=runtime.json.dumps(guessed['warnings'], ensure_ascii=False), supplier=guessed['supplier'], invoice_number=guessed['invoice_number'], document_date=guessed['document_date'], due_date=guessed.get('due_date', ''), kind=guessed.get('kind', 'Rechnung'), billing_type=guessed.get('billing_type', 'Normal'), gross_amount=runtime._receipt_amount(guessed['gross_amount'], 'Bruttobetrag'), net_amount=runtime._receipt_amount(guessed['net_amount'], 'Nettobetrag'), vat_amount=runtime._receipt_amount(guessed['vat_amount'], 'Umsatzsteuer'), labor_amount=runtime._receipt_amount(guessed.get('labor_amount'), 'Arbeitslohn'), labor_source='Erkannt' if guessed.get('labor_amount') not in (None, '') else '', category=guessed['category'] if guessed['category'] in runtime.category_names() else 'Sonstiges')
             runtime.db.session.add(row)
+            if self_work_id:
+                plan=runtime.db.session.get(runtime.SelfWorkPlan,int(self_work_id))
+                if plan is None:raise ValueError('Eigenleistung inzwischen gelöscht.')
+                task=runtime.db.session.get(runtime.Task,plan.task_id) if plan.task_id else None
+                row.assignment_type='Eigenleistung'
+                row.trade=task.trade if task and runtime.db.session.scalar(runtime.select(runtime.Trade.id).where(runtime.Trade.name==task.trade)) else ''
+                if task and task.trade and not row.trade:
+                    row.warnings=runtime.json.dumps(guessed['warnings']+['Gewerk des Arbeitspakets ist nicht mehr in den Stammdaten vorhanden: '+task.trade+'. Bitte neu auswählen.'],ensure_ascii=False)
+                if task and task.trade in runtime.category_names():row.category=task.trade
+                row.notes='Eigenleistung: '+plan.title+(' · '+plan.location if plan.location else '')
+                runtime.db.session.flush()
+                runtime.db.session.add(runtime.SelfWorkReceipt(plan_id=plan.id,receipt_id=row.id))
             runtime.db.session.commit()
             return (runtime.jsonify(runtime._receipt_json(row, True)), 201)
         except Exception:

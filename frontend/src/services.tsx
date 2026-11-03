@@ -241,7 +241,9 @@ export function useServices(navigate: (url: string) => void) {
       if (old && old !== job.status && ['Fertig', 'Fehler', 'Unterbrochen'].includes(job.status)) {
         void cache.invalidateQueries({
           predicate: (query) =>
-            ['documents', 'master', 'cost-dashboard', 'energy'].includes(String(query.queryKey[0])),
+            ['documents', 'master', 'cost-dashboard', 'energy', 'self-work'].includes(
+              String(query.queryKey[0]),
+            ),
         });
         if (job.status === 'Fertig')
           success(job.filename + ' ist fertig und wartet auf deine Prüfung.');

@@ -2,6 +2,8 @@
 
 Der Bereich **Eigenleistungen** steht in der Sidebar unter „Projekt“ und unter `/p/<Projekt-ID>/eigenleistungen`. Plan-Kosten stammen aus Material und Werkzeugen, Ist-Kosten aus zugeordneten gebuchten Belegen (inkrementeller Betrag bei Schlussrechnungen). Bestelltes und vorhandenes Material wird separat als beschaffter Planwert gezeigt und löst keine Zahlung aus. Fehlende Preise bleiben offen. Die Projektprognose berücksichtigt je Eigenleistung den höheren Plan-/Ist-Wert, zugeordnete Belege werden nicht zusätzlich gezählt. Auch archivierte Vorhaben behalten ihre Kostenwirkung. To-dos und Notizen nutzen die zentrale Quellenzuordnung. Angebots-/Kostenplanzuordnungen haben Vorrang: Wird ein zugeordneter Beleg später dort eingeplant, zählt er nicht mehr zur Eigenleistung. Das Löschen einer Eigenleistung löscht keine Belege; diese werden wieder als normale Belege berücksichtigt.
 
+Die gesamte Kachelfläche öffnet die Details; die Aktionsicons bleiben unabhängig. Im Rechnungsreiter führt „Rechnungen & Kassenzettel erfassen“ direkt zum Upload. Ungespeicherte Planangaben können davor nach Bestätigung gespeichert werden. Der Upload erzeugt bereits zugeordnete Entwürfe mit Eigenleistungsart, gültigem Gewerk des verknüpften Arbeitspakets und Vorhabensbezug. Eine zum Gewerk namensgleiche bestehende Rechnungskategorie wird übernommen, andernfalls bleibt die Kategorie aus der Beleganalyse erhalten. Ein nicht mehr vorhandenes Stammdatengewerk erzeugt einen Prüfhinweis. Der Kontext wird auch in Hintergrundaufträgen gespeichert und vor der Verarbeitung auf das aktuelle Projekt geprüft. Erst das Buchen erzeugt Ist-Kosten.
+
 ## Manuell planen
 
 1. „Eigenleistung planen“ öffnen und Bezeichnung, Vorhaben, Ort und eigene Erfahrung erfassen.

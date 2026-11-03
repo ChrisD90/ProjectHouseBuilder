@@ -135,6 +135,34 @@ class ImportJobsTest(unittest.TestCase):
         receipt=db.session.get(Receipt,final['result_id'])
         self.assertEqual(receipt.status,'Entwurf')
 
+    def test_self_work_receipt_context_survives_background_processing(self):
+        from app import Task,SelfWorkReceipt
+        task=Task(code='DIY',name='Malerarbeiten',trade='Sonstiges',execution_type='Eigenleistung')
+        db.session.add(task);db.session.commit()
+        plan=self.client.post('/api/self-work',json={'title':'Zimmer streichen','location':'OG','task_id':task.id}).json['plan']
+        plan_path='/api/self-work/'+str(plan['id'])
+        old_version=self.client.get(plan_path).json['_versions'][plan_path]
+        response=self.enqueue(extra={'self_work_id':str(plan['id'])})
+        self.assertEqual(response.status_code,202,response.json)
+        ident=response.json['jobs'][0]['id']
+        self.assertEqual(json.loads(db.session.get(ImportJob,ident).extra_json)['self_work_id'],plan['id'])
+        with patch('app.extract_text',return_value=('Rechnung\nBaumarkt\nGesamtbetrag 125,00 EUR','PDF-Text')):
+            _run_import_job(ident)
+        job=db.session.get(ImportJob,ident);self.assertEqual(job.status,'Fertig',job.error)
+        receipt=db.session.get(Receipt,job.result_id)
+        self.assertEqual(receipt.assignment_type,'Eigenleistung');self.assertEqual(receipt.trade,'Sonstiges')
+        self.assertEqual(receipt.category,'Sonstiges');self.assertEqual(receipt.status,'Entwurf')
+        self.assertIn('Zimmer streichen',receipt.notes);self.assertIn('OG',receipt.notes)
+        link=db.session.scalar(db.select(SelfWorkReceipt).where(SelfWorkReceipt.receipt_id==receipt.id))
+        self.assertEqual(link.plan_id,plan['id'])
+        stale=self.client.patch(plan_path,json={'notes':'Veralteter Tab','receipt_ids':[]},headers={'If-Match':old_version})
+        self.assertEqual(stale.status_code,409,stale.json)
+        self.assertEqual(self.client.get('/api/self-work/'+str(plan['id'])).json['plan']['actual_cost'],0)
+        other=self.client.post('/api/projects',json={'title':'Fremdes Projekt'}).json['project']['id']
+        with patch('app._start_import_worker'):
+            denied=self.client.post('/api/import-jobs',headers={'X-PHB-Project':str(other)},data={'kind':'receipts','self_work_id':str(plan['id']),'files':[(io.BytesIO(b'%PDF-1.4\nForeign'),'foreign.pdf')]})
+        self.assertEqual(denied.status_code,400,denied.json)
+
     def test_failed_import_retained_with_visible_reason_and_retry(self):
         r=self.enqueue(kind='offers')
         ident=r.json['jobs'][0]['id']

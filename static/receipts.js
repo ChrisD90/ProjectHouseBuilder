@@ -38,6 +38,7 @@ function openReceiptDialog(review=false){
   }
 }
 $('openReceiptWorkflow').onclick=()=>{
+  linkSelfWork=null;$('uploadStatus').textContent='';
   selected=null;
   $('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);
   openReceiptDialog(false);
@@ -48,6 +49,27 @@ receiptDialog.addEventListener('cancel',event=>{if(uploading||receiptBusy)event.
 const navigation=new URLSearchParams(window.location.search);
 const linkOffer=Number(navigation.get('offer_id'))||null;
 const linkReceipt=Number(navigation.get('receipt_id'))||null;
+let linkSelfWork=null;
+async function activateReceiptNavigation(){
+ const params=new URLSearchParams(location.search);
+ if(params.get('upload')==='1'&&!params.get('receipt_id')){
+   const ident=Number(params.get('self_work_id'))||null;
+   let plan=null;
+   if(ident){plan=(await api('/api/self-work/'+ident)).plan;}
+   linkSelfWork=ident;selected=null;
+   $('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);
+   openReceiptDialog(false);
+   $('uploadStatus').textContent='';
+   if(plan){
+     $('receiptWorkflowTitle').textContent='Beleg zur Eigenleistung erfassen';
+     $('uploadStatus').textContent='Eigenleistung: '+plan.title+(plan.task_label?' · '+plan.task_label:'')+'. Zuordnung und verfügbare Kategorisierungsdaten werden im Entwurf vorausgefüllt.';
+   }
+   return;
+ }
+ linkSelfWork=null;
+ const id=Number(params.get('receipt_id'));
+ if(id&&!receiptDialog.open&&list.some(x=>x.id===id))return open(id);
+}
 let linkedCostItem=null;
 function assignmentLabel(r){
   if(r.assignment_type==='Eigenleistung')return 'Eigenleistung';
@@ -260,7 +282,7 @@ function inputs({booking=false}={}){
 }
 function fillSelect(node,values,getTitle){node.innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${safe(getTitle(x))}</option>`).join('')}
 window.PHBPageRefresh=()=>reload(selected,receiptDialog.open);
-window.PHBPageActivate=()=>{const id=Number(new URLSearchParams(location.search).get('receipt_id'));if(id&&!receiptDialog.open&&list.some(x=>x.id===id))return open(id);};
+window.PHBPageActivate=()=>activateReceiptNavigation().catch(e=>notice(e.message,true));
 async function reload(keepId=selected,reopen=true){
  const [r,c]=await Promise.all([api('/api/receipts'),api('/api/costs')]);overview=c;list=r.receipts;
  $('receiptTrade').innerHTML='<option value="">Ohne Gewerk</option>'+(r.trades||[]).map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('');
@@ -497,7 +519,7 @@ $('upload').onsubmit=async e=>{
    if(ai)model=window.PHBAI?.selection()?.model||'';
    const result=await window.PHBImports.run({
      form:$('upload'),kind:'receipts',files:$('upload').elements.namedItem('files').files,
-     analysisMode:ai?'ai':'local',model
+     analysisMode:ai?'ai':'local',model,fields:linkSelfWork?{self_work_id:linkSelfWork}:{}
    });
    $('upload').reset();
    $('receiptAIHint').hidden=true;
@@ -580,4 +602,4 @@ $('delete').onclick=async()=>{
  finally{receiptBusy=false;button.disabled=false;}
 };
 
-reload().catch(e=>notice(e.message,true));
+reload().then(activateReceiptNavigation).catch(e=>notice(e.message,true));

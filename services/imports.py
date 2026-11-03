@@ -156,6 +156,7 @@ def register(runtime: ModuleType):
                     return
                 raw = source.read_bytes()
                 fields = {'file': (runtime.io.BytesIO(raw), filename)}
+                if job_type=='receipts' and meta.get('self_work_id'):fields['self_work_id']=str(meta['self_work_id'])
                 if job_type in ('offers', 'versions', 'receipts', 'costplans', 'loans'):
                     fields.update(analysis_mode=mode, model=ai_model, plan_only='true')
                 else:
@@ -284,6 +285,11 @@ def register(runtime: ModuleType):
                 path.write_bytes(data)
                 staged.append((filename, stored))
             meta = {}
+            if kind=='receipts' and runtime.request.form.get('self_work_id'):
+                ident=runtime.request.form['self_work_id']
+                if not ident.isdigit() or runtime.db.session.get(runtime.SelfWorkPlan,int(ident)) is None:
+                    raise ValueError('Zugehörige Eigenleistung nicht gefunden.')
+                meta['self_work_id']=int(ident)
             if kind == 'loans':
                 if len(files) != 1:
                     raise ValueError('Pro Kreditanalyse genau eine Unterlage auswählen.')

@@ -36,7 +36,7 @@ import {
 } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { SourceWork } from './work';
 import { api, Editor, ErrorBox, money, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
@@ -154,6 +154,8 @@ function ListFrame({
   );
 }
 export function SelfWorkPage() {
+  const navigate = useNavigate();
+  const [uploadTarget, setUploadTarget] = useState<number | null>(null);
   const [params] = useSearchParams();
   const query = useQuery({
     queryKey: ['self-work'],
@@ -210,6 +212,25 @@ export function SelfWorkPage() {
     setSupplyDetail(row.id);
   }
   useDirtyGuard(opened && form.isDirty());
+  useEffect(() => {
+    if (uploadTarget && !opened) navigate('/belege?upload=1&self_work_id=' + uploadTarget);
+  }, [uploadTarget, opened, navigate]);
+  async function startReceiptUpload() {
+    if (pending.current) return;
+    let target = id;
+    if (!id || form.isDirty()) {
+      if (
+        !(await ask(
+          'Eigenleistung vor dem Beleg-Upload speichern und die Angaben für die Zuordnung übernehmen?',
+        ))
+      )
+        return;
+      target = (await save()) || null;
+      if (!target) return;
+    }
+    setOpened(false);
+    setUploadTarget(target);
+  }
   function edit(row?: Plan) {
     const values = row ? draftOf(row) : emptyPlan();
     form.setValues(values);
@@ -243,7 +264,7 @@ export function SelfWorkPage() {
     setBusy(true);
     setFailure(null);
     try {
-      await api('/api/self-work' + (id ? '/' + id : ''), id ? 'PATCH' : 'POST', {
+      const saved = await api('/api/self-work' + (id ? '/' + id : ''), id ? 'PATCH' : 'POST', {
         ...form.values,
         ...(archived === undefined ? {} : { archived }),
       });
@@ -253,6 +274,7 @@ export function SelfWorkPage() {
       await cache.invalidateQueries({ queryKey: ['projects'] });
       await cache.invalidateQueries({ queryKey: ['work-sources'] });
       success('Eigenleistung gespeichert.');
+      return saved.plan.id as number;
     } catch (error) {
       setFailure(error);
     } finally {
@@ -414,7 +436,21 @@ export function SelfWorkPage() {
           {records.map((row) => {
             const done = row.steps.filter((step) => step.done).length;
             return (
-              <Paper key={row.id} withBorder p="lg" className="self-work-card">
+              <Paper
+                key={row.id}
+                withBorder
+                p="lg"
+                className="self-work-card"
+                onClick={(event) => {
+                  if (
+                    (event.target as HTMLElement).closest(
+                      'button,a,input,select,textarea,[role="button"]',
+                    )
+                  )
+                    return;
+                  edit(row);
+                }}
+              >
                 <Group justify="space-between" wrap="nowrap">
                   <StatusPill
                     color={
@@ -551,13 +587,26 @@ export function SelfWorkPage() {
               </Tabs.List>
               <Tabs.Panel value="receipts" pt="md">
                 <Stack>
+                  <Group justify="space-between">
+                    <Text size="sm" fw={600}>
+                      Rechnungen & Kassenzettel
+                    </Text>
+                    <Button
+                      variant="light"
+                      size="xs"
+                      disabled={busy}
+                      onClick={() => void startReceiptUpload()}
+                    >
+                      Rechnungen & Kassenzettel erfassen
+                    </Button>
+                  </Group>
                   <Alert>
                     Ordne Rechnungen und Kassenzettel zu. Nur gebuchte Belege zählen als Ist-Kosten.
                     Eine Zuordnung zu einem Angebot oder Kostenplan muss zuvor im Beleg gelöst
                     werden.
                   </Alert>
                   <MultiSelect
-                    label="Rechnungen & Kassenzettel"
+                    label="Vorhandene Belege zuordnen"
                     searchable
                     clearable
                     placeholder="Beleg suchen und zuordnen"
@@ -578,22 +627,28 @@ export function SelfWorkPage() {
                   {form.values.receipt_ids.map((rid) => {
                     const r = query.data?.receipts.find((x) => x.id === rid);
                     return r ? (
-                      <Group key={rid} justify="space-between">
-                        <Text size="sm">{r.label}</Text>
-                        <Button
-                          component={Link}
-                          to={'/belege?receipt_id=' + rid}
-                          variant="subtle"
-                          size="xs"
-                        >
-                          Beleg öffnen
-                        </Button>
-                      </Group>
+                      <Paper key={rid} withBorder p="sm">
+                        <Group justify="space-between">
+                          <div>
+                            <Text size="sm" fw={600}>
+                              {r.label}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              {r.status} · {money(r.amount)}
+                            </Text>
+                          </div>
+                          <Button
+                            component={Link}
+                            to={'/belege?receipt_id=' + rid}
+                            variant="subtle"
+                            size="xs"
+                          >
+                            Beleg öffnen
+                          </Button>
+                        </Group>
+                      </Paper>
                     ) : null;
                   })}
-                  <Button component={Link} to="/belege" variant="light">
-                    Rechnungen & Kassenzettel erfassen
-                  </Button>
                 </Stack>
               </Tabs.Panel>
               <Tabs.Panel value="overview" pt="md">
