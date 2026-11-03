@@ -467,6 +467,21 @@ export function App() {
                     { value: 'dark', label: 'Dunkel' },
                   ]}
                 />
+                <Tooltip label="Verarbeitung & Prüfung">
+                  <Button
+                    size="xs"
+                    variant="default"
+                    aria-label="Warteschlange"
+                    leftSection={<IconListCheck size={16} />}
+                    onClick={services.openQueue}
+                  >
+                    {services.queueLabel || (
+                      <Text size="xs" visibleFrom="md">
+                        Warteschlange
+                      </Text>
+                    )}
+                  </Button>
+                </Tooltip>
                 <Tooltip
                   label={
                     'ChatGPT · ' +
@@ -485,39 +500,31 @@ export function App() {
                     size="xs"
                     variant={services.ai.sharing ? 'light' : 'default'}
                     className="chatgpt-connection-button"
+                    data-icon-only={!services.ai.sharing && !services.ai.connected}
                     leftSection={
-                      <img src="/static/icons/chatgpt-mark.svg" alt="" width={22} height={22} />
+                      <img
+                        src={
+                          '/static/branding/logo-' +
+                          (services.ai.sharing ? 'active' : 'inactive') +
+                          '.svg'
+                        }
+                        alt=""
+                        width={22}
+                        height={22}
+                        style={{ objectFit: 'contain' }}
+                      />
                     }
                     onClick={services.openAI}
                   >
-                    <span className="chatgpt-connection-caption">
-                      <span>
-                        {services.ai.sharing
-                          ? 'Verbunden'
-                          : services.ai.connected
-                            ? 'Freigabe fehlt'
-                            : 'Nicht verbunden'}
+                    {(services.ai.sharing || services.ai.connected) && (
+                      <span className="chatgpt-connection-caption">
+                        <span>{services.ai.sharing ? 'Verbunden' : 'Freigabe fehlt'}</span>
+                        {services.ai.sharing && (
+                          <span className="chatgpt-model-caption">
+                            {services.modelLabel || 'Modell wird geladen …'}
+                          </span>
+                        )}
                       </span>
-                      {services.ai.sharing && (
-                        <span className="chatgpt-model-caption">
-                          {services.modelLabel || 'Modell wird geladen …'}
-                        </span>
-                      )}
-                    </span>
-                  </Button>
-                </Tooltip>
-                <Tooltip label="Verarbeitung & Prüfung">
-                  <Button
-                    size="xs"
-                    variant="default"
-                    aria-label="Warteschlange"
-                    leftSection={<IconListCheck size={16} />}
-                    onClick={services.openQueue}
-                  >
-                    {services.queueLabel || (
-                      <Text size="xs" visibleFrom="md">
-                        Warteschlange
-                      </Text>
                     )}
                   </Button>
                 </Tooltip>

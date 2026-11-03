@@ -47,6 +47,21 @@ input {
 .app-header-actions {
   flex-shrink: 0;
 }
+.app-header-actions :is(.mantine-Button-root, .mantine-Select-input) {
+  height: 38px;
+  min-height: 38px;
+  border-radius: 9px;
+}
+.app-header-actions .chatgpt-connection-button[data-icon-only='true'] {
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+}
+.app-header-actions
+  .chatgpt-connection-button[data-icon-only='true']
+  .mantine-Button-section[data-position='left'] {
+  margin-inline-end: 0;
+}
 .header-project-identity {
   display: flex;
   align-items: center;
@@ -256,6 +271,11 @@ input {
   }
   .app-header-actions .chatgpt-connection-caption {
     display: none;
+  }
+  .app-header-actions .chatgpt-connection-button {
+    width: 38px;
+    min-width: 38px;
+    padding: 0;
   }
   .app-header-actions .chatgpt-connection-button .mantine-Button-section[data-position='left'] {
     margin-inline-end: 0;
