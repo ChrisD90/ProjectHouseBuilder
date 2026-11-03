@@ -1,0 +1,71 @@
+const {chromium,expect}=require('../frontend/node_modules/@playwright/test');
+const assert=require('node:assert/strict');
+const base=process.env.PHB_TEST_URL;
+if(!base)throw Error('Use dev/ui_browser_smoke.py.');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
+ try{
+  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const owner=(await(await page.request.post(base+'/api/projects',{data:{title:'Offene Finanzierungszuordnung'}})).json()).project.id;
+  const headers={'X-PHB-Project':String(owner)};
+  async function post(path,data){const r=await page.request.post(base+path,{headers,data});assert(r.ok(),await r.text());return r.json();}
+  const equity=(await post('/api/financing/equity',{name:'Baukonto',opening_balance:500,reserve:0})).id;
+  async function receipt(number,gross,paid=0){
+   const upload=await page.request.post(base+'/api/receipts',{headers,multipart:{analysis_mode:'local',file:{name:number+'.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\n'+number)}}});
+   assert.equal(upload.status(),201,await upload.text());const id=(await upload.json()).id;
+   const r=await page.request.patch(base+'/api/receipts/'+id,{headers,data:{supplier:'Testlieferant',invoice_number:number,document_date:'2026-11-03',gross_amount:gross,paid_amount:paid,assignment_type:'Eigenleistung',book_now:true}});
+   assert(r.ok(),await r.text());return id;
+  }
+  const first=await receipt('Teilweise',100),legacy=await receipt('Bisherige Zahlung',60,60),assigned=await receipt('Zugeordnet',40);
+  await receipt('Noch unbezahlt',20);
+  const pay=(id,source,amount)=>post('/api/financing/payments',{receipt_id:id,source,amount,payment_date:'2026-11-03',...(source==='equity'?{equity_id:equity}:{})});
+  await pay(first,'equity',30);const pending=await pay(first,'unassigned',20);await pay(assigned,'equity',40);
+  await page.goto(base+'/p/'+owner+'/finanzierung');
+  const finance=page.frameLocator('iframe[title="Kredite & Eigenkapital"]:not([hidden])');
+  const receipts=page.frameLocator('iframe[title="Rechnungen & Belege"]:not([hidden])');
+  await expect(finance.locator('#openUnassignedReceipts')).toContainText('Belege prüfen (2)');
+  await finance.locator('#openUnassignedReceipts').click();
+  let overview=page.getByRole('dialog',{name:'Belege ohne Finanzierungszuordnung',exact:true});
+  await expect(overview.locator('tbody tr')).toHaveCount(2);
+  const row=overview.locator('tbody tr').filter({hasText:'Teilweise'});
+  await expect(row.locator('td').nth(5)).toContainText('20,00');
+  await expect(overview.getByText('80,00 €',{exact:true})).toBeVisible();
+  await row.getByRole('link',{name:'Finanzierung zuordnen',exact:true}).click();
+  await expect(receipts.locator('#receiptPaymentsPanel')).toBeVisible();
+  await expect(receipts.locator('#receiptPaymentTotals')).toContainText('Nicht zugewiesen: 20,00');
+  await receipts.locator('[data-assign-payment="'+pending.id+'"]').click();
+  await expect(receipts.locator('#receiptPaymentAccount')).toHaveValue(String(equity));
+  await receipts.locator('#submitReceiptPayment').click();
+  await receipts.locator('dialog.phb-messagebox').getByRole('button',{name:'Bestätigen',exact:true}).click();
+  await expect(receipts.locator('#receiptPaymentMessage')).toContainText('Gespeichert.');
+  await expect(receipts.locator('#submitReceiptPayment')).toBeEnabled();
+  let state=await(await page.request.get(base+'/api/financing',{headers})).json();
+  assert.equal(state.receipts.find(r=>r.id===first).paid,50);
+  assert.equal(state.payments.filter(p=>p.receipt_id===first).length,2);
+  assert.equal(state.summary.unassigned_paid_receipts,60);
+  await receipts.locator('#closeReceiptWorkflow').click();
+  await expect(page).toHaveURL(base+'/p/'+owner+'/belege');
+  await page.getByRole('link',{name:'Kredite & Eigenkapital',exact:true}).click();
+  await expect(finance.locator('#openUnassignedReceipts')).toContainText('Belege prüfen (1)');
+  await finance.locator('#openUnassignedReceipts').click();
+  overview=page.getByRole('dialog',{name:'Belege ohne Finanzierungszuordnung',exact:true});
+  await expect(overview.locator('tbody tr')).toHaveCount(1);
+  await overview.getByRole('link',{name:'Finanzierung zuordnen',exact:true}).click();
+  await expect(receipts.locator('#receiptPaymentsPanel')).toBeVisible();
+  await receipts.locator('[data-assign-payment="legacy"]').click();
+  await receipts.locator('#submitReceiptPayment').click();
+  await receipts.locator('dialog.phb-messagebox').getByRole('button',{name:'Bestätigen',exact:true}).click();
+  await expect(receipts.locator('#receiptPaymentMessage')).toContainText('Gespeichert.');
+  await expect(receipts.locator('#submitReceiptPayment')).toBeEnabled();
+  await receipts.locator('#closeReceiptWorkflow').click();
+  await page.getByRole('link',{name:'Kredite & Eigenkapital',exact:true}).click();
+  await expect(finance.locator('[data-equity="'+equity+'"]').locator('..')).toBeVisible();
+  await expect(finance.locator('#openUnassignedReceipts')).toHaveCount(0);
+  state=await(await page.request.get(base+'/api/financing',{headers})).json();
+  assert.equal(state.summary.unassigned_paid_receipts,0);
+  assert.equal(state.receipts.find(r=>r.id===legacy).paid,60);
+  assert.equal(state.equity.find(r=>r.id===equity).balance.available,350);
+  assert.deepEqual(errors,[]);
+  console.log('PASS actionable finance warning, partial and legacy payments, direct assignment workflow, no double payment, refreshed warning and clean close URL.');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exit(1);});

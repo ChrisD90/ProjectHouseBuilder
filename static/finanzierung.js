@@ -55,6 +55,29 @@ function fundingReceiptButton(source,id){
  button.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z"/><path d="M9 7h6M9 11h6M9 15h3"/></svg><span class="finance-receipt-count">'+count+'</span>';
 }
 let fundingReceiptFallback=null;
+function overviewReceipt(r,amount){
+ return {id:r.id,number:r.invoice_number||r.filename||'Beleg #'+r.id,supplier:r.supplier||'Ohne Lieferant',
+  date:r.document_date,status:r.status,billing_type:r.billing_type,kind:r.kind,
+  gross:Number(r.gross_amount)||0,amount:Number(r.counted_amount)||0,paid:Number(r.paid_amount)||0,source_amount:amount};
+}
+function unassignedReceipts(finance){
+ const funded=new Map();
+ for(const p of finance.payments||[])if(['loan','equity'].includes(p.source))funded.set(p.receipt_id,(funded.get(p.receipt_id)||0)+Number(p.amount));
+ return new Map((finance.receipts||[]).map(r=>[r.id,Math.max(0,Number(r.paid)-(funded.get(r.id)||0))]).filter(([,amount])=>amount>0.004));
+}
+async function openUnassignedReceipts(button){
+ if(button.disabled)return;
+ button.disabled=true;button.setAttribute('aria-busy','true');
+ try{
+  const [finance,all]=await Promise.all([api('/api/financing'),api('/api/receipts')]);
+  const amounts=unassignedReceipts(finance);
+  const receipts=(Array.isArray(all)?all:all.receipts).filter(r=>r.status==='Gebucht'&&amounts.has(r.id)).map(r=>overviewReceipt(r,amounts.get(r.id)));
+  showFundingReceipts({title:'Belege ohne Finanzierungszuordnung',receipts,sourceLabel:'Nicht zugewiesen',editMode:'financing',
+   summary:[['Nicht zugewiesen',receipts.reduce((sum,r)=>sum+r.source_amount,0)]],
+   emptyText:'Alle bezahlten Rechnungsbeträge sind bereits einer Finanzierungsquelle zugeordnet.'});
+ }catch(error){await PHBUI.alert(error.message);}
+ finally{button.disabled=false;button.removeAttribute('aria-busy');}
+}
 function showFundingReceipts(data){
  const bridge=(window.PHBReactBridge||window.parent.PHBReactBridge)?.receipts;
  if(bridge){bridge.open(data);return;}
@@ -65,7 +88,7 @@ function showFundingReceipts(data){
   fundingReceiptFallback=PHBFlow.manage({dialog:dialog.id,forms:[],dismiss:['closeFundingReceipts']});
  }
  $('fundingReceiptTitle').textContent=data.title;
- $('fundingReceiptBody').innerHTML=data.receipts.length?'<div class="funding-receipt-scroll"><table><thead><tr><th>Beleg</th><th>Brutto</th><th>'+esc(data.sourceLabel)+'</th><th>Aktionen</th></tr></thead><tbody>'+data.receipts.map(r=>'<tr><td>'+esc(r.number)+'<br>'+esc(r.supplier)+'</td><td>'+euro(r.gross)+'</td><td>'+euro(r.source_amount)+'</td><td><a href="/api/receipts/'+r.id+'/preview" target="_blank" rel="noopener">Original ansehen</a> · <a href="/belege?receipt_id='+r.id+'">Bearbeiten</a></td></tr>').join('')+'</tbody></table></div>':'<p>'+esc(data.emptyText)+'</p>';
+ $('fundingReceiptBody').innerHTML=data.receipts.length?'<div class="funding-receipt-scroll"><table><thead><tr><th>Beleg</th><th>Brutto</th><th>'+esc(data.sourceLabel)+'</th><th>Aktionen</th></tr></thead><tbody>'+data.receipts.map(r=>'<tr><td>'+esc(r.number)+'<br>'+esc(r.supplier)+'</td><td>'+euro(r.gross)+'</td><td>'+euro(r.source_amount)+'</td><td><a href="/api/receipts/'+r.id+'/preview" target="_blank" rel="noopener">Original ansehen</a> · <a href="/belege?receipt_id='+r.id+(data.editMode==='financing'?'&amp;financing=1':'')+'">'+(data.editMode==='financing'?'Finanzierung zuordnen':'Bearbeiten')+'</a></td></tr>').join('')+'</tbody></table></div>':'<p>'+esc(data.emptyText)+'</p>';
  fundingReceiptFallback.open();
 }
 async function openFundingReceipts(source,id,button){
@@ -76,11 +99,7 @@ async function openFundingReceipts(source,id,button){
   const account=(source==='loan'?finance.loans:finance.equity).find(x=>x.id===id);
   if(!account)throw Error('Finanzierungsquelle nicht mehr vorhanden.');
   const amounts=fundingReceipts(source,id,finance);
-  const receipts=(Array.isArray(all)?all:all.receipts).filter(r=>amounts.has(r.id)).map(r=>({
-   id:r.id,number:r.invoice_number||r.filename||'Beleg #'+r.id,supplier:r.supplier||'Ohne Lieferant',
-   date:r.document_date,status:r.status,billing_type:r.billing_type,kind:r.kind,
-   gross:Number(r.gross_amount)||0,amount:Number(r.counted_amount)||0,paid:Number(r.paid_amount)||0,source_amount:amounts.get(r.id)
-  }));
+  const receipts=(Array.isArray(all)?all:all.receipts).filter(r=>amounts.has(r.id)).map(r=>overviewReceipt(r,amounts.get(r.id)));
   state={...state,...finance};fundingReceiptButton(source,id);
   showFundingReceipts({title:'Rechnungen · '+account.name,receipts,
    sourceLabel:source==='loan'?'Aus diesem Kredit':'Aus diesem Konto',
@@ -116,7 +135,10 @@ function render(){
  const s=state.summary;
  const cards=[['Offener Finanzbedarf',s.project_remaining],['Finanzierung verfügbar',s.total_available],['Finanzierungslücke',s.financing_gap]];
  $('totals').innerHTML=cards.map(([k,v])=>`<article class="tile ${k==='Finanzierungslücke'&&v>0?'alert':''}"><span>${esc(k)}</span><strong>${euro(v)}</strong></article>`).join('');
- $('warnings').innerHTML=s.warnings.map(x=>`<div class="warning">⚠ ${esc(x)}</div>`).join('');
+ $('warnings').innerHTML=s.warnings.map(x=>x==='Es bestehen bezahlte Rechnungsbeträge ohne Finanzierungszuordnung.'
+  ?`<button type="button" class="warning finance-warning-action" id="openUnassignedReceipts"><span>⚠ ${esc(x)}</span><span class="finance-warning-link">Belege prüfen (${unassignedReceipts(state).size}) →</span></button>`
+  :`<div class="warning">⚠ ${esc(x)}</div>`).join('');
+ if($('openUnassignedReceipts'))$('openUnassignedReceipts').onclick=event=>openUnassignedReceipts(event.currentTarget);
  $('newUsage').disabled=!state.loans.some(loan=>loan.balance.unallocated_drawn>0.004);
  $('loanList').innerHTML=state.loans.map(l=>{
    const pending=(state.drawdowns||[]).filter(d=>d.loan_id===l.id&&d.status==='Eingereicht').reduce((sum,d)=>sum+Number(d.requested_amount),0);

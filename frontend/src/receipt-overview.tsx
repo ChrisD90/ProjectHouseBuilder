@@ -23,6 +23,7 @@ export type ReceiptOverviewData = {
   summary: [string, number][];
   emptyText: string;
   sourceLabel?: string;
+  editMode?: 'financing';
 };
 
 export function ReceiptOverview({
@@ -31,6 +32,7 @@ export function ReceiptOverview({
   summary,
   emptyText,
   sourceLabel,
+  editMode,
   onClose,
   footer,
 }: ReceiptOverviewData & { onClose: () => void; footer?: ReactNode }) {
@@ -38,7 +40,10 @@ export function ReceiptOverview({
     <Editor opened title={title} onClose={onClose} zIndex={300}>
       <Stack>
         <Text size="sm" c="dimmed">
-          {receipts.length} zugeordnete Belege
+          {receipts.length}{' '}
+          {editMode === 'financing'
+            ? 'Belege mit offener Finanzierungszuordnung'
+            : 'zugeordnete Belege'}
         </Text>
         <SimpleGrid cols={{ base: 2, sm: summary.length }}>
           {summary.map(([label, value]) => (
@@ -116,12 +121,16 @@ export function ReceiptOverview({
                         </Button>
                         <Button
                           component={Link}
-                          to={'/belege?receipt_id=' + r.id}
+                          to={
+                            '/belege?receipt_id=' +
+                            r.id +
+                            (editMode === 'financing' ? '&financing=1' : '')
+                          }
                           onClick={onClose}
                           variant="subtle"
                           size="xs"
                         >
-                          Bearbeiten
+                          {editMode === 'financing' ? 'Finanzierung zuordnen' : 'Bearbeiten'}
                         </Button>
                       </Group>
                     </Table.Td>

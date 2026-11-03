@@ -287,3 +287,7 @@
 .phb-page-finanzierung .funding-receipt-scroll{overflow-x:auto}
 .phb-page-finanzierung .funding-receipt-scroll table{width:100%;border-collapse:collapse}
 .phb-page-finanzierung .funding-receipt-scroll :is(th,td){padding:12px;text-align:left;border-bottom:1px solid var(--ui-line)}
+.phb-page-finanzierung button.finance-warning-action{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;line-height:1.5;white-space:normal;font:inherit;background:color-mix(in srgb,var(--ui-warning) 9%,var(--ui-surface));border:1px solid color-mix(in srgb,var(--ui-warning) 35%,var(--ui-line));color:var(--ui-ink)}
+.phb-page-finanzierung .finance-warning-link{font-size:13px;font-weight:650;white-space:nowrap}
+.phb-page-finanzierung .finance-warning-action:focus-visible{outline:2px solid var(--ui-accent);outline-offset:3px}
+@media(max-width:600px){.phb-page-finanzierung button.finance-warning-action{align-items:flex-start;flex-direction:column;gap:5px}}

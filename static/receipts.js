@@ -112,7 +112,7 @@ function showReceiptPreview(item){
 
 let uploading=false,receiptBusy=false,paymentBusy=false,receiptNavigationVersion=0;
 const receiptFlow=PHBFlow.manage({
- routeParams:['receipt_id','offer_id','upload','self_work_id','receipt_kind','new_company_id'],
+ routeParams:['receipt_id','offer_id','upload','self_work_id','receipt_kind','new_company_id','financing'],
  onClose:()=>{if(!receiptDialog.open){receiptNavigationVersion++;selected=null;linkOffer=null;linkSelfWork=null;}},
  dialog:'receiptWorkflowDialog',
  forms:['upload','review','receiptPaymentForm'],
@@ -483,6 +483,7 @@ async function open(id){
  }
 
  $('rawDetails').hidden=!x.ocr_text; $('warnings').textContent=(x.warnings||[]).join(' · ');notice(x.status==='Storniert'?'Storniert: Daten bleiben bearbeitbar; Original und Historie bleiben erhalten. '+(x.cancellation?.reason||''):x.status==='Gebucht'?'Gebucht: Rechnungsdaten können weiterhin geprüft und korrigiert werden.':'Entwurf: Du kannst jederzeit zwischenspeichern, auch ohne Firma, Betrag oder Zahlungsziel.');
+ if(version===receiptNavigationVersion&&new URLSearchParams(location.search).get('financing')==='1')await showReceiptPayments();
  }catch(e){notice(e.message,true)}
 }
 
@@ -547,13 +548,17 @@ function paymentAccountOptions(){
 }
 async function showReceiptPayments(){
  if(!selected||list.find(r=>r.id===selected)?.status!=='Gebucht')return;
- paymentState=await api('/api/financing');assigningPayment=null;
+ const version=receiptNavigationVersion,receiptId=selected;
+ const finance=await api('/api/financing');
+ if(version!==receiptNavigationVersion||selected!==receiptId)return;
+ paymentState=finance;assigningPayment=null;
  const receipt=currentPaymentReceipt();if(!receipt)throw Error('Gebuchte Rechnung nicht gefunden.');
  const allocations=paymentState.payments.filter(p=>p.receipt_id===selected);
  const legacy=Math.max(0,Number(receipt.paid)-allocations.reduce((sum,p)=>sum+Number(p.amount),0));
  $('receiptPaymentsPanel').hidden=false;receiptFlow.stage(2);$('receiptReviewLayout').hidden=true;$('receiptReviewStage').hidden=true;
- $('receiptPaymentTitle').textContent=currentReceipt?.kind==='Kassenzettel'?'Zahlung / Finanzierung verwalten':'Rechnung bezahlen';
- $('receiptPaymentTotals').innerHTML='<span>Rechnungsbetrag: <b>'+money(receipt.gross)+'</b></span><span>Bereits bezahlt: <b>'+money(receipt.paid)+'</b></span><span>Noch offen: <b>'+money(receipt.open)+'</b></span><span>Nicht zugewiesen: <b>'+money(receipt.unassigned)+'</b></span>';
+ $('receiptPaymentTitle').textContent='Zahlung / Finanzierung verwalten';
+ const unassigned=legacy+allocations.filter(p=>p.source==='unassigned').reduce((sum,p)=>sum+Number(p.amount),0);
+ $('receiptPaymentTotals').innerHTML='<span>Rechnungsbetrag: <b>'+money(receipt.gross)+'</b></span><span>Bereits bezahlt: <b>'+money(receipt.paid)+'</b></span><span>Noch offen: <b>'+money(receipt.open)+'</b></span><span>Nicht zugewiesen: <b>'+money(unassigned)+'</b></span>';
  paymentForm.hidden=receipt.open<=0;paymentForm.elements.namedItem('payment_date').disabled=false;paymentForm.elements.namedItem('notes').disabled=false;$('receiptPaymentSource').value='unassigned';
  $('receiptPaymentSource').querySelector('[value=unassigned]').disabled=false;
  $('receiptPaymentHistory').innerHTML='<h4>Erfasste Zahlungen</h4>'+allocations.map(p=>{
