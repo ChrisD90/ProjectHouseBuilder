@@ -16,7 +16,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, error, Row, success, useConfirm, useConfirmVisible, useModalLayer } from './core';
 import { ModelInfo } from './model-info';
+import { ReceiptOverview, type ReceiptOverviewData } from './receipt-overview';
 export function useServices(navigate: (url: string) => void) {
+  const [receiptOverview, setReceiptOverview] = useState<ReceiptOverviewData | null>(null);
   const { setExternal } = useModalLayer();
   const confirming = useConfirmVisible(),
     cache = useQueryClient(),
@@ -198,6 +200,7 @@ export function useServices(navigate: (url: string) => void) {
     isBusy: () => !!wait || running.current.size > 0,
   };
   const bridge = useRef<Row>({
+    receipts: { open: (data: ReceiptOverviewData) => setReceiptOverview(data) },
     ai: {
       selection: () => methods.current.ai.selection(),
       connected: () => methods.current.ai.connected(),
@@ -287,6 +290,23 @@ export function useServices(navigate: (url: string) => void) {
   }
   const overlays = (
     <>
+      {receiptOverview && (
+        <ReceiptOverview
+          {...receiptOverview}
+          onClose={() => setReceiptOverview(null)}
+          footer={
+            <Button
+              variant="light"
+              onClick={() => {
+                setReceiptOverview(null);
+                navigate('/belege');
+              }}
+            >
+              Zur Belegübersicht
+            </Button>
+          }
+        />
+      )}
       <Modal
         zIndex={400}
         trapFocus={!confirming && !wait}

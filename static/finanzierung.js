@@ -31,6 +31,62 @@ function message(text,error=false){const n=$('notice');n.hidden=false;n.textCont
 function payload(form){PHBUI.currency.normalizeForm(form);return Object.fromEntries(new FormData(form).entries());}
 function option(id,text){return `<option value="${esc(id)}">${esc(text)}</option>`}
 function sourceTitle(s,x){const row=(s==='loan'?state.loans:state.equity).find(a=>a.id===x);return row?.name||'Unbekannte Quelle'}
+function fundingReceipts(source,id,finance=state){
+ const ids=new Set((finance.receipts||[]).map(r=>r.id)),amounts=new Map();
+ for(const p of finance.payments||[]){
+  if(p.source!==source||Number(p[source==='loan'?'loan_id':'equity_id'])!==Number(id)||!ids.has(p.receipt_id)||Number(p.amount)<=0)continue;
+  amounts.set(p.receipt_id,(amounts.get(p.receipt_id)||0)+Number(p.amount));
+ }
+ return amounts;
+}
+function fundingReceiptButton(source,id){
+ const prefix=source==='loan'?'loan':'equity',close=$('close'+(source==='loan'?'Loan':'Equity'));
+ let button=$(prefix+'ReceiptButton');
+ if(!button){
+  const actions=document.createElement('div');actions.className='finance-detail-actions';close.before(actions);actions.append(close);
+  button=document.createElement('button');button.type='button';button.id=prefix+'ReceiptButton';button.className='finance-receipt-button';actions.prepend(button);
+  button.onclick=()=>openFundingReceipts(source,Number($(prefix+'Form').elements.namedItem('id').value),button);
+ }
+ button.hidden=!id;
+ const count=id?fundingReceipts(source,id).size:0;
+ button.title=button.ariaLabel='Zugeordnete Rechnungen & Belege: '+count;
+ button.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Z"/><path d="M9 7h6M9 11h6M9 15h3"/></svg><span class="finance-receipt-count">'+count+'</span>';
+}
+let fundingReceiptFallback=null;
+function showFundingReceipts(data){
+ const bridge=(window.PHBReactBridge||window.parent.PHBReactBridge)?.receipts;
+ if(bridge){bridge.open(data);return;}
+ if(!fundingReceiptFallback){
+  const dialog=document.createElement('dialog');dialog.id='fundingReceiptDialog';dialog.className='funding-receipt-dialog';
+  dialog.innerHTML='<div class="modal"><div class="modal-head"><h2 id="fundingReceiptTitle"></h2><button type="button" id="closeFundingReceipts" class="secondary">Schließen</button></div><div id="fundingReceiptBody"></div></div>';
+  dialog.setAttribute('aria-labelledby','fundingReceiptTitle');document.body.append(dialog);
+  fundingReceiptFallback=PHBFlow.manage({dialog:dialog.id,forms:[],dismiss:['closeFundingReceipts']});
+ }
+ $('fundingReceiptTitle').textContent=data.title;
+ $('fundingReceiptBody').innerHTML=data.receipts.length?'<div class="funding-receipt-scroll"><table><thead><tr><th>Beleg</th><th>Brutto</th><th>'+esc(data.sourceLabel)+'</th><th>Aktionen</th></tr></thead><tbody>'+data.receipts.map(r=>'<tr><td>'+esc(r.number)+'<br>'+esc(r.supplier)+'</td><td>'+euro(r.gross)+'</td><td>'+euro(r.source_amount)+'</td><td><a href="/api/receipts/'+r.id+'/preview" target="_blank" rel="noopener">Original ansehen</a> · <a href="/belege?receipt_id='+r.id+'">Bearbeiten</a></td></tr>').join('')+'</tbody></table></div>':'<p>'+esc(data.emptyText)+'</p>';
+ fundingReceiptFallback.open();
+}
+async function openFundingReceipts(source,id,button){
+ if(!id||button.disabled)return;
+ button.disabled=true;button.setAttribute('aria-busy','true');
+ try{
+  const [finance,all]=await Promise.all([api('/api/financing'),api('/api/receipts')]);
+  const account=(source==='loan'?finance.loans:finance.equity).find(x=>x.id===id);
+  if(!account)throw Error('Finanzierungsquelle nicht mehr vorhanden.');
+  const amounts=fundingReceipts(source,id,finance);
+  const receipts=(Array.isArray(all)?all:all.receipts).filter(r=>amounts.has(r.id)).map(r=>({
+   id:r.id,number:r.invoice_number||r.filename||'Beleg #'+r.id,supplier:r.supplier||'Ohne Lieferant',
+   date:r.document_date,status:r.status,billing_type:r.billing_type,kind:r.kind,
+   gross:Number(r.gross_amount)||0,amount:Number(r.counted_amount)||0,paid:Number(r.paid_amount)||0,source_amount:amounts.get(r.id)
+  }));
+  state={...state,...finance};fundingReceiptButton(source,id);
+  showFundingReceipts({title:'Rechnungen · '+account.name,receipts,
+   sourceLabel:source==='loan'?'Aus diesem Kredit':'Aus diesem Konto',
+   summary:[['Brutto',receipts.reduce((s,r)=>s+r.gross,0)],['Bezahlt gesamt',receipts.reduce((s,r)=>s+r.paid,0)],[source==='loan'?'Aus diesem Kredit':'Aus diesem Konto',receipts.reduce((s,r)=>s+r.source_amount,0)]],
+   emptyText:'Dieser Finanzierungsquelle sind noch keine Rechnungen oder Belege zugeordnet.'});
+ }catch(e){await PHBUI.alert(e.message);}
+ finally{button.disabled=false;button.removeAttribute('aria-busy');}
+}
 function fillOptions(){
  const ek=$('eventKind').value, loans=ek.startsWith('loan_');
  $('eventSource').innerHTML=(loans?state.loans:state.equity).map(x=>option(x.id,x.name)).join('');
@@ -139,10 +195,11 @@ function openLoan(id=null){
  $('loanAiDetails').open=false;
  $('loanDocUploadDetails').open=false;
  updateLoanEditorMode(id);
+ fundingReceiptButton('loan',id);
  if(loan){documentRows(loan);showLoanDrawdownProfile(loan);}
  loanFlow.open();
 }
-function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;equityFlow.open()}
+function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;fundingReceiptButton('equity',id);equityFlow.open()}
 $('newLoan').onclick=()=>openLoan();$('newEquity').onclick=()=>openEquity();
 
 function usageAction(){return $('usageForm').elements.namedItem('action').value}

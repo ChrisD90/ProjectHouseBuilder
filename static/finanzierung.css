@@ -273,3 +273,13 @@
 :root[data-phb-theme="dark"] .phb-page-finanzierung .status-abgelehnt{background:#46272a;color:var(--ui-danger)!important}
 :root[data-phb-theme="dark"] .phb-page-finanzierung .status-zurückgenommen{background:#303b47;color:var(--ui-muted)!important}
 :root[data-phb-theme="dark"] .phb-page-finanzierung :is(.drawdown-ai,#drawdownStatus:not(:empty)){background:var(--ui-soft-accent);border-color:var(--ui-line);color:var(--ui-ink-soft)}
+/* Receipt actions stay in the account detail header, matching other source dialogs. */
+.phb-page-finanzierung .finance-detail-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.phb-page-finanzierung .modal-head>h2{min-width:0;overflow-wrap:anywhere}
+.phb-page-finanzierung button.finance-receipt-button{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-height:32px;padding:0;border:1px solid var(--ui-line);border-radius:9px;background:var(--ui-surface);color:var(--ui-ink);overflow:visible}
+.phb-page-finanzierung .finance-receipt-button[hidden]{display:none}
+.phb-page-finanzierung .finance-receipt-count{position:absolute;top:-7px;right:-7px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 3px;border:2px solid var(--ui-surface);border-radius:999px;background:var(--ui-soft-accent);color:var(--ui-accent);font-size:10px;font-weight:700;line-height:1}
+.phb-page-finanzierung .funding-receipt-dialog{width:min(920px,95vw)}
+.phb-page-finanzierung .funding-receipt-scroll{overflow-x:auto}
+.phb-page-finanzierung .funding-receipt-scroll table{width:100%;border-collapse:collapse}
+.phb-page-finanzierung .funding-receipt-scroll :is(th,td){padding:12px;text-align:left;border-bottom:1px solid var(--ui-line)}
