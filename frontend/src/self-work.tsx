@@ -40,7 +40,7 @@ import { SourceWork } from './work';
 import { api, Editor, ErrorBox, money, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { useDirtyGuard } from './shell';
-import { ActionBar, SearchField, StatusPill, useViewState } from './ui';
+import { ActionBar, SearchField, StatusPill, useViewState, useDialogRouteCleanup } from './ui';
 import { SelfWorkAI } from './self-work-ai';
 import { SelfWorkSteps } from './self-work-steps';
 import { SelfWorkInvoices } from './self-work-invoices';
@@ -179,6 +179,7 @@ export function SelfWorkPage() {
     [status, setStatus] = useViewState('self-work-status', 'all'),
     [archive, setArchive] = useViewState('self-work-archive', 'active');
   const [invoicePlanID, setInvoicePlanID] = useState<number | null>(null);
+  useDialogRouteCleanup(opened, ['plan_id']);
   const invoicePlan = query.data?.plans.find((row) => row.id === invoicePlanID);
   const form = useForm<PlanDraft>({
     initialValues: emptyPlan(),

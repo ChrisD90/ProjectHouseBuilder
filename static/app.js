@@ -25,11 +25,12 @@ const taskListFlow=PHBFlow.manage({
  dialog:'taskListDialog',dismiss:['closeTaskList'],track:false
 });
 const companyAssignmentFlow=PHBFlow.manage({
+ routeParams:['firmenvorschlaege'],
  dialog:'companyProposalsDialog',forms:['companyProposalRows'],
  dismiss:['companyProposalsCancel']
 });
 let phaseBusy=false;
-const phaseFlow=PHBFlow.manage({dialog:'phaseDialog',forms:['phaseForm'],dismiss:['closePhaseDialog'],isBusy:()=>phaseBusy});
+const phaseFlow=PHBFlow.manage({routeParams:['phase_id'],dialog:'phaseDialog',forms:['phaseForm'],dismiss:['closePhaseDialog'],isBusy:()=>phaseBusy});
 function renderPhaseList(){const host=$('phaseList');if(!host)return;host.innerHTML=(project.phases||[]).map(p=>{const count=project.tasks.filter(t=>t.phase_id===p.id).length;return `<button type="button" class="phase-list-item" data-edit-phase="${p.id}"><strong>${escapeHtml(p.title)}</strong><span>${fmt(p.start_date)}${p.end_date?' – '+fmt(p.end_date):' · offenes Ende'}</span><small>${count} Arbeitspaket${count===1?'':'e'}${p.description?' · '+escapeHtml(p.description):''}</small></button>`}).join('')||'<p class="phase-empty">Noch keine Bauphase angelegt. Arbeitspakete können trotzdem ohne Bauphase geplant werden.</p>'}
 let phaseDetailMode=false;
 function openPhase(id=null,detail=false){
@@ -108,7 +109,7 @@ function openTask(id){if(taskBusy||ganttBusy)return;editing=id;let t=project.tas
  $('delete').disabled=completed;$('delete').style.display=completed||!id?'none':'block';$('complete').hidden=!id||completed;
  $('taskWorkButton').innerHTML=id?PHBWorkUI.button('task',id):'';$('reopenTask').hidden=!completed;$('taskForm').querySelector('button[type=submit]').hidden=completed;
  $('cancel').textContent=completed?'Schließen':'Abbrechen';taskFlow.open();document.dispatchEvent(new CustomEvent('phb-task-opened',{detail:{id,completed}}))}
-const taskFlow=PHBFlow.manage({dialog:'overlay',forms:['taskForm'],dismiss:['cancel','closeTask'],isBusy:()=>taskBusy,onClose:()=>{window.PHBTaskCompletion?.closed();if(phaseFlow.dialog.open)renderPhaseTaskDetails(Number($('phaseForm').elements.id.value))}});
+const taskFlow=PHBFlow.manage({routeParams:['task_id'],dialog:'overlay',forms:['taskForm'],dismiss:['cancel','closeTask'],isBusy:()=>taskBusy,onClose:()=>{window.PHBTaskCompletion?.closed();if(phaseFlow.dialog.open)renderPhaseTaskDetails(Number($('phaseForm').elements.id.value))}});
 function closeModal(){taskFlow.finish();}
 $('newTask').onclick=()=>openTask(null);$('filter').oninput=()=>{renderGantt();renderTable()};$('phase').onchange=()=>{renderGantt();renderTable()};$('scale').onchange=renderGantt;$('workType').onchange=()=>{renderGantt();renderTable()};$('taskForm').elements.namedItem('trade').onchange=()=>refreshTaskContractors();$('taskForm').elements.namedItem('execution_type').onchange=()=>refreshTaskContractors($('taskForm').elements.namedItem('contractor_id').value);
 $('clearSchedule').onclick=async()=>{

@@ -111,6 +111,9 @@ export function App() {
   const route = items.find((i) => i[0] === location.pathname),
     url = location.pathname + location.search + location.hash;
   const syncing = useRef<string | null>(null);
+  const syncedRoute = useRef<string | null>(null);
+  const currentURL = useRef(url);
+  currentURL.current = url;
   const currentPath = useRef(location.pathname);
   currentPath.current = location.pathname;
   const go = useCallback((url: string) => navigate(url), [navigate]);
@@ -190,12 +193,19 @@ export function App() {
   useEffect(() => {
     setMobile(false);
     setFailed(null);
+    const routeWasSynced = syncedRoute.current === url;
+    syncedRoute.current = null;
     document.title = (route?.[1] || 'Projekt') + ' · ProjectHouseBuilder';
     if (native.has(location.pathname)) {
       setDisplay(null);
       return;
     }
     if (!route) return;
+    // A dialog only changed its address. Its iframe and current form are already up to date.
+    if (routeWasSynced) {
+      if (frames[location.pathname]?.ready) setDisplay(location.pathname);
+      return;
+    }
     if (frames[location.pathname]?.previousSrc === url) {
       setFrames((previous) => ({
         ...previous,
@@ -204,13 +214,25 @@ export function App() {
       setDisplay(location.pathname);
       return;
     }
-    if (frames[location.pathname]?.ready && frames[location.pathname]?.src === url) {
+    if (
+      frames[location.pathname]?.ready &&
+      (frames[location.pathname]?.route === url || frames[location.pathname]?.src === url)
+    ) {
+      const path = location.pathname;
+      const navigation =
+        frames[path]?.route !== url
+          ? (refs.current[path]?.contentWindow as any)?.PHBEmbed?.navigate(url)
+          : undefined;
       setFrames((previous) => ({
         ...previous,
         [location.pathname]: { ...previous[location.pathname], route: url },
       }));
       setDisplay(location.pathname);
-      refreshFrame(location.pathname);
+      Promise.resolve(navigation)
+        .then(() => {
+          if (currentPath.current === path) refreshFrame(path);
+        })
+        .catch(error);
       return;
     }
     setFrames((previous) => {
@@ -265,6 +287,8 @@ export function App() {
         previous[path] ? { ...previous, [path]: { ...previous[path], route: value } } : previous,
       );
       if (currentPath.current === path) {
+        if (currentURL.current === value) return;
+        syncedRoute.current = value;
         syncing.current = value;
         Promise.resolve(navigate(value, { replace: true })).finally(() => {
           syncing.current = null;

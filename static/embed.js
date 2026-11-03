@@ -4,7 +4,7 @@
  if(window.parent===window||!window.parent.PHBReactBridge)return;
  const bridge=window.parent.PHBReactBridge;
  const routes=new Set(['/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben']);
- const forms=new Map(),changed=new Set(),locked=new WeakMap();let jobs=[],refreshing=null;
+ const forms=new Map(),changed=new Set(),locked=new WeakMap();let jobs=[],refreshing=null,navigating=false;
  const signature=form=>JSON.stringify([...form.querySelectorAll('input,select,textarea')].filter(f=>f.name&&f.dataset.phbIgnoreDirty!=='true').map(f=>[f.name,f.type==='file'?[...f.files].map(x=>[x.name,x.size,x.lastModified]):f.type==='checkbox'||f.type==='radio'?[f.value,f.checked]:f.multiple?[...f.selectedOptions].map(x=>x.value):f.value]));
  const guarded=form=>{const dialog=form.closest('dialog');return !!(dialog&&window.PHBFlow?.get(dialog));};
  document.addEventListener('focusin',e=>{const form=e.target.form;if(form&&!guarded(form)&&!forms.has(form))forms.set(form,signature(form));},true);
@@ -30,8 +30,20 @@
   busy:()=>window.PHBFlow?.inspect().busy||window.PHBUI?.pendingWrites()||!!document.querySelector('dialog.phb-messagebox[open]'),
   dirty:()=>window.PHBFlow?.inspect().dirty||[...changed].some(form=>(!form.closest('dialog')||form.closest('dialog').open)&&forms.has(form)&&signature(form)!==forms.get(form)),
   activate(){if(!window.PHBEmbed.dirty()&&!window.PHBEmbed.busy())return window.PHBPageActivate?.();},
+  async navigate(value){
+   // The shell already checked the dirty/busy guard before accepting this navigation.
+   navigating=true;
+   try{
+    window.PHBEmbed.discard();
+    // Native close events must finish before installing the next dialog's URL.
+    await new Promise(resolve=>setTimeout(resolve,0));
+    const url=new URL(value,location.href);
+    for(const key of ['_classic','_embedded','project_id']){const current=new URL(location.href).searchParams.get(key);if(current!==null)url.searchParams.set(key,current);}
+    history.replaceState(history.state,'',url);
+   }finally{navigating=false;}
+  },
   discard(){document.querySelectorAll('dialog[open]').forEach(dialog=>{dialog.querySelectorAll('form').forEach(form=>form.reset());const flow=window.PHBFlow?.get(dialog);if(flow)flow.finish();else dialog.close();});changed.forEach(form=>form.reset());changed.clear();forms.clear();},
-  syncURL(){const url=new URL(location.href);url.searchParams.delete('_classic');url.searchParams.delete('_embedded');url.searchParams.delete('_react_retry');url.searchParams.delete('project_id');bridge.sync?.(url.pathname+url.search+url.hash);},
+  syncURL(){if(navigating)return;const url=new URL(location.href);url.searchParams.delete('_classic');url.searchParams.delete('_embedded');url.searchParams.delete('_react_retry');url.searchParams.delete('project_id');bridge.sync?.(url.pathname+url.search+url.hash);},
   refresh(){if(refreshing)return refreshing;if(window.PHBEmbed.dirty()||window.PHBEmbed.busy()||!window.PHBPageRefresh)return;refreshing=Promise.resolve(window.PHBPageRefresh()).finally(()=>{refreshing=null;});return refreshing;},
  };
  window.PHBEmbed.setJobs(bridge.jobs?.()||[]);

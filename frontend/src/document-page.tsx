@@ -20,7 +20,14 @@ import { DocumentFields, emptyDocument } from './document-fields';
 import { PageHeader } from './page-layout';
 import { projectURL } from './project-context';
 import { useDirtyGuard } from './shell';
-import { ActionBar, DocumentPreview, SearchField, StatusPill, useViewState } from './ui';
+import {
+  ActionBar,
+  DocumentPreview,
+  SearchField,
+  StatusPill,
+  useViewState,
+  useDialogRouteCleanup,
+} from './ui';
 import { SourceWork } from './work';
 export function Documents() {
   const query = useQuery({
@@ -52,6 +59,7 @@ export function Documents() {
     [failure, setFailure] = useState<unknown>(null);
   const edit = useForm<Row>({ initialValues: emptyDocument }),
     metadata = useForm<Row>({ initialValues: emptyDocument });
+  useDialogRouteCleanup(opened || upload, ['document_id', 'upload', 'area', 'return_to']);
   const uploadRoute = useRef('');
   const data: Row = query.data || {};
   useEffect(() => {

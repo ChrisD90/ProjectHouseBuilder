@@ -5,6 +5,11 @@
  const registry=new Map();
  const $=id=>typeof id==='string'?document.getElementById(id):id;
  const feedback=(message)=>window.PHBUI?.alert?.(message);
+ function clearRouteParams(keys=[]){
+  const url=new URL(location.href);let changed=false;
+  for(const key of keys){if(url.searchParams.has(key)){url.searchParams.delete(key);changed=true;}}
+  if(changed){history.replaceState(history.state,'',url);window.PHBEmbed?.syncURL();}
+ }
 
  function signature(form){
   if(!form)return '';
@@ -86,7 +91,7 @@
   }
   function finish(returnValue=''){
    snapshot();
-   if(dialog.open)dialog.close(returnValue);
+   if(dialog.open){clearRouteParams(config.routeParams);dialog.close(returnValue);}
   }
   async function cancel(){
    if(!dialog.open||closing)return false;
@@ -138,6 +143,7 @@
   },true);
   dialog.addEventListener('close',()=>{
    setBusy(false);
+   if(!dialog.open)clearRouteParams(config.routeParams);
    config.onClose?.();
    if(opener instanceof HTMLElement&&opener.isConnected&&!dialog.contains(opener)){
     opener.focus({preventScroll:true});
@@ -156,5 +162,5 @@
   event.preventDefault();
   event.returnValue='';
  });
- window.PHBFlow={signature,manage,get:id=>registry.get($(id)?.id),inspect:()=>({busy:[...registry.values()].some(flow=>flow.isBusy()),dirty:[...registry.values()].some(flow=>flow.dialog.open&&flow.dirty())})};
+ window.PHBFlow={signature,manage,clearRouteParams,get:id=>registry.get($(id)?.id),inspect:()=>({busy:[...registry.values()].some(flow=>flow.isBusy()),dirty:[...registry.values()].some(flow=>flow.dialog.open&&flow.dirty())})};
 })();

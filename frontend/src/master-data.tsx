@@ -24,7 +24,7 @@ import type { CompanyRecord, ReferenceRecord } from './contracts';
 import { Editor, ErrorBox, Row, api, error, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { useDirtyGuard } from './shell';
-import { ActionBar, RowAction, SearchField, useViewState } from './ui';
+import { ActionBar, RowAction, SearchField, useViewState, useDialogRouteCleanup } from './ui';
 const companyFields = [
   ['name', 'Firmenname'],
   ['contact', 'Ansprechpartner'],
@@ -79,6 +79,7 @@ export function MasterData() {
     [researchName, setResearchName] = useState(''),
     [place, setPlace] = useState(''),
     [results, setResults] = useState<Row[]>([]);
+  useDialogRouteCleanup(opened, ['new_company', 'receipt_id']);
   useEffect(() => {
     if (hash === '#gewerke') setTab('trades');
     else if (hash === '#kategorien') setTab('categories');

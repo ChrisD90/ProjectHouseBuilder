@@ -28,7 +28,14 @@ import { FundingPlanDialog } from './funding-plan';
 import { Metrics, PageHeader } from './page-layout';
 import { projectURL } from './project-context';
 import { useDirtyGuard } from './shell';
-import { ActionBar, RowAction, SearchField, StatusPill, useViewState } from './ui';
+import {
+  ActionBar,
+  RowAction,
+  SearchField,
+  StatusPill,
+  useViewState,
+  useDialogRouteCleanup,
+} from './ui';
 import { SourceWork } from './work';
 const emptyFunding: Row = {
   assessment_inputs: {},
@@ -75,6 +82,7 @@ export function Energy() {
       documentId: number;
     } | null>(null);
   const handledOffer = useRef('');
+  useDialogRouteCleanup(opened || planOpened, ['funding_id', 'offer_id']);
   function startPlan(ident: number | null = null, offer: number | null = null) {
     setPlanId(ident);
     setPlanOffer(offer);

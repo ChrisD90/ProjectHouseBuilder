@@ -3,6 +3,7 @@ const $=id=>document.getElementById(id);
 const fileView=(url,filename)=>/\.pdf$/i.test(filename||'')?url+(url.includes('?')?'&':'?')+'inline=1':url;
 let loanSaving=false,equityBusy=false,drawdownBusy=false,usageBusy=false,pendingLoanScan=null,drawdownOptions=null,currentDrawdown=null;
 const loanFlow=PHBFlow.manage({
+ routeParams:['loan_id','loan_scan'],
  dialog:'loanDialog',forms:['loanForm'],dismiss:['closeLoan'],
  isBusy:()=>loanAiBusy||loanSaving,
  busyMessage:'Die Vertragsanalyse läuft noch. Bitte das Ergebnis abwarten.'

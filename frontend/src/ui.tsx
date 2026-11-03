@@ -2,11 +2,29 @@ import type { BadgeProps, TextInputProps } from '@mantine/core';
 import { Badge, TextInput, UnstyledButton } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { projectID } from './project-context';
 
 export function ActionBar({ children }: { children: ReactNode }) {
   return <div className="actions phb-action-bar">{children}</div>;
+}
+/** Remove only this dialog's deep-link fields after an actual close/save. */
+export function useDialogRouteCleanup(opened: boolean, keys: string[]) {
+  const [params] = useSearchParams();
+  const navigate = useNavigate(),
+    { hash } = useLocation();
+  const wasOpen = useRef(false),
+    signature = keys.join('|');
+  useEffect(() => {
+    const closed = wasOpen.current && !opened;
+    wasOpen.current = opened;
+    if (!closed) return;
+    const next = new URLSearchParams(params);
+    for (const key of signature.split('|')) next.delete(key);
+    if (next.toString() !== params.toString())
+      navigate({ search: next.toString() ? '?' + next.toString() : '', hash }, { replace: true });
+  }, [opened, params, signature, navigate, hash]);
 }
 export function CardHeading({ children }: { children: ReactNode }) {
   return <div className="phb-card-heading">{children}</div>;

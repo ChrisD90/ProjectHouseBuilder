@@ -343,10 +343,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
         .first()
         .isVisible(),
     );
-    assert(
-      new URL(page.url()).searchParams.has("loan_id"),
-      "saved loan is deep-linked in parent URL",
-    );
+    await page.waitForFunction(()=>!new URL(location.href).searchParams.has('loan_id'));
     console.log("loan saved");
     await visit("Rechnungen & Belege");
     let invoices = page.frameLocator(

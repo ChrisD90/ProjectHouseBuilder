@@ -138,6 +138,7 @@
   });
   const detailsDialog=$('offerDetailsDialog');
   const detailsFlow=PHBFlow.manage({
+    routeParams:['offer_id'],
     dialog:'offerDetailsDialog',forms:['offerDetailsContent'],
     dismiss:['closeOfferDetails']
   });
@@ -206,6 +207,7 @@
   };
     const workflow=$('offerWorkflowDialog');
     const workflowFlow=PHBFlow.manage({
+      routeParams:['offer_draft'],
       dialog:'offerWorkflowDialog',
       forms:['offerImportForm','offerManualForm'],
       dismiss:['closeOfferWorkflow'],steps:['Erfassen','Prüfen'],

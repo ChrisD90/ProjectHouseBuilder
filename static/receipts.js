@@ -110,8 +110,10 @@ function showReceiptPreview(item){
  $('receiptPdfDownload').href='/api/receipts/'+item.id+'/download';
 }
 
-let uploading=false,receiptBusy=false,paymentBusy=false;
+let uploading=false,receiptBusy=false,paymentBusy=false,receiptNavigationVersion=0;
 const receiptFlow=PHBFlow.manage({
+ routeParams:['receipt_id','offer_id','upload','self_work_id','receipt_kind','new_company_id'],
+ onClose:()=>{if(!receiptDialog.open){receiptNavigationVersion++;selected=null;linkOffer=null;linkSelfWork=null;}},
  dialog:'receiptWorkflowDialog',
  forms:['upload','review','receiptPaymentForm'],
  dismiss:['closeReceiptWorkflow'],
@@ -145,8 +147,7 @@ $('closeReceiptWorkflow').onclick=()=>{if(!uploading&&!receiptBusy)receiptDialog
 receiptDialog.addEventListener('cancel',event=>{if(uploading||receiptBusy)event.preventDefault();});
 
 const navigation=new URLSearchParams(window.location.search);
-const linkOffer=Number(navigation.get('offer_id'))||null;
-const linkReceipt=Number(navigation.get('receipt_id'))||null;
+let linkOffer=Number(navigation.get('offer_id'))||null;
 let linkSelfWork=null;
 async function activateReceiptNavigation(){
  const params=new URLSearchParams(location.search);
@@ -399,6 +400,8 @@ function fillSelect(node,values,getTitle){node.innerHTML='<option value="">Keine
 window.PHBPageRefresh=()=>reload(selected,receiptDialog.open);
 window.PHBPageActivate=()=>activateReceiptNavigation().catch(e=>notice(e.message,true));
 async function reload(keepId=selected,reopen=true){
+ const version=receiptNavigationVersion;
+ const linkedReceipt=Number(new URLSearchParams(location.search).get('receipt_id'))||null;
  const [r,c]=await Promise.all([api('/api/receipts'),api('/api/costs')]);overview=c;list=r.receipts;
  $('receiptTrade').innerHTML='<option value="">Ohne Gewerk</option>'+(r.trades||[]).map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('');
  $('stats').innerHTML=`<span>Entwürfe: <b>${r.drafts}</b></span><span>Gebucht brutto: <b>${money(r.booked_gross)}</b></span><span>Bezahlt: <b>${money(r.paid)}</b></span><span>Lohnanteil erfasst: <b>${list.filter(x=>x.labor_amount!==null).length} Belege</b></span>`;
@@ -407,17 +410,19 @@ async function reload(keepId=selected,reopen=true){
  fillSelect($('budgetLines'),c.budget_lines.filter(x=>x.active&&!x.is_group),x=>x.category+' · '+x.title);
  renderCostItems();
  renderReceiptFilters();
- if(keepId&&list.some(x=>x.id===keepId))selected=keepId;
+ if(version===receiptNavigationVersion&&keepId&&list.some(x=>x.id===keepId))selected=keepId;
  renderReceiptList();
+ if(version!==receiptNavigationVersion)return;
  if(reopen&&keepId&&list.some(x=>x.id===keepId))await open(keepId);
- else if(reopen&&linkReceipt&&list.some(x=>x.id===linkReceipt))await open(linkReceipt);
+ else if(reopen&&linkedReceipt&&list.some(x=>x.id===linkedReceipt))await open(linkedReceipt);
  else if(!list.length){$('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);}
  if(linkOffer&&!selected){$('uploadStatus').textContent='Angebot ausgewählt: Lade die Rechnung hoch und prüfe danach die Verknüpfung im Entwurf.';}
 }
 async function open(id){
- try{let x=await api('/api/receipts/'+id);selected=id;currentReceipt=x;assignmentEditing=false;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
+ const version=++receiptNavigationVersion;
+ try{let x=await api('/api/receipts/'+id);if(version!==receiptNavigationVersion)return;selected=id;currentReceipt=x;assignmentEditing=false;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
  if(x.kind==='Kassenzettel'&&x.status==='Entwurf')await loadTillFinancing(x);
- if(selected!==id)return;
+ if(selected!==id||version!==receiptNavigationVersion)return;
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;
  $('receiptReviewLayout').hidden=false;
  $('receiptReviewStage').hidden=false;
