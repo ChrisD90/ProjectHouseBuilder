@@ -180,6 +180,55 @@ class ImportJobsTest(unittest.TestCase):
             rejected=self.client.post('/api/receipts',data={'receipt_kind':'Kassenzettel','file':(io.BytesIO(b'%PDF-1.4\nCredit'),'retoure.pdf')})
         self.assertEqual(rejected.status_code,400,rejected.json)
 
+    def test_till_financing_default_override_limits_and_project_boundaries(self):
+        from app import ReceiptFinancingPayment
+        first=self.client.post('/api/financing/equity',json={'name':'Konto A','opening_balance':100,'reserve':20}).json['id']
+        second=self.client.post('/api/financing/equity',json={'name':'Konto B','opening_balance':200,'reserve':0}).json['id']
+        def receipt(code,amount):
+            row=Receipt(digest=code,original_name=code+'.pdf',stored_name=code+'.pdf',kind='Kassenzettel',assignment_type='Eigenleistung',status='Entwurf',supplier='Baumarkt',document_date='2026-11-03',gross_amount=amount)
+            db.session.add(row);db.session.commit();return row.id
+        rid=receipt('default-equity',30)
+        default=self.client.post('/api/receipts/'+str(rid)+'/book')
+        self.assertEqual(default.status_code,200,default.json)
+        payment=db.session.scalar(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==rid))
+        self.assertEqual(payment.equity_id,first)
+        chosen=receipt('chosen-equity',50)
+        saved=self.client.patch('/api/receipts/'+str(chosen),json={'book_now':True,'till_financing':{'source':'equity','equity_id':second}})
+        self.assertEqual(saved.status_code,200,saved.json)
+        payment=db.session.scalar(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==chosen))
+        self.assertEqual(payment.equity_id,second)
+        failed=receipt('too-much',80)
+        response=self.client.patch('/api/receipts/'+str(failed),json={'book_now':True,'till_financing':{'source':'equity','equity_id':first}})
+        self.assertEqual(response.status_code,400,response.json)
+        self.assertEqual(self.client.get('/api/receipts/'+str(failed)).json['status'],'Entwurf')
+        self.assertEqual(self.client.get('/api/receipts/'+str(failed)).json['paid_amount'],0)
+        other=self.client.post('/api/projects',json={'title':'Anderes Projekt'}).json['project']['id']
+        foreign=self.client.post('/api/financing/equity',headers={'X-PHB-Project':str(other)},json={'name':'Fremdes Konto','opening_balance':500,'reserve':0}).json['id']
+        denied=self.client.patch('/api/receipts/'+str(failed),json={'book_now':True,'till_financing':{'source':'equity','equity_id':foreign}})
+        self.assertEqual(denied.status_code,400,denied.json)
+        deferred=self.client.patch('/api/receipts/'+str(failed),json={'book_now':True,'till_financing':{'source':'unassigned'}})
+        self.assertEqual(deferred.status_code,200,deferred.json)
+        payment=db.session.scalar(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==failed))
+        self.assertEqual(payment.source,'unassigned');self.assertIsNone(payment.equity_id)
+        balances=self.client.get('/api/financing').json['equity']
+        self.assertEqual(next(x for x in balances if x['id']==first)['balance']['available'],70)
+        self.assertEqual(next(x for x in balances if x['id']==second)['balance']['available'],150)
+
+    def test_till_credit_requires_confirmed_available_funds(self):
+        from app import ReceiptFinancingPayment
+        loan=self.client.post('/api/financing/loans',json={'name':'Kredit','principal':500,'interest_rate':3,'monthly_payment':10,'initial_repayment_rate':2,'extra_repayment_pct':0}).json['id']
+        row=Receipt(digest='credit-bon',original_name='bon.pdf',stored_name='credit-bon.pdf',kind='Kassenzettel',assignment_type='Eigenleistung',status='Entwurf',supplier='Baumarkt',document_date='2026-11-03',gross_amount=50)
+        db.session.add(row);db.session.commit();rid=row.id
+        path='/api/receipts/'+str(rid)
+        body={'book_now':True,'till_financing':{'source':'loan','loan_id':loan}}
+        self.assertEqual(self.client.patch(path,json=body).status_code,400)
+        self.assertEqual(self.client.get(path).json['paid_amount'],0)
+        event=self.client.post('/api/financing/events',json={'kind':'loan_drawdown','amount':100,'loan_id':loan,'event_date':'2026-11-03'})
+        self.assertEqual(event.status_code,201,event.json)
+        result=self.client.patch(path,json=body);self.assertEqual(result.status_code,200,result.json)
+        payment=db.session.scalar(db.select(ReceiptFinancingPayment).where(ReceiptFinancingPayment.receipt_id==rid))
+        self.assertEqual(payment.loan_id,loan);self.assertEqual(payment.source,'loan')
+
     def test_self_work_receipt_context_survives_background_processing(self):
         from app import Task,SelfWorkReceipt
         task=Task(code='DIY',name='Malerarbeiten',trade='Sonstiges',execution_type='Eigenleistung')

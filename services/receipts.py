@@ -363,18 +363,37 @@ def register(runtime: ModuleType):
 
     runtime.receipt_preview = receipt_preview
 
-    def book_till_payment(r):
+    def book_till_payment(r,body=None):
         """Confirm an already paid shop purchase in the same transaction as booking."""
         if r.kind!='Kassenzettel':return
         if r.billing_type!='Normal' or r.advance_deduction:
             raise ValueError('Kassenzettel können nicht als Abschlags- oder Schlussrechnung gebucht werden.')
         from decimal import Decimal
+        if body is None:body={}
+        if not isinstance(body,dict):raise ValueError('Ungültige Finanzierungsangaben.')
+        selection=body.get('till_financing')
+        if selection is None:
+            account=runtime.db.session.scalar(runtime.select(runtime.EquityAccount).order_by(runtime.EquityAccount.id).limit(1))
+            selection={'source':'equity','equity_id':account.id} if account else {'source':'unassigned'}
+        if not isinstance(selection,dict) or selection.get('source') not in ('equity','loan','unassigned'):
+            raise ValueError('Bitte eine gültige Finanzierungsquelle auswählen.')
+        source=selection['source'];ref=None
+        if source!='unassigned':
+            raw=selection.get('equity_id' if source=='equity' else 'loan_id')
+            if isinstance(raw,bool) or not str(raw).isdigit() or int(raw)<=0:raise ValueError('Bitte ein Konto oder einen Kredit auswählen.')
+            ref=int(raw)
+            if runtime.db.session.get(runtime.EquityAccount if source=='equity' else runtime.Loan,ref) is None:
+                raise ValueError('Finanzierungsquelle ist nicht mehr vorhanden.')
         runtime.date.fromisoformat(r.document_date)
         total=Decimal(str(runtime._receipt_increment(r)))
         remaining=total-Decimal(str(r.paid_amount or 0))
         if remaining>0:
-            runtime.db.session.add(runtime.ReceiptFinancingPayment(receipt_id=r.id,source='unassigned',amount=remaining,
-                payment_date=r.document_date,notes='Kassenzettel: beim Einkauf bezahlt; Finanzierungsquelle noch nicht zugewiesen.'))
+            recorded=sum((Decimal(str(p.amount)) for p in runtime.db.session.scalars(runtime.select(runtime.ReceiptFinancingPayment).where(runtime.ReceiptFinancingPayment.receipt_id==r.id))),Decimal(0))
+            if source!='unassigned' and recorded!=Decimal(str(r.paid_amount or 0)):
+                raise ValueError('Bestehende Zahlung zunächst nachträglich einer Quelle zuordnen.')
+            runtime.db.session.add(runtime.ReceiptFinancingPayment(receipt_id=r.id,source=source,amount=remaining,
+                equity_id=ref if source=='equity' else None,loan_id=ref if source=='loan' else None,
+                payment_date=r.document_date,notes='Kassenzettel: beim Einkauf bezahlt.'+(' Finanzierungsquelle noch nicht zugewiesen.' if source=='unassigned' else '')))
             r.paid_amount=total
             runtime.db.session.flush()
             runtime.finance_services['validate_ledger']()
@@ -484,7 +503,7 @@ def register(runtime: ModuleType):
                     if already:
                         raise ValueError('Mögliche Doppelbuchung: Lieferant und Rechnungsnummer bereits gebucht (#' + str(already) + ').')
                 r.status = 'Gebucht'
-                book_till_payment(r)
+                book_till_payment(r,data)
             assign_self_work_receipt(r,data)
             if data.get('reviewed') is True:
                 runtime._mark_import_reviewed('receipts', rid)
@@ -583,7 +602,7 @@ def register(runtime: ModuleType):
                 if other:
                     raise ValueError('Mögliche Doppelbuchung: Lieferant und Rechnungsnummer bereits gebucht (#' + str(other) + ').')
             r.status = 'Gebucht'
-            book_till_payment(r)
+            book_till_payment(r,runtime.request.get_json(silent=True))
             runtime._mark_import_reviewed('receipts', rid)
             runtime.db.session.commit()
             return runtime.jsonify(runtime._receipt_json(r))

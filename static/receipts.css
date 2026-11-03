@@ -7,6 +7,7 @@
 .phb-page-belege .is-till-receipt:not([data-phb-stage="2"]) [data-flow-step="2"]{display:none!important}
 .phb-page-belege .receipt-till-info{padding:12px;border-radius:9px;background:var(--ui-soft-accent);color:var(--ui-ink)}
 .phb-page-belege .receipt-till-extras{margin-bottom:14px}
+.phb-page-belege .receipt-till-financing{margin:12px 0 16px}
 .phb-page-belege .receipt-upload-panel h2{margin-bottom:16px}
 .phb-page-belege #upload{display:grid;grid-template-columns:minmax(220px,1.5fr) minmax(210px,1fr) auto;gap:14px;align-items:end}
 .phb-page-belege #upload label{min-width:0}

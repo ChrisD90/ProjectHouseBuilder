@@ -28,9 +28,53 @@ if(!$('openTillReceiptWorkflow')){
 }
 $('openReceiptWorkflow').textContent='+ Rechnung erfassen';
 const tillInfo=document.createElement('p');tillInfo.className='note receipt-till-info';tillInfo.hidden=true;
-tillInfo.textContent='Kassenzettel sind beim Einkauf bezahlt. Beim bestätigten Buchen wird der Gesamtbetrag als bezahlt erfasst – Finanzierung zunächst „Nicht zugewiesen“. Eine Finanzierungsquelle kannst du später ergänzen.';
+tillInfo.textContent='Kassenzettel sind beim Einkauf bezahlt. Beim bestätigten Buchen wird der Gesamtbetrag als bezahlt erfasst und der gewählten Finanzierungsquelle zugeordnet.';
+const tillFinance=document.createElement('label');tillFinance.className='receipt-till-financing';tillFinance.hidden=true;
+tillFinance.append(document.createTextNode('Finanzierungsquelle'));
+const tillFinanceSelect=document.createElement('select');tillFinanceSelect.id='tillFinancingSource';tillFinanceSelect.name='till_financing_choice';tillFinanceSelect.disabled=true;
+const tillFinanceHint=document.createElement('small');tillFinanceHint.setAttribute('aria-live','polite');
+const tillFinanceRetry=document.createElement('button');tillFinanceRetry.type='button';tillFinanceRetry.className='subtle';tillFinanceRetry.textContent='Quellen erneut laden';tillFinanceRetry.hidden=true;
+tillFinance.append(tillFinanceSelect,tillFinanceHint,tillFinanceRetry);
+let tillFinanceChoices=new Map();
+const tillFinanceDraftSelections=new Map();
+function tillFinanceKey(id){return 'phb-till-financing:'+(window.PHBProject?.id||1)+':'+id;}
+function tillFinanceHelp(){
+ const account=tillFinanceChoices.get(tillFinanceSelect.value);
+ if(!account){tillFinanceHint.textContent='Als bezahlt erfassen, Finanzierungsquelle später zuordnen.';return;}
+ const amount=PHBUI.currency.parse($('receiptGross').value)||0;
+ tillFinanceHint.textContent='Verfügbar: '+money(account.available)+(amount>account.available?' · Der Betrag reicht nicht aus. Andere Quelle oder „Nicht zugewiesen“ wählen.':account.reserve>0&&account.available-amount<account.reserve?' · Hinweis: Die vorgesehene Reserve von '+money(account.reserve)+' würde unterschritten.':'. Die Zahlung wird beim Buchen dieser Quelle zugeordnet.');
+}
+tillFinanceSelect.onchange=()=>{
+ if(selected)tillFinanceDraftSelections.set(tillFinanceKey(selected),tillFinanceSelect.value);
+ if(selected)try{localStorage.setItem(tillFinanceKey(selected),tillFinanceSelect.value);}catch(_){}
+ tillFinanceHelp();
+};
+$('receiptGross').addEventListener('input',()=>{if(!tillFinanceSelect.disabled)tillFinanceHelp();});
+async function loadTillFinancing(receipt){
+ if(!receipt||receipt.status!=='Entwurf')return;
+ const ident=receipt.id;tillFinanceSelect.disabled=true;tillFinanceRetry.hidden=true;
+ tillFinanceSelect.replaceChildren(new Option('Finanzierungsquellen werden geladen …',''));
+ try{
+   const finance=await api('/api/financing');
+   if(selected!==ident)return;
+   const equities=[...(finance.equity||[])].sort((a,b)=>a.id-b.id);
+   tillFinanceChoices=new Map();tillFinanceSelect.replaceChildren(new Option('Nicht zugewiesen · später zuordnen','unassigned'));
+   for(const [source,accounts] of [['equity',equities],['loan',finance.loans||[]]])for(const account of accounts){
+     const available=Number(source==='equity'?account.balance?.available:account.balance?.unallocated_drawn)||0;
+     const value=source+':'+account.id;tillFinanceChoices.set(value,{name:account.name,available,reserve:Number(account.reserve)||0});
+     tillFinanceSelect.add(new Option((source==='equity'?'Eigenkapital':'Kredit')+' · '+account.name+' · verfügbar '+money(available),value));
+   }
+   let saved=tillFinanceDraftSelections.get(tillFinanceKey(ident))||null;try{saved=saved||localStorage.getItem(tillFinanceKey(ident));}catch(_){}
+   tillFinanceSelect.value=saved&&(saved==='unassigned'||tillFinanceChoices.has(saved))?saved:saved?'unassigned':equities.length?'equity:'+equities[0].id:'unassigned';
+   tillFinanceSelect.disabled=false;tillFinanceHelp();
+ }catch(error){
+   if(selected!==ident)return;
+   tillFinanceHint.textContent='Finanzierungsquellen konnten nicht geladen werden: '+error.message;tillFinanceRetry.hidden=false;
+ }
+}
+tillFinanceRetry.onclick=()=>loadTillFinancing(currentReceipt);
 const tillExtras=document.createElement('button');tillExtras.type='button';tillExtras.className='subtle receipt-till-extras';tillExtras.textContent='Weitere Angaben anzeigen';tillExtras.hidden=true;
-$('review').prepend(tillInfo,tillExtras);
+$('review').prepend(tillInfo,tillFinance,tillExtras);
 tillExtras.onclick=()=>{
  const expanded=receiptDialog.classList.toggle('show-till-extras');
  tillExtras.textContent=expanded?'Weitere Angaben ausblenden':'Weitere Angaben anzeigen';
@@ -40,6 +84,7 @@ function applyTillMode(enabled){
  receiptDialog.classList.toggle('is-till-receipt',enabled);
  receiptDialog.classList.remove('show-till-extras');tillExtras.textContent='Weitere Angaben anzeigen';tillExtras.setAttribute('aria-expanded','false');
  tillInfo.hidden=!enabled||!receiptDialog.classList.contains('is-reviewing');tillExtras.hidden=tillInfo.hidden;
+ tillFinance.hidden=tillInfo.hidden||currentReceipt?.status!=='Entwurf';
  for(const name of ['due_date','budget_line_id','trade'])$('review').elements.namedItem(name)?.closest('label')?.setAttribute('data-till-extra','');
  for(const node of [$('receiptSupplierCompany')?.closest('label'),$('review').querySelector('.receipt-billing'),$('review').querySelector('.receipt-labor')])node?.setAttribute('data-till-extra','');
  if(enabled&&receiptDialog.classList.contains('is-reviewing')){
@@ -313,7 +358,10 @@ $('review').elements.namedItem('supplier').addEventListener('input',event=>{
 $('costItems').addEventListener('change',updateInvoiceControls);
 $('receiptSelfWork').addEventListener('change',()=>{if($('receiptSelfWork').value)$('budgetLines').value='';updateInvoiceControls();});
 $('billingType').addEventListener('change',()=>{if($('billingType').value!=='Schlussrechnung')$('advanceDeduction').value='0';updateInvoiceControls();});
-$('review').elements.namedItem('kind').addEventListener('change',event=>applyTillMode(event.currentTarget.value==='Kassenzettel'));
+$('review').elements.namedItem('kind').addEventListener('change',event=>{
+ const till=event.currentTarget.value==='Kassenzettel';applyTillMode(till);
+ if(till&&currentReceipt?.status==='Entwurf')void loadTillFinancing(currentReceipt);
+});
 $('receiptAnalysisMode').addEventListener('change',()=>{
  const ai=$('receiptAnalysisMode').value==='ai';
  $('receiptAIHint').hidden=!ai;
@@ -327,6 +375,12 @@ function inputs({booking=false}={}){
   const result=Object.fromEntries(new FormData($('review')));
   // Payment is always recorded separately after booking.
   delete result.paid_amount;
+ delete result.till_financing_choice;
+ if(booking&&result.kind==='Kassenzettel'){
+   if(tillFinanceSelect.disabled)throw Error('Bitte die Finanzierungsquellen zuerst laden.');
+   const [source,ident]=tillFinanceSelect.value.split(':');
+   result.till_financing={source,...(source==='equity'?{equity_id:Number(ident)}:source==='loan'?{loan_id:Number(ident)}:{})};
+ }
 
  const mode=$('receiptAssignmentType').value;
 
@@ -361,6 +415,8 @@ async function reload(keepId=selected,reopen=true){
 }
 async function open(id){
  try{let x=await api('/api/receipts/'+id);selected=id;currentReceipt=x;assignmentEditing=false;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
+ if(x.kind==='Kassenzettel'&&x.status==='Entwurf')await loadTillFinancing(x);
+ if(selected!==id)return;
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;
  $('receiptReviewLayout').hidden=false;
  $('receiptReviewStage').hidden=false;
@@ -410,6 +466,7 @@ async function open(id){
  }
  updateInvoiceControls();
  applyTillMode(x.kind==='Kassenzettel');
+ if(x.kind==='Kassenzettel'&&x.status==='Entwurf'&&!tillFinanceSelect.disabled)tillFinanceHelp();
  const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();
  $('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
@@ -644,13 +701,14 @@ $('book').onclick=async()=>{
  let fields;try{fields=inputs({booking:true});}catch(error){notice(error.message,true);return;}
  // A cancelled confirmation must never mutate the draft.
  const till=fields.kind==='Kassenzettel';
- if(!await PHBUI.confirm(till?'Kassenzettel verbindlich buchen und '+money(fields.gross_amount)+' als beim Einkauf bezahlt erfassen? Die Finanzierungsquelle bleibt zunächst „Nicht zugewiesen“.':'Rechnungsdaten speichern und den Beleg verbindlich buchen? Unbezahlte Rechnungen bleiben offen.'))return;
+ const sourceLabel=tillFinanceSelect.selectedOptions[0]?.textContent||'Nicht zugewiesen';
+ if(!await PHBUI.confirm(till?'Kassenzettel verbindlich buchen und '+money(fields.gross_amount)+' als beim Einkauf bezahlt erfassen? Finanzierungsquelle: '+sourceLabel+'.':'Rechnungsdaten speichern und den Beleg verbindlich buchen? Unbezahlte Rechnungen bleiben offen.'))return;
  await receiptAction(async()=>{
   await api('/api/receipts/'+selected,{
    method:'PATCH',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({...fields,book_now:true})
   });
- },$('book'),till?'Kassenzettel gebucht und als bezahlt erfasst · Finanzierung nicht zugewiesen.':'Rechnung gebucht. Zahlungen kannst du anschließend separat erfassen.');
+ },$('book'),till?'Kassenzettel gebucht und als bezahlt erfasst · '+sourceLabel+'.':'Rechnung gebucht. Zahlungen kannst du anschließend separat erfassen.');
 };
 $('unbook').onclick=async()=>{
  if(!selected||receiptBusy||!await PHBUI.confirm('Buchung zurücknehmen? Die Belegausgaben werden aus der Übersicht entfernt.'))return;
