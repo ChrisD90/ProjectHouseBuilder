@@ -1,8 +1,29 @@
-"""Thread + OS-process lock for local restore/reset file operations on Mac/Linux."""
+"""Thread + OS-process lock for local restore/reset operations, including Windows."""
 import json,os,tempfile
 from pathlib import Path
 from threading import Lock
-import fcntl
+import errno,time
+if os.name=='nt':
+    import msvcrt
+else:
+    import fcntl
+
+def _lock(stream,blocking):
+    if os.name!='nt':
+        fcntl.flock(stream,fcntl.LOCK_EX|(0 if blocking else fcntl.LOCK_NB));return
+    stream.seek(0,2)
+    if stream.tell()==0:stream.write(b'\0');stream.flush()
+    while True:
+        stream.seek(0)
+        try:msvcrt.locking(stream.fileno(),msvcrt.LK_NBLCK,1);return
+        except OSError as exc:
+            if exc.errno not in (errno.EACCES,errno.EAGAIN,errno.EDEADLK):raise
+            if not blocking:raise BlockingIOError() from exc
+            time.sleep(.05)
+
+def _unlock(stream):
+    if os.name=='nt':stream.seek(0);msvcrt.locking(stream.fileno(),msvcrt.LK_UNLCK,1)
+    else:fcntl.flock(stream,fcntl.LOCK_UN)
 
 class ProcessLock:
     def __init__(self,path):self.path=path;self.thread=Lock();self.file=None
@@ -10,14 +31,16 @@ class ProcessLock:
         if not self.thread.acquire(blocking=blocking):return False
         try:
             path=Path(self.path());path.parent.mkdir(parents=True,exist_ok=True)
-            stream=path.open('a+')
-            try:fcntl.flock(stream,fcntl.LOCK_EX|(0 if blocking else fcntl.LOCK_NB))
+            stream=path.open('a+b')
+            try:_lock(stream,blocking)
             except BlockingIOError:stream.close();self.thread.release();return False
+            except Exception:stream.close();raise
             self.file=stream;return True
         except Exception:self.thread.release();raise
     def release(self):
         if self.file:
-            fcntl.flock(self.file,fcntl.LOCK_UN);self.file.close();self.file=None
+            try:_unlock(self.file)
+            finally:self.file.close();self.file=None
         self.thread.release()
     def locked(self):
         if self.thread.locked():return True

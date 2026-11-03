@@ -16,7 +16,7 @@ import subprocess
 import tempfile
 import zipfile
 
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(os.environ.get('PHB_APP_ROOT') or Path(__file__).resolve().parent)
 STORAGE_ROOT=Path(os.environ.get('PHB_BACKUP_ROOT','/app/backup-target' if Path('/app').is_dir() else str(ROOT/'backups')))
 SETTINGS=ROOT/'private'/'backup-settings.json'
 PREFIX='ProjectHouseBuilder_NAS_'

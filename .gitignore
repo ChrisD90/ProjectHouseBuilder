@@ -45,3 +45,9 @@ frontend/.vite/
 
 /test-results/
 /frontend/playwright-report/
+
+# Local Windows packaging outputs (never include user data).
+/build/
+/dist/
+/desktop/vendor/
+/desktop/generated/

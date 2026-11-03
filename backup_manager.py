@@ -17,8 +17,8 @@ import sys
 import tempfile
 import zipfile
 
-ROOT = Path(__file__).resolve().parent
-CONFIG_PATH = Path.home() / 'Library' / 'Application Support' / 'ProjectHouseBuilder' / 'backup-config.json'
+ROOT = Path(os.environ.get('PHB_APP_ROOT') or Path(__file__).resolve().parent)
+CONFIG_PATH = Path(os.environ.get('PHB_BACKUP_CONFIG') or Path.home() / 'Library' / 'Application Support' / 'ProjectHouseBuilder' / 'backup-config.json')
 PREFIX = 'ProjectHouseBuilder_Backup_'
 VERSION = 1
 

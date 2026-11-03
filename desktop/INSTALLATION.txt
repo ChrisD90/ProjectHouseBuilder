@@ -1,0 +1,19 @@
+Lokaler Windows-Testbuild (Windows 10/11, x64)
+
+Python, Tesseract, Poppler und deutsche/englische OCR-Sprachdaten sind enthalten.
+Wenn Microsoft WebView2 fehlt, lädt dessen Microsoft-Installer die Laufzeit nach.
+Nur diese Ersteinrichtung, ChatGPT und externe Links benötigen Internet.
+
+Alle Projekte und Dateien bleiben unter:
+%LOCALAPPDATA%\ProjectHouseBuilder\data
+Backups: %LOCALAPPDATA%\ProjectHouseBuilder\backups
+Anmeldedaten: %LOCALAPPDATA%\ProjectHouseBuilder\auth
+Startprotokoll: %LOCALAPPDATA%\ProjectHouseBuilder\logs\desktop.log
+
+Der Installer importiert keine Daten aus einer bisherigen Installation.
+Bestehende Projekte können über die projektbezogenen Backups importiert werden.
+Die Deinstallation entfernt Programme und Verknüpfungen, keine Nutzerdaten.
+Bitte zunächst ausschließlich mit einer Kopie deiner Daten testen.
+
+Dieser erste Testbuild ist nicht codesigniert; Windows kann eine Warnung anzeigen.
+Es gibt noch keine automatischen Updates und keine öffentliche Release-Freigabe.

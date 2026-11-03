@@ -43,6 +43,7 @@ from sqlalchemy import select, text, inspect as sa_inspect
 from multi_projects import ProjectModel, ProjectSession, current_project_id, project_context, all_projects, install_project_scope, register_project_routes, project_files, register_planning_state
 
 ROOT = Path(os.environ.get('PHB_APP_ROOT') or Path(__file__).resolve().parent).resolve()
+ASSET_ROOT = Path(__file__).resolve().parent
 app = Flask(__name__)
 # Authentication is opt-in for local tests, mandatory in the Docker/LAN deployment.
 def _local_session_secret():
@@ -103,7 +104,7 @@ def react_frontend():
         return None
     if request.args.get('_classic')=='1' or os.environ.get('PHB_UI','react')=='classic':
         return None
-    index=ROOT/'static'/'react'/'index.html'
+    index=ASSET_ROOT/'static'/'react'/'index.html'
     if not index.is_file():
         return None  # Source-only checkouts can still run the established UI.
     response=send_file(index)
@@ -113,18 +114,18 @@ def react_frontend():
 
 @app.get('/manifest.webmanifest')
 def pwa_manifest():
-    return send_file(ROOT/'static'/'manifest.webmanifest',mimetype='application/manifest+json')
+    return send_file(ASSET_ROOT/'static'/'manifest.webmanifest',mimetype='application/manifest+json')
 
 @app.get('/sw.js')
 def service_worker():
-    response=send_file(ROOT/'static'/'sw.js',mimetype='text/javascript')
+    response=send_file(ASSET_ROOT/'static'/'sw.js',mimetype='text/javascript')
     response.headers['Service-Worker-Allowed']='/'
     response.headers['Cache-Control']='no-store'
     return response
 
 @app.get('/static/icons/<path:filename>')
 def app_icon(filename):
-    return send_file(ROOT/'static'/'icons'/filename)
+    return send_file(ASSET_ROOT/'static'/'icons'/filename)
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///' + str(ROOT / 'sanierung.db'))
 if DATABASE_URL.startswith('postgres://'):
