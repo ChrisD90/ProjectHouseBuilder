@@ -1,7 +1,6 @@
 import {
   ActionIcon,
   Alert,
-  Anchor,
   AppShell,
   Badge,
   Burger,
@@ -20,7 +19,7 @@ import {
 import { useMediaQuery } from '@mantine/hooks';
 import {
   IconBuildingBank,
-  IconBuildingCottage,
+  IconHome,
   IconCalendar,
   IconChartBar,
   IconChevronLeft,
@@ -306,49 +305,64 @@ export function App() {
     <GuardContext.Provider value={register}>
       <WorkProvider>
         <AppShell
-          header={{ height: { base: 64, sm: 70 } }}
+          header={{ height: { base: 72, sm: 80 } }}
           navbar={{
-            width: { base: 254, sm: mini ? 78 : 254 },
+            width: { base: 254, sm: mini ? 88 : 254 },
             breakpoint: 'sm',
             collapsed: { mobile: !mobile },
           }}
           padding={0}
         >
-          <AppShell.Navbar className="app-sidebar" p={mini ? 'xs' : 'md'}>
-            <Group justify={mini ? 'center' : 'space-between'} wrap="nowrap" h={52}>
-              <Anchor
-                href="/"
-                aria-label="Alle Projekte"
-                title="Zur Projektübersicht"
-                c="inherit"
-                underline="never"
-                style={{ minWidth: 0 }}
+          <AppShell.Navbar
+            id="app-navigation"
+            className="app-sidebar"
+            data-collapsed={mini}
+            p={mini ? 8 : 'md'}
+          >
+            <Group className="sidebar-top-actions" justify="space-between" gap={8} wrap="nowrap">
+              <Tooltip label="Zur Projektübersicht" position="right" disabled={small}>
+                <ActionIcon
+                  component="a"
+                  href="/"
+                  aria-label="Alle Projekte"
+                  variant="subtle"
+                  size={32}
+                  className="sidebar-icon-button"
+                >
+                  <IconHome size={20} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip
+                disabled={small}
+                label={
+                  small
+                    ? 'Navigation schließen'
+                    : mini
+                      ? 'Sidebar ausklappen'
+                      : 'Sidebar einklappen'
+                }
+                position="right"
               >
-                <Group gap="sm" wrap="nowrap" style={{ minWidth: 0 }}>
-                  <IconBuildingCottage size={29} />
-                  {!mini && (
-                    <Text
-                      fw={700}
-                      size="sm"
-                      className="app-brand"
-                      lineClamp={2}
-                      style={{ overflowWrap: 'anywhere' }}
-                    >
-                      {projectInfo.data?.project?.title ||
-                        (projectInfo.isError
-                          ? 'Projekt nicht verfügbar'
-                          : 'Projekt wird geladen …')}
-                    </Text>
-                  )}
-                </Group>
-              </Anchor>
+                <ActionIcon
+                  aria-label={
+                    small
+                      ? 'Navigation schließen'
+                      : mini
+                        ? 'Sidebar ausklappen'
+                        : 'Sidebar einklappen'
+                  }
+                  aria-controls="app-navigation"
+                  aria-expanded={small ? mobile : !mini}
+                  variant="subtle"
+                  size={32}
+                  className="sidebar-icon-button"
+                  onClick={() => (small ? setMobile(false) : setCollapsed(!collapsed))}
+                >
+                  {mini ? <IconChevronRight size={20} /> : <IconChevronLeft size={20} />}
+                </ActionIcon>
+              </Tooltip>
             </Group>
-            {!mini && projectInfo.data?.project?.archived && (
-              <Badge variant="light" color="gray" mt="xs">
-                Archiviert
-              </Badge>
-            )}
-            <Divider color="var(--brand-line)" my="md" />
+            <Divider color="var(--brand-line)" my="sm" />
             <Stack gap="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
               {navigationGroups.map((group, index) => (
                 <section key={group.label} aria-label={group.label}>
@@ -389,21 +403,16 @@ export function App() {
                 </section>
               ))}
             </Stack>
-            <Group justify={mini ? 'center' : 'space-between'} mt="md">
-              <Tooltip label={mini ? 'Sidebar ausklappen' : 'Sidebar einklappen'}>
-                <ActionIcon
-                  aria-label={mini ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
-                  variant="subtle"
-                  color="gray"
-                  visibleFrom="sm"
-                  onClick={() => setCollapsed(!collapsed)}
-                >
-                  {mini ? <IconChevronRight size={19} /> : <IconChevronLeft size={19} />}
-                </ActionIcon>
-              </Tooltip>
+            <Group justify={mini ? 'center' : 'flex-end'} mt="md" className="sidebar-footer">
               <form action="/logout" method="post">
                 <Tooltip label="Abmelden">
-                  <ActionIcon type="submit" variant="subtle" color="gray" aria-label="Abmelden">
+                  <ActionIcon
+                    type="submit"
+                    variant="subtle"
+                    className="sidebar-icon-button"
+                    size={32}
+                    aria-label="Abmelden"
+                  >
                     <IconLogout size={19} />
                   </ActionIcon>
                 </Tooltip>
@@ -412,7 +421,7 @@ export function App() {
           </AppShell.Navbar>
           <AppShell.Header px={{ base: 15, sm: 26 }}>
             <Group h="100%" justify="space-between" wrap="nowrap">
-              <Group gap="sm" wrap="nowrap">
+              <Group gap="sm" wrap="nowrap" className="app-header-left">
                 <Burger
                   aria-label={mobile ? 'Navigation schließen' : 'Navigation öffnen'}
                   opened={mobile}
@@ -420,9 +429,31 @@ export function App() {
                   hiddenFrom="sm"
                   size="sm"
                 />
-                <BrandLogo />
+                <div className="header-project-identity">
+                  <div className="app-header-brand">
+                    <BrandLogo />
+                  </div>
+                  <div className="header-project-info">
+                    <Text
+                      className="header-project-title"
+                      fw={700}
+                      truncate="end"
+                      title={projectInfo.data?.project?.title}
+                    >
+                      {projectInfo.data?.project?.title ||
+                        (projectInfo.isError
+                          ? 'Projekt nicht verfügbar'
+                          : 'Projekt wird geladen …')}
+                    </Text>
+                    {projectInfo.data?.project?.archived && (
+                      <Badge variant="light" color="gray" size="xs">
+                        Archiviert
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </Group>
-              <Group gap="xs" wrap="nowrap">
+              <Group gap="xs" wrap="nowrap" className="app-header-actions">
                 <Select
                   aria-label="Darstellung"
                   value={colorScheme}

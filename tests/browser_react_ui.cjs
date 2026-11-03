@@ -333,7 +333,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
     await finance.locator("#loanSaveButton").click();
     await finance
       .locator("#loanSaveStatus")
-      .filter({ hasText: "gespeichert" })
+      .filter({ hasText: "Änderungen gespeichert." })
       .waitFor();
     await finance.locator("#closeLoan").click();
     await finance.locator("#loanDialog").waitFor({ state: "hidden" });
