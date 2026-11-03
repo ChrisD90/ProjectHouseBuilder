@@ -103,7 +103,6 @@ async function openFundingReceipts(source,id,button){
   state={...state,...finance};fundingReceiptButton(source,id);
   showFundingReceipts({title:'Rechnungen · '+account.name,receipts,
    sourceLabel:source==='loan'?'Aus diesem Kredit':'Aus diesem Konto',
-   summary:[['Brutto',receipts.reduce((s,r)=>s+r.gross,0)],['Bezahlt gesamt',receipts.reduce((s,r)=>s+r.paid,0)],[source==='loan'?'Aus diesem Kredit':'Aus diesem Konto',receipts.reduce((s,r)=>s+r.source_amount,0)]],
    emptyText:'Dieser Finanzierungsquelle sind noch keine Rechnungen oder Belege zugeordnet.'});
  }catch(e){await PHBUI.alert(e.message);}
  finally{button.disabled=false;button.removeAttribute('aria-busy');}

@@ -20,7 +20,7 @@ export type OverviewReceipt = {
 export type ReceiptOverviewData = {
   title: string;
   receipts: OverviewReceipt[];
-  summary: [string, number][];
+  summary?: [string, number][];
   emptyText: string;
   sourceLabel?: string;
   editMode?: 'financing';
@@ -37,7 +37,7 @@ export function ReceiptOverview({
   footer,
 }: ReceiptOverviewData & { onClose: () => void; footer?: ReactNode }) {
   return (
-    <Editor opened title={title} onClose={onClose} zIndex={300}>
+    <Editor opened title={title} onClose={onClose} zIndex={300} size={1120}>
       <Stack>
         <Text size="sm" c="dimmed">
           {receipts.length}{' '}
@@ -45,18 +45,20 @@ export function ReceiptOverview({
             ? 'Belege mit offener Finanzierungszuordnung'
             : 'zugeordnete Belege'}
         </Text>
-        <SimpleGrid cols={{ base: 2, sm: summary.length }}>
-          {summary.map(([label, value]) => (
-            <div key={label}>
-              <Text size="xs" c="dimmed">
-                {label}
-              </Text>
-              <Text fw={600} size="sm">
-                {money(value)}
-              </Text>
-            </div>
-          ))}
-        </SimpleGrid>
+        {!!summary?.length && (
+          <SimpleGrid cols={{ base: 2, sm: summary.length }}>
+            {summary.map(([label, value]) => (
+              <div key={label}>
+                <Text size="xs" c="dimmed">
+                  {label}
+                </Text>
+                <Text fw={600} size="sm">
+                  {money(value)}
+                </Text>
+              </div>
+            ))}
+          </SimpleGrid>
+        )}
         {receipts.length ? (
           <Table.ScrollContainer minWidth={sourceLabel ? 830 : 700}>
             <Table verticalSpacing="sm">

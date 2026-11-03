@@ -148,6 +148,7 @@ export function Editor({
   changes,
   original,
   closeOnEscape = true,
+  size = 'lg',
 }: {
   opened: boolean;
   title: string;
@@ -160,6 +161,7 @@ export function Editor({
   changes?: Record<string, unknown>;
   original?: Record<string, unknown>;
   closeOnEscape?: boolean;
+  size?: string | number;
 }) {
   const ask = useConfirm(),
     confirming = useModalLayer().blocked,
@@ -182,7 +184,7 @@ export function Editor({
       closeOnEscape={closeOnEscape && !busy && !confirming && !covered}
       withCloseButton
       closeButtonProps={{ 'aria-label': 'Schließen', disabled: busy || covered }}
-      size="lg"
+      size={size}
       centered
     >
       {dirty && changes && original && <ChangePreview original={original} changes={changes} />}
