@@ -292,6 +292,11 @@ def register(runtime: ModuleType):
         if not raw_year.isdigit() or len(raw_year) != 4 or (not 2000 <= int(raw_year) <= 2100):
             return (runtime.jsonify(error='Bitte ein gültiges Jahr zwischen 2000 und 2100 auswählen.'), 400)
         rows = runtime.db.session.scalars(runtime.select(runtime.Receipt).where(runtime.Receipt.status == 'Gebucht', runtime.Receipt.labor_amount.is_not(None), runtime.Receipt.labor_amount > 0, runtime.Receipt.document_date.like(raw_year + '-%')).order_by(runtime.Receipt.document_date, runtime.Receipt.id)).all()
+        kind = runtime.request.args.get('kind', '')
+        if kind not in ('', 'Rechnung', 'Kassenzettel', 'Gutschrift'):
+            return runtime.jsonify(error='Unbekannte Belegart.'),400
+        if kind:
+            rows = [row for row in rows if (row.kind or 'Rechnung') == kind]
         if not rows:
             return (runtime.jsonify(error='Für dieses Jahr sind keine gebuchten Belege mit Lohnkosten vorhanden.'), 404)
 

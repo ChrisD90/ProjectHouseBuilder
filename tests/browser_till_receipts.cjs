@@ -68,9 +68,24 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await expect(frame.locator('#receiptSaveStatus')).toContainText('Entwurf gespeichert.');
   await expect(frame.locator('#tillFinancingSource')).toHaveValue('equity:'+secondAccount);
   await expect(frame.locator('#saveReceiptDraft')).toBeEnabled();
+  // Reproduce a slow refresh that previously overwrote the first newly entered field.
+  let releaseDetail,finishDetail;
+  const heldDetail=new Promise(resolve=>{releaseDetail=resolve;});
+  const detailFinished=new Promise(resolve=>{finishDetail=resolve;});
+  const detailURL='**/api/receipts/'+rid;
+  await page.route(detailURL,async route=>{
+   if(route.request().method()!=='GET')return route.continue();
+   const response=await route.fetch();await heldDetail;await route.fulfill({response});finishDetail();
+  });
+  const detailRequested=page.waitForRequest(request=>new URL(request.url()).pathname==='/api/receipts/'+rid&&request.method()==='GET');
+  const refreshing=frame.locator('#review').evaluate(()=>window.PHBPageRefresh());
+  await detailRequested;
   await frame.locator('#review [name=supplier]').fill('Baumarkt');
   await frame.locator('#review [name=document_date]').fill('2026-11-03');
   await frame.locator('#receiptGross').fill('50,00');
+  releaseDetail();await detailFinished;await refreshing;await page.unroute(detailURL);
+  await expect(frame.locator('#review [name=supplier]')).toHaveValue('Baumarkt');
+  await expect(frame.locator('#review [name=document_date]')).toHaveValue('2026-11-03');
   await frame.locator('#review [name=kind]').evaluate(n=>n.disabled=true);
   const bookingURL='**/api/receipts/'+rid+'/book-till';
   await page.route(bookingURL,route=>route.fulfill({status:404,contentType:'application/json',body:JSON.stringify({error:'Route fehlt',code:'http_404'})}));

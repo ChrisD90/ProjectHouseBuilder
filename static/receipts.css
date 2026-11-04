@@ -279,3 +279,8 @@ body.phb-app.phb-page-belege .receipt-draft-actions{display:flex;align-items:cen
 @media(max-width:650px){body.phb-app.phb-page-belege .receipt-draft-actions{width:100%}}
 body.phb-app.phb-page-belege .receipt-entry-statuses{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
 body.phb-app.phb-page-belege .receipt-kind-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:var(--ui-surface);color:var(--ui-muted);font-size:10px;line-height:1.4;font-weight:600}
+body.phb-app.phb-page-belege .receipt-list-tools{grid-template-columns:minmax(210px,1fr) minmax(145px,170px) minmax(100px,120px) minmax(190px,215px);gap:10px}
+body.phb-app.phb-page-belege .receipt-kind-badge{gap:5px}
+body.phb-app.phb-page-belege .receipt-kind-icon{width:15px;height:15px;flex:0 0 15px;color:var(--ui-accent)}
+@media(max-width:1080px){body.phb-app.phb-page-belege .receipt-list-head{display:grid}body.phb-app.phb-page-belege .receipt-list-tools{grid-template-columns:repeat(3,minmax(0,1fr));width:100%}body.phb-app.phb-page-belege .receipt-search{grid-column:1/-1}}
+@media(max-width:650px){body.phb-app.phb-page-belege .receipt-list-tools{grid-template-columns:repeat(2,minmax(0,1fr))}body.phb-app.phb-page-belege .receipt-labor-filter{grid-column:1/-1}}

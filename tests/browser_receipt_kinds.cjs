@@ -20,12 +20,46 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
    assert.equal(response.status(),201,await response.text());return(await response.json()).id;
   }
   const invoice=await upload('Rechnung'),till=await upload('Kassenzettel',{self_work_id:String(plan)});
+  for(const [id,date] of [[invoice,'2025-11-04'],[till,'2026-11-04']]){
+   const response=await page.request.patch(base+'/api/receipts/'+id,{headers,data:{document_date:date}});assert(response.ok(),await response.text());
+  }
   await page.goto(base+'/p/'+owner+'/belege');
   const frame=page.frameLocator('iframe[title="Rechnungen & Belege"]:not([hidden])');
   const open=async id=>{await frame.locator('.entry[data-id="'+id+'"]').click();await expect(frame.locator('#receiptWorkflowDialog')).toBeVisible();};
   const close=async()=>{await frame.locator('#closeReceiptWorkflow').click();await expect(frame.locator('#receiptWorkflowDialog')).not.toBeVisible();};
   await expect(frame.locator('[data-receipt-kind="Kassenzettel"] .receipt-kind-badge')).toHaveText('Kassenzettel');
   await expect(frame.locator('[data-receipt-kind="Rechnung"] .receipt-kind-badge')).toHaveText('Rechnung');
+  await expect(frame.locator('[data-receipt-kind="Kassenzettel"] .receipt-kind-icon use')).toHaveAttribute('href','/static/icons/ui-icons.svg#receipt');
+  await expect(frame.locator('[data-receipt-kind="Rechnung"] .receipt-kind-icon use')).toHaveAttribute('href','/static/icons/ui-icons.svg#file-invoice');
+  await expect(frame.locator('#receiptKindFilter').locator('..')).toHaveClass(/phb-select-control/);
+  await frame.locator('#receiptKindFilter').selectOption('Kassenzettel');
+  await expect(frame.locator('.receipt-entry-row')).toHaveCount(1);
+  await frame.locator('#receiptYearFilter').selectOption('2025');
+  await expect(frame.locator('.receipt-entry-row')).toHaveCount(0);
+  await frame.locator('#receiptYearFilter').selectOption('2026');
+  await expect(frame.locator('.receipt-entry-row')).toHaveCount(1);
+  await frame.locator('#receiptLaborFilter').selectOption('labor');
+  await expect(frame.locator('.receipt-entry-row')).toHaveCount(0);
+  await frame.locator('#receiptLaborFilter').selectOption('all');
+  await frame.locator('#receiptKindFilter').selectOption('Rechnung');
+  await expect(frame.locator('.receipt-entry-row')).toHaveCount(0);
+  await frame.locator('#receiptYearFilter').selectOption('2025');
+  await expect(frame.locator('.receipt-entry-row')).toHaveCount(1);
+  await frame.locator('#receiptSearch').fill('nicht vorhanden');
+  await expect(frame.locator('.receipt-entry-row')).toHaveCount(0);
+  await frame.locator('#receiptSearch').fill('');
+  await frame.locator('#receiptYearFilter').selectOption('');
+  await frame.locator('#receiptKindFilter').selectOption('Kassenzettel');
+  await page.reload();
+  await expect(frame.locator('#receiptKindFilter')).toHaveValue('Kassenzettel');
+  await expect(frame.locator('.receipt-entry-row')).toHaveCount(1);
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(()=>frame.locator('body').evaluate(()=>innerWidth)).toBe(390);
+  assert(await frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  await page.screenshot({path:'/tmp/phb-receipt-kind-filter-mobile.png'});
+  await page.setViewportSize({width:1280,height:900});
+  await frame.locator('#receiptKindFilter').selectOption('all');
+  await page.screenshot({path:'/tmp/phb-receipt-kind-filter.png'});
   await open(invoice);await expect(frame.locator('#receiptWorkflowTitle')).toHaveText('Rechnung prüfen');await close();
   await open(till);
   await expect(frame.locator('#receiptWorkflowTitle')).toHaveText('Kassenzettel prüfen');
@@ -76,7 +110,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   assert.equal(finance.payments.filter(payment=>payment.receipt_id===invoice).length,1);
   assert.equal(finance.equity.find(account=>account.id===equity).balance.available,331);
   assert.deepEqual(errors,[]);
-  console.log('PASS list document kinds, alternating invoice/till dialogs, independent shop supplier and DIY attribution, persisted cash workflow and exactly one payment per booking.');
+  console.log('PASS combined/persisted document-kind filters, document/receipt icons, mobile layout, alternating dialogs, DIY attribution and exactly one payment per cash receipt.');
  }catch(error){await page.screenshot({path:'/tmp/phb-receipt-kinds-failure.png'});throw error;}
  finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exit(1);});

@@ -17,7 +17,7 @@ if(!$('receiptSelfWork')&&$('receiptAssignmentType')){
 const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
 let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;
-let receiptSearchText='',receiptLaborFilter='all',receiptYearFilter='';
+let receiptSearchText='',receiptLaborFilter='all',receiptYearFilter='',receiptKindFilter='all';
 const receiptDialog=$('receiptWorkflowDialog');
 let uploadReceiptKind='Rechnung';
 // Also support a still-rendered older template during an application update.
@@ -208,6 +208,7 @@ function normalizedSearch(value){
  return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('de-DE').trim();
 }
 function receiptMatchesSearch(receipt){
+ if(receiptKindFilter!=='all'&&(receipt.kind||'Rechnung')!==receiptKindFilter)return false;
  if(receiptLaborFilter==='labor'&&!(Number(receipt.labor_amount)>0))return false;
  if(receiptYearFilter&&String(receipt.document_date||'').slice(0,4)!==receiptYearFilter)return false;
  if(!receiptSearchText)return true;
@@ -227,22 +228,22 @@ function renderReceiptFilters(){
 function renderLaborSummary(){
  const panel=$('receiptLaborSummary');panel.hidden=receiptLaborFilter!=='labor';
  if(panel.hidden)return;
- const rows=list.filter(row=>Number(row.labor_amount)>0&&row.status==='Gebucht'&&(!receiptYearFilter||String(row.document_date||'').slice(0,4)===receiptYearFilter));
+ const rows=list.filter(row=>Number(row.labor_amount)>0&&row.status==='Gebucht'&&(receiptKindFilter==='all'||(row.kind||'Rechnung')===receiptKindFilter)&&(!receiptYearFilter||String(row.document_date||'').slice(0,4)===receiptYearFilter));
  const total=rows.reduce((sum,row)=>sum+Number(row.labor_amount),0),link=$('receiptLaborExport');
  $('receiptLaborTotal').textContent=money(total);
  $('receiptLaborCount').textContent=rows.length===1?'1 gebuchter Beleg':rows.length+' gebuchte Belege';
  const available=Boolean(receiptYearFilter&&rows.length);
  link.setAttribute('aria-disabled',String(!available));link.tabIndex=available?0:-1;
- link.href=available?'/api/receipts/labor-export.zip?year='+encodeURIComponent(receiptYearFilter):'#';
+ link.href=available?'/api/receipts/labor-export.zip?year='+encodeURIComponent(receiptYearFilter)+(receiptKindFilter!=='all'?'&kind='+encodeURIComponent(receiptKindFilter):''):'#';
  link.textContent=receiptYearFilter?'Steuerunterlagen '+receiptYearFilter+' als ZIP':'Jahr für Export wählen';
 }
 function renderReceiptList(){
  const visible=list.filter(receiptMatchesSearch);
- const filtered=Boolean(receiptSearchText||receiptLaborFilter!=='all'||receiptYearFilter);
+ const filtered=Boolean(receiptSearchText||receiptLaborFilter!=='all'||receiptYearFilter||receiptKindFilter!=='all');
  $('receiptSearchResult').textContent=filtered
   ?`${visible.length} von ${list.length} Belegen gefunden`
   :`${list.length} Belege insgesamt`;
- $('list').innerHTML=visible.map(x=>`<article class="receipt-entry-row ${selected===x.id?'active':''}" data-receipt-kind="${safe(x.kind||'Rechnung')}"><div class="receipt-entry-heading"><div class="receipt-entry-statuses"><span class="status ${x.status==='Gebucht'?'booked':x.status==='Storniert'?'cancelled':'draft'}">${safe(x.status)}</span><span class="receipt-kind-badge">${safe(x.kind||'Rechnung')}</span></div><div class="receipt-entry-tools">${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}${PHBWorkUI.button('receipt',x.id)}</div></div><button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button></article>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
+ $('list').innerHTML=visible.map(x=>`<article class="receipt-entry-row ${selected===x.id?'active':''}" data-receipt-kind="${safe(x.kind||'Rechnung')}"><div class="receipt-entry-heading"><div class="receipt-entry-statuses"><span class="status ${x.status==='Gebucht'?'booked':x.status==='Storniert'?'cancelled':'draft'}">${safe(x.status)}</span><span class="receipt-kind-badge"><svg class="phb-icon receipt-kind-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#${x.kind==='Kassenzettel'?'receipt':'file-invoice'}"></use></svg>${safe(x.kind||'Rechnung')}</span></div><div class="receipt-entry-tools">${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}${PHBWorkUI.button('receipt',x.id)}</div></div><button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button></article>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
  $('list').querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
  renderLaborSummary();
 }
@@ -250,6 +251,7 @@ $('receiptSearch').addEventListener('input',event=>{
  receiptSearchText=normalizedSearch(event.currentTarget.value);
  renderReceiptList();
 });
+$('receiptKindFilter')?.addEventListener('change',event=>{receiptKindFilter=event.currentTarget.value;renderReceiptList();});
 $('receiptLaborFilter').addEventListener('change',event=>{receiptLaborFilter=event.currentTarget.value;renderReceiptList();});
 $('receiptYearFilter').addEventListener('change',event=>{receiptYearFilter=event.currentTarget.value;renderReceiptList();});
 $('receiptLaborExport').addEventListener('click',event=>{if(event.currentTarget.getAttribute('aria-disabled')==='true')event.preventDefault();});
@@ -466,6 +468,8 @@ async function reload(keepId=selected,reopen=true){
  const version=receiptNavigationVersion;
  const linkedReceipt=Number(new URLSearchParams(location.search).get('receipt_id'))||null;
  const [r,c]=await Promise.all([api('/api/receipts'),api('/api/costs')]);overview=c;list=r.receipts;
+ // A status refresh must never replace inputs entered while its request was in flight.
+ if(!receiptBusy&&receiptDialog.open&&receiptFlow.dirty())return;
  $('receiptTrade').innerHTML='<option value="">Ohne Gewerk</option>'+(r.trades||[]).map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('');
  $('stats').innerHTML=`<span>Entwürfe: <b>${r.drafts}</b></span><span>Gebucht brutto: <b>${money(r.booked_gross)}</b></span><span>Bezahlt: <b>${money(r.paid)}</b></span><span>Lohnanteil erfasst: <b>${list.filter(x=>x.labor_amount!==null).length} Belege</b></span>`;
  $('categories').innerHTML=r.categories.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');
@@ -483,10 +487,10 @@ async function reload(keepId=selected,reopen=true){
 }
 async function open(id){
  const version=++receiptNavigationVersion;
- try{let x=await api('/api/receipts/'+id);if(version!==receiptNavigationVersion)return;selected=id;currentReceipt=x;assignmentEditing=false;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
+ try{let x=await api('/api/receipts/'+id);if(version!==receiptNavigationVersion||(!receiptBusy&&receiptDialog.open&&selected===id&&receiptFlow.dirty()))return;selected=id;currentReceipt=x;assignmentEditing=false;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
  $('review').elements.namedItem('kind').value=x.kind||'Rechnung';
  if(x.kind==='Kassenzettel'&&x.status==='Entwurf')await loadTillFinancing(x);
- if(selected!==id||version!==receiptNavigationVersion)return;
+ if(selected!==id||version!==receiptNavigationVersion||(!receiptBusy&&receiptDialog.open&&receiptFlow.dirty()))return;
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;
  $('receiptReviewLayout').hidden=false;
  $('receiptReviewStage').hidden=true;

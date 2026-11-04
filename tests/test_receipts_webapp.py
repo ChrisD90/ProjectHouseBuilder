@@ -215,6 +215,9 @@ class ReceiptWebappTest(unittest.TestCase):
             self.assertIn("'+2026-99",report)
         self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2025').status_code,404)
         self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=26').status_code,400)
+        self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&kind=Rechnung').status_code,200)
+        self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&kind=Kassenzettel').status_code,404)
+        self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&kind=unknown').status_code,400)
 
     def test_exclusive_assignment_to_contractor_or_own_work(self):
         contractor=Contractor(name='Sanitärbetrieb Beispiel',trade='Sanitär')
