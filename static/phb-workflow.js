@@ -42,7 +42,7 @@
   const forms=(config.forms||[]).map($).filter(Boolean);
   const dismiss=(config.dismiss||[]).map($).filter(Boolean);
   const titles=(config.steps||[]).map(String);
-  let baseline='',busy=false,closing=false,stageIndex=0;
+  let baseline='',busy=false,closing=false,stageIndex=0,managedCloses=0;
   let opener=null;
   const current=()=>JSON.stringify(forms.map(signature));
   const isBusy=()=>busy||Boolean(config.isBusy?.());
@@ -91,7 +91,7 @@
   }
   function finish(returnValue=''){
    snapshot();
-   if(dialog.open){clearRouteParams(config.routeParams);dialog.close(returnValue);}
+   if(dialog.open){clearRouteParams(config.routeParams);managedCloses++;dialog.close(returnValue);afterClose();}
   }
   async function cancel(){
    if(!dialog.open||closing)return false;
@@ -141,14 +141,20 @@
    event.stopImmediatePropagation();
    void cancel();
   },true);
-  dialog.addEventListener('close',()=>{
+  function afterClose(){
    setBusy(false);
-   if(!dialog.open)clearRouteParams(config.routeParams);
    config.onClose?.();
    if(opener instanceof HTMLElement&&opener.isConnected&&!dialog.contains(opener)){
     opener.focus({preventScroll:true});
    }
    opener=null;
+  }
+  dialog.addEventListener('close',()=>{
+   // Native close events are queued. Finalize managed closes immediately so
+   // an old event cannot clear the next URL or cancel its pending load.
+   if(managedCloses){managedCloses--;return;}
+   if(!dialog.open)clearRouteParams(config.routeParams);
+   afterClose();
   });
   stage(0);
   const controller={dialog,open,finish,cancel,stage,run,setBusy,snapshot,dirty,isBusy};

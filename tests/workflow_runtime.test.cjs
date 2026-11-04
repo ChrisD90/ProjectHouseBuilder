@@ -5,9 +5,10 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
 
-function setup(){
+function setup({deferClose=false,routeParams=[]}={}){
  const elements=new Map();
  const windowEvents={};
+ const queuedCloses=[];
  let confirmValue=true,confirmCalls=0;
  class Element {
   constructor(id=''){
@@ -29,7 +30,7 @@ function setup(){
  class Dialog extends Element {
   constructor(id){super(id);this.open=false;}
   showModal(){this.open=true;}
-  close(){this.open=false;this.dispatch('close');}
+  close(){this.open=false;if(deferClose)queuedCloses.push(()=>this.dispatch('close'));else this.dispatch('close');}
   querySelector(){return null;}
   contains(){return false;}
  }
@@ -53,12 +54,15 @@ function setup(){
   PHBUI:{confirm:async()=>{confirmCalls++;return confirmValue;},alert:async()=>{}},
   addEventListener(name,handler){windowEvents[name]=handler;}
  };
+ const location={href:'http://localhost/p/1/belege?receipt_id=7'};
+ const history={state:null,replaceState(state,title,url){location.href=String(url);}};
  const context={document,window,HTMLElement:Element,HTMLDialogElement:Dialog,
   console,Number,Set,Map,JSON,Promise,String,Boolean,URL,
-  location:{href:'http://localhost/p/1/belege'}};
+  location,history};
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/phb-workflow.js'),'utf8'),context);
- const flow=window.PHBFlow.manage({dialog:'dialog',forms:['form'],dismiss:['cancel']});
- return {window,windowEvents,dialog,form,text,button,action,flow,opener,
+ const flow=window.PHBFlow.manage({dialog:'dialog',forms:['form'],dismiss:['cancel'],routeParams});
+ return {window,windowEvents,dialog,form,text,button,action,flow,opener,location,
+  flushCloses(){queuedCloses.splice(0).forEach(close=>close());},
   setConfirm(value){confirmValue=value;},
   get confirmCalls(){return confirmCalls;}};
 }
@@ -78,6 +82,18 @@ test('successful save snapshots form; no discard confirmation',async()=>{
  x.flow.snapshot();assert.equal(x.flow.dirty(),false);
  assert.equal(await x.flow.cancel(),true);
  assert.equal(x.confirmCalls,0);
+});
+
+test('a queued close event preserves the next dialog navigation',()=>{
+ const x=setup({deferClose:true,routeParams:['receipt_id']});
+ x.flow.open();x.flow.finish();
+ assert.equal(new URL(x.location.href).searchParams.has('receipt_id'),false);
+ x.location.href='http://localhost/p/1/belege?receipt_id=7';
+ x.flushCloses();
+ assert.equal(new URL(x.location.href).searchParams.get('receipt_id'),'7');
+ // Direct native closes still remove their own dialog parameters.
+ x.flow.open();x.dialog.close();x.flushCloses();
+ assert.equal(new URL(x.location.href).searchParams.has('receipt_id'),false);
 });
 
 test('async guard refuses cancel until operation settles',async()=>{
