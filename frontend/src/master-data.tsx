@@ -228,8 +228,8 @@ export function MasterData() {
         title="Stammdaten"
         description="Firmen, Gewerke und Kostenkategorien zentral verwalten."
       />
-      <Paper className="paper">
-        <Tabs value={tab} onChange={setTab}>
+      <Tabs value={tab} onChange={setTab}>
+        <Paper withBorder p="md" mb="lg" className="collection-toolbar">
           <Group justify="space-between" mb="lg">
             <Tabs.List>
               <Tabs.Tab value="companies">Firmen</Tabs.Tab>
@@ -268,119 +268,122 @@ export function MasterData() {
             aria-label="Stammdaten durchsuchen"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            mb="lg"
           />
-          {query.isPending ? <Loader size="sm" /> : <ErrorBox value={query.error} />}
-          <Tabs.Panel value="companies">
-            <Text size="xs" c="dimmed" mb="sm">
-              {filtered.length} von {data.companies.length} Firmen
-            </Text>
-            <Table.ScrollContainer minWidth={650}>
-              <Table verticalSpacing="sm">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Firma</Table.Th>
-                    <Table.Th>Gewerk</Table.Th>
-                    <Table.Th>Kontakt</Table.Th>
-                    <Table.Th />
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {filtered.map((c) => (
-                    <Table.Tr key={c.id} className="table-button" onClick={() => open(c)}>
-                      <Table.Td>
-                        <RowAction onActivate={() => open(c)}>
-                          <Text fw={600} size="sm">
-                            {c.name}
+        </Paper>
+        <Paper withBorder p="md" className="collection-content">
+          <div className="collection-scroll">
+            {query.isPending ? <Loader size="sm" /> : <ErrorBox value={query.error} />}
+            <Tabs.Panel value="companies">
+              <Text size="xs" c="dimmed" mb="sm">
+                {filtered.length} von {data.companies.length} Firmen
+              </Text>
+              <Table.ScrollContainer minWidth={650}>
+                <Table verticalSpacing="sm">
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Firma</Table.Th>
+                      <Table.Th>Gewerk</Table.Th>
+                      <Table.Th>Kontakt</Table.Th>
+                      <Table.Th />
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {filtered.map((c) => (
+                      <Table.Tr key={c.id} className="table-button" onClick={() => open(c)}>
+                        <Table.Td>
+                          <RowAction onActivate={() => open(c)}>
+                            <Text fw={600} size="sm">
+                              {c.name}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              {c.address}
+                            </Text>
+                          </RowAction>
+                        </Table.Td>
+                        <Table.Td>{c.trade || '–'}</Table.Td>
+                        <Table.Td>
+                          <Text size="sm">
+                            {[c.contact, c.contact_secondary].filter(Boolean).join(' · ') || '–'}
                           </Text>
                           <Text size="xs" c="dimmed">
-                            {c.address}
+                            {[c.phone, c.mobile, c.email].filter(Boolean).join(' · ')}
                           </Text>
-                        </RowAction>
-                      </Table.Td>
-                      <Table.Td>{c.trade || '–'}</Table.Td>
-                      <Table.Td>
-                        <Text size="sm">
-                          {[c.contact, c.contact_secondary].filter(Boolean).join(' · ') || '–'}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          {[c.phone, c.mobile, c.email].filter(Boolean).join(' · ')}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Tooltip label="Firma bearbeiten">
-                          <ActionIcon variant="subtle" aria-label="Firma bearbeiten">
-                            <IconPencil size={17} />
-                          </ActionIcon>
-                        </Tooltip>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Table.ScrollContainer>
-            {!filtered.length && !query.isPending && (
-              <Text c="dimmed" size="sm">
-                Keine passenden Firmen.
-              </Text>
-            )}
-          </Tabs.Panel>
-          {(['trades', 'categories'] as const).map((kind) => (
-            <Tabs.Panel value={kind} key={kind}>
-              <Stack gap="xs">
-                {(data[kind] as Row[])
-                  .filter((r) =>
-                    r.name.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de')),
-                  )
-                  .map((r) => (
-                    <Group key={r.id} justify="space-between" py="xs">
-                      <Text size="sm">{r.name}</Text>
-                      <Group gap="xs">
-                        <Tooltip label="Umbenennen">
-                          <ActionIcon
-                            variant="default"
-                            aria-label="Umbenennen"
-                            onClick={() =>
-                              setReference({
-                                kind,
-                                id: r.id,
-                                name: r.name,
-                                original: r.name,
-                              })
-                            }
-                          >
-                            <IconPencil size={16} />
-                          </ActionIcon>
-                        </Tooltip>
-                        <Tooltip label="Löschen">
-                          <ActionIcon
-                            variant="subtle"
-                            color="red"
-                            aria-label="Löschen"
-                            disabled={kind === 'categories' && r.name === 'Sonstiges'}
-                            onClick={async () => {
-                              if (await ask('„' + r.name + '“ löschen?'))
-                                try {
-                                  await api('/api/' + kind + '/' + r.id, 'DELETE');
-                                  await cache.invalidateQueries({
-                                    queryKey: ['master'],
-                                  });
-                                } catch (e) {
-                                  error(e);
-                                }
-                            }}
-                          >
-                            <IconTrash size={16} />
-                          </ActionIcon>
-                        </Tooltip>
-                      </Group>
-                    </Group>
-                  ))}
-              </Stack>
+                        </Table.Td>
+                        <Table.Td>
+                          <Tooltip label="Firma bearbeiten">
+                            <ActionIcon variant="subtle" aria-label="Firma bearbeiten">
+                              <IconPencil size={17} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Table.ScrollContainer>
+              {!filtered.length && !query.isPending && (
+                <Text c="dimmed" size="sm">
+                  Keine passenden Firmen.
+                </Text>
+              )}
             </Tabs.Panel>
-          ))}
-        </Tabs>
-      </Paper>
+            {(['trades', 'categories'] as const).map((kind) => (
+              <Tabs.Panel value={kind} key={kind}>
+                <Stack gap="xs">
+                  {(data[kind] as Row[])
+                    .filter((r) =>
+                      r.name.toLocaleLowerCase('de').includes(search.toLocaleLowerCase('de')),
+                    )
+                    .map((r) => (
+                      <Group key={r.id} justify="space-between" py="xs">
+                        <Text size="sm">{r.name}</Text>
+                        <Group gap="xs">
+                          <Tooltip label="Umbenennen">
+                            <ActionIcon
+                              variant="default"
+                              aria-label="Umbenennen"
+                              onClick={() =>
+                                setReference({
+                                  kind,
+                                  id: r.id,
+                                  name: r.name,
+                                  original: r.name,
+                                })
+                              }
+                            >
+                              <IconPencil size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="Löschen">
+                            <ActionIcon
+                              variant="subtle"
+                              color="red"
+                              aria-label="Löschen"
+                              disabled={kind === 'categories' && r.name === 'Sonstiges'}
+                              onClick={async () => {
+                                if (await ask('„' + r.name + '“ löschen?'))
+                                  try {
+                                    await api('/api/' + kind + '/' + r.id, 'DELETE');
+                                    await cache.invalidateQueries({
+                                      queryKey: ['master'],
+                                    });
+                                  } catch (e) {
+                                    error(e);
+                                  }
+                              }}
+                            >
+                              <IconTrash size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Group>
+                      </Group>
+                    ))}
+                </Stack>
+              </Tabs.Panel>
+            ))}
+          </div>
+        </Paper>
+      </Tabs>
       <Editor
         opened={opened}
         title={record ? 'Firma bearbeiten' : 'Neue Firma'}

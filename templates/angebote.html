@@ -88,7 +88,8 @@
       <div class="offer-form-actions phb-dialog-actions"><button type="button" id="offerAcceptanceBack" class="subtle">Abbrechen</button><button id="offerAcceptanceSubmit" type="submit" class="primary">Auftrag verbindlich annehmen</button></div>
     </form>
   </dialog>
-  <section class="panel budget-panel offer-compare-section" id="angebotsliste"><div class="panelbar offers-list-header"><h2>Deine Angebote</h2><label class="offers-filter">Gewerk <select id="offerCategoryFilter"><option value="">Alle Kategorien</option></select></label></div>
+  <section class="panel budget-panel phb-collection-toolbar offers-filter-panel" aria-label="Angebote filtern und sortieren"><div class="panelbar offers-list-header"><label class="offers-filter">Gewerk <select id="offerCategoryFilter"><option value="">Alle Kategorien</option></select></label></div></section>
+  <section class="panel budget-panel offer-compare-section" id="angebotsliste"><div class="panelbar"><h2>Deine Angebote</h2></div>
    <div id="offerList" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div>
   </section>
   <details class="panel budget-panel rejected-offers-section" id="rejectedOffersSection"><summary><span>Abgelehnte Angebote</span><strong id="offersCountRejected">0</strong></summary><div id="rejectedOfferList" class="offer-cards"><p class="offer-empty">Keine abgelehnten Angebote.</p></div></details>

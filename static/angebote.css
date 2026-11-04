@@ -355,6 +355,7 @@ body.phb-app.phb-page-angebote .offer-billing-warning .offer-progress>span{backg
 body.phb-app.phb-page-angebote .offer-billing-overrun .offer-progress>span{background:var(--ui-danger)}
 body.phb-app.phb-page-angebote .offers-list-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 body.phb-app.phb-page-angebote .offers-list-header h2{margin:0}
+body.phb-app.phb-page-angebote .offers-filter-panel .panelbar{padding:16px;justify-content:flex-start}
 .offers-list-filters{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .offers-list-filters .offers-filter{min-width:0}
 .offers-list-filters select{width:210px;max-width:100%;height:36px;border-radius:8px;background:var(--ui-surface);border:1px solid var(--ui-line-strong);color:var(--ui-ink);font-size:14px}

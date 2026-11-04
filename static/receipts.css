@@ -284,6 +284,8 @@ body.phb-app.phb-page-belege .receipt-kind-badge{gap:5px}
 body.phb-app.phb-page-belege .receipt-kind-icon{width:15px;height:15px;flex:0 0 15px;color:var(--ui-accent)}
 @media(max-width:1080px){body.phb-app.phb-page-belege .receipt-list-head{display:grid}body.phb-app.phb-page-belege .receipt-list-tools{grid-template-columns:repeat(3,minmax(0,1fr));width:100%}body.phb-app.phb-page-belege .receipt-search{grid-column:1/-1}}
 @media(max-width:650px){body.phb-app.phb-page-belege .receipt-list-tools{grid-template-columns:repeat(2,minmax(0,1fr))}body.phb-app.phb-page-belege .receipt-labor-filter{grid-column:1/-1}}
+body.phb-app.phb-page-belege .receipt-filter-panel{padding:16px}
+body.phb-app.phb-page-belege .receipt-filter-panel .receipt-list-tools{width:100%;justify-content:stretch}
 
 /* Equal-size receipt tiles; full titles and assignments remain available as tooltips. */
 body.phb-app.phb-page-belege #list{
