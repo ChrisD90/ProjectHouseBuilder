@@ -222,10 +222,10 @@
   font-size:22px;line-height:1;color:var(--ui-accent)
 }
 .phb-page-angebote #offerList .offer-tile-actions{
-  margin:0;padding:8px 12px;display:flex;gap:6px;align-items:center;
-  border-top:1px solid var(--ui-line);flex-wrap:wrap;min-height:48px
+  margin:0;padding:8px 12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;align-items:center;
+  border-top:1px solid var(--ui-line);flex:0 0 49px;height:49px;box-sizing:border-box
 }
-.phb-page-angebote #offerList .offer-tile-actions :is(button,a){white-space:normal}
+.phb-page-angebote #offerList .offer-tile-actions :is(button,a){display:block;width:100%;min-width:0;height:32px;min-height:32px;padding:5px 10px;font-size:12px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;box-sizing:border-box}
 .phb-page-angebote #offerList .offer-tile-actions .offer-accepted-note{font-size:11px}
 .phb-page-angebote #offerList .offer-tile-corner-actions{display:flex;gap:5px;flex-shrink:0}
 .phb-page-angebote #offerList .offer-tile-icon{display:grid;place-items:center;width:32px;height:32px;min-height:32px;padding:0;border:1px solid var(--ui-line);border-radius:9px;background:var(--ui-surface);color:var(--ui-ink-soft);box-shadow:0 2px 7px rgba(16,39,51,.08);position:relative}
