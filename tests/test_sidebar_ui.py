@@ -433,7 +433,7 @@ class SidebarUITest(unittest.TestCase):
         script=(STATIC/'receipts.js').read_text()
         styles=(STATIC/'receipts.css').read_text()
         self.assertIn('id="receiptSearch"',page)
-        self.assertIn('id="receiptSearchResult"',page)
+        self.assertNotIn('id="receiptSearchResult"',page)
         self.assertIn('id="receiptLaborFilter"',page)
         self.assertIn('id="receiptYearFilter"',page)
         self.assertIn('id="receiptLaborExport"',page)

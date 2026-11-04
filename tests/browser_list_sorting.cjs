@@ -40,7 +40,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await page.goto(base+'/p/'+owner+'/angebote');
   const frame=page.frameLocator('iframe[title="Angebote"]:not([hidden])');
   const header=frame.locator('.offers-list-header');
-  await expect(frame.locator('#angebotsliste').getByRole('heading',{name:'Deine Angebote'})).toBeVisible();
+  await expect(frame.locator('#angebotsliste').getByRole('heading',{name:'Deine Angebote'})).toHaveCount(0);
   await expect(header.locator('p')).toHaveCount(0);
   await expect(header.locator('#offerSort').locator('..').locator('use')).toHaveAttribute('href','/static/icons/ui-icons.svg#sort');
   await expect(header.locator('#offerCategoryFilter').locator('..').locator('use')).toHaveAttribute('href','/static/icons/ui-icons.svg#filter');

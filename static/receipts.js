@@ -240,9 +240,6 @@ function renderLaborSummary(){
 function renderReceiptList(){
  const visible=list.filter(receiptMatchesSearch);
  const filtered=Boolean(receiptSearchText||receiptLaborFilter!=='all'||receiptYearFilter||receiptKindFilter!=='all');
- $('receiptSearchResult').textContent=filtered
-  ?`${visible.length} von ${list.length} Belegen gefunden`
-  :`${list.length} Belege insgesamt`;
  $('list').innerHTML=visible.map(x=>`<article class="receipt-entry-row ${selected===x.id?'active':''}" data-receipt-kind="${safe(x.kind||'Rechnung')}">
   <div class="receipt-entry-heading">
    <div class="receipt-entry-statuses"><span class="status ${x.status==='Gebucht'?'booked':x.status==='Storniert'?'cancelled':'draft'}">${safe(x.status)}</span></div>
