@@ -145,6 +145,7 @@ export function Editor({
   original,
   closeOnEscape = true,
   size = 'lg',
+  className,
 }: {
   opened: boolean;
   title: string;
@@ -158,6 +159,7 @@ export function Editor({
   original?: Record<string, unknown>;
   closeOnEscape?: boolean;
   size?: string | number;
+  className?: string;
 }) {
   const ask = useConfirm(),
     confirming = useModalLayer().blocked,
@@ -169,6 +171,7 @@ export function Editor({
   }, [opened, JSON.stringify(original)]);
   return (
     <Modal
+      classNames={{ content: className }}
       trapFocus={!confirming && !covered}
       zIndex={zIndex}
       opened={opened}
