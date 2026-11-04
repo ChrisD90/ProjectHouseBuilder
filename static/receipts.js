@@ -16,6 +16,11 @@ if(!$('receiptSelfWork')&&$('receiptAssignmentType')){
 }
 const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
+function receiptDate(value){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(value||''))return value||'Ohne Datum';
+ const [year,month,day]=value.split('-').map(Number);
+ return new Intl.DateTimeFormat(navigator.languages,{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(year,month-1,day));
+}
 let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;
 let receiptSearchText='',receiptLaborFilter='all',receiptYearFilter='',receiptKindFilter='all',receiptPaymentFilter='all',receiptCancellationFilter='all';
 const receiptDialog=$('receiptWorkflowDialog');
@@ -252,12 +257,11 @@ function renderReceiptList(){
  $('list').innerHTML=visible.map(x=>`<article class="receipt-entry-row ${selected===x.id?'active':''}" data-receipt-kind="${safe(x.kind||'Rechnung')}">
   <div class="receipt-entry-heading">
    <div class="receipt-entry-statuses"><span class="status ${x.status==='Gebucht'?'booked':x.status==='Storniert'?'cancelled':'draft'}">${safe(x.status)}</span></div>
-   <span class="receipt-card-date receipt-card-meta">${safe(x.document_date||'Ohne Datum')}</span>
    <div class="receipt-entry-tools">${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}${PHBWorkUI.button('receipt',x.id)}</div>
   </div>
   <button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}">
    <span class="receipt-card-title"><span class="receipt-kind-badge" role="img" aria-label="${safe(x.kind||'Rechnung')}" title="${safe(x.kind||'Rechnung')}"><svg class="phb-icon receipt-kind-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#${x.kind==='Kassenzettel'?'receipt':'file-invoice'}"></use></svg></span><strong title="${safe(x.supplier||x.filename)}">${safe(x.supplier||x.filename)}</strong></span>
-   <span class="receipt-card-amount"><strong title="${x.status==='Storniert'?'Originalbetrag':'Belegbetrag'}">${money(x.counted_amount)}</strong>${x.status==='Storniert'?'<small>Originalbetrag</small>':''}</span>
+   <span class="receipt-card-totals"><span class="receipt-card-amount"><strong title="${x.status==='Storniert'?'Originalbetrag':'Belegbetrag'}">${money(x.counted_amount)}</strong>${x.status==='Storniert'?'<small>Originalbetrag</small>':''}</span><time class="receipt-card-date receipt-card-meta" datetime="${safe(x.document_date||'')}">${safe(receiptDate(x.document_date))}</time></span>
    ${x.labor_amount!==null?`<small class="receipt-labor-preview">Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:'<small class="receipt-labor-placeholder" aria-hidden="true">&nbsp;</small>'}
    <small class="receipt-card-assignment" title="${safe(assignmentLabel(x))}">${safe(assignmentLabel(x))}</small>
   </button>
