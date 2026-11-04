@@ -67,7 +67,9 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await expect(page.getByRole('button',{name:'Warteschlange',exact:true})).toBeEnabled();
   await page.reload();
   await frame.locator('.entry[data-id="'+draft.id+'"]').click();
-  await expect(frame.locator('#review .receipt-form-heading')).toHaveText(['1. Zuordnung','3. Rechnungsdaten']);
+  await expect(frame.locator('#review .receipt-form-heading')).toHaveText(['1. Zuordnung']);
+  await expect(frame.locator('#receiptBillingTitle')).toHaveText('2. Belegart & Rechnungsdaten');
+  await expect(frame.locator('#receiptReviewStage')).not.toBeVisible();
   const order=await frame.locator('#review').evaluate(form=>{
    const y=selector=>form.querySelector(selector).getBoundingClientRect().top;
    return [y('#receiptAssignmentType'),y('[name=kind]'),y('[name=invoice_number]'),y('#receiptGross')];

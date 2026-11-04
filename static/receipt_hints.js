@@ -55,7 +55,7 @@
   ['receiptAIHint',byID('receiptAnalysisMode'),'Analyseart'],
   ['receiptLocalHint',byID('receiptAnalysisMode'),'Lokale Analyse'],
   ['receiptProcessingHint',byID('receiptProcessingMode'),'Verarbeitung'],
-  ['receiptReviewHelp',byID('receiptReviewStage'),'Prüfen und buchen'],
+  ['receiptReviewHelp',field('kind'),'Prüfen und buchen'],
   ['billingTypeHint',byID('billingType'),'Abrechnungsart'],
   ['deductionHint',byID('advanceDeduction'),'Verrechnete Abschläge'],
   ['receiptTaxHint',byID('receiptTaxRate'),'Umsatzsteuer berechnen'],
@@ -63,7 +63,7 @@
   ['receiptLaborTaxHint',byID('receiptLabor'),'Lohnkosten für die Steuer'],
   ['billableHint',byID('receiptAssignmentType'),'Zuordnung und Abrechnung'],
   ['receiptContractorHint',byID('receiptSupplierCompany'),'Firma anlegen'],
-  ['receiptBookingHint',byID('receiptReviewStage'),'Buchung und Zahlung'],
+  ['receiptBookingHint',field('kind'),'Buchung und Zahlung'],
  ];
  for(const [id,anchor,title] of mapping)hint(byID(id),anchor,title);
  for(const [selector,anchor,title] of [

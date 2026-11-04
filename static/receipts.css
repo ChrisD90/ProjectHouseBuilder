@@ -253,3 +253,16 @@ body.phb-app.phb-page-belege #receiptReviewStage>.receipt-info{position:absolute
 body.phb-app.phb-page-belege .receipt-till-financing{margin:0}
 body.phb-app.phb-page-belege .receipt-till-extras{margin:12px 0 0}
 body.phb-app.phb-page-belege #receiptSaveStatus:empty,body.phb-app.phb-page-belege #uploadStatus:empty,body.phb-app.phb-page-belege #message:empty{display:none}
+
+/* Attribution first; invoice kind, dates and amounts share one compact section. */
+body.phb-app.phb-page-belege #receiptReviewStage{display:none!important}
+body.phb-app.phb-page-belege #review .receipt-assignment{border:0;padding:0;background:transparent}
+body.phb-app.phb-page-belege .receipt-assignment-fields>.full{grid-column:1/-1}
+body.phb-app.phb-page-belege .receipt-invoice-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
+body.phb-app.phb-page-belege .receipt-date-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+body.phb-app.phb-page-belege .receipt-amount-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+body.phb-app.phb-page-belege .receipt-invoice-fields>.full{grid-column:1/-1}
+body.phb-app.phb-page-belege .receipt-tax-rate{width:min(240px,100%)}
+body.phb-app.phb-page-belege .receipt-billing .receipt-invoice-fields input{width:100%;min-width:0}
+body.phb-app.phb-page-belege .receipt-date-fields label,body.phb-app.phb-page-belege .receipt-amount-fields label{min-width:0}
+@media(max-width:420px){body.phb-app.phb-page-belege .receipt-date-fields{gap:8px}body.phb-app.phb-page-belege .receipt-amount-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}

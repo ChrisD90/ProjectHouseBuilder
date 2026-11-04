@@ -129,7 +129,7 @@ function openReceiptDialog(review=false){
   if(!receiptDialog.open)receiptFlow.open({step:review?1:0});
   else receiptFlow.stage(review?1:0);
   if(review){
-    requestAnimationFrame(()=>$('review').querySelector('input:not(:disabled)')?.focus({preventScroll:true}));
+    requestAnimationFrame(()=>[...$('review').querySelectorAll('input:not(:disabled),select:not(:disabled),textarea:not(:disabled)')].find(node=>node.getClientRects().length)?.focus({preventScroll:true}));
   } else {
     requestAnimationFrame(()=>$('upload').querySelector('input[type=file]')?.focus({preventScroll:true}));
   }
@@ -300,6 +300,25 @@ $('receiptLabor').addEventListener('input',()=>{
 });
 function updateInvoiceControls(){
  const mode=$('receiptAssignmentType').value;
+ const till=$('review').elements.namedItem('kind').value==='Kassenzettel';
+ const existingOwnWork=currentReceipt?.assignment_type==='Eigenleistung';
+ const ownWork=$('receiptAssignmentType').querySelector('option[value="Eigenleistung"]');
+ if(ownWork)ownWork.hidden=!till;
+ $('receiptAssignmentType').required=!till;
+ $('receiptAssignmentType').options[0].textContent=till?'Nur Kostenkategorie / noch offen':'Bitte auswählen';
+ const legacy=$('receiptAssignmentType').querySelector('option[value="Kostenposition"]');
+ if(legacy)legacy.hidden=true;
+ if($('receiptSupplierCompanyWrap')){
+  $('receiptSupplierCompanyWrap').hidden=mode!=='Betrieb'&&!till;
+  $('receiptTradeWrap').hidden=mode!=='Betrieb'&&!till&&!(existingOwnWork&&mode==='Eigenleistung');
+  $('receiptSupplierWrap').hidden=!till;
+  $('receiptCategoryWrap').hidden=!till;
+  $('receiptBudgetWrap').hidden=!till;
+ }
+ $('receiptSupplierCompany').required=!till&&mode==='Betrieb';
+ $('costItems').required=!till&&mode==='Angebot';
+ $('review').elements.namedItem('supplier').required=till;
+ $('receiptSupplierCompany').options[0].textContent=till?'Lieferant manuell eingeben':'Firma auswählen';
  const frozen=false;
  $('receiptOfferWrap').hidden=mode!=='Angebot'&&mode!=='Kostenposition';
  $('receiptSelfWorkWrap').hidden=mode!=='Eigenleistung';
@@ -319,6 +338,7 @@ function updateInvoiceControls(){
    $('review').elements.namedItem('supplier').value=(overview?.contractors||[]).find(c=>c.id===offer.contractor_id)?.name||offer.vendor;
    $('budgetLines').value=cost.budget_line_id||'';
    $('categories').value=cost.category;
+   if(!currentReceipt?.trade)$('receiptTrade').value=(overview?.contractors||[]).find(c=>c.id===offer.contractor_id)?.trade||'';
  }
  $('budgetLines').disabled=isAccepted||frozen;
  $('advanceDeduction').disabled=frozen||$('billingType').value!=='Schlussrechnung'||!isAccepted;
@@ -339,7 +359,10 @@ function updateInvoiceControls(){
 }
 $('receiptAssignmentType').addEventListener('change',()=>{
   if($('receiptAssignmentType').value!=='Eigenleistung')$('receiptSelfWork').value='';
-  if($('receiptAssignmentType').value!=='Angebot'&&$('receiptAssignmentType').value!=='Kostenposition'){$('costItems').value='';$('advanceDeduction').value='0';}
+  if($('receiptAssignmentType').value!=='Angebot'&&$('receiptAssignmentType').value!=='Kostenposition'){
+    if($('costItems').value)$('budgetLines').value='';
+    $('costItems').value='';$('advanceDeduction').value='0';
+  }
   if($('receiptAssignmentType').value!=='Betrieb')$('receiptContractor').value='';
   updateInvoiceControls();
 });
@@ -347,7 +370,8 @@ $('receiptSupplierCompany').addEventListener('change',()=>{
  const company=(overview?.contractors||[]).find(c=>String(c.id)===$('receiptSupplierCompany').value);
  $('receiptContractor').value=company?String(company.id):'';
  if(company){$('review').elements.namedItem('supplier').value=company.name;$('receiptAssignmentType').value='Betrieb';}
- else if($('receiptAssignmentType').value==='Betrieb')$('receiptAssignmentType').value='';
+ else if($('review').elements.namedItem('kind').value!=='Kassenzettel')$('review').elements.namedItem('supplier').value='';
+ $('receiptTrade').value=company?.trade||'';
  updateInvoiceControls();
 });
 $('review').elements.namedItem('supplier').addEventListener('input',event=>{
@@ -358,11 +382,17 @@ $('review').elements.namedItem('supplier').addEventListener('input',event=>{
   updateInvoiceControls();
  }
 });
-$('costItems').addEventListener('change',updateInvoiceControls);
+$('costItems').addEventListener('change',()=>{
+ const item=overview?.items?.find(x=>x.id===Number($('costItems').value));
+ const offer=overview?.offers?.find(x=>x.id===item?.offer_id);
+ $('receiptTrade').value=overview?.contractors?.find(x=>x.id===offer?.contractor_id)?.trade||'';
+ updateInvoiceControls();
+});
 $('receiptSelfWork').addEventListener('change',()=>{if($('receiptSelfWork').value)$('budgetLines').value='';updateInvoiceControls();});
 $('billingType').addEventListener('change',()=>{if($('billingType').value!=='Schlussrechnung')$('advanceDeduction').value='0';updateInvoiceControls();});
 $('review').elements.namedItem('kind').addEventListener('change',event=>{
  const till=event.currentTarget.value==='Kassenzettel';applyTillMode(till);
+ updateInvoiceControls();
  if(till&&currentReceipt?.status==='Entwurf')void loadTillFinancing(currentReceipt);
 });
 $('receiptAnalysisMode').addEventListener('change',()=>{
@@ -395,7 +425,7 @@ function inputs({booking=false}={}){
  }
 
  const mode=$('receiptAssignmentType').value;
-
+ if(booking&&result.kind!=='Kassenzettel'&&!mode)throw Error('Bitte zuerst ein Angebot oder einen Betrieb zuordnen.');
  if(booking&&mode==='Angebot'&&!$('costItems').value)throw Error('Bitte ein angenommenes Angebot auswählen.');
  if(booking&&mode==='Betrieb'&&!$('receiptContractor').value)throw Error('Bitte einen Betrieb auswählen.');
  result.assignment_type=mode;
@@ -435,7 +465,7 @@ async function open(id){
  if(selected!==id||version!==receiptNavigationVersion)return;
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;
  $('receiptReviewLayout').hidden=false;
- $('receiptReviewStage').hidden=false;
+ $('receiptReviewStage').hidden=true;
  openReceiptDialog(true);showReceiptPreview(x);
  const legacy=x.assignment_type==='Kostenposition';
  const legacyOption=$('receiptAssignmentType').querySelector('option[value="Kostenposition"]');
@@ -471,7 +501,7 @@ async function open(id){
  $('receiptCancellationInfo').hidden=!cancellationInfo;$('receiptCancellationInfo').textContent=cancellationInfo;
  $('receiptPaymentsPanel').hidden=true;
  $('receiptReviewLayout').hidden=false;
- $('receiptReviewStage').hidden=false;
+ $('receiptReviewStage').hidden=true;
  for(let node of $('review').querySelectorAll('input,select,textarea'))node.disabled=false;
  $('review').elements.namedItem('paid_amount').disabled=true;
  $('receiptTaxRate').disabled=false;
@@ -582,7 +612,7 @@ async function showReceiptPayments(){
  paymentForm.elements.namedItem('payment_date').value=new Date().toLocaleDateString('sv-SE');paymentAccountOptions();receiptFlow.snapshot();
 }
 $('payReceipt').onclick=async()=>{try{await showReceiptPayments();}catch(error){notice(error.message,true);}};
-$('closeReceiptPayment').onclick=()=>{if(paymentBusy)return;$('receiptPaymentsPanel').hidden=true;receiptFlow.stage(1);$('receiptReviewLayout').hidden=false;$('receiptReviewStage').hidden=false;};
+$('closeReceiptPayment').onclick=()=>{if(paymentBusy)return;$('receiptPaymentsPanel').hidden=true;receiptFlow.stage(1);$('receiptReviewLayout').hidden=false;$('receiptReviewStage').hidden=true;};
 $('receiptPaymentSource').onchange=paymentAccountOptions;
 $('receiptPaymentAccount').onchange=()=>{
  if(!paymentState)return;
