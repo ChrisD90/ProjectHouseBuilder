@@ -266,3 +266,14 @@ body.phb-app.phb-page-belege .receipt-tax-rate{width:min(240px,100%)}
 body.phb-app.phb-page-belege .receipt-billing .receipt-invoice-fields input{width:100%;min-width:0}
 body.phb-app.phb-page-belege .receipt-date-fields label,body.phb-app.phb-page-belege .receipt-amount-fields label{min-width:0}
 @media(max-width:420px){body.phb-app.phb-page-belege .receipt-date-fields{gap:8px}body.phb-app.phb-page-belege .receipt-amount-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Match both review sections and give the document more reading space. */
+@media(min-width:801px){
+ body.phb-app .phb-receipt-workflow.is-reviewing .receipt-review-layout{grid-template-columns:minmax(0,.9fr) minmax(380px,1.1fr)}
+}
+body.phb-app.phb-page-belege #review .receipt-assignment{padding:12px;border:1px solid var(--ui-line);border-radius:10px;background:transparent}
+body.phb-app.phb-page-belege #review #receiptAssignmentTitle{font-size:15px;margin:0 0 12px;padding:0;border:0}
+body.phb-app.phb-page-belege .receipt-amount-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+body.phb-app.phb-page-belege .receipt-amount-fields .receipt-tax-rate{width:100%}
+body.phb-app.phb-page-belege .receipt-draft-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+@media(max-width:650px){body.phb-app.phb-page-belege .receipt-draft-actions{width:100%}}

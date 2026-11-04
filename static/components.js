@@ -28,7 +28,7 @@
   form.querySelector('.phb-change-impact')?.remove();
  }
  function changed(event){
-  const form=event.target.closest?.('form');if(!form||!previews.has(form))return;
+  const form=event.target.closest?.('form');if(!form||form.dataset.changePreview==='off'||!previews.has(form))return;
   let before,current;
   try{before=new Map(JSON.parse(previews.get(form)));current=JSON.parse(window.PHBFlow.signature(form));}catch{return;}
   const changes=current.filter(([key,value])=>monetary.has(key)&&before.has(key)&&JSON.stringify(before.get(key))!==JSON.stringify(value));
