@@ -25,6 +25,16 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   }
   await page.goto(base+'/p/'+owner+'/belege');
   const frame=page.frameLocator('iframe[title="Rechnungen & Belege"]:not([hidden])');
+  const compactFilters=async()=>{
+   await expect(frame.locator('.receipt-filter-panel input,.receipt-filter-panel select')).toHaveCount(6);
+   await expect(frame.locator('.receipt-filter-panel .phb-select-control')).toHaveCount(5);
+   await frame.locator('.receipt-filter-panel').screenshot({path:'/tmp/phb-compact-receipt-filter.png'});
+   const controls=await frame.locator('.receipt-filter-panel input,.receipt-filter-panel select').evaluateAll(nodes=>nodes.map(node=>{const rect=node.getBoundingClientRect();return {y:rect.y,height:rect.height};}));
+   assert.equal(controls.length,6);
+   assert(controls.every(control=>Math.abs(control.y-controls[0].y)<1&&control.height<=35),'Alle Such- und Filterfelder bleiben in einer kompakten Zeile: '+JSON.stringify(controls));
+   assert((await frame.locator('.receipt-filter-panel').boundingBox()).height<=72);
+  };
+  await compactFilters();
   const open=async id=>{await frame.locator('.entry[data-id="'+id+'"]').click();await expect(frame.locator('#receiptWorkflowDialog')).toBeVisible();};
   const close=async()=>{await frame.locator('#closeReceiptWorkflow').click();await expect(frame.locator('#receiptWorkflowDialog')).not.toBeVisible();};
   await expect(frame.locator('[data-receipt-kind="Kassenzettel"] .receipt-kind-badge')).toHaveAccessibleName('Kassenzettel');
@@ -58,6 +68,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await expect(frame.locator('.receipt-entry-row')).toHaveCount(1);
   await page.setViewportSize({width:390,height:844});
   await expect.poll(()=>frame.locator('body').evaluate(()=>innerWidth)).toBe(390);
+  await compactFilters();
   assert(await frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   await page.screenshot({path:'/tmp/phb-receipt-kind-filter-mobile.png'});
   await page.setViewportSize({width:1280,height:900});
