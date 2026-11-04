@@ -19,7 +19,9 @@ import { projectID } from './project-context';
 function localDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return 'Ohne Datum';
   const [year, month, day] = value.split('-').map(Number);
-  return new Intl.DateTimeFormat(navigator.languages, {
+  const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
+  const locale = languages.find((language) => /^de(?:-|$)/i.test(language)) || languages;
+  return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
