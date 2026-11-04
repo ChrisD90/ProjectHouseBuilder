@@ -1,0 +1,117 @@
+/* Compact schedule controls: view actions above, filters below. */
+body.phb-app.phb-page-zeitplan .gantt-panel{padding:0;min-width:0;overflow:clip}
+body.phb-app.phb-page-zeitplan .gantt-panel-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:18px 20px;border-bottom:1px solid var(--ui-line)}
+body.phb-app.phb-page-zeitplan .gantt-panel-header h2{font-size:18px;line-height:1.35;margin:0 0 4px}
+body.phb-app.phb-page-zeitplan .gantt-panel-header p{font-size:12px;color:var(--ui-muted);margin:0}
+body.phb-app.phb-page-zeitplan .gantt-panel-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+body.phb-app.phb-page-zeitplan .gantt-filters{display:grid;grid-template-columns:minmax(200px,1fr) minmax(140px,.6fr) minmax(180px,.7fr) 115px;align-items:center;gap:10px;padding:12px 20px;background:var(--ui-soft);border-bottom:1px solid var(--ui-line)}
+body.phb-app.phb-page-zeitplan .gantt-filters :is(input,select){width:100%;min-width:0;min-height:40px;margin:0;font-size:13px}
+body.phb-app.phb-page-zeitplan #ganttStatus{margin:0;padding:12px 20px;font-size:12px;color:var(--ui-muted)}
+body.phb-app.phb-page-zeitplan #ganttStatus:empty{display:none}
+body.phb-app.phb-page-zeitplan .gantt-panel>.footnote{padding:14px 20px;line-height:1.6}
+body.phb-app.phb-page-zeitplan .gantt-phase-row{min-height:47px;background:color-mix(in srgb,var(--ui-accent) 7%,var(--ui-surface));border-top:1px solid color-mix(in srgb,var(--ui-accent) 24%,var(--ui-line))}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-label{border:0;border-right:2px solid var(--ui-line);border-bottom:1px solid var(--ui-line);border-radius:0;padding:7px 12px;text-align:left;color:var(--ui-ink);background:color-mix(in srgb,var(--ui-accent) 9%,var(--ui-surface));display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:1px}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-label strong{font-size:12px}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-label small{font-size:10px;color:var(--ui-muted)}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-timeline{height:47px}
+body.phb-app.phb-page-zeitplan .phase-title{display:flex;align-items:center;gap:7px;max-width:100%}
+body.phb-app.phb-page-zeitplan .phase-task-count{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:color-mix(in srgb,var(--ui-accent) 14%,var(--ui-surface));color:var(--ui-accent);font-size:10px;font-weight:750}
+body.phb-app.phb-page-zeitplan .gantt-task-row .gantt-label{padding-left:29px;position:sticky}
+body.phb-app.phb-page-zeitplan .gantt-task-row .gantt-label::before{content:"";position:absolute;left:14px;top:0;width:8px;height:50%;border-left:1px solid color-mix(in srgb,var(--ui-accent) 35%,var(--ui-line));border-bottom:1px solid color-mix(in srgb,var(--ui-accent) 35%,var(--ui-line));border-radius:0 0 0 4px}
+body.phb-app.phb-page-zeitplan .gantt-task-row:hover .gantt-label{background:color-mix(in srgb,var(--ui-accent) 5%,var(--ui-surface))}
+body.phb-app.phb-page-zeitplan .gantt-unassigned-row{background:var(--ui-soft);border-top-color:var(--ui-line)}
+body.phb-app.phb-page-zeitplan .gantt-unassigned-row .gantt-label{background:var(--ui-soft)}
+body.phb-app.phb-page-zeitplan .phase-bar{position:absolute;top:14px;height:16px;border-radius:8px;background:var(--brand-bar-phase);box-shadow:inset 0 0 0 1px #fff4}
+body.phb-app.phb-page-zeitplan .planned-end-marker{position:absolute;top:5px;bottom:5px;width:3px;border-radius:3px;background:var(--ui-warning,#c17a1c);z-index:3}
+body.phb-app.phb-page-zeitplan .planned-end-marker.due-soon,body.phb-app.phb-page-zeitplan .bar.due-soon{box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-warning,#c17a1c) 42%,transparent)}
+body.phb-app.phb-page-zeitplan .planned-end-marker.overdue{background:var(--ui-danger,#bd3142)}
+body.phb-app.phb-page-zeitplan .bar.overdue{background:color-mix(in srgb,var(--ui-danger,#bd3142) 82%,var(--ui-accent));box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-danger,#bd3142) 32%,transparent)}
+body.phb-app.phb-page-zeitplan .task-deadline-due-soon>.gantt-label{border-left:4px solid var(--ui-warning,#c17a1c)}
+body.phb-app.phb-page-zeitplan .task-deadline-overdue>.gantt-label{border-left:4px solid var(--ui-danger,#bd3142);background:color-mix(in srgb,var(--ui-danger,#bd3142) 9%,var(--ui-surface))}
+body.phb-app.phb-page-zeitplan .gantt-row .deadline-label{flex:none;width:max-content;margin-left:auto;padding:3px 7px;border-radius:999px;background:color-mix(in srgb,var(--ui-warning,#c17a1c) 16%,var(--ui-surface));color:color-mix(in srgb,var(--ui-warning,#c17a1c) 78%,var(--ui-ink));font-size:10px;font-weight:750;line-height:1.2}
+body.phb-app.phb-page-zeitplan .tablewrap .deadline-label{display:block;width:max-content;margin-top:5px;padding:2px 6px;border-radius:6px;background:color-mix(in srgb,var(--ui-warning,#c17a1c) 16%,var(--ui-surface));color:color-mix(in srgb,var(--ui-warning,#c17a1c) 78%,var(--ui-ink));font-weight:700}
+body.phb-app.phb-page-zeitplan .task-deadline-overdue .deadline-label{background:color-mix(in srgb,var(--ui-danger,#bd3142) 16%,var(--ui-surface));color:var(--ui-danger,#bd3142)}
+body.phb-app.phb-page-zeitplan .gantt-empty{padding:28px;text-align:center;color:var(--ui-muted);font-size:13px;background:var(--ui-surface)}
+
+body.phb-app.phb-page-zeitplan .phase-dialog{width:min(980px,calc(100vw - 24px))}
+body.phb-app.phb-page-zeitplan .phase-dialog-layout{display:grid;grid-template-columns:minmax(260px,.8fr) minmax(340px,1.2fr);min-height:420px;max-height:calc(90dvh - 78px);overflow:auto}
+body.phb-app.phb-page-zeitplan .phase-list{padding:18px;border-right:1px solid var(--ui-line);display:flex;flex-direction:column;gap:9px;background:var(--ui-soft)}
+body.phb-app.phb-page-zeitplan .phase-list-item{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:13px;text-align:left}
+body.phb-app.phb-page-zeitplan .phase-list-item span,body.phb-app.phb-page-zeitplan .phase-list-item small{font-size:11px;color:var(--ui-muted);white-space:normal}
+body.phb-app.phb-page-zeitplan .phase-form{padding:22px;display:grid;align-content:start;gap:14px}
+body.phb-app.phb-page-zeitplan .phase-form h3{margin:0}
+body.phb-app.phb-page-zeitplan .phase-form label{display:grid;gap:6px;font-size:12px;font-weight:650;color:var(--ui-muted)}
+body.phb-app.phb-page-zeitplan .phase-form :is(input,textarea){width:100%}
+body.phb-app.phb-page-zeitplan #phaseFormError{color:var(--ui-danger);margin:0}
+body.phb-app.phb-page-zeitplan .phase-empty{color:var(--ui-muted);font-size:13px;line-height:1.55}
+@media(max-width:1180px){body.phb-app.phb-page-zeitplan .gantt-filters{grid-template-columns:repeat(3,minmax(0,1fr))}body.phb-app.phb-page-zeitplan .gantt-filters #filter{grid-column:1/-1}}
+@media(max-width:600px){
+ body.phb-app.phb-page-zeitplan .gantt-panel-header{padding:16px;align-items:flex-start}
+ body.phb-app.phb-page-zeitplan .gantt-panel-actions{width:100%}
+ body.phb-app.phb-page-zeitplan .gantt-panel-actions button{flex:1 1 80px}
+ body.phb-app.phb-page-zeitplan .gantt-filters{padding:12px 16px;grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.phb-app.phb-page-zeitplan .gantt-filters #scale{grid-column:1/-1}
+ body.phb-app.phb-page-zeitplan .phase-dialog-layout{grid-template-columns:1fr}
+ body.phb-app.phb-page-zeitplan .phase-list{border-right:0;border-bottom:1px solid var(--ui-line)}
+}
+
+/* Group controls and a compact, persistent multi-selection toolbar. */
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-label{display:grid;grid-template-columns:24px minmax(0,1fr);grid-template-rows:auto auto;gap:1px 5px;align-content:center;position:sticky}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-label>.phase-toggle{grid-row:1/3}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-label>small{grid-column:2}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .phase-toggle{border:0;background:transparent;color:var(--ui-accent);padding:0;width:24px;min-height:24px;box-shadow:none;font-size:17px}
+body.phb-app.phb-page-zeitplan .phase-edit{padding:0;border:0;box-shadow:none;background:transparent;color:var(--ui-ink);font-size:12px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.phb-app.phb-page-zeitplan .gantt-unassigned-row .phase-title{grid-column:1/-1}
+body.phb-app.phb-page-zeitplan .task-bulk-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:14px 20px;border-bottom:1px solid var(--ui-line);background:var(--ui-soft)}
+body.phb-app.phb-page-zeitplan .task-bulk-toolbar label{display:flex;align-items:center;gap:8px;font-size:12px}
+body.phb-app.phb-page-zeitplan :is(.task-select,#selectAllTasks){width:17px;height:17px;min-height:0;padding:0;accent-color:var(--ui-accent);cursor:pointer}
+body.phb-app.phb-page-zeitplan #bulkCount{font-size:12px;color:var(--ui-muted);margin-right:auto}
+body.phb-app.phb-page-zeitplan .task-bulk-editor{display:flex;align-items:end;flex-wrap:wrap;gap:12px;padding:16px 20px;border-bottom:1px solid var(--ui-line)}
+body.phb-app.phb-page-zeitplan .task-bulk-editor[hidden]{display:none}
+body.phb-app.phb-page-zeitplan .task-bulk-editor label{display:grid;gap:5px;font-size:12px;min-width:160px}
+body.phb-app.phb-page-zeitplan .task-bulk-editor p{flex-basis:100%;font-size:12px;margin:0;color:var(--ui-muted)}
+body.phb-app.phb-page-zeitplan .phase-dialog.is-phase-detail{width:min(680px,calc(100vw - 24px))}
+body.phb-app.phb-page-zeitplan .phase-dialog.is-phase-detail .phase-dialog-layout{display:block;min-height:0}
+body.phb-app.phb-page-zeitplan .phase-dialog.is-phase-detail .phase-list{display:none}
+body.phb-app.phb-page-zeitplan .phase-task-items{display:grid;gap:8px;margin-top:12px}
+body.phb-app.phb-page-zeitplan .phase-task-items button{display:grid;text-align:left;gap:4px;padding:10px 12px}
+body.phb-app.phb-page-zeitplan .phase-task-items small{color:var(--ui-muted);font-size:11px}
+body.phb-app.phb-page-zeitplan #phaseCompletionState{font-size:12px;color:var(--ui-accent);margin:0}
+body.phb-app.phb-page-zeitplan #phaseTaskDetails summary{cursor:pointer;font-size:13px;font-weight:650}
+
+/* The project date belongs to the diagram, separate from view actions. */
+body.phb-app.phb-page-zeitplan .gantt-header-left{display:flex;align-items:center;gap:10px 22px;flex-wrap:wrap;min-width:0}
+body.phb-app.phb-page-zeitplan .gantt-header-left h2{margin:0}
+body.phb-app.phb-page-zeitplan .gantt-project-start{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ui-muted);margin:0}
+body.phb-app.phb-page-zeitplan .gantt-project-start input{width:150px;min-height:36px;padding:6px 9px;font-size:13px}
+body.phb-app.phb-page-zeitplan #projectStartStatus{font-size:11px;color:var(--ui-muted)}
+body.phb-app.phb-page-zeitplan .schedule-metrics{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 14px}
+body.phb-app.phb-page-zeitplan .schedule-metrics article{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:9px;box-shadow:none}
+body.phb-app.phb-page-zeitplan .schedule-metrics article span{font-size:11px;margin:0}
+body.phb-app.phb-page-zeitplan .schedule-metrics article b{font-size:17px;line-height:1.3;white-space:nowrap}
+/* Override shared button centering for the two-line task cards. */
+body.phb-app.phb-page-zeitplan #phaseTaskItems button{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:4px;text-align:left;white-space:normal;width:100%;padding:10px 12px;min-width:0}
+body.phb-app.phb-page-zeitplan #phaseTaskItems button>*{display:block;width:100%;margin:0;padding:0;text-align:left;overflow-wrap:anywhere}
+body.phb-app.phb-page-zeitplan #phaseTaskItems small{font-weight:400;line-height:1.4}
+@media(max-width:1100px){body.phb-app.phb-page-zeitplan .schedule-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){body.phb-app.phb-page-zeitplan .schedule-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}body.phb-app.phb-page-zeitplan .gantt-header-left{gap:10px}}
+
+body.phb-app.phb-page-zeitplan .phase-bar.is-complete{background:var(--ui-success);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ui-success) 55%,var(--ui-ink));background-image:repeating-linear-gradient(135deg,transparent,transparent 7px,#ffffff18 7px,#ffffff18 9px)}
+body.phb-app.phb-page-zeitplan #overlay .modalhead{display:flex;justify-content:space-between;gap:12px;align-items:center}
+body.phb-app.phb-page-zeitplan #taskForm .task-dialog-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid var(--ui-line);padding-top:16px;margin-top:16px}
+body.phb-app.phb-page-zeitplan .task-actions-group{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+body.phb-app.phb-page-zeitplan #taskForm .task-dialog-actions button{margin:0}
+
+/* Two title lines have a fixed place; long titles never shift their beginning off-screen. */
+body.phb-app.phb-page-zeitplan .gantt-phase-row{height:74px;min-height:74px}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-timeline{height:74px}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-label{height:74px;min-width:0;overflow:hidden}
+body.phb-app.phb-page-zeitplan .phase-title{min-width:0;width:100%}
+body.phb-app.phb-page-zeitplan .phase-title>:not(.phase-edit){flex-shrink:0}
+body.phb-app.phb-page-zeitplan .phase-edit{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;white-space:normal;overflow-wrap:anywhere;line-height:16px;min-height:32px;min-width:0;flex:1;text-align:left;justify-content:flex-start}
+body.phb-app.phb-page-zeitplan .phase-list-item strong,body.phb-app.phb-page-zeitplan #phaseDialogTitle{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere;white-space:normal;line-height:1.4;min-width:0}
+body.phb-app.phb-page-zeitplan .gantt-phase-row .gantt-label{flex-shrink:0}
+
+body.phb-app.phb-page-zeitplan :is(button.task-name,.task-detail-link){padding:0;min-height:0;line-height:1.4;border:0;border-radius:3px;background:transparent;box-shadow:none;text-align:left;justify-content:flex-start;color:var(--ui-ink)}
+body.phb-app.phb-page-zeitplan button.task-name{align-items:flex-start;flex-direction:column;min-width:0;overflow:hidden}
+body.phb-app.phb-page-zeitplan button.task-name>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

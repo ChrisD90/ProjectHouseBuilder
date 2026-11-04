@@ -1,0 +1,460 @@
+@import url("/static/palette.css");
+/* ProjectHouseBuilder design system: consistent sizing, surfaces, contrast, and dark mode. */
+:root {
+  --ui-bg:var(--brand-bg);--ui-surface:var(--brand-surface);--ui-raised:var(--brand-raised);--ui-soft:var(--brand-soft);
+  --ui-soft-accent:var(--brand-soft-accent);--ui-line:var(--brand-line);--ui-line-strong:var(--brand-line-strong);
+  --ui-ink:var(--brand-ink);--ui-ink-soft:var(--brand-ink-soft);--ui-muted:var(--brand-muted);--ui-muted-light:var(--brand-muted-light);
+  --ui-accent:var(--brand-accent);--ui-accent-hover:var(--brand-accent-hover);--ui-success:var(--brand-success);
+  --ui-warning:#93641e;--ui-danger:#a63f4d;
+  --ui-ring:var(--brand-ring);--ui-shadow:0 2px 8px rgba(18,48,60,.038),0 14px 35px rgba(16,50,64,.025);
+  --ui-shadow-raised:0 18px 55px rgba(16,42,55,.16);
+  --ui-radius:15px;--ui-radius-sm:10px;
+  --ui-gutter:clamp(16px,2.15vw,36px);
+  color-scheme:light;
+}
+:root[data-phb-theme="dark"]{
+  --ui-bg:var(--brand-bg);--ui-surface:var(--brand-surface);--ui-raised:var(--brand-raised);--ui-soft:var(--brand-soft);
+  --ui-soft-accent:var(--brand-soft-accent);--ui-line:var(--brand-line);--ui-line-strong:var(--brand-line-strong);
+  --ui-ink:var(--brand-ink);--ui-ink-soft:var(--brand-ink-soft);--ui-muted:var(--brand-muted);--ui-muted-light:var(--brand-muted-light);
+  --ui-accent:var(--brand-accent);--ui-accent-hover:var(--brand-accent-hover);--ui-success:var(--brand-success);
+  --ui-warning:#f0bf79;--ui-danger:#ff999c;
+  --ui-ring:var(--brand-ring);--ui-shadow:0 8px 32px rgba(0,0,0,.15);
+  --ui-shadow-raised:0 28px 70px rgba(0,0,0,.45);
+  color-scheme:dark;
+}
+html{background:var(--ui-bg)}
+body.phb-app{background:var(--ui-bg)!important;color:var(--ui-ink)!important}
+body.phb-app .phb-appshell{font-feature-settings:"tnum" 1}
+body.phb-app .phb-workspace{background:var(--ui-bg)}
+body.phb-app main.phb-main{padding:clamp(18px,2.1vw,32px) var(--ui-gutter) 58px}
+body.phb-app main.phb-main> :first-child{scroll-margin-top:84px}
+body.phb-app .phb-sidebar{background:var(--brand-sidebar)}
+body.phb-app .phb-sidebar__brand{min-height:78px}
+body.phb-app .phb-nav{gap:4px}
+body.phb-app .phb-nav-link{min-height:44px}
+body.phb-app .phb-nav-link:not(.is-current){transition:background-color .16s,color .16s}
+body.phb-app .phb-topbar{
+  min-height:72px;background:var(--ui-surface)!important;
+  border-bottom:1px solid var(--ui-line);box-shadow:0 1px 10px rgba(18,48,60,.04);
+  color:var(--ui-ink);padding:12px var(--ui-gutter);
+}
+body.phb-app .phb-breadcrumb{color:var(--ui-muted)}
+body.phb-app .phb-breadcrumb strong{color:var(--ui-ink)}
+body.phb-app .phb-topbar__status{background:var(--ui-soft-accent);border-color:var(--ui-line);color:var(--ui-success)}
+body.phb-app .phb-topbar-right{flex-wrap:nowrap;gap:9px;min-width:0}
+body.phb-app .phb-page-intro,body.phb-app .heading,body.phb-app .intro,body.phb-app .hero{
+  margin-bottom:22px;row-gap:16px;
+}
+body.phb-app :is(.phb-page-intro,.heading,.intro,.hero) h1{
+  color:var(--ui-ink);letter-spacing:-.025em;font-weight:780;line-height:1.17;
+}
+body.phb-app :is(.phb-page-intro,.heading,.intro,.hero) p{color:var(--ui-muted);line-height:1.62}
+body.phb-app .phb-page-kicker{color:var(--ui-accent)}
+body.phb-app :is(h1,h2,h3,h4){text-wrap:pretty}
+body.phb-app h1,body.phb-app h2,body.phb-app h3,body.phb-app h4{color:var(--ui-ink)}
+body.phb-app a:not(.phb-nav-link):not(.phb-brand-link):not(.primary){color:var(--ui-accent)}
+body.phb-app a:hover{text-decoration-thickness:1.5px}
+body.phb-app main.phb-main :is(.panel,.budget-panel,.tile,.kpi,.smallcard,.offer-card,.receipt-assignment,.master-panel){
+  border-color:var(--ui-line);color:var(--ui-ink);
+}
+body.phb-app main.phb-main :is(.panel,.budget-panel){background:var(--ui-surface);border-radius:var(--ui-radius);box-shadow:var(--ui-shadow)}
+body.phb-app main.phb-main :is(.metrics article,.kpi,.kpi-grid .kpi,.tile,.offers-stats>div,.stats span){
+  background:var(--ui-surface);border-color:var(--ui-line);border-radius:var(--ui-radius);
+  box-shadow:var(--ui-shadow);min-width:0;
+}
+body.phb-app main.phb-main :is(.kpi strong,.tile strong,.offers-stats strong,.metrics b){color:var(--ui-ink)}
+body.phb-app main.phb-main :is(.kpi span,.kpi small,.tile span,.offers-stats span,.metrics span){color:var(--ui-muted)}
+body.phb-app main.phb-main :is(.offer-card,.smallcard,.master-tag-row,.record,.entry){
+  border-color:var(--ui-line);background:var(--ui-surface);color:var(--ui-ink);
+}
+body.phb-app main.phb-main :is(.panelbar,.panel-title,.master-panel-head){row-gap:12px}
+body.phb-app main.phb-main :is(.panelbar,.panel-title) h2{color:var(--ui-ink);line-height:1.35}
+body.phb-app main.phb-main :is(.panelbar,.panel-title,.master-panel-head) p{color:var(--ui-muted);line-height:1.55}
+body.phb-app :is(input,textarea,select):not([type=checkbox]):not([type=radio]):not([type=range]),
+body.phb-app :is(.form-control,.form-select){
+  background-color:var(--ui-surface);color:var(--ui-ink);border:1px solid var(--ui-line-strong);
+  border-radius:var(--ui-radius-sm);min-height:41px;padding:9px 12px;
+  transition:border-color .16s,box-shadow .16s,background-color .16s;
+}
+body.phb-app textarea{line-height:1.55}
+body.phb-app input[type=file]{max-width:100%;font-size:13px}
+body.phb-app :is(input,select,textarea)::placeholder{color:var(--ui-muted-light);opacity:1}
+body.phb-app :is(input,select,textarea):disabled{background:var(--ui-soft);color:var(--ui-muted);opacity:.76}
+body.phb-app :is(input,select,textarea):focus:not([type=checkbox]):not([type=radio]){
+  outline:0;border-color:var(--ui-accent);box-shadow:0 0 0 3px var(--ui-ring);
+}
+body.phb-app :is(input,select,textarea):focus-visible:not([type=checkbox]):not([type=radio]){outline:0;box-shadow:0 0 0 3px var(--ui-ring)}
+body.phb-app :is(label,small,.note,.hint,.muted,.section-note,.meta,.footnote){line-height:1.55}
+body.phb-app label{color:var(--ui-ink-soft)}
+body.phb-app :is(.note,.hint,.muted,.section-note,.meta,.footnote){color:var(--ui-muted)}
+body.phb-app button:disabled{opacity:.57;cursor:not-allowed}
+body.phb-app :is(.tablewrap,.master-table-scroll){scrollbar-color:var(--ui-line-strong) transparent}
+body.phb-app :is(table,.master-table){color:var(--ui-ink);border-collapse:collapse}
+body.phb-app :is(th,.master-table th){
+  color:var(--ui-muted);background:var(--ui-soft);border-bottom:1px solid var(--ui-line);
+  letter-spacing:.018em;
+}
+body.phb-app :is(td,.master-table td){color:var(--ui-ink-soft);border-bottom:1px solid var(--ui-line)}
+body.phb-app tbody tr:hover{background:var(--ui-soft)}
+body.phb-app .status{border:1px solid var(--ui-line);background:var(--ui-soft);color:var(--ui-ink-soft)}
+body.phb-app .panelbar h1,body.phb-app .panelbar h2{color:var(--ui-ink)}
+body.phb-app :is(.notice,.alert,.warning,.phb-data-status,.phb-data-footnote){line-height:1.6}
+body.phb-app :is(dialog,.modal,.overlay .modal,.master-dialog){
+  background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-line);
+  box-shadow:var(--ui-shadow-raised);
+}
+body.phb-app :is(dialog,.master-dialog)::backdrop{background:rgba(3,10,18,.7)}
+body.phb-app .overlay{background:rgba(3,10,18,.68)}
+body.phb-app :is(.formgrid,.fields,.master-fields){gap:16px}
+body.phb-app :is(.formgrid label,.fields label,.master-fields label){line-height:1.45}
+body.phb-app .actions,body.phb-app .modal-actions{gap:12px}
+body.phb-app :is(.ganttwrap,.tablewrap){border-color:var(--ui-line)}
+body.phb-app .gantt-label{background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-line)}
+body.phb-app .gantt-header .gantt-label,body.phb-app .gantt-header{background:var(--ui-soft)}
+body.phb-app .gantt-timeline{border-color:var(--ui-line)}
+body.phb-app .gantt-row:hover .gantt-label{background:var(--ui-soft)}
+body.phb-app .gantt-label code{color:var(--ui-muted)}
+body.phb-app .axis{color:var(--ui-muted)}
+body.phb-app :is(.offer-method,.offer-inline-edit,.offer-empty,.offer-accepted-note,
+  .receipt-assignment,.phb-ai-report,.phb-ai-warning,.phb-ai-diagnostics,
+  .phb-data-status,.phb-data-help,.master-tag-row,.loan-ai-assistant,
+  .loan-documents,.loan-doc-row,.template-summary,.template-step,.schedule-chat-messages,
+  .schedule-chat-bubble,.schedule-chat-preview,.schedule-diff-item,.schedule-history-entry,
+  .month,.smallcard,.record,.budget-panel .group-row,.funding-footer){
+  border-color:var(--ui-line);color:var(--ui-ink-soft);
+}
+body.phb-app .phb-ai-topbar{
+  background:var(--ui-surface);color:var(--ui-ink-soft);border-color:var(--ui-line-strong)
+}
+body.phb-app .phb-ai-topbar:hover{background:var(--ui-soft)}
+body.phb-app .phb-ai-dialog{background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-line)}
+body.phb-app .phb-ai-dialog #phbAIConnection{color:var(--ui-muted)}
+body.phb-app .phb-ai-dialog .phb-ai-disclosure{color:var(--ui-muted)}
+body.phb-app .phb-ai-dialog .phb-ai-warning{background:var(--ui-soft);border-color:var(--ui-line)}
+body.phb-app .phb-ai-report{background:var(--ui-soft);border-color:var(--ui-line);color:var(--ui-ink)}
+body.phb-app .phb-ai-diagnostics{background:var(--ui-soft);border-color:var(--ui-line)}
+body.phb-app .phb-ai-diagnostics-content{color:var(--ui-ink-soft);border-color:var(--ui-line)}
+body.phb-app .phb-ai-offer-choices label{border-color:var(--ui-line);background:var(--ui-surface);color:var(--ui-ink)}
+body.phb-app .phb-ai-offer-choices label:hover{background:var(--ui-soft)}
+body.phb-app .phb-page-actions :is(input,select){min-width:0}
+body.phb-app .phb-data-card .phb-data-status{background:var(--ui-soft)}
+body.phb-app :is(.phb-export-grid a,.master-jump a){background:var(--ui-soft);border-color:var(--ui-line);color:var(--ui-ink)}
+body.phb-app :is(.master-tag-row,.master-contact-info,.loan-documents,.loan-doc-row){background:var(--ui-surface)}
+body.phb-app :is(.master-table th,.master-table td){padding:13px 14px}
+body.phb-app :is(.loan-ai-assistant,.receipt-assignment){background:var(--ui-soft);border-color:var(--ui-line)}
+/* Dark mode: override the old page-specific hardcoded light fills after legacy styles. */
+:root[data-phb-theme="dark"] body.phb-app .phb-topbar{background:var(--ui-surface)!important}
+:root[data-phb-theme="dark"] body.phb-app :is(.phb-page-intro h1,.heading h1,
+  .hero h1,.intro h1,.offers-stats strong,.offer-card-head h3,.offer-sum strong,
+  .kpi strong,.tile strong,.main-kpi strong,.smallcard h3,.modalhead h2,
+  .master-panel-head h2,.phb-export-intro h2,.schedule-section-header h2,
+  .schedule-chat-preview h3,.master-dialog-head h2){color:var(--ui-ink)}
+:root[data-phb-theme="dark"] body.phb-app :is(.offers-how,.offers-clarity,
+  .offers-stats>div,.offer-method,.offer-method.is-selected,.offer-card,.offer-inline-edit,
+  .offer-empty,.offer-accepted-note,.offer-ai-content .phb-ai-offer-choices label,
+  .offer-compare-section>.section-note,.funding-footer,.group-row,.section-note,
+  .entry,.entry.active,.stats span,.receipt-assignment,.phb-data-card,.phb-data-help,
+  .phb-data-more,.phb-export-grid a,.master-jump a,.master-tag-row,.master-dialog-inner,
+  .master-table th,.master-table td,.master-create,.master-notice,.master-contact-info,
+  .tiles .tile,.tile,.smallcard,.loan-ai-assistant,.loan-documents,.loan-doc-row,
+  .warning,.notice,.month,.backup-status,.formgrid,.gantt-header,.gantt-timeline,
+  .template-summary,.template-step,.template-list,.template-panel,.template-details,
+  .schedule-chat-messages,.schedule-chat-preview,.schedule-diff-item,
+  .schedule-history-entry,.schedule-chat-user,.schedule-chat-assistant,
+  .schedule-history-content,.schedule-history-diff,.phb-ai-warning,.phb-ai-report,
+  .phb-ai-diagnostics,.phb-ai-diagnostics-content,.phb-ai-confirm,.phb-ai-offer-choices label,
+  .phb-ai-dialog){background:var(--ui-soft);color:var(--ui-ink-soft);border-color:var(--ui-line)}
+:root[data-phb-theme="dark"] body.phb-app :is(.offer-card,.smallcard,.tile,.master-dialog-inner,
+  .schedule-chat-assistant,.loan-doc-row,.master-table td,.stats span){background:var(--ui-surface)}
+:root[data-phb-theme="dark"] body.phb-app :is(.offers-how p,.offers-clarity p,
+  .offer-card p,.offer-card small,.offer-method small,.offer-notes,.offer-mapping,
+  .section-note,.funding-footer,.hint,.note,.meta,.month,
+  .smallcard .meta,.smallcard .values,.record span,.template-intro p,
+  .template-message,.schedule-history-entry p,.schedule-chat-status,
+  .schedule-chat-messages p,.schedule-chat-author,
+  .schedule-history-content p,.schedule-chat-compose-actions small,
+  .loan-ai-assistant p,.master-panel-head p,.phb-data-footnote,
+  .phb-data-help p,.phb-export-grid a span){color:var(--ui-muted)}
+:root[data-phb-theme="dark"] body.phb-app :is(.status.Erledigt,.status.Pausiert,
+  .status.In-Arbeit,.work-chip.self,.work-chip.external,.work-chip.unknown,
+  .hint-pill,.phase-chip,.phb-ai-dot-on){filter:saturate(.78)}
+:root[data-phb-theme="dark"] body.phb-app .gantt-timeline{
+  background-image:linear-gradient(to right,rgba(142,173,186,.11) 1px,transparent 1px)
+}
+:root[data-phb-theme="dark"] body.phb-app .gantt-header .gantt-timeline{
+  background-image:linear-gradient(to right,rgba(142,173,186,.16) 1px,transparent 1px)
+}
+:root[data-phb-theme="dark"] body.phb-app .bartext{color:var(--ui-ink-soft)}
+:root[data-phb-theme="dark"] body.phb-app pre, 
+:root[data-phb-theme="dark"] body.phb-app code{background:var(--ui-soft);color:var(--ui-ink-soft)}
+/* Topbar appearance preference */
+body.phb-app .phb-theme-control{display:inline-flex;align-items:center;gap:7px;min-width:0}
+body.phb-app .phb-theme-control svg{height:17px;width:17px;color:var(--ui-muted);flex:none}
+body.phb-app .phb-theme-control select{
+  width:auto;min-height:35px!important;padding:6px 24px 6px 9px!important;
+  font-size:12px;font-weight:700;border:1px solid var(--ui-line)!important;
+  background-color:var(--ui-surface)!important;color:var(--ui-ink-soft)!important;cursor:pointer
+}
+body.phb-app .phb-theme-control span{font-size:11px;font-weight:700;color:var(--ui-muted)}
+/* Activity feedback with no fictitious percentage or completion promise. */
+#phbLoadTrack{position:fixed;left:0;right:0;top:0;height:3px;z-index:9999;overflow:hidden;background:var(--ui-soft-accent)}
+#phbLoadTrack[hidden],#phbBusyOverlay[hidden]{display:none!important}
+#phbLoadTrack::after{content:"";position:absolute;inset:0;width:34%;background:linear-gradient(90deg,transparent,var(--ui-accent) 35%,var(--ui-accent-hover) 85%,transparent);animation:phb-track 1.2s ease-in-out infinite}
+@keyframes phb-track{0%{transform:translateX(-110%)}100%{transform:translateX(395%)}}
+#phbBusyOverlay{position:fixed;z-index:9000;bottom:24px;right:24px;width:min(390px,calc(100vw - 32px));pointer-events:none}
+.phb-busy-panel{display:flex;align-items:flex-start;gap:14px;padding:18px;border-radius:16px;
+  background:var(--ui-raised);color:var(--ui-ink);border:1px solid var(--ui-line);
+  box-shadow:var(--ui-shadow-raised)}
+.phb-busy-spinner{width:30px;height:30px;border:3px solid var(--ui-line-strong);border-top-color:var(--ui-accent);border-radius:50%;flex:0 0 30px;animation:phb-spin .75s linear infinite}
+@keyframes phb-spin{to{transform:rotate(360deg)}}
+.phb-busy-panel strong{display:block;font-size:13px;margin-bottom:5px}
+.phb-busy-panel p{font-size:12px;margin:0;color:var(--ui-muted);line-height:1.55}
+body.phb-app button[data-phb-busy="true"]{position:relative;padding-right:max(37px,2.6em);cursor:progress}
+body.phb-app button[data-phb-busy="true"]::after{
+ content:"";position:absolute;right:11px;top:calc(50% - 7px);height:14px;width:14px;
+ border:2px solid currentColor;border-right-color:transparent;border-radius:50%;
+ animation:phb-spin .65s linear infinite;pointer-events:none
+}
+body.phb-app :is(.panel,.kpi,.tile,.offers-stats>div,.smallcard,.offer-card){
+  transition:box-shadow .18s,border-color .18s
+}
+body.phb-app .phb-skip{background:var(--ui-raised);color:var(--ui-ink)}
+body.phb-app [hidden]{display:none!important}
+@media(max-width:900px){
+ body.phb-app .phb-topbar{min-height:65px}
+ body.phb-app .phb-theme-control span{display:none}
+ body.phb-app .phb-theme-control select{max-width:105px}
+}
+@media(max-width:600px){
+ body.phb-app main.phb-main{padding:18px 13px 40px}
+ body.phb-app .phb-topbar{gap:10px;padding:11px 12px}
+ body.phb-app .phb-topbar-right{gap:6px}
+ body.phb-app .phb-theme-control svg{display:none}
+ body.phb-app .phb-theme-control select{max-width:88px;min-height:33px!important;padding:5px 19px 5px 7px!important;font-size:11px}
+ body.phb-app .phb-breadcrumb{font-size:12px}
+ body.phb-app .phb-ai-topbar{min-height:33px}
+ #phbBusyOverlay{right:12px;bottom:12px}
+ .phb-busy-panel{padding:14px}
+}
+@media(prefers-reduced-motion:reduce){
+ #phbLoadTrack::after,.phb-busy-spinner,
+ body.phb-app button[data-phb-busy="true"]::after{animation-duration:2.5s}
+ body.phb-app :is(.panel,.kpi,.tile,.offer-card){transition:none}
+}
+/* Cross-page harmonization for older bare buttons and global label rules. */
+body.phb-app .phb-theme-control{flex-direction:row;white-space:nowrap}
+body.phb-app .phb-theme-control select{flex:none}
+body.phb-app .phb-topbar-right :is(label,button){margin:0}
+body.phb-app main.phb-main :is(.offer-entry-form,.offer-review-form,.fields,.formgrid,.offer-manual-form,.receipt-assignment-fields,.master-fields) >label{min-width:0}
+body.phb-app main.phb-main :is(.offer-entry-form,.offer-review-form,.fields,.formgrid,.offer-manual-form,.receipt-assignment-fields,.master-fields) :is(input,select,textarea){max-width:100%}
+body.phb-app main.phb-main :is(.modal-head,.modal-actions,.offer-actions,.offer-ai-actions,.master-dialog-actions){gap:12px}
+body.phb-app main.phb-main :is(.schedule-chat-bubble,.offer-notes,.offer-mapping,.note,.hint,p){overflow-wrap:anywhere}
+:root[data-phb-theme="dark"] body.phb-app .phb-menu-button{background:var(--ui-soft);border-color:var(--ui-line);color:var(--ui-ink)}
+:root[data-phb-theme="dark"] body.phb-app .phb-topbar__status{color:var(--ui-success)}
+:root[data-phb-theme="dark"] body.phb-app :is(.offer-method.is-selected,
+  .phb-ai-offer-choices label:has(input:checked),.entry.active,.master-jump a:hover){
+  background:var(--ui-soft-accent);border-color:var(--ui-accent);color:var(--ui-ink)
+}
+:root[data-phb-theme="dark"] body.phb-app :is(.master-table strong,
+  .loan-doc-row a,.master-tag-row strong,.record strong,.kpi strong,.smallcard .values b,
+  .offer-sum strong,.offer-card-head h3,.receipt-assignment strong,
+  .schedule-diff-item strong,.template-step,.template-summary>strong,
+  .schedule-history-heading strong){color:var(--ui-ink)}
+:root[data-phb-theme="dark"] body.phb-app .phb-ai-confirm input[type=checkbox]{accent-color:var(--ui-accent)}
+:root[data-phb-theme="dark"] body.phb-app .phb-ai-topbar{background:var(--ui-soft)}
+:root[data-phb-theme="dark"] body.phb-app .offers-how b{background:var(--brand-button)}
+:root[data-phb-theme="dark"] body.phb-app .phb-ai-warning>strong{color:var(--ui-ink)}
+
+/* Login inherits the same saved appearance without requiring the app sidebar. */
+body.login-screen{background:var(--ui-bg);color:var(--ui-ink)}
+body.login-screen .login-panel{
+ background:var(--ui-surface);color:var(--ui-ink);
+ border-color:var(--ui-line);border-radius:18px;box-shadow:var(--ui-shadow-raised)
+}
+body.login-screen .login-panel h1{color:var(--ui-ink)}
+body.login-screen .login-panel p,body.login-screen .login-panel label{color:var(--ui-muted)}
+body.login-screen .login-panel input{
+ color:var(--ui-ink);background:var(--ui-surface);border:1px solid var(--ui-line-strong);
+ border-radius:10px;min-height:44px
+}
+body.login-screen .login-panel input:focus{outline:0;border-color:var(--ui-accent);box-shadow:0 0 0 3px var(--ui-ring)}
+
+/* Very narrow devices: keep navigation, theme and connection on one row. */
+@media(max-width:450px){
+ body.phb-app .phb-topbar__status{display:none}
+ body.phb-app .phb-topbar__left{gap:7px}
+ body.phb-app .phb-topbar-right{gap:4px}
+ body.phb-app .phb-theme-control select{max-width:84px}
+ body.phb-app main.phb-main :is(.heading,.phb-page-intro,.intro,.hero){gap:12px}
+ body.phb-app main.phb-main :is(.panelbar,.panel-title){gap:10px}
+ body.phb-app main.phb-main .offer-actions{align-items:stretch}
+}
+/* Heavy API action feedback moves above the floating assistant instead of hiding the composer. */
+body.phb-app.phb-page-zeitplan #phbBusyOverlay{bottom:auto;top:82px;right:18px}
+@media(max-width:600px){
+  body.phb-app.phb-page-zeitplan #phbBusyOverlay{top:72px;right:12px;width:min(360px,calc(100vw - 24px))}
+}
+
+/* Project confirmation toasts remain legible next to the floating launcher. */
+body.phb-app.phb-page-zeitplan:has(#scheduleChatFab:not([hidden])) #toast{
+  right:100px;bottom:clamp(17px,2.5vw,28px);
+  max-width:calc(100vw - 128px);overflow-wrap:anywhere
+}
+
+/* Opt-in document context stays compact inside the floating Gantt assistant. */
+body.phb-app.phb-page-zeitplan .schedule-chat-documents{flex:0 1 auto;min-height:0;border:1px solid var(--ui-line);border-radius:10px;padding:0;margin:0;background:var(--ui-soft);overflow:auto}
+body.phb-app.phb-page-zeitplan .schedule-chat-documents>summary{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;padding:10px 12px;cursor:pointer;font-size:12px;color:var(--ui-ink);font-weight:750}
+body.phb-app.phb-page-zeitplan .schedule-chat-documents>summary span{font-size:10px;font-weight:600;color:var(--ui-muted)}
+body.phb-app.phb-page-zeitplan .schedule-chat-documents>p{margin:0 12px 10px;color:var(--ui-muted);font-size:11px;line-height:1.55}
+body.phb-app.phb-page-zeitplan .schedule-chat-documents>a{display:block;margin:10px 12px;font-size:11px}
+body.phb-app.phb-page-zeitplan .schedule-doc-list{max-height:190px;overflow-y:auto;display:grid;gap:5px;padding:0 10px}
+body.phb-app.phb-page-zeitplan .schedule-doc-choice{display:flex;align-items:flex-start;gap:9px;background:var(--ui-surface);border:1px solid var(--ui-line);padding:9px 10px;border-radius:9px;cursor:pointer}
+body.phb-app.phb-page-zeitplan .schedule-doc-choice input{margin-top:2px;width:16px;height:16px;flex:none}
+body.phb-app.phb-page-zeitplan .schedule-doc-choice strong{display:block;font-size:11px;font-weight:750;color:var(--ui-ink);overflow-wrap:anywhere}
+body.phb-app.phb-page-zeitplan .schedule-doc-choice small{display:block;font-size:10px;color:var(--ui-muted);line-height:1.45;margin-top:3px}
+body.phb-app.phb-page-zeitplan .schedule-history-sources{border-top:1px solid var(--ui-line);padding-top:7px;font-size:11px}
+
+/* Global import activity has one permanent slot in the top bar. */
+body.phb-app .phb-import-center{position:relative;z-index:21;display:block;flex:none;width:154px;pointer-events:auto}
+body.phb-app .phb-import-center[hidden],body.phb-app .phb-import-toast[hidden],body.phb-app .phb-import-feed[hidden]{display:none!important}
+body.phb-app .phb-import-toggle{display:flex;align-items:center;gap:8px;width:100%;height:42px;pointer-events:auto;cursor:pointer;text-align:left;border:1px solid var(--ui-line-strong);border-radius:10px;padding:5px 9px 5px 6px;background:var(--ui-raised);color:var(--ui-ink);box-shadow:none;overflow:hidden}
+body.phb-app .phb-import-toggle:hover{background:var(--ui-soft)}
+body.phb-app .phb-import-toggle-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;border-radius:8px;background:var(--ui-soft-accent);color:var(--ui-accent);font-size:17px}
+body.phb-app .phb-import-toggle-copy{min-width:0}
+body.phb-app .phb-import-toggle strong{font-size:11px;display:block;line-height:1.3}
+body.phb-app .phb-import-toggle small{display:block;max-width:96px;font-size:10px;color:var(--ui-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.phb-app .phb-import-feed{position:fixed;right:clamp(12px,2vw,24px);top:76px;z-index:1305;pointer-events:auto;max-height:calc(100dvh - 92px);overflow-y:auto;width:min(405px,calc(100vw - 24px));background:var(--ui-raised);border:1px solid var(--ui-line);border-radius:17px;box-shadow:var(--ui-shadow-raised);padding:17px}
+body.phb-app .phb-import-feed-head{display:flex;gap:12px;justify-content:space-between;align-items:center}
+body.phb-app .phb-import-feed-head h2{font-size:15px;margin:0;color:var(--ui-ink)}
+
+body.phb-app .phb-import-feed>p{color:var(--ui-muted);font-size:11px;line-height:1.55;margin:8px 0 14px}
+body.phb-app .phb-import-list{display:grid;gap:8px}
+body.phb-app .phb-import-job{background:var(--ui-soft);border:1px solid var(--ui-line);border-radius:12px;padding:11px 12px;overflow-wrap:anywhere}
+body.phb-app .phb-import-job-head{display:flex;align-items:center;gap:8px}
+body.phb-app .phb-import-job-head strong{font-size:12px;line-height:1.5;flex:1;color:var(--ui-ink);min-width:0}
+body.phb-app .phb-import-job-head>span:last-child{font-size:10px;font-weight:750;color:var(--ui-muted)}
+body.phb-app .phb-import-dot{flex:none;width:13px;height:13px;border-radius:50%;border:2px solid var(--ui-line-strong)}
+body.phb-app .phb-import-dot.is-working{border-color:var(--ui-accent);border-right-color:transparent;animation:phb-spin 1s linear infinite}
+body.phb-app .phb-import-dot.is-done{background:var(--ui-success);border-color:var(--ui-success)}
+body.phb-app .phb-import-dot.is-error{background:var(--ui-danger);border-color:var(--ui-danger)}
+body.phb-app .phb-import-job>p{font-size:11px;color:var(--ui-muted);line-height:1.55;margin:6px 0 0}
+body.phb-app .phb-import-job>.phb-import-error{color:var(--ui-danger)}
+body.phb-app .phb-import-job-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+
+body.phb-app .phb-import-toast{position:fixed;right:20px;top:84px;z-index:1390;width:min(360px,calc(100vw - 40px));padding:16px 19px;background:var(--ui-raised);border:1px solid var(--ui-line-strong);border-radius:15px;box-shadow:var(--ui-shadow-raised)}
+body.phb-app .phb-import-toast strong{display:block;color:var(--ui-ink);font-size:13px}
+body.phb-app .phb-import-toast p{color:var(--ui-muted);font-size:12px;line-height:1.55;margin:7px 0 11px}
+body.phb-app .phb-import-toast-actions{display:flex;flex-wrap:wrap;gap:9px}
+
+
+@media(max-width:1200px){body.phb-app .phb-import-center{width:42px}body.phb-app .phb-import-toggle{width:42px;padding:5px}body.phb-app .phb-import-toggle-copy{display:none}}
+@media(max-width:640px){body.phb-app .phb-import-feed{top:70px;right:10px;width:calc(100vw - 20px);max-height:calc(100dvh - 82px)}body.phb-app .phb-import-toast{top:74px;right:10px;width:calc(100vw - 20px)}}
+@media(prefers-reduced-motion:reduce){body.phb-app .phb-import-dot.is-working{animation-duration:3s}}
+
+/* Identical top-right primary actions across financial and document areas. */
+body.phb-app .phb-action-header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:15px 24px;flex-wrap:wrap
+}
+body.phb-app .phb-action-header>div:first-child{flex:1 1 380px;min-width:0}
+body.phb-app .phb-action-header .phb-header-actions{
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;
+  flex:0 0 auto;flex-wrap:wrap;margin-left:auto
+}
+body.phb-app.phb-page-belege #stats{margin:14px 0 17px}
+body.phb-app.phb-page-stammdaten #restoreTrades,
+body.phb-app.phb-page-stammdaten #restoreCategories{
+  white-space:normal;max-width:190px;flex:0 0 auto
+}
+body.phb-app.phb-page-stammdaten .master-panel-head{align-items:flex-start;gap:11px;flex-wrap:wrap}
+@media(max-width:680px){
+ body.phb-app .phb-action-header .phb-header-actions{width:100%;justify-content:flex-start;margin-left:0}
+}
+
+
+/* Standardisierte Rückfragen anstelle von Browser-Popups */
+.phb-messagebox{width:min(460px,calc(100vw - 32px));max-height:85vh;padding:23px;border:1px solid var(--ui-line,#dbe6e9);border-radius:14px;background:var(--ui-surface,#fff);color:var(--ui-ink,#1b3943);box-shadow:0 30px 90px #001d3255;}
+.phb-messagebox::backdrop{background:#00172599;}
+.phb-messagebox h2{margin:0 0 12px;font-size:18px;}
+.phb-messagebox p{line-height:1.5;font-size:14px;white-space:pre-line;}
+.phb-messagebox input{width:100%;padding:10px;margin:6px 0;border:1px solid #ccdce1;border-radius:8px;}
+.phb-messagebox label{display:grid;gap:6px;margin-top:12px;font-size:13px;font-weight:650}
+.phb-messagebox-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+
+
+/* Global visibility invariant.
+   Several legacy layouts declare display:flex/grid on [hidden] elements, which
+   otherwise overrides the HTML hidden attribute and leaks closed dialogs/panels. */
+body.phb-app [hidden]{display:none!important}
+
+/* Shared alignment contract for page actions, panels and editor fields. */
+body.phb-app :is(.phb-action-header,.master-panel-head,.panelbar){gap:16px;min-width:0}
+body.phb-app :is(.phb-header-actions,.master-reference-actions,.toolbar,.filters){align-items:center;gap:10px;min-width:0}
+body.phb-app :is(.phb-action-header,.master-panel-head)>:first-child{min-width:0}
+body.phb-app :is(.phb-workflow-head,.master-dialog-head,.dialog-head,.modalhead){display:flex;align-items:center;justify-content:space-between;gap:16px}
+body.phb-app :is(.phb-workflow-head,.master-dialog-head,.dialog-head,.modalhead) :is(h2,h3){margin:0}
+body.phb-app :is(.formgrid,.dialog-grid,.master-fields) label{display:flex;flex-direction:column;align-items:stretch;gap:6px;min-width:0}
+body.phb-app :is(.formgrid,.dialog-grid,.master-fields) :is(input:not([type=checkbox]):not([type=radio]),select:not([multiple])){min-height:40px;width:100%;min-width:0}
+body.phb-app :is(.dialog-actions,.master-dialog-actions,.phb-workflow-actions){display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px}
+body.phb-app :is(.dialog-actions,.master-dialog-actions)>.danger{margin-right:auto}
+body.phb-app button[data-import-busy=true],body.phb-app button[data-phb-action-lock=true]{cursor:progress;opacity:.65}
+body.phb-app .phb-task-dialog{width:min(920px,96vw);max-height:92dvh;border:0;padding:0;border-radius:14px;overflow:auto;background:var(--ui-surface);color:var(--ui-ink)}
+body.phb-app .phb-task-dialog>.modal{position:static;display:block;width:100%;max-width:none;max-height:none;overflow:visible;margin:0;border-radius:0}
+body.phb-app #taskLockNotice{padding:0 24px;color:var(--ui-muted)}
+body.phb-app #gantt .bar:not(.done){cursor:grab;touch-action:pan-y}
+body.phb-app #gantt .bar.is-dragging{cursor:grabbing;z-index:4;box-shadow:0 0 0 3px var(--ui-ring);opacity:.85}
+body.phb-app #gantt .bar.done{cursor:pointer}
+body.phb-app #gantt .bar:focus-visible{outline:3px solid var(--ui-accent);outline-offset:3px}
+@media(max-width:650px){
+ body.phb-app :is(.phb-header-actions,.master-reference-actions,.phb-workflow-head,.master-dialog-head,.dialog-head,.modalhead){flex-wrap:wrap}
+ body.phb-app .phb-header-actions{justify-content:flex-start;width:100%}
+ body.phb-app :is(.formgrid,.dialog-grid,.master-fields){grid-template-columns:minmax(0,1fr)}
+ body.phb-app :is(.formgrid,.dialog-grid,.master-fields) .wide{grid-column:1/-1}
+}
+/* A horizontal wrapping header avoids vertical flex-basis gaps on narrow screens. */
+body.phb-app .phb-action-header{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center}
+@media(max-width:650px){body.phb-app .phb-action-header>div:first-child{flex-basis:100%}}
+body.phb-app #taskAutosaveStatus{padding:0 24px;color:var(--ui-muted);font-size:13px}
+body.phb-app .receipt-payment-badge{display:inline-block;margin:4px 0;padding:4px 8px;border:1px solid var(--ui-line);border-radius:8px;color:var(--ui-warning);font-size:12px}
+body.phb-app #receiptCancelForm{display:grid;gap:14px}
+body.phb-app #receiptCancelForm label{display:grid;gap:6px}
+body.phb-app .receipt-payment-history-row>div{display:flex;gap:8px;flex-wrap:wrap}
+
+/* One alignment contract across page headers, toolbars, cards, forms and tables. */
+body.phb-app main.phb-main :is(.panelbar,.panel-title,.master-panel-head,.receipt-list-head){align-items:center}
+body.phb-app main.phb-main :is(.phb-header-actions,.master-reference-actions,.inline-actions,.actions,.offer-actions,.offer-form-actions,.offer-manual-actions,.offer-ai-actions){display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+body.phb-app main.phb-main :is(.panelbar,.panel-title,.master-panel-head,.receipt-list-head)>:first-child{min-width:0}
+body.phb-app main.phb-main :is(.offer-entry-form,.offer-review-form,.fields,.formgrid,.dialog-grid,.master-fields)>label{min-width:0;align-self:start}
+body.phb-app main.phb-main :is(.cards,.offer-cards,.tiles,.metrics,.kpi-grid)>*{min-width:0}
+body.phb-app main.phb-main table :is(th,td){vertical-align:middle}
+body.phb-app .phb-topbar-right>*{flex:0 0 auto}
+
+/* Shared metrics: geometry belongs here; finance/cost pages only arrange sections. */
+body.phb-app .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:14px;margin:20px 0}
+body.phb-app .kpi-grid .kpi{padding:20px;min-width:0}
+body.phb-app .kpi-grid .kpi>span{display:block;min-height:2.8em;font-size:12px;line-height:1.4}
+body.phb-app .kpi-grid .kpi>strong{display:block;font-size:clamp(21px,2vw,27px);line-height:1.25;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+body.phb-app .kpi-grid .kpi>small{display:block;margin-top:8px;font-size:12px;line-height:1.5}
+
+/* Explicit foreground processing uses a top-layer modal, blocking pointer and keyboard input. */
+body.phb-app .phb-import-wait{width:min(440px,calc(100vw - 32px));padding:28px;border:1px solid var(--ui-line);border-radius:14px;background:var(--ui-surface);color:var(--ui-ink);text-align:center;box-shadow:var(--ui-shadow-raised)}
+body.phb-app .phb-import-wait:not([open]){display:none}
+body.phb-app .phb-import-wait::backdrop{background:rgba(10,30,40,.68);backdrop-filter:blur(2px)}
+body.phb-app .phb-import-wait .phb-busy-spinner{margin:0 auto 18px}
+body.phb-app .phb-import-wait h2{font-size:20px;margin:0 0 12px}
+body.phb-app .phb-import-wait p{font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+body.phb-app .phb-import-wait small{font-size:12px;color:var(--ui-muted);line-height:1.6}
+body.phb-app .phb-processing-control{min-width:0;display:grid;gap:6px;font-size:13px}
+body.phb-app .phb-processing-control select{width:100%;min-width:0;min-height:40px}
+
+/* Neutral and brand fills of retained controls share the same palette. */
+body.phb-app .gantt-row .bar:not(.done):not(.paused):not(.overdue){background:var(--brand-bar)}
+body.phb-app .gantt-row .bartext{color:var(--ui-ink)}
+body.phb-app :is(.loan-progress-used){background:var(--ui-accent)}
+body.phb-app .loan-progress-available{background:var(--brand-bar)}
+body.phb-app input[type=checkbox],body.phb-app input[type=radio]{accent-color:var(--brand-button)}
+/* Icons inside list controls use the same position as search-field magnifiers. */
+body.phb-app .phb-select-control{position:relative;display:block;min-width:0;font-size:inherit;font-weight:inherit;letter-spacing:normal;text-transform:none}
+body.phb-app .phb-select-control>.phb-select-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--ui-muted);pointer-events:none;z-index:1}
+body.phb-app .phb-select-control>select{display:block;width:100%;min-width:0;margin:0;padding-inline-start:37px!important}
+body.phb-app .phb-select-caption{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}

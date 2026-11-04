@@ -1,0 +1,47 @@
+/* Shared dialog/workflow components. All business pages consume the same tokens. */
+body.phb-app .phb-flow-dialog{color:var(--ui-ink);background:var(--ui-surface);border-color:var(--ui-line)}
+body.phb-app .phb-flow-dialog[open]{box-shadow:var(--ui-shadow-raised)}
+body.phb-app .phb-flow-dialog::backdrop{background:rgba(6,20,30,.66)}
+body.phb-app .phb-flow-dialog :is(.phb-workflow-head,.modal-head,.dialog-head,.docs-dialog-head){
+  color:var(--ui-ink);background:var(--ui-surface);min-width:0
+}
+body.phb-app .phb-flow-dialog :is(.phb-workflow-head,.modal-head,.dialog-head,.docs-dialog-head) h2{line-height:1.35;overflow-wrap:anywhere}
+body.phb-app .phb-flow-dialog :is(.phb-workflow-body,.modal,.dialog-grid,.docs-dialog-inner){min-width:0}
+body.phb-app .phb-flow-dialog :is(.actions,.modal-actions,.dialog-actions,.docs-actions,.phb-workflow-actions){
+  gap:10px;flex-wrap:wrap
+}
+body.phb-app .phb-flow-dialog :is(input,select,textarea){max-width:100%;min-width:0}
+body.phb-app .phb-flow-dialog [role="alert"],
+body.phb-app .phb-flow-dialog [role="status"]{overflow-wrap:anywhere}
+body.phb-app .phb-flow-dialog button:disabled{cursor:wait;opacity:.65}
+body.phb-app .phb-flow-dialog .phb-flow-steps{
+  display:flex;flex:0 0 auto;align-items:center;gap:8px;
+  overflow-x:auto;padding:10px 22px;margin:0;
+  border-bottom:1px solid var(--ui-line);
+  background:var(--ui-soft);list-style:none;scrollbar-width:thin
+}
+body.phb-app .phb-flow-dialog .phb-flow-step{
+  display:inline-flex;align-items:center;gap:7px;flex:1 0 auto;
+  max-width:max-content;min-width:0;font-size:12px;
+  color:var(--ui-muted);white-space:nowrap;font-weight:600
+}
+body.phb-app .phb-flow-dialog .phb-flow-index{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:23px;height:23px;flex:0 0 23px;border:1px solid var(--ui-line-strong);
+  border-radius:50%;background:var(--ui-surface);font-size:11px
+}
+body.phb-app .phb-flow-dialog .phb-flow-step.is-current{
+  color:var(--ui-ink);font-weight:800
+}
+body.phb-app .phb-flow-dialog .phb-flow-step.is-current .phb-flow-index{
+  color:var(--ui-surface);background:var(--ui-accent);border-color:var(--ui-accent)
+}
+body.phb-app .phb-flow-dialog .phb-flow-step.is-complete .phb-flow-index{
+  color:var(--ui-accent);border-color:var(--ui-accent)
+}
+body.phb-app .phb-flow-dialog.phb-flow-busy{cursor:progress}
+@media(max-width:650px){
+ body.phb-app .phb-flow-dialog .phb-flow-steps{padding:9px 12px;gap:11px}
+ body.phb-app .phb-flow-dialog .phb-flow-step{font-size:11px}
+ body.phb-app .phb-flow-dialog .phb-flow-step-label{max-width:110px;white-space:normal;line-height:1.25}
+}

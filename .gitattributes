@@ -1,0 +1,2 @@
+# Built vendor bundles contain whitespace inside runtime CSS template strings.
+static/react/assets/* linguist-generated=true -whitespace

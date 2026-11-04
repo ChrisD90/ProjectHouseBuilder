@@ -1,0 +1,49 @@
+{
+  "name": "projecthousebuilder-ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "format": "prettier --write src vite.config.ts",
+    "test:browser": "node ../tests/browser_react_ui.cjs",
+    "test:browser:features": "node ../tests/browser_project_work_funding.cjs",
+    "test:browser:projects": "node ../tests/browser_multi_projects.cjs",
+    "test:browser:work": "node ../tests/browser_work_dialogs.cjs",
+    "test:browser:backups": "node ../tests/browser_project_backups.cjs",
+    "test:browser:funding-documents": "node ../tests/browser_funding_documents.cjs",
+    "test:browser:funding-plans": "../.venv/bin/python ../dev/funding_plan_browser_smoke.py",
+    "test:browser:lifecycle": "node ../tests/browser_project_lifecycle.cjs",
+    "test:browser:receipt-phase": "node ../tests/browser_receipt_phase_ui.cjs",
+    "test:browser:ci": "../.venv/bin/python ../dev/ui_browser_smoke.py",
+    "test:visual": "../.venv/bin/python ../dev/ui_browser_smoke.py visual"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@mantine/core": "^8.3.0",
+    "@mantine/dates": "^8.3.0",
+    "@mantine/form": "^8.3.0",
+    "@mantine/hooks": "^8.3.0",
+    "@mantine/notifications": "^8.3.0",
+    "@tabler/icons-react": "^3.35.0",
+    "@tanstack/react-query": "^5.90.0",
+    "dayjs": "^1.11.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0",
+    "vitest": "^3.2.0"
+  }
+}

@@ -1,7 +1,7 @@
 name: Tests
 on:
   push:
-    branches: [main]
+    branches: [main, feature/synology-nas, feature/react-mantine-ui, dev/local-testing]
   pull_request:
 jobs:
   python:
@@ -21,8 +21,121 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install and verify React frontend
+        run: |
+          npm --prefix frontend ci --no-audit --no-fund
+          npm --prefix frontend test
+          npm --prefix frontend run build
       - name: Check JavaScript syntax
         run: |
+          node --check static/request.js
+          node --check static/components.js
+          node --check static/project_context.js
+          node --check static/project_work.js
+          node --check static/embed.js
+          node --check static/phb-workflow.js
+          node --test tests/workflow_runtime.test.cjs
           node --check static/app.js
+          node --check static/gantt_drag.js
+          node --check static/task_completion.js
+          node --check static/receipt_cancellations.js
           node --check static/costs.js
+          node --check static/cost_plan_imports.js
+          node --check static/energieplanung.js
+          node --check static/dokumente.js
           node --check static/offers.js
+          node --check static/receipts.js
+          node --check static/ui.js
+          node --check static/stammdaten.js
+          node --check static/schedule_chat.js
+          node --check static/import_jobs.js
+          node --check static/finanzierung.js
+          node --check static/shell.js
+          node --check static/daten.js
+          node --check static/chatgpt.js
+          node --check static/sw.js
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install test dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          npm --prefix frontend ci --no-audit --no-fund
+          ./frontend/node_modules/.bin/playwright install --with-deps chromium
+          npm --prefix frontend run build
+      - name: Browser workflows and visual regression
+        run: |
+          python dev/ui_browser_smoke.py
+          python dev/funding_plan_browser_smoke.py
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-artifacts
+          path: test-results/
+  postgres-projects:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: phb
+          POSTGRES_PASSWORD: phb_test_only
+          POSTGRES_DB: phb_fresh
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U phb -d phb_fresh"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencies
+        run: python -m pip install -r requirements.txt
+      - name: PostgreSQL 17 project isolation and legacy migration
+        env:
+          PHB_PG_TEST_URL: postgresql+psycopg://phb:phb_test_only@127.0.0.1:5432/phb_fresh
+        run: python dev/multi_project_pg_smoke.py
+  ocr:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-15-intel, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Provision project-local OCR on Intel macOS
+        if: matrix.os == 'macos-15-intel'
+        run: python scripts/setup_intel_ocr.py
+      - name: Set up native OCR (same bootstrap as app start)
+        run: sh scripts/ensure_ocr.sh
+      - name: Python dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Real photo and scanned PDF recognition
+        run: python dev/ocr_smoke.py
+  local-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate isolated local Compose setup
+        run: docker compose --env-file .env.dev.example -f compose.dev.yaml config --quiet
+      - name: Build OCR image and recognize scans as container user
+        run: |
+          docker build --tag phb-ocr-ci .
+          docker run --rm --network none --entrypoint python phb-ocr-ci dev/ocr_smoke.py

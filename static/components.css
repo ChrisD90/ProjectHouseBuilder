@@ -1,0 +1,43 @@
+/* Shared component contract used by React and embedded workflows. */
+.phb-request-notice{width:min(680px,calc(100vw - 32px));max-height:85dvh;overflow:auto;border:1px solid var(--brand-line);border-radius:14px;padding:24px;background:var(--brand-surface);color:var(--brand-ink);font:inherit}
+.phb-request-notice::backdrop{background:#0008}
+.phb-request-notice h2{font-size:20px;margin-top:0}
+.phb-request-notice p,.phb-request-notice dd{line-height:1.6;overflow-wrap:anywhere}
+.phb-request-notice dt{font-weight:700;margin-top:12px}
+.phb-request-notice button{font:inherit;border:1px solid var(--brand-line);border-radius:8px;background:var(--brand-soft);color:var(--brand-ink);padding:10px 14px;cursor:pointer;margin:12px 8px 0 0}
+.phb-request-notice button:focus-visible{outline:3px solid var(--brand-accent)}
+.phb-card-heading{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.phb-card-heading>h3,.phb-card-heading>strong{min-width:0;overflow-wrap:anywhere;margin:0}
+.phb-action-bar{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:10px;border-top:1px solid var(--brand-line);padding-top:16px;margin-top:16px}
+.phb-action-bar .phb-secondary-actions{margin-right:auto}
+.phb-status{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 9px;background:var(--brand-soft);color:var(--brand-ink);font-size:12px;line-height:1.4}
+.phb-status::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.phb-search{display:flex;position:relative;align-items:center;min-width:0}
+.phb-search>svg{position:absolute;left:12px;width:18px;pointer-events:none}
+.phb-search input{width:100%;min-width:0;padding-left:38px}
+.phb-source-button{flex-shrink:0}
+.phb-primary-link:focus-visible,[data-task-open]:focus-visible{outline:3px solid var(--brand-accent);outline-offset:3px;border-radius:4px}
+@media(max-width:600px){.phb-action-bar{gap:8px}.phb-action-bar>button{flex:1 1 140px}}
+.phb-primary-link{color:inherit;text-align:left;max-width:100%;overflow-wrap:anywhere;cursor:pointer}
+.phb-document-preview{min-width:0;min-height:360px;border:1px solid var(--brand-line);border-radius:12px;overflow:hidden;background:var(--brand-soft)}
+.phb-document-preview iframe{width:100%;height:65dvh;border:0}
+.phb-document-preview img{display:block;max-width:100%;max-height:70dvh;object-fit:contain;margin:auto}
+.phb-change-impact{border:1px solid var(--brand-line);border-radius:10px;padding:12px;background:var(--brand-soft);color:var(--brand-ink);margin:12px 0;font-size:13px}
+.phb-change-impact summary{cursor:pointer;font-weight:600}
+.phb-change-impact li{overflow-wrap:anywhere;line-height:1.6}
+.phb-request-notice fieldset{border:1px solid var(--brand-line);border-radius:10px;margin:16px 0;padding:12px}
+.phb-request-notice label{display:flex;align-items:flex-start;gap:10px;margin:8px 0;line-height:1.5}
+.phb-request-notice input[type=checkbox]{width:18px;height:18px;flex-shrink:0}
+.phb-request-notice textarea{width:100%;min-height:130px;background:var(--brand-soft);color:var(--brand-ink);border:1px solid var(--brand-line);border-radius:8px;padding:10px}
+/* Native disclosures keep their keyboard behavior and expose a clear leading toggle. */
+details>summary{--phb-disclosure-inset:0px;position:relative;list-style:none;cursor:pointer;min-height:26px;padding-inline-start:calc(var(--phb-disclosure-inset) + 34px)!important}
+details.panel>summary{--phb-disclosure-inset:18px}
+details>summary::-webkit-details-marker{display:none}
+details>summary::marker{content:''}
+details>summary::before{content:'';position:absolute;left:var(--phb-disclosure-inset);top:50%;width:24px;height:24px;border:1px solid var(--brand-line);border-radius:7px;background:var(--brand-soft);transform:translateY(-50%);transition:transform .18s ease;pointer-events:none}
+details>summary::after{content:'';position:absolute;left:calc(var(--phb-disclosure-inset) + 8px);top:50%;width:7px;height:7px;border-top:2px solid var(--brand-ink);border-right:2px solid var(--brand-ink);transform:translateY(-50%) rotate(45deg);transition:transform .18s ease;pointer-events:none}
+details[open]>summary::before{transform:translateY(-50%) rotate(90deg)}
+details[open]>summary::after{transform:translateY(-50%) rotate(135deg)}
+details>summary:focus-visible{outline:2px solid var(--brand-accent);outline-offset:3px;border-radius:7px}
+.mantine-Accordion-chevron{border:1px solid var(--brand-line);border-radius:7px;background:var(--brand-soft);color:var(--brand-ink)}
+@media(prefers-reduced-motion:reduce){details>summary::before,details>summary::after{transition:none}}

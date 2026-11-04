@@ -1,0 +1,26 @@
+/* Shared Natur & Bau palette for the React shell and classic workflow documents. */
+:root {
+  --brand-bg:#f3f6f3; --brand-surface:#ffffff; --brand-raised:#ffffff;
+  --brand-soft:#edf3e9; --brand-soft-accent:#e0eccb;
+  --brand-line:#dbe4dc; --brand-line-strong:#c4d2c5;
+  --brand-ink:#10251d; --brand-ink-soft:#344e40;
+  --brand-muted:#5c7165; --brand-muted-light:#738779;
+  --brand-accent:#4f771b; --brand-accent-hover:#3c5d13;
+  --brand-button:#527c1c; --brand-button-hover:#416317;
+  --brand-success:#2f6845; --brand-ring:rgba(106,146,47,.28);
+  --brand-sidebar:#f8faf7; --brand-sidebar-text:#284433;
+  --brand-nav-active:#dfebc9; --brand-nav-text:#183a21; --brand-nav-hover:#edf3e5;
+  --brand-bar:#abc87b; --brand-bar-phase:#91b755;
+}
+:root[data-phb-theme="dark"], :root[data-mantine-color-scheme="dark"] {
+  --brand-bg:#0c181a; --brand-surface:#152426; --brand-raised:#1d3032;
+  --brand-soft:#192c2d; --brand-soft-accent:#263d2b;
+  --brand-line:#304346; --brand-line-strong:#43595a;
+  --brand-ink:#eef4ef; --brand-ink-soft:#cfddd4;
+  --brand-muted:#adbbb3; --brand-muted-light:#94a79c;
+  --brand-accent:#b1d477; --brand-accent-hover:#c7e499;
+  --brand-success:#91c59b; --brand-ring:rgba(169,204,103,.3);
+  --brand-sidebar:#0c1b1c; --brand-sidebar-text:#d0ded5;
+  --brand-nav-active:#315e38; --brand-nav-text:#f4f8ef; --brand-nav-hover:#213b2c;
+  --brand-bar:#8bbca1; --brand-bar-phase:#79ab78;
+}

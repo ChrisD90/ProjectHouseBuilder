@@ -1,0 +1,373 @@
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+body {
+  margin: 0;
+}
+button,
+a,
+input {
+  touch-action: manipulation;
+}
+.app-brand {
+  letter-spacing: -0.5px;
+}
+.app-sidebar {
+  background: var(--brand-sidebar);
+  border-color: transparent;
+  color: var(--brand-sidebar-text);
+}
+.sidebar-top-actions {
+  min-height: 40px;
+  flex-shrink: 0;
+}
+.app-sidebar .sidebar-icon-button {
+  flex-shrink: 0;
+  color: var(--brand-sidebar-text);
+  border-radius: 8px;
+}
+.app-sidebar .sidebar-icon-button:hover {
+  background: var(--brand-nav-hover);
+}
+.app-sidebar :is(.sidebar-icon-button, .mantine-NavLink-root):focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
+}
+.app-sidebar[data-collapsed='true'] .mantine-NavLink-body {
+  display: none;
+}
+.sidebar-footer {
+  flex-shrink: 0;
+}
+.app-header-left {
+  flex: 1;
+  min-width: 0;
+}
+.app-header-actions {
+  flex-shrink: 0;
+}
+.app-header-actions :is(.mantine-Button-root, .mantine-Select-input) {
+  height: 38px;
+  min-height: 38px;
+  border-radius: 9px;
+}
+.app-header-actions .chatgpt-connection-button[data-icon-only='true'] {
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+}
+.app-header-actions
+  .chatgpt-connection-button[data-icon-only='true']
+  .mantine-Button-section[data-position='left'] {
+  margin-inline-end: 0;
+}
+.header-project-identity {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+.app-header-brand {
+  flex-shrink: 0;
+  line-height: 0;
+}
+.app-header-brand .brand-logo {
+  width: 236px;
+  height: 40px;
+}
+.header-project-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border-left: 1px solid var(--brand-line);
+  padding-left: 20px;
+}
+.header-project-title {
+  min-width: 0;
+  font-size: 16px;
+  color: var(--brand-ink);
+}
+.app-sidebar .mantine-NavLink-root {
+  color: var(--brand-sidebar-text);
+  border-radius: 9px;
+  margin: 2px 0;
+}
+.app-sidebar .mantine-NavLink-root[data-active] {
+  color: var(--brand-nav-text);
+  background: var(--brand-nav-active);
+}
+.app-sidebar .mantine-NavLink-root:hover {
+  background: var(--brand-nav-hover);
+}
+.app-sidebar .mantine-NavLink-label {
+  font-size: 13px;
+}
+.sidebar-group-label {
+  color: var(--brand-muted);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.app-main {
+  background: var(--brand-bg);
+}
+.page {
+  max-width: 1500px;
+  margin: auto;
+  padding: 26px 30px;
+}
+.page-header {
+  margin-bottom: 22px;
+}
+.page-header h1 {
+  font-size: 27px;
+  letter-spacing: -0.8px;
+  margin: 0 0 4px;
+}
+.page-header p {
+  margin: 0;
+}
+.metric {
+  padding: 13px 17px;
+  border: 1px solid var(--mantine-color-default-border);
+  background: var(--mantine-color-body);
+  border-radius: 12px;
+}
+.metric strong {
+  display: block;
+  font-size: 22px;
+  font-weight: 650;
+  margin-top: 3px;
+  letter-spacing: -0.5px;
+}
+.paper {
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: 14px;
+  padding: 20px;
+  background: var(--mantine-color-body);
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 18px;
+  margin-top: 16px;
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+.table-button {
+  cursor: pointer;
+}
+.table-button:hover {
+  background: var(--brand-soft);
+}
+.compact-note {
+  font-size: 12px;
+  color: var(--mantine-color-dimmed);
+}
+.frame-zone {
+  position: relative;
+  height: calc(100dvh - var(--app-shell-header-height, 80px));
+  min-height: 480px;
+}
+.workflow-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: var(--mantine-color-body);
+}
+.frame-slot {
+  height: 100%;
+  width: 100%;
+}
+.frame-slot[hidden] {
+  display: none;
+}
+.frame-progress {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 10;
+}
+.header-icon {
+  flex-shrink: 0;
+}
+.route-link {
+  color: var(--mantine-color-teal-text);
+  text-decoration: none;
+}
+@media (max-width: 700px) {
+  .page {
+    padding: 20px 15px;
+  }
+  .page-header h1 {
+    font-size: 23px;
+  }
+  .metric strong {
+    font-size: 18px;
+  }
+  .paper {
+    padding: 14px;
+  }
+}
+
+.workflow-frame[hidden] {
+  display: none !important;
+}
+
+.mantine-AppShell-header {
+  background: var(--brand-surface);
+  border-color: var(--brand-line);
+}
+.brand-logo {
+  display: block;
+  width: 200px;
+  height: 30px;
+  object-fit: contain;
+  object-position: left center;
+}
+.brand-logo-dark {
+  display: none;
+}
+[data-mantine-color-scheme='dark'] .brand-logo-light {
+  display: none;
+}
+[data-mantine-color-scheme='dark'] .brand-logo-dark {
+  display: block;
+}
+
+@media (max-width: 700px) {
+  .brand-logo {
+    width: 180px;
+    height: 27px;
+  }
+}
+@media (max-width: 380px) {
+  .brand-logo {
+    width: 155px;
+    height: 24px;
+  }
+}
+@media (max-width: 47.99em) {
+  .header-project-identity {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .app-header-brand .brand-logo {
+    width: clamp(128px, 40vw, 176px);
+    height: 28px;
+  }
+  .header-project-info {
+    border: 0;
+    padding: 0;
+    max-width: clamp(128px, 40vw, 176px);
+    gap: 5px;
+  }
+  .header-project-title {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+  .app-header-actions .chatgpt-connection-caption {
+    display: none;
+  }
+  .app-header-actions .chatgpt-connection-button {
+    width: 38px;
+    min-width: 38px;
+    padding: 0;
+  }
+  .app-header-actions .chatgpt-connection-button .mantine-Button-section[data-position='left'] {
+    margin-inline-end: 0;
+  }
+}
+
+.work-editor-actions {
+  flex-wrap: wrap;
+}
+.work-row-actions {
+  flex: 0 0 auto;
+}
+@media (max-width: 480px) {
+  .work-row-actions {
+    max-width: 30px;
+  }
+}
+
+.funding-check-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 16px;
+  align-items: start;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: left;
+  color: var(--brand-ink);
+}
+.funding-check-row:hover,
+.funding-check-row:focus-visible {
+  background: var(--brand-soft);
+}
+.funding-check-row:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
+}
+.funding-check-status {
+  width: 112px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+.funding-check-copy {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-funding-field] {
+  scroll-margin-block: 25px;
+}
+@media (max-width: 500px) {
+  .funding-check-row {
+    grid-template-columns: 1fr 16px;
+    gap: 7px;
+  }
+  .funding-check-status {
+    grid-column: 1;
+  }
+  .funding-check-copy {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .funding-check-row > span:last-child {
+    grid-column: 2;
+    grid-row: 1/3;
+    align-self: center;
+  }
+}
+
+.chatgpt-connection-button {
+  height: auto;
+  min-height: 38px;
+  padding-block: 5px;
+}
+.chatgpt-connection-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  max-width: 170px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.chatgpt-model-caption {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+}
+@media (max-width: 480px) {
+  .chatgpt-connection-caption {
+    max-width: 95px;
+    font-size: 10px;
+  }
+}

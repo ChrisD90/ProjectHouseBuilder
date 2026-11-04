@@ -1,0 +1,293 @@
+:root{color-scheme:light;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f8f8;color:#213b42}*{box-sizing:border-box}body{margin:0}header{background:#0d5260;color:white;padding:16px max(calc((100vw - 1200px)/2),24px);display:flex;gap:22px;align-items:center;flex-wrap:wrap}header a{color:white;text-decoration:none}header strong{font-size:1.1rem}header nav{margin-left:auto;display:flex;gap:16px}main{max-width:1220px;margin:auto;padding:26px 20px 60px}a{color:#0b7888}h1{margin:0 0 5px;font-size:clamp(1.7rem,3vw,2.3rem)}h2{font-size:1.15rem;margin:0 0 7px}p{margin:6px 0 12px;color:#50636a;line-height:1.5}.intro{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:20px}.backup-link{background:#e3f2f0;padding:12px 15px;border-radius:8px;white-space:nowrap}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin-bottom:20px}.tile{background:white;border-radius:12px;padding:17px;border:1px solid #dce7e9}.tile span{color:#64787d;font-size:.84rem;display:block;min-height:37px}.tile strong{font-size:1.35rem;color:#0e5665}.tile.alert strong{color:#b44a32}.columns{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}.panel{background:white;border:1px solid #dce7e9;box-shadow:0 3px 12px #173b4210;border-radius:13px;padding:20px;margin-bottom:18px;min-width:0}.panel-title{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px}.panel-title p{margin:0}.cards{display:grid;gap:12px}.smallcard{border:1px solid #dce7e9;border-radius:9px;padding:14px}.smallcard h3{margin:0 0 4px}.smallcard .meta{font-size:.83rem;color:#64787d}.smallcard .values{display:flex;flex-wrap:wrap;gap:10px 18px;margin:13px 0;color:#354d54;font-size:.9rem}.smallcard .values b{display:block;color:#0d5965}.inline-actions{display:flex;gap:9px;justify-content:flex-end}button{cursor:pointer}button:hover{filter:brightness(.97)}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.fields label{display:grid;gap:5px;font-size:.87rem;color:#455e64}.fields input,.fields select,.fields textarea{width:100%;min-width:0;padding:10px 9px;border:1px solid #c8d7da;border-radius:7px;font:inherit;background:white;color:#183740}.fields .wide{grid-column:1/-1}.hint{font-size:.85rem;color:#63757b;margin:12px 0}.records{margin-top:15px;max-height:350px;overflow:auto}.record{display:flex;justify-content:space-between;align-items:center;gap:11px;padding:9px 0;border-top:1px solid #eef0f2;font-size:.86rem}.record span{color:#6c7c81}.alerts{display:grid;gap:8px;margin-bottom:18px}.warning{padding:12px 14px;border-radius:9px;background:#fff8e8;border:1px solid #f6dfb1;color:#6f4b13}.notice{background:#e2f4ed;border:1px solid #bfdfcb;color:#165b38;border-radius:9px;padding:12px;margin-bottom:18px}.notice.error{background:#fff0ec;border-color:#e4bcb3;color:#9c3b26}.months{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}.month{background:#f3f8f8;border-radius:8px;padding:13px;min-width:0}.month strong{font-size:.98rem;display:block;margin-top:7px}.bar{background:#d5e8eb;border-radius:5px;height:7px;margin-top:10px;overflow:hidden}.bar>span{display:block;background:#0d8794;height:100%;width:0}.backup-status{border:1px dashed #a5c7cc;border-radius:8px;padding:14px;background:#f8fbfb;font-size:.89rem}code{background:#edf3f4;border-radius:3px;padding:2px 4px;overflow-wrap:anywhere}dialog{width:min(720px,calc(100vw - 24px));border:0;border-radius:15px;padding:0;box-shadow:0 20px 80px #18383e50}dialog::backdrop{background:#132f3577}.modal{padding:22px}.modal-head,.modal-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:17px}.modal-actions{margin:19px 0 0}button:disabled{opacity:.5;cursor:default}@media(max-width:850px){.columns{grid-template-columns:1fr}.months{grid-template-columns:repeat(3,1fr)}.intro{align-items:flex-start;flex-direction:column}}@media(max-width:480px){main{padding:16px 12px 40px}.fields{grid-template-columns:1fr}.months{grid-template-columns:repeat(2,1fr)}.panel{padding:15px}header{padding:14px}header nav{margin-left:0}}
+
+/* Credit assistant and document filing: consistent, independently scrollable dialog. */
+.phb-page-finanzierung .loan-dialog{max-height:min(90dvh,950px);overflow-y:auto}
+.phb-page-finanzierung .loan-dialog .modal{padding:24px}
+.phb-page-finanzierung .loan-ai-assistant{
+  margin:0 0 22px;padding:18px;border:1px solid #cde4e2;
+  background:#f3faf9;border-radius:12px;
+}
+.phb-page-finanzierung .loan-ai-assistant strong{font-size:14px;color:#145c65}
+.phb-page-finanzierung .loan-ai-assistant>.hint,
+.phb-page-finanzierung .loan-ai-assistant p{margin:7px 0 12px}
+.phb-page-finanzierung .loan-ai-actions{
+  display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:12px;align-items:end;
+}
+.phb-page-finanzierung .loan-ai-actions label,.phb-page-finanzierung .loan-doc-form label{
+  display:grid;gap:6px;font-size:13px;color:#45626c;min-width:0;
+}
+.phb-page-finanzierung .loan-ai-actions input,.phb-page-finanzierung .loan-doc-form input,.phb-page-finanzierung .loan-doc-form select{
+  min-width:0;width:100%;padding:10px;border:1px solid #c8d7da;border-radius:8px;
+}
+
+.phb-page-finanzierung .loan-ai-warnings{font-size:12px;line-height:1.6;color:#815b2b;margin:6px 0;padding-left:20px}
+.phb-page-finanzierung #loanAiStatus:not(:empty){margin:12px 0 0;overflow-wrap:anywhere}
+.phb-page-finanzierung .loan-documents{
+  padding:20px 24px 24px;border-top:1px solid #dfebed;background:#fbfdfd;
+}
+.phb-page-finanzierung .loan-documents[hidden]{display:none}
+.phb-page-finanzierung .loan-documents h3{margin:0 0 6px;font-size:16px}
+.phb-page-finanzierung .loan-documents .hint{line-height:1.6}
+.phb-page-finanzierung .loan-doc-form{
+  display:grid;grid-template-columns:minmax(160px,.55fr) minmax(0,1fr) minmax(0,1fr) auto;
+  align-items:end;gap:12px;margin-top:16px;
+}
+
+.phb-page-finanzierung .loan-document-list{display:grid;gap:8px;margin-top:16px}
+.phb-page-finanzierung .loan-drawdown-profile-details{margin:16px 0;border:1px solid var(--ui-line,#d8e6e8);border-radius:10px;background:var(--ui-surface,#fff);padding:12px 14px}
+.phb-page-finanzierung .loan-drawdown-profile-details>summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--ui-accent,#235e68)}
+.phb-page-finanzierung .loan-drawdown-profile-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:15px}
+.phb-page-finanzierung .loan-drawdown-profile-form label{display:grid;gap:5px;font-size:12px;color:var(--ui-muted,#4f6971)}
+.phb-page-finanzierung .loan-drawdown-profile-form input,.phb-page-finanzierung .loan-drawdown-profile-form textarea{width:100%;min-width:0;padding:9px;border:1px solid var(--ui-line,#c8d7da);border-radius:8px;background:var(--ui-surface,#fff);color:var(--ui-ink,#183740)}
+.phb-page-finanzierung .loan-drawdown-profile-form .wide{grid-column:1/-1}
+.phb-page-finanzierung .loan-drawdown-profile-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.phb-page-finanzierung .loan-doc-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;
+  padding:12px 14px;border:1px solid #dce7e9;border-radius:10px;background:white;
+}
+.phb-page-finanzierung .loan-doc-row div{min-width:0;overflow-wrap:anywhere}
+.phb-page-finanzierung .loan-doc-row a{font-weight:650;font-size:13px}
+.phb-page-finanzierung .loan-doc-row small{display:block;color:#607680;margin-top:5px;font-size:11px}
+@media(max-width:720px){
+  .phb-page-finanzierung .loan-dialog .modal{padding:18px}
+  .phb-page-finanzierung .loan-ai-assistant{padding:14px}
+  .phb-page-finanzierung .loan-ai-actions,.phb-page-finanzierung .loan-doc-form{
+    grid-template-columns:minmax(0,1fr);
+  }
+  .phb-page-finanzierung .loan-drawdown-profile-form{grid-template-columns:1fr}
+  .phb-page-finanzierung .loan-drawdown-profile-form .wide{grid-column:auto}
+  .phb-page-finanzierung .loan-documents{padding:18px}
+  .phb-page-finanzierung .loan-ai-actions button,
+  .phb-page-finanzierung .loan-doc-form button{width:100%}
+}
+
+/* Editing an existing loan remains visible and usable after each save. */
+.phb-page-finanzierung .loan-editor-intro{
+  margin:0 0 18px;line-height:1.6;color:#4d6670;
+}
+.phb-page-finanzierung .loan-save-status{
+  margin:16px 0 0;padding:10px 12px;
+  background:#eef8f5;border:1px solid #c9e5db;
+  color:#205c4e;border-radius:9px;line-height:1.5;
+}
+.phb-page-finanzierung .loan-save-status:empty{display:none}
+.phb-page-finanzierung .loan-save-status.error{
+  background:#fff2ee;border-color:#edc6bf;color:#91392d;
+}
+.phb-page-finanzierung .loan-ai-overwrite{
+  grid-column:1/-1;display:flex!important;align-items:flex-start;
+  gap:9px!important;font-size:12px!important;line-height:1.5;
+}
+.phb-page-finanzierung .loan-ai-overwrite input{width:16px!important;height:16px;flex:0 0 16px;margin:1px 0 0}
+.phb-page-finanzierung .inline-actions .loan-doc-count{
+  font-size:12px;color:#677e85;white-space:nowrap;margin-right:auto;
+}
+.phb-page-finanzierung .loan-card-counts{display:grid;gap:2px;margin-right:auto;align-self:center}
+.phb-page-finanzierung .loan-card-counts .loan-doc-count{margin:0}
+.phb-page-finanzierung .loan-drawdown-count{font-size:10px;color:#71868d;white-space:nowrap}
+.phb-page-finanzierung .loan-dialog .modal-actions{
+  flex-wrap:wrap;gap:12px;margin-top:18px;
+}
+@media(max-width:520px){
+ .phb-page-finanzierung .loan-dialog .modal-actions{align-items:stretch}
+ .phb-page-finanzierung .loan-dialog .modal-actions button{flex:1 1 100%}
+}
+
+/* Finance management stays compact after invoice payments moved to receipts. */
+.phb-page-finanzierung .finance-events>.panel{width:100%;margin-bottom:18px}
+.phb-page-finanzierung .finance-events .fields{max-width:900px}
+.phb-page-finanzierung .phb-header-actions{gap:10px}
+.phb-page-finanzierung .finance-add-button{display:grid;place-items:center;width:34px;height:34px;min-width:34px;padding:0;border:1px solid var(--ui-line-strong,#c8d7da);border-radius:9px;background:var(--ui-surface,#fff);color:var(--ui-accent,#087e83);box-shadow:none}
+.phb-page-finanzierung .finance-add-button:hover{background:var(--ui-soft-accent,#e8f5f2);border-color:var(--ui-accent,#087e83)}
+.phb-page-finanzierung .finance-add-button .phb-icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.phb-page-finanzierung .manual-drawdown-document small{font-size:11px;color:#687d83;line-height:1.45}
+.phb-page-finanzierung .manual-drawdown-document[hidden]{display:none}
+
+/* Bank drawdown workflow */
+.phb-page-finanzierung .drawdown-history-panel{margin:0 0 18px}
+.phb-page-finanzierung .drawdown-history{display:grid;gap:9px}
+.phb-page-finanzierung .drawdown-history-row{
+ display:flex;align-items:center;justify-content:space-between;gap:16px;
+ border:1px solid #dce8ea;border-radius:11px;background:#fff;padding:13px 15px;
+}
+.phb-page-finanzierung .drawdown-history-row>div{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.phb-page-finanzierung .drawdown-history-row>div:first-child{display:grid;gap:4px}
+.phb-page-finanzierung .drawdown-history-row span{font-size:12px;color:#60747b}
+.phb-page-finanzierung .drawdown-history-title{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.phb-page-finanzierung .drawdown-status-badge{display:inline-flex;align-items:center;width:max-content;padding:3px 8px;border-radius:999px;background:#eef2f3;color:#4d6168!important;font-size:11px!important;font-weight:700}
+.phb-page-finanzierung .status-entwurf{background:#eef4f5;color:#47616a!important}
+.phb-page-finanzierung .status-eingereicht{background:#fff1cf;color:#7b5610!important}
+.phb-page-finanzierung .status-bestätigt{background:#def3e9;color:#17603f!important}
+.phb-page-finanzierung .status-abgelehnt{background:#fde5e1;color:#8c3026!important}
+.phb-page-finanzierung .status-zurückgenommen{background:#ececef;color:#5b5b67!important}
+.phb-page-finanzierung .button-link{display:inline-flex;align-items:center;padding:8px 12px;border:1px solid #b8cdd1;border-radius:8px;background:#fff;text-decoration:none;font-size:13px;font-weight:650}
+.phb-page-finanzierung .doc-type{color:#0d6873}
+.phb-page-finanzierung .drawdown-dialog{width:min(920px,calc(100vw - 24px));max-height:min(92dvh,980px);overflow:auto}
+.phb-page-finanzierung .drawdown-dialog .modal{padding:24px}
+.phb-page-finanzierung .drawdown-dialog .modal-head{align-items:flex-start}
+.phb-page-finanzierung .drawdown-dialog .modal-head h2{margin:0 0 5px}
+.phb-page-finanzierung .drawdown-dialog .modal-head p{margin:0;color:#60747b;font-size:13px}
+.phb-page-finanzierung .drawdown-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.phb-page-finanzierung .drawdown-fields label{display:grid;gap:6px;font-size:13px;color:#45626c}
+.phb-page-finanzierung .drawdown-fields .wide{grid-column:1/-1}
+.phb-page-finanzierung .drawdown-fields input,.phb-page-finanzierung .drawdown-fields select,.phb-page-finanzierung .drawdown-fields textarea{width:100%;min-width:0;padding:10px;border:1px solid #c8d7da;border-radius:8px;background:#fff}
+.phb-page-finanzierung .drawdown-template-state,.phb-page-finanzierung .drawdown-booking-note{margin:16px 0 0;padding:12px 14px;border-radius:10px;background:#f2f8f8;border:1px solid #d3e5e4;font-size:12px;line-height:1.55;color:#415e65}
+.phb-page-finanzierung .drawdown-ai{display:flex;gap:9px;align-items:flex-start;margin:13px 0 0;padding:12px 14px;border:1px solid #c8e0dc;border-radius:10px;background:#f1faf7;font-size:13px}
+.phb-page-finanzierung .drawdown-ai[hidden]{display:none}
+.phb-page-finanzierung .drawdown-ai input{width:16px;height:16px;flex:0 0 auto;margin-top:2px}
+.phb-page-finanzierung .drawdown-ai small{display:block;color:#5b7479;margin-top:3px}
+.phb-page-finanzierung .drawdown-receipts{margin:17px 0 0}
+.phb-page-finanzierung .drawdown-section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:9px}
+.phb-page-finanzierung .drawdown-section-head h3{font-size:15px;margin:0 0 3px}
+.phb-page-finanzierung .drawdown-section-head p{font-size:12px;color:#60747b;margin:0}
+.phb-page-finanzierung .drawdown-section-head>strong{white-space:nowrap;color:#0d6873;font-size:13px}
+.phb-page-finanzierung .drawdown-receipt-list{display:grid;gap:7px;max-height:330px;overflow:auto;padding:2px}
+.phb-page-finanzierung .drawdown-receipt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:11px;padding:11px 12px;border:1px solid #d8e5e7;border-radius:9px;background:#fff;cursor:pointer}
+.phb-page-finanzierung .drawdown-receipt:has(input:checked){border-color:#319083;background:#f0faf7}
+.phb-page-finanzierung .drawdown-receipt.disabled{opacity:.58;cursor:default;background:#f5f7f7}
+.phb-page-finanzierung .drawdown-receipt input{width:17px;height:17px}
+.phb-page-finanzierung .drawdown-receipt span{min-width:0}
+.phb-page-finanzierung .drawdown-receipt strong,.phb-page-finanzierung .drawdown-receipt small{display:block;overflow-wrap:anywhere}
+.phb-page-finanzierung .drawdown-receipt small{font-size:11px;color:#687d83;margin-top:3px}
+.phb-page-finanzierung .drawdown-amount{text-align:right}
+.phb-page-finanzierung .drawdown-dialog .modal-actions{margin-top:17px;flex-wrap:wrap}
+.phb-page-finanzierung #drawdownStatus:not(:empty){padding:10px 12px;background:#fff3e8;border-radius:8px;color:#7c4d22}
+.phb-page-finanzierung .drawdown-preview-stage[hidden]{display:none}
+.phb-page-finanzierung .drawdown-preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+.phb-page-finanzierung .drawdown-preview-head h3{margin:7px 0 3px;font-size:18px}
+.phb-page-finanzierung .drawdown-preview-head p{margin:0;font-size:12px}
+.phb-page-finanzierung .drawdown-preview-grid{display:grid;grid-template-columns:minmax(330px,.85fr) minmax(380px,1.15fr);gap:16px;align-items:start}
+.phb-page-finanzierung .drawdown-position-panel,.phb-page-finanzierung .drawdown-pdf-panel{min-width:0;border:1px solid #dce7e9;border-radius:11px;background:#f9fbfb;padding:14px}
+.phb-page-finanzierung .drawdown-total-field{display:grid;gap:6px;margin-bottom:12px;font-size:13px;font-weight:700;color:#28515a}
+.phb-page-finanzierung .drawdown-total-field input,.phb-page-finanzierung .drawdown-position input{width:100%;min-width:0;padding:9px;border:1px solid #c8d7da;border-radius:7px;background:#fff}
+.phb-page-finanzierung .drawdown-position-editor{display:grid;gap:10px;max-height:470px;overflow:auto;padding-right:2px}
+.phb-page-finanzierung .drawdown-position{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding:12px;border:1px solid #d8e5e7;border-radius:9px;background:#fff}
+.phb-page-finanzierung .drawdown-position header{grid-column:1/-1;display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#657a80}
+.phb-page-finanzierung .drawdown-position header span{overflow-wrap:anywhere;text-align:right}
+.phb-page-finanzierung .drawdown-position label{display:grid;gap:4px;min-width:0;font-size:11px;color:#526b72}
+.phb-page-finanzierung .drawdown-preview-actions{display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;margin-top:13px}
+.phb-page-finanzierung .drawdown-pdf-panel{padding:8px;background:#e8edef}
+.phb-page-finanzierung .drawdown-pdf-panel iframe{display:block;width:100%;height:min(65dvh,680px);border:0;border-radius:7px;background:#fff}
+.phb-page-finanzierung .drawdown-pdf-panel iframe[hidden]{display:none}
+.phb-page-finanzierung .drawdown-no-preview{padding:30px 20px;text-align:center;color:#60747b;font-size:13px;line-height:1.55;background:#fff;border-radius:7px}
+.phb-page-finanzierung .drawdown-no-preview[hidden]{display:none}
+@media(max-width:720px){
+ .phb-page-finanzierung .drawdown-dialog .modal{padding:17px}
+ .phb-page-finanzierung .drawdown-fields{grid-template-columns:1fr}
+ .phb-page-finanzierung .drawdown-fields .wide{grid-column:auto}
+ .phb-page-finanzierung .drawdown-history-row,.phb-page-finanzierung .drawdown-section-head{align-items:stretch;flex-direction:column}
+ .phb-page-finanzierung .drawdown-history-row>div:last-child{width:100%}
+ .phb-page-finanzierung .drawdown-history-row>div:last-child>*{flex:1}
+ .phb-page-finanzierung .drawdown-receipt{grid-template-columns:auto minmax(0,1fr)}
+ .phb-page-finanzierung .drawdown-amount{grid-column:2;text-align:left}
+ .phb-page-finanzierung .drawdown-dialog .modal-actions button{width:100%}
+ .phb-page-finanzierung .drawdown-preview-head{flex-direction:column}
+ .phb-page-finanzierung .drawdown-preview-grid{grid-template-columns:1fr}
+ .phb-page-finanzierung .drawdown-position{grid-template-columns:1fr}
+ .phb-page-finanzierung .drawdown-position header{grid-column:auto}
+ .phb-page-finanzierung .drawdown-preview-actions>*{width:100%}
+}
+
+/* Compact credit cockpit and guided usage workflow. */
+.phb-page-finanzierung #totals{grid-template-columns:repeat(3,minmax(0,1fr));max-width:900px}
+.phb-page-finanzierung .status-ausgezahlt{background:#def3e9;color:#17603f!important}
+.phb-page-finanzierung .loan-overview-card{padding:17px;display:grid;gap:13px}
+.phb-page-finanzierung .loan-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.phb-page-finanzierung .loan-card-head h3,.phb-page-finanzierung .equity-overview-card h3{margin:0 0 4px}
+.phb-page-finanzierung .loan-card-head .meta,.phb-page-finanzierung .equity-overview-card .meta{margin:0}
+.phb-page-finanzierung .loan-pending{font-size:11px;color:#795713;background:#fff1cf;border-radius:999px;padding:5px 9px;white-space:nowrap}
+.phb-page-finanzierung .loan-progress{height:9px;border-radius:999px;background:#e9eff0;display:flex;overflow:hidden}
+.phb-page-finanzierung .loan-progress-used{background:#13786f}
+.phb-page-finanzierung .loan-progress-available{background:#62b8ad}
+.phb-page-finanzierung .loan-key-values{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.phb-page-finanzierung .loan-key-values>div{padding:9px 10px;border-radius:9px;background:#f4f8f8;min-width:0}
+.phb-page-finanzierung .loan-key-values span{display:block;font-size:10px;color:#6a7d82;margin-bottom:3px}
+.phb-page-finanzierung .loan-key-values b{display:block;font-size:13px;color:#174b55;overflow-wrap:anywhere}
+.phb-page-finanzierung .equity-overview-card{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.phb-page-finanzierung .equity-overview-card .meta strong{color:#155c65}
+.phb-page-finanzierung .finance-booking-details>summary{cursor:pointer;font-weight:700;color:#315a63}
+.phb-page-finanzierung .finance-booking-details .finance-events{margin-top:18px}
+.phb-page-finanzierung .usage-history{display:grid;gap:8px}
+.phb-page-finanzierung .usage-history-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 14px;border:1px solid #dce8ea;border-radius:10px;background:#fff}
+.phb-page-finanzierung .usage-history-row>div{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.phb-page-finanzierung .usage-history-row>div:first-child{display:grid;gap:4px}
+.phb-page-finanzierung .usage-history-row span{font-size:12px;color:#60747b}
+.phb-page-finanzierung .usage-history-row.is-reversed{opacity:.65;background:#f5f6f6}
+.phb-page-finanzierung .usage-dialog{width:min(820px,calc(100vw - 24px));max-height:92dvh;overflow:auto}
+.phb-page-finanzierung .usage-dialog .modal{padding:24px}
+.phb-page-finanzierung .usage-dialog .modal-head{align-items:flex-start}
+.phb-page-finanzierung .usage-dialog .modal-head h2{margin:0 0 4px}
+.phb-page-finanzierung .usage-dialog .modal-head p{margin:0;font-size:13px}
+.phb-page-finanzierung .usage-kind-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:18px 0}
+.phb-page-finanzierung .usage-kind-picker label{display:flex;align-items:flex-start;gap:9px;border:1px solid #d7e4e6;border-radius:11px;padding:12px;background:#fff;cursor:pointer}
+.phb-page-finanzierung .usage-kind-picker label:has(input:checked){border-color:#278b80;background:#eff9f6;box-shadow:0 0 0 2px #278b801a}
+.phb-page-finanzierung .usage-kind-picker input{width:16px;height:16px;margin:2px 0 0;flex:0 0 auto}
+.phb-page-finanzierung .usage-kind-picker strong,.phb-page-finanzierung .usage-kind-picker small{display:block}
+.phb-page-finanzierung .usage-kind-picker strong{font-size:13px;color:#244e57}
+.phb-page-finanzierung .usage-kind-picker small{font-size:11px;color:#687c82;line-height:1.45;margin-top:3px}
+.phb-page-finanzierung .usage-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.phb-page-finanzierung .usage-fields label{display:grid;gap:6px;font-size:13px;color:#45626c;min-width:0}
+.phb-page-finanzierung .usage-fields .wide{grid-column:1/-1}
+.phb-page-finanzierung .usage-fields :is(input,select,textarea){width:100%;min-width:0;padding:10px;border:1px solid #c8d7da;border-radius:8px;background:#fff}
+.phb-page-finanzierung .usage-fields small{font-size:11px;color:#697d83}
+.phb-page-finanzierung .usage-available{padding:11px 13px;border-radius:9px;background:#edf7f5;color:#205f56;font-size:13px;font-weight:700;margin:15px 0 0}
+@media(max-width:760px){
+ .phb-page-finanzierung #totals{grid-template-columns:1fr}
+ .phb-page-finanzierung .loan-key-values{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .phb-page-finanzierung .usage-kind-picker,.phb-page-finanzierung .usage-fields{grid-template-columns:1fr}
+ .phb-page-finanzierung .usage-fields .wide{grid-column:auto}
+ .phb-page-finanzierung .usage-history-row{align-items:flex-start;flex-direction:column}
+}
+
+/* Finance-specific dark surfaces override remaining legacy light colors. */
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.panel,.tile,.smallcard,.record,
+ .drawdown-history-row,.usage-history-row,.usage-kind-picker label,.drawdown-receipt,
+ .drawdown-position,.drawdown-position-panel,.drawdown-no-preview,.loan-documents,
+ .loan-doc-row,.backup-status,.month){background:var(--ui-surface);border-color:var(--ui-line);color:var(--ui-ink)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.loan-key-values>div,.finance-booking-details,
+ .drawdown-template-state,.drawdown-booking-note,.drawdown-position-panel,
+ .drawdown-pdf-panel,.usage-history-row.is-reversed){background:var(--ui-soft);border-color:var(--ui-line)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(p,.hint,.meta,.record span,
+ .drawdown-history-row span,.usage-history-row span,.drawdown-section-head p,
+ .drawdown-receipt small,.drawdown-position header,.usage-kind-picker small,
+ .usage-fields small,.inline-actions .loan-doc-count,.loan-drawdown-count){color:var(--ui-muted)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(h1,h2,h3,.smallcard h3,
+ .loan-key-values b,.usage-kind-picker strong,.drawdown-position strong){color:var(--ui-ink)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.fields input,.fields select,.fields textarea,
+ .drawdown-fields input,.drawdown-fields select,.drawdown-fields textarea,
+ .drawdown-total-field input,.drawdown-position input,.usage-fields input,
+ .usage-fields select,.usage-fields textarea){background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-line-strong)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .usage-kind-picker label:has(input:checked),
+:root[data-phb-theme="dark"] .phb-page-finanzierung .drawdown-receipt:has(input:checked){background:var(--ui-soft-accent);border-color:var(--ui-accent)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .drawdown-receipt.disabled{background:var(--ui-soft)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .usage-available{background:var(--ui-soft-accent);color:var(--ui-success)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .loan-progress{background:var(--ui-line)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .loan-save-status,
+:root[data-phb-theme="dark"] .phb-page-finanzierung .notice{background:var(--ui-soft-accent);border-color:var(--ui-line);color:var(--ui-success)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .button-link{background:var(--ui-raised);border-color:var(--ui-line-strong);color:var(--ui-accent)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.loan-save-status.error,.notice.error){background:#402629;border-color:#694044;color:var(--ui-danger)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .loan-pending{background:#493a22;color:var(--ui-warning)}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .status-entwurf{background:var(--ui-soft);color:var(--ui-ink-soft)!important}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .status-eingereicht{background:#493a22;color:var(--ui-warning)!important}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.status-ausgezahlt,.status-bestätigt){background:#183c35;color:var(--ui-success)!important}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .status-abgelehnt{background:#46272a;color:var(--ui-danger)!important}
+:root[data-phb-theme="dark"] .phb-page-finanzierung .status-zurückgenommen{background:#303b47;color:var(--ui-muted)!important}
+:root[data-phb-theme="dark"] .phb-page-finanzierung :is(.drawdown-ai,#drawdownStatus:not(:empty)){background:var(--ui-soft-accent);border-color:var(--ui-line);color:var(--ui-ink-soft)}
+/* Receipt actions sit in the top-right corner of each financing card. */
+.phb-page-finanzierung :is(.loan-overview-card,.equity-overview-card){position:relative}
+.phb-page-finanzierung .loan-card-head{padding-right:44px}
+.phb-page-finanzierung .equity-overview-card{display:grid;grid-template-columns:minmax(0,1fr)}
+.phb-page-finanzierung .equity-overview-card>div{padding-right:44px}
+.phb-page-finanzierung .equity-overview-card>[data-equity]{justify-self:end}
+.phb-page-finanzierung :is(.loan-card-head,.equity-overview-card)>div{min-width:0;overflow-wrap:anywhere}
+.phb-page-finanzierung button.finance-receipt-button{position:absolute;top:14px;right:14px;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-height:32px;padding:0;border:1px solid var(--ui-line);border-radius:9px;background:var(--ui-surface);color:var(--ui-ink);overflow:visible}
+.phb-page-finanzierung .finance-receipt-button[hidden]{display:none}
+.phb-page-finanzierung .finance-receipt-count{position:absolute;top:-7px;right:-7px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 3px;border:2px solid var(--ui-surface);border-radius:999px;background:var(--ui-soft-accent);color:var(--ui-accent);font-size:10px;font-weight:700;line-height:1}
+.phb-page-finanzierung .funding-receipt-dialog{width:min(1120px,calc(100vw - 28px))}
+.phb-page-finanzierung .funding-receipt-scroll{overflow-x:auto}
+.phb-page-finanzierung .funding-receipt-scroll table{width:100%;border-collapse:collapse}
+.phb-page-finanzierung .funding-receipt-scroll :is(th,td){padding:12px;text-align:left;border-bottom:1px solid var(--ui-line)}
+.phb-page-finanzierung button.finance-warning-action{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;line-height:1.5;white-space:normal;font:inherit;background:color-mix(in srgb,var(--ui-warning) 9%,var(--ui-surface));border:1px solid color-mix(in srgb,var(--ui-warning) 35%,var(--ui-line));color:var(--ui-ink)}
+.phb-page-finanzierung .finance-warning-link{font-size:13px;font-weight:650;white-space:nowrap}
+.phb-page-finanzierung .finance-warning-action:focus-visible{outline:2px solid var(--ui-accent);outline-offset:3px}
+@media(max-width:600px){.phb-page-finanzierung button.finance-warning-action{align-items:flex-start;flex-direction:column;gap:5px}}

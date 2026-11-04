@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Angebote · ProjectHouseBuilder</title>
+<link rel="stylesheet" href="/static/vendor-bootstrap-5.3.6.min.css"><link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/kosten.css"><link rel="stylesheet" href="/static/shell.css"><link rel="stylesheet" href="/static/angebote.css"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0e7782"><link rel="stylesheet" href="/static/chatgpt.css"><link rel="stylesheet" href="/static/ui.css"><link rel="stylesheet" href="/static/workflow-dialogs.css"><script src="/static/ui.js"></script><link rel="stylesheet" href="/static/phb-workflow.css"><script src="/static/phb-workflow.js"></script><link rel="stylesheet" href="/static/buttons.css"></head>
+<body class="phb-app phb-page-angebote">
+{% set phb_active = 'angebote' %}{% set phb_title = 'Angebote' %}{% include '_shell_open.html' %}
+<main id="phbMain" class="budget-main phb-main offers-page">
+  <div class="heading offers-heading phb-action-header"><div><span class="phb-page-kicker">Finanzen / Handwerkerangebote</span><h1>Angebote</h1><p>Erst wenn du <strong>„Annehmen“</strong> auswählst, wird die Bruttosumme in <a href="/kosten">Kosten & Budget</a> übernommen. Hochladen, Speichern oder Vergleichen kostet noch nichts.</p></div><div class="phb-header-actions"><button type="button" id="openOfferDrafts" class="offer-drafts-icon" aria-label="Offene Angebotsentwürfe prüfen" title="Offene Angebotsentwürfe prüfen" hidden><svg class="phb-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#file-check"></use></svg><span id="offerDraftTriggerCount" class="offer-icon-badge">0</span></button><button type="button" id="openOfferWorkflow" class="primary">+ Angebot erfassen</button></div></div>
+  <div class="offers-stats" aria-live="polite"><div><span>Zu prüfen</span><strong id="offersCountDraft">–</strong></div><div><span>Im Vergleich</span><strong id="offersCountListed">–</strong></div><div><span>Angenommen</span><strong id="offersCountAccepted">–</strong></div><div class="offers-total"><span>Summe angenommener Aufträge</span><strong id="offersAcceptedTotal">–</strong></div></div>
+  <dialog id="offerWorkflowDialog" class="phb-workflow-dialog phb-offer-workflow" aria-labelledby="offerWorkflowTitle">
+   <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebotsverwaltung</span><h2 id="offerWorkflowTitle">Angebot erfassen und prüfen</h2><p>PDF analysieren, erkannte Positionen direkt prüfen und erst danach übernehmen.</p></div><div class="phb-workflow-head-actions"><button id="anotherOffer" type="button" class="subtle" hidden>+ Weiteres Angebot</button><button id="closeOfferWorkflow" type="button" class="subtle">Schließen</button></div></div>
+   <div class="phb-workflow-body">
+  <section class="panel budget-panel offers-create" id="angebot-erfassen"><div class="panelbar"><div><h2>Neues Angebot erfassen</h2><p>Wähle den für dich einfachsten Weg. Beide landen in derselben Angebotsliste.</p></div></div>
+   <div class="offer-entry-switch" role="group" aria-label="Art der Angebotserfassung">
+     <button type="button" id="offerMethodPdf" data-import-kind="offers" class="offer-method is-selected" aria-pressed="true">PDF hochladen <small>Automatisch auslesen & prüfen</small></button>
+     <button type="button" id="offerMethodManual" class="offer-method" aria-pressed="false">Manuell erfassen <small>Firma und Gesamtbetrag eingeben</small></button>
+   </div>
+   <form id="offerImportForm" data-import-kind="offers" class="offer-entry-form"><label class="offer-file-label">Angebots-PDFs auswählen (bis zu 8) <input type="file" name="files" accept=".pdf,application/pdf" multiple required></label>
+     <label>Analyseart<select name="analysis_mode" id="offerAnalysisMode"><option value="local">Lokal analysieren (keine Datenübertragung)</option><option value="ai">Mit ChatGPT analysieren (nach Freigabe)</option></select></label>
+     <button type="submit" class="primary">Dateien analysieren</button><p class="offer-import-status" id="offerImportStatus" role="status">Die Dateien werden nacheinander analysiert. Im Vordergrund öffnet sich danach die Prüfung automatisch. Im Hintergrund kannst du weiterarbeiten und später über die Warteschlange prüfen.</p></form>
+   <form id="offerManualForm" class="offer-entry-form offer-manual-form" hidden>
+    <label>Firma / Anbieter <select name="contractor_id" id="offerManualContractor" data-offer-company required><option value="">Firma aus Stammdaten auswählen</option></select><small>Fehlt die Firma, kannst du sie hier ausdrücklich neu anlegen.</small></label>
+    <label>Bruttogesamtsumme (€) <input name="gross" inputmode="decimal" required placeholder="z. B. 8.500,00"></label>
+    <label>Gewerk / Kategorie <select name="category" id="offerManualCategory" required></select></label>
+    <label>Kostenplanposition (optional) <select name="budget_line_id" id="offerManualBudget"></select></label>
+    <label class="offer-wide">Angebots-PDF anhängen (optional, max. 15 MB)<input name="file" type="file" accept=".pdf,application/pdf"><small>Wird als Original gespeichert. Deine manuell eingetragenen Werte bleiben maßgeblich; es erfolgt keine automatische Analyse.</small></label>
+    <details class="offer-manual-more"><summary>Weitere Angaben (optional)</summary><div class="offer-optional-fields">
+      <label>Angebotsnummer <input name="number" maxlength="100"></label>
+      <label>Datum <input name="issued" maxlength="20" placeholder="TT.MM.JJJJ"></label>
+      <label>Gültig bis <input name="expires" maxlength="20" placeholder="TT.MM.JJJJ"></label>
+      <label>Netto (€) <input name="net" inputmode="decimal"></label>
+      <label>MwSt. (€) <input name="vat" inputmode="decimal"></label>
+      <label class="offer-wide">Notizen <textarea name="notes" rows="2" maxlength="2000"></textarea></label>
+    </div></details>
+    <div class="offer-manual-actions phb-dialog-actions"><button class="primary" type="submit">Angebot speichern</button><span id="offerManualStatus" class="offer-import-status" role="status">Das Angebot erscheint direkt in der Liste. Es wird noch nicht beauftragt.</span></div>
+   </form>
+  </section>
+  <section class="panel budget-panel offer-review-section" id="angebote-pruefen"><div class="panelbar"><div><h2>Angebotsentwürfe und neue Versionen prüfen <span id="offersDraftBadge" class="offers-counter"></span></h2><p>Prüfe eingelesene Angebote und neue Versionsentwürfe, bevor sie sichtbar aktuell werden.</p></div><a class="mini" href="/stammdaten#kategorien">Kategorien verwalten ↗</a></div><div class="offer-review-layout"><div id="offerDrafts" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div><aside id="offerPdfPane" class="phb-inline-pdf" hidden><header><strong>Angebots-PDF parallel prüfen</strong><a id="offerPdfDownload" class="mini" target="_blank" rel="noopener">Original herunterladen</a></header><iframe id="offerPdfFrame" title="Vorschau des zu prüfenden Angebots" loading="lazy"></iframe></aside></div></section>
+   </div></dialog>
+  <dialog id="offerCompanyDialog" class="phb-messagebox" aria-labelledby="offerCompanyTitle">
+    <form id="offerCompanyForm">
+      <h2 id="offerCompanyTitle">Firma für das Angebot anlegen?</h2>
+      <p id="offerCompanyHint">Die Firma wird in den Stammdaten gespeichert und anschließend diesem Angebot zugeordnet.</p>
+      <label>Firmenname<input id="offerCompanyName" name="name" maxlength="200" required autocomplete="organization"></label>
+      <label>Gewerk<input id="offerCompanyTrade" name="trade" maxlength="140"></label>
+      <p id="offerCompanyStatus" role="alert"></p>
+      <div class="phb-messagebox-actions"><button id="cancelOfferCompany" type="button" class="subtle">Abbrechen</button><button type="submit" class="primary">Firma anlegen und auswählen</button></div>
+    </form>
+  </dialog>
+  <dialog id="offerEditDialog" class="phb-workflow-dialog phb-offer-edit-dialog" aria-labelledby="offerEditTitle">
+  <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebote / Bearbeitung</span><h2 id="offerEditTitle">Angebot bearbeiten</h2><p>Werte mit dem Original-PDF prüfen und anschließend speichern.</p></div><button id="closeOfferEdit" type="button" class="subtle">Schließen</button></div>
+  <div class="phb-workflow-body">
+    <div class="phb-offer-edit-layout">
+      <form id="offerEditForm" class="offer-review-form">
+        <div id="offerEditFields" class="offer-edit-fields"></div>
+        <button id="reverseOfferAcceptance" type="button" class="danger offer-wide" hidden>Annahme zurücknehmen</button>
+        <p id="offerEditError" role="alert" class="offer-wide"></p>
+        <div class="offer-form-actions offer-wide phb-dialog-actions"><button type="submit" class="primary">Änderungen speichern</button><button id="cancelOfferEdit" type="button" class="subtle">Abbrechen</button></div>
+      </form>
+      <aside id="offerEditPdfPane" class="phb-inline-pdf" hidden>
+        <header><strong>Originalangebot parallel prüfen</strong><a id="offerEditPdfDownload" class="mini" target="_blank" rel="noopener">Original-PDF</a></header>
+        <iframe id="offerEditPdfFrame" title="PDF des bearbeiteten Angebots"></iframe>
+      </aside>
+    </div>
+  </div>
+</dialog>
+<dialog id="offerDetailsDialog" class="phb-workflow-dialog phb-offer-details-dialog" aria-labelledby="offerDetailsTitle">
+  <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebotsverwaltung</span><h2 id="offerDetailsTitle">Angebotsdetails</h2><p id="offerDetailsMeta"></p></div><button id="closeOfferDetails" type="button" class="subtle">Schließen</button></div>
+  <div id="offerDetailsContent" class="phb-workflow-body offer-details-content"></div>
+</dialog>
+<dialog id="offerInvoicesDialog" class="phb-workflow-dialog phb-offer-invoices-dialog" aria-labelledby="offerInvoicesTitle">
+  <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebot / Rechnungen</span><h2 id="offerInvoicesTitle">Zugeordnete Rechnungen</h2><p id="offerInvoicesMeta"></p></div><button id="closeOfferInvoices" type="button" class="subtle">Schließen</button></div>
+  <div id="offerInvoicesContent" class="phb-workflow-body offer-invoices-content"></div>
+</dialog>
+<dialog id="offerAcceptanceDialog" class="phb-workflow-dialog phb-offer-acceptance-dialog" aria-labelledby="offerAcceptanceTitle">
+    <div class="phb-workflow-head"><div><span class="phb-page-kicker">Auftrag verbindlich übernehmen</span><h2 id="offerAcceptanceTitle">Angebot annehmen</h2><p>Das Originalangebot bleibt unverändert. Der bestätigte Auftragswert wird für Kostenplanung und Rechnungsabgleich fixiert.</p></div><button id="cancelOfferAcceptance" type="button" class="subtle">Abbrechen</button></div>
+    <form id="offerAcceptanceForm" class="offer-acceptance-form">
+      <p id="offerAcceptanceSummary" class="offer-acceptance-summary"></p>
+      <fieldset class="offer-acceptance-choices"><legend>Wie wurde der Auftrag bestätigt?</legend>
+        <label><input type="radio" name="mode" value="offer" checked> <span><strong>Angebot unverändert übernehmen</strong><small>Keine Auftragsbestätigung vorhanden. Angebotssumme 1:1 als verbindlichen Auftragswert übernehmen.</small></span></label>
+        <label><input type="radio" name="mode" value="confirmation"> <span><strong>Auftragsbestätigung hochladen</strong><small>Original-PDF ablegen und endgültigen Auftragswert bei Abweichungen korrigieren.</small></span></label>
+      </fieldset>
+      <div id="offerAcceptanceUpload" class="offer-acceptance-upload" hidden>
+        <label>Auftragsbestätigung (PDF, max. 15 MB)<input id="offerAcceptanceFile" type="file" name="confirmation" accept=".pdf,application/pdf"></label>
+        <label>Verbindlicher Brutto-Auftragswert (€)<input id="offerAcceptanceGross" type="text" name="agreed_gross" inputmode="decimal" data-euro="true" required></label>
+        <p class="muted">Bitte den Betrag mit der Auftragsbestätigung vergleichen. Der Angebotspreis bleibt im Original erhalten.</p>
+      </div>
+      <p id="offerAcceptanceError" role="alert"></p>
+      <div class="offer-form-actions phb-dialog-actions"><button type="button" id="offerAcceptanceBack" class="subtle">Abbrechen</button><button id="offerAcceptanceSubmit" type="submit" class="primary">Auftrag verbindlich annehmen</button></div>
+    </form>
+  </dialog>
+  <section class="panel budget-panel offer-compare-section" id="angebotsliste"><div class="panelbar offers-list-header"><h2>Deine Angebote</h2><label class="offers-filter">Gewerk <select id="offerCategoryFilter"><option value="">Alle Kategorien</option></select></label></div>
+   <div id="offerList" class="offer-cards" aria-live="polite"><p class="muted">Angebote werden geladen …</p></div>
+   <p class="section-note">Bei angenommener Leistung wird der Bruttogesamtbetrag genau einmal übernommen. Wenn du eine Kostenplanposition zuordnest, ersetzt der angenommene Preis deren Schätzung. Zu jedem <strong>angenommenen Angebot</strong> siehst du hier die Teilrechnungen, den bereits bezahlten Betrag und mögliche Überziehungen. Rechnungen werden unter <a href="/belege">Rechnungen & Belege</a> erfasst.</p>
+  </section>
+  <details class="panel budget-panel rejected-offers-section" id="rejectedOffersSection"><summary><span>Abgelehnte Angebote</span><strong id="offersCountRejected">0</strong></summary><div id="rejectedOfferList" class="offer-cards"><p class="offer-empty">Keine abgelehnten Angebote.</p></div></details>
+  <details class="panel budget-panel offer-ai-section" id="ki-angebotsvergleich" aria-labelledby="aiOfferTitle">
+   <summary class="offer-ai-summary"><h2 id="aiOfferTitle">Angebote mit ChatGPT vergleichen</h2></summary>
+   <div class="offer-ai-content">
+     <p class="section-note">Wähle zwei bis acht geprüfte Angebote aus beliebigen Kategorien. Übertragen werden nur die ausgewählten Angebotsdaten und hinterlegten Positionen, keine PDFs. Diese Funktion braucht eine verbundene ChatGPT-Sitzung.</p>
+     <div id="aiOfferChoices" class="phb-ai-offer-choices" role="group" aria-label="Angebote zum KI-Vergleich auswählen"></div>
+     <div class="offer-ai-actions">
+       <button id="aiCompareOffers" type="button" class="primary" aria-describedby="aiCompareConnectionHint" disabled>Ausgewählte Angebote mit KI vergleichen</button>
+       <span id="aiCompareSelectionCount" class="offer-ai-selection" aria-live="polite">0 von 2 bis 8 Angeboten ausgewählt</span>
+     </div>
+     <p id="aiCompareConnectionHint" class="offer-ai-connection-hint" role="status">Zum Vergleichen bitte ChatGPT über den Verbindungsbutton im Header verbinden.</p>
+     <p id="aiCompareStatus" class="offer-ai-status" role="status"></p>
+     <pre id="aiCompareResult" class="phb-ai-report" hidden></pre>
+   </div>
+  </details>
+</main></div></div>
+<script src="/static/offers.js"></script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+  <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
+  <h2 id="phbAITitle">ChatGPT verbinden</h2>
+  <p id="phbAIConnection">Verbindung wird geprüft …</p>
+  <div class="phb-ai-controls">
+    <button type="button" id="phbAIConnect" class="phb-ai-primary">Mit ChatGPT anmelden</button>
+    <button type="button" id="phbAIDisconnect" hidden>Verbindung trennen</button>
+    <label id="phbAIModelWrap" hidden>ChatGPT-Modell <select id="phbAIModel"></select></label>
+  </div>
+  <div class="phb-ai-warning">
+    <strong>Keine API-Schlüssel und kein kostenpflichtiger Fallback.</strong>
+    <p>Wichtig: ChatGPT kann nach Erreichen des Plankontingents zusätzliche Credits verwenden,
+       falls du dies in deinem ChatGPT-Konto für Apps erlaubt hast. ProjectHouseBuilder kann
+       diese Kontoeinstellung nicht auslesen und daher keine absolute Kostensperre garantieren.</p>
+    <p><a href="https://chatgpt.com/#settings/usage" target="_blank" rel="noopener noreferrer">ChatGPT Einstellungen → Nutzung / App-Limits öffnen ↗</a></p>
+    <label class="phb-ai-confirm"><input type="checkbox" id="phbAINoCredits"> Ich habe die Nutzung kostenpflichtiger Credits für Apps in ChatGPT deaktiviert und erlaube ausdrücklich KI-Anfragen aus dieser Anwendung.</label>
+  </div>
+  <p class="phb-ai-disclosure">Nur mit KI gestartete Anfragen übertragen ausgewählte PDF- oder Projektinformationen an OpenAI. Ergebnisse bleiben Vorschläge, bis du sie prüfst und übernimmst. Zugangstokens bleiben lokal außerhalb der Projektbackups.</p>
+  <p id="phbAIMessage" role="status"></p>
+</dialog>
+<script src="/static/chatgpt.js"></script>
+<script src="/static/shell.js"></script><script>if('serviceWorker' in navigator&&window.isSecureContext)navigator.serviceWorker.register('/sw.js').catch(console.warn);</script>
+</body></html>

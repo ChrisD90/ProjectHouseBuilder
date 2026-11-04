@@ -1,0 +1,10 @@
+/* Shared source-action geometry; all colors follow the current palette. */
+body.phb-app button.linked-work-button{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;min-width:30px;width:auto;height:30px;min-height:30px;padding:5px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--ui-accent);box-shadow:none;vertical-align:middle;cursor:pointer}
+body.phb-app button.linked-work-button:hover{background:var(--ui-soft-accent);border-color:var(--ui-line)}
+body.phb-app button.linked-work-button:focus-visible{outline:3px solid var(--ui-ring);outline-offset:2px}
+.linked-work-button svg{flex:none;width:17px;height:17px}
+.linked-work-count{position:absolute;top:-4px;right:-4px;border:2px solid var(--ui-surface);display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:color-mix(in srgb,var(--ui-danger) 14%,var(--ui-surface));color:var(--ui-danger);font-size:10px;font-weight:700;line-height:1}
+.linked-work-count[hidden]{display:none}
+.work-header-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:auto}
+body.phb-app .gantt-label>.linked-work-button{margin-left:auto}
+body.phb-app .gantt-label .task-name{min-width:0}

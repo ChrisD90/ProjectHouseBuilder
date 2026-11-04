@@ -1,7 +1,27 @@
-FROM python:3.12-slim
+FROM node:22-slim AS frontend
+WORKDIR /build/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+COPY static/palette.css static/request.js static/components.css /build/static/
+RUN npm run build
+
+FROM python:3.12-slim-trixie
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 WEB_CONCURRENCY=1 GUNICORN_THREADS=2 PHB_OCR_IMAGE=deu-eng-poppler-2026-10
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update -o APT::Update::Error-Mode=any \
+    && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng poppler-utils postgresql-client-17 \
+    && command -v tesseract && command -v pdftoppm \
+    && tesseract --list-langs 2>&1 | grep -qx deu \
+    && tesseract --list-langs 2>&1 | grep -qx eng \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt && useradd -u 10001 -m project
 COPY . .
+COPY --from=frontend /build/static/react /app/static/react
+RUN mkdir -p /app/private && chown -R project:project /app
+USER project
+RUN python ocr_runtime.py --check
 EXPOSE 5000
-CMD ["python", "app.py"]
+CMD ["sh","-c","python ocr_runtime.py --check && python -c 'from app import app, initialize; ctx=app.app_context(); ctx.push(); initialize(); ctx.pop()' && exec gunicorn --config gunicorn.conf.py --bind 0.0.0.0:5000 --workers $WEB_CONCURRENCY --threads $GUNICORN_THREADS --timeout 120 app:app"]

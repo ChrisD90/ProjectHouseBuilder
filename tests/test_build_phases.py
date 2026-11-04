@@ -1,0 +1,176 @@
+"""Editable build phases, task deadlines and master-data company assignment."""
+import os
+import unittest
+from datetime import date, timedelta
+from pathlib import Path
+from unittest.mock import patch
+
+os.environ['DATABASE_URL']='sqlite:///:memory:'
+from app import app, db, initialize, Task, Contractor
+
+ROOT=Path(__file__).resolve().parents[1]
+
+
+class BuildPhaseTests(unittest.TestCase):
+    def setUp(self):
+        self.ctx=app.app_context();self.ctx.push()
+        db.session.remove();db.drop_all();initialize()
+        self.client=app.test_client()
+
+    def tearDown(self):
+        db.session.remove();db.drop_all();self.ctx.pop()
+
+    def phase(self,**changes):
+        body={'title':'Rohbau','start_date':'2027-04-01','end_date':'',
+              'description':'Tragende Arbeiten'}
+        body.update(changes)
+        return self.client.post('/api/phases',json=body)
+
+    def task(self,**changes):
+        body={'code':'T-1','name':'Leitungen verlegen','trade':'Elektro',
+              'execution_type':'Fremdleistung','duration':5,'status':'Offen'}
+        body.update(changes)
+        return self.client.post('/api/tasks',json=body)
+
+    def test_new_phase_titles_are_limited_without_truncating_existing_titles(self):
+        self.assertEqual(self.phase(title='A'*81).status_code,400)
+        self.assertEqual(self.phase(title='A'*80).status_code,201)
+        from app import BuildPhase
+        legacy=BuildPhase(title='Historische Bauphase '+('B'*100),start_date=date(2027,4,1))
+        db.session.add(legacy);db.session.commit()
+        response=self.client.put('/api/phases/'+str(legacy.id),json={'description':'Bleibt bearbeitbar'})
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertEqual(response.json['phase']['title'],legacy.title)
+
+    def test_project_start_shift_moves_plan_dates_but_preserves_actual_dates(self):
+        phase=self.phase(end_date='2027-04-20').json['phase']['id']
+        self.task(phase_id=phase,planned_end='2027-04-15',actual_start='2026-10-01')
+        before=self.client.get('/api/project').json
+        start=date.fromisoformat(before['start']);delta=timedelta(days=12)
+        result=self.client.patch('/api/project',json={'start':(start+delta).isoformat(),'shift_plan':True})
+        self.assertEqual(result.status_code,200,result.json)
+        after=self.client.get('/api/project').json
+        for field in ('start_date','end_date'):
+            self.assertEqual(after['phases'][0][field],(date.fromisoformat(before['phases'][0][field])+delta).isoformat())
+        for field in ('start','end','planned_end'):
+            self.assertEqual(after['tasks'][0][field],(date.fromisoformat(before['tasks'][0][field])+delta).isoformat())
+        self.assertEqual(after['tasks'][0]['actual_start'],'2026-10-01')
+        returned=self.client.patch('/api/project',json={'start':start.isoformat(),'shift_plan':True})
+        self.assertEqual(returned.status_code,200,returned.json)
+        final=self.client.get('/api/project').json
+        self.assertEqual(final['tasks'][0]['start'],before['tasks'][0]['start'])
+        self.assertEqual(final['phases'][0]['end_date'],before['phases'][0]['end_date'])
+
+    def test_project_start_defaults_to_shifting_both_directions_with_project_isolation(self):
+        phase=self.phase().json['phase']['id']
+        first=self.task(phase_id=phase,earliest_start='2027-04-07',planned_end='2027-04-25').json['id']
+        second=self.task(code='T-2',predecessors=['T-1'],planned_end='2027-05-05').json['id']
+        self.client.post(f'/api/tasks/{first}/complete')
+        other=self.client.post('/api/projects',json={'title':'Unverändert','start_date':'2028-02-29'}).json['project']['id']
+        headers={'X-PHB-Project':str(other)}
+        self.client.post('/api/phases',headers=headers,json={'title':'Andere Bauphase','start_date':'2028-03-02'})
+        untouched=self.client.get('/api/project',headers=headers).json
+        before=self.client.get('/api/project').json
+        start=date.fromisoformat(before['start'])
+        for delta in (timedelta(days=-400),timedelta(days=33)):
+            previous=self.client.get('/api/project').json
+            new_start=date.fromisoformat(previous['start'])+delta
+            result=self.client.patch('/api/project',json={'start':new_start.isoformat()})
+            self.assertEqual(result.status_code,200,result.json)
+            after=self.client.get('/api/project').json
+            self.assertEqual(after['phases'][0]['end_date'],'')
+            self.assertEqual(after['phases'][0]['start_date'],(date.fromisoformat(previous['phases'][0]['start_date'])+delta).isoformat())
+            for old,new in zip(previous['tasks'],after['tasks']):
+                for field in ('start','end','planned_end','earliest_start'):
+                    self.assertEqual(new[field],(date.fromisoformat(old[field])+delta).isoformat() if old[field] else '')
+                for field in ('actual_start','actual_end','status','predecessors','duration'):
+                    self.assertEqual(new[field],old[field])
+            self.assertIsNone(next(t for t in after['tasks'] if t['id']==second)['phase_id'])
+            self.assertEqual(self.client.get('/api/project',headers=headers).json,untouched)
+        # Restoring the original start reproduces the original planned schedule.
+        self.assertEqual(self.client.patch('/api/project',json={'start':start.isoformat()}).status_code,200)
+        self.assertEqual(self.client.get('/api/project').json['tasks'],before['tasks'])
+
+    def test_phase_completion_finishes_only_its_tasks_and_keeps_old_dates(self):
+        phase=self.phase().json['phase']['id']
+        first=self.task(phase_id=phase).json['id']
+        second=self.task(code='T-2',phase_id=phase).json['id']
+        other=self.task(code='T-3').json['id']
+        self.client.post(f'/api/tasks/{first}/complete')
+        original=self.client.get('/api/project').json['tasks'][0]['actual_end']
+        blocked=self.client.post(f'/api/phases/{phase}/complete',json={})
+        self.assertEqual(blocked.status_code,400)
+        result=self.client.post(f'/api/phases/{phase}/complete',json={'confirm':True})
+        self.assertEqual(result.status_code,200,result.json)
+        self.assertTrue(result.json['phase']['completed'])
+        rows={t['id']:t for t in self.client.get('/api/project').json['tasks']}
+        self.assertEqual(rows[first]['actual_end'],original)
+        self.assertEqual(rows[second]['status'],'Erledigt')
+        self.assertEqual(rows[second]['progress'],100)
+        self.assertEqual(rows[other]['status'],'Offen')
+        self.client.post(f'/api/tasks/{second}/reopen',json={'confirm':True})
+        self.assertFalse(self.client.get('/api/project').json['phases'][0]['completed'])
+
+    def test_failed_phase_completion_rolls_back_every_task(self):
+        phase=self.phase().json['phase']['id']
+        self.task(phase_id=phase)
+        with patch('app._schedule_audit',side_effect=RuntimeError('Storage failed')):
+            result=self.client.post(f'/api/phases/{phase}/complete',json={'confirm':True})
+        self.assertEqual(result.status_code,409)
+        project=self.client.get('/api/project').json
+        self.assertFalse(project['phases'][0]['completed'])
+        self.assertEqual(project['tasks'][0]['status'],'Offen')
+
+    def test_phases_are_crud_entities_and_deletion_unassigns_tasks(self):
+        created=self.phase();self.assertEqual(created.status_code,201,created.json)
+        phase=created.json['phase']
+        task=self.task(phase_id=phase['id']);self.assertEqual(task.status_code,201,task.json)
+        project=self.client.get('/api/project').json
+        saved=next(row for row in project['tasks'] if row['id']==task.json['id'])
+        self.assertEqual(saved['phase'],'Rohbau');self.assertEqual(saved['phase_id'],phase['id'])
+        self.assertEqual(saved['start'],'2027-04-01')
+        renamed=self.client.put('/api/phases/'+str(phase['id']),json={
+            'title':'Rohbau & Tragwerk','start_date':'2027-04-02',
+            'end_date':'2027-05-10','description':'Aktualisiert'})
+        self.assertEqual(renamed.status_code,200,renamed.json)
+        self.assertEqual(self.client.get('/api/project').json['tasks'][0]['phase'],'Rohbau & Tragwerk')
+        deleted=self.client.delete('/api/phases/'+str(phase['id']))
+        self.assertEqual(deleted.status_code,200,deleted.json);self.assertEqual(deleted.json['unassigned_tasks'],1)
+        project=self.client.get('/api/project').json
+        self.assertEqual(project['phases'],[]);self.assertIsNone(project['tasks'][0]['phase_id'])
+        self.assertEqual(project['tasks'][0]['phase'],'')
+
+    def test_optional_planned_end_exposes_due_soon_and_overdue_states(self):
+        soon=(date.today()+timedelta(days=5)).isoformat()
+        created=self.task(planned_end=soon);self.assertEqual(created.status_code,201,created.json)
+        row=self.client.get('/api/project').json['tasks'][0]
+        self.assertEqual(row['planned_end'],soon);self.assertEqual(row['deadline_status'],'due-soon')
+        overdue=(date.today()-timedelta(days=1)).isoformat()
+        changed=self.client.put('/api/tasks/'+str(created.json['id']),json={'planned_end':overdue})
+        self.assertEqual(changed.status_code,200,changed.json)
+        self.assertEqual(self.client.get('/api/project').json['tasks'][0]['deadline_status'],'overdue')
+
+    def test_company_must_come_from_matching_masterdata_trade(self):
+        electrician=Contractor(name='Elektro GmbH',trade='Elektro')
+        plumber=Contractor(name='Sanitär GmbH',trade='Sanitär')
+        db.session.add_all([electrician,plumber]);db.session.commit()
+        invalid=self.task(contractor_id=plumber.id)
+        self.assertEqual(invalid.status_code,400,invalid.json)
+        valid=self.task(code='T-2',contractor_id=electrician.id)
+        self.assertEqual(valid.status_code,201,valid.json)
+        row=self.client.get('/api/project').json['tasks'][0]
+        self.assertEqual(row['contractor_id'],electrician.id);self.assertEqual(row['company'],'')
+
+    def test_schedule_ui_uses_phase_and_masterdata_controls(self):
+        html=self.client.get('/?_classic=1').get_data(as_text=True)
+        form=html[html.index('id="taskForm"'):html.index('</form>',html.index('id="taskForm"'))]
+        self.assertIn('name="phase_id"',form);self.assertIn('name="planned_end"',form)
+        for removed in ('name="company"','name="lag_days"','name="earliest_start"','name="progress"'):
+            self.assertNotIn(removed,form)
+        self.assertIn('id="phaseDialog"',html);self.assertIn('id="managePhases"',html)
+        script=(ROOT/'static/app.js').read_text()
+        self.assertIn('refreshTaskContractors',script);self.assertIn('phase-bar',script)
+        self.assertIn('deadline_status',script)
+
+
+if __name__=='__main__':unittest.main()

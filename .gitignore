@@ -10,9 +10,38 @@ sanierung.db
 .env
 # Entwicklungsumgebung
 .venv/
+.runtime/
 __pycache__/
 *.pyc
 .pytest_cache/
 .DS_Store
 .idea/
 .vscode/
+
+backups/
+# Synology-spezifische lokale Daten
+storage/
+caddy-root.crt
+# Lokale Docker-Entwicklung
+.env.dev
+.env.dev.local
+
+# SQLite-Backup-/Restore-Konfiguration und Sicherheitskopien
+restore-safety-*/
+.private-prerestore/
+*.restoring
+
+# All SQLite db filenames and SQLAlchemy instance directory
+*.db
+*.sqlite
+instance/
+
+# Temporäre Dateien während eines vollständigen Projekt-Resets
+.reset-quarantine-*/
+
+# Frontend dependencies and development artifacts
+frontend/node_modules/
+frontend/.vite/
+
+/test-results/
+/frontend/playwright-report/

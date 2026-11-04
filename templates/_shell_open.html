@@ -1,0 +1,95 @@
+<script src="/static/request.js"></script><link rel="stylesheet" href="/static/components.css">
+<script src="/static/project_context.js"></script>
+<script src="/static/components.js"></script>
+<script src="/static/project_work.js"></script><link rel="stylesheet" href="/static/project_work.css">
+{# Shared app chrome. phb_active, phb_title, phb_kicker are set in each page. #}
+{% if request is defined and request.args.get('_embedded') == '1' %}
+<link rel="stylesheet" href="/static/embed.css"><script>document.body.classList.add('phb-embedded');</script><script defer src="/static/embed.js"></script>
+{% endif %}
+{% macro icon(name) -%}<svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#{{ name }}"></use></svg>{%- endmacro %}
+<script>try{if(localStorage.getItem('phb-sidebar-collapsed')==='1')document.body.classList.add('phb-sidebar-collapsed');}catch(_){}</script>
+<a href="#phbMain" class="phb-skip">Zum Inhalt springen</a>
+<div class="phb-appshell" id="phbAppShell">
+  <aside class="phb-sidebar" id="phbSidebar" aria-label="Seitennavigation">
+    <div class="phb-sidebar__brand">
+      <a class="phb-brand-link" href="/" aria-label="ProjectHouseBuilder – zur Projektübersicht">
+        <span class="phb-brand-mark">{{ icon('house') }}</span>
+        <span class="phb-brand-text"><strong>ProjectHouseBuilder</strong><small>Sanierung Gartenstraße</small></span>
+      </a>
+      <button class="phb-icon-button phb-collapse-button" id="phbCollapse" type="button" aria-label="Sidebar einklappen" aria-controls="phbSidebar" aria-expanded="true" title="Sidebar einklappen">{{ icon('chevron-left') }}</button>
+    </div>
+    <div class="phb-sidebar__scroll">
+      <div class="phb-nav-label">PROJEKT</div>
+      <nav class="phb-nav" aria-label="Hauptnavigation">
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'zeitplan' else '' }}" data-section="zeitplan" href="/" title="Bauzeitenplan" {% if phb_active == 'zeitplan' %}aria-current="page"{% endif %}>{{ icon('calendar') }}<span class="phb-nav-text">Bauzeitenplan</span></a>
+      </nav>
+      <div class="phb-nav-label">FINANZEN</div>
+      <nav class="phb-nav" aria-label="Finanzen">
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'kosten' else '' }}" data-section="kosten" href="/kosten" title="Kosten & Budget" {% if phb_active == 'kosten' %}aria-current="page"{% endif %}>{{ icon('wallet') }}<span class="phb-nav-text">Kosten &amp; Budget</span></a>
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'angebote' else '' }}" data-section="angebote" href="/angebote" title="Angebote" {% if phb_active == 'angebote' %}aria-current="page"{% endif %}>{{ icon('file-check') }}<span class="phb-nav-text">Angebote</span></a>
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'belege' else '' }}" data-section="belege" href="/belege" title="Rechnungen & Belege" {% if phb_active == 'belege' %}aria-current="page"{% endif %}>{{ icon('receipt') }}<span class="phb-nav-text">Rechnungen &amp; Belege</span></a>
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'finanzierung' else '' }}" data-section="finanzierung" href="/finanzierung" title="Finanzierung" {% if phb_active == 'finanzierung' %}aria-current="page"{% endif %}>{{ icon('landmark') }}<span class="phb-nav-text">Finanzierung</span></a>
+      </nav>
+      <nav class="phb-nav" aria-label="Energetische Planung"><a class="phb-nav-link {{ 'is-current' if phb_active == 'energieplanung' else '' }}" data-section="energieplanung" href="/energieplanung" {% if phb_active == 'energieplanung' %}aria-current="page"{% endif %}>{{ icon('house') }}<span class="phb-nav-text">Energetische Planung</span></a></nav>
+      <div class="phb-nav-label">VERWALTUNG</div>
+      <nav class="phb-nav" aria-label="Verwaltung">
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'dokumente' else '' }}" data-section="dokumente" href="/dokumente" title="Projektdokumente" {% if phb_active == 'dokumente' %}aria-current="page"{% endif %}>{{ icon('file-check') }}<span class="phb-nav-text">Projektdokumente</span></a>
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'stammdaten' else '' }}" data-section="stammdaten" href="/stammdaten" title="Stammdaten" {% if phb_active == 'stammdaten' %}aria-current="page"{% endif %}>{{ icon('users') }}<span class="phb-nav-text">Stammdaten</span></a>
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'daten' else '' }}" data-section="daten" href="/daten" title="Backup, Export & Datenverwaltung" {% if phb_active == 'daten' %}aria-current="page"{% endif %}>{{ icon('database') }}<span class="phb-nav-text">Backup, Export &amp; Daten</span></a>
+      </nav>
+    </div>
+    <div class="phb-sidebar__bottom">
+      <div class="phb-privacy">{{ icon('shield') }}<span class="phb-nav-text"><strong>Lokal &amp; privat</strong><small>Deine Daten bleiben bei dir</small></span></div>
+      <form method="post" action="/logout" class="phb-logout-form"><button type="submit" class="phb-nav-link" title="Abmelden">{{ icon('log-out') }}<span class="phb-nav-text">Abmelden</span></button></form>
+    </div>
+  </aside>
+  <div class="phb-sidebar-scrim" id="phbSidebarScrim" aria-hidden="true"></div>
+  <div class="phb-workspace">
+    <header class="phb-topbar">
+      <div class="phb-topbar__left">
+        <button type="button" class="phb-icon-button phb-menu-button" id="phbMenu" aria-controls="phbSidebar" aria-expanded="false" aria-label="Navigation öffnen">{{ icon('menu') }}</button>
+        <div class="phb-breadcrumb"><span>Sanierung Gartenstraße</span><span aria-hidden="true">/</span><strong>{{ phb_title }}</strong></div>
+      </div>
+      <div class="phb-topbar-right">
+        <label class="phb-theme-control" for="phbThemeMode">
+          <svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#sun"></use></svg>
+          <span>Darstellung</span>
+          <select id="phbThemeMode" aria-label="Farbdarstellung auswählen">
+            <option value="system">System</option>
+            <option value="light">Hell</option>
+            <option value="dark">Dunkel</option>
+          </select>
+        </label>
+        <button id="phbChatGPTButton" class="phb-ai-topbar" type="button" title="Mit ChatGPT verbinden" aria-label="ChatGPT-Verbindung verwalten">
+          <img id="phbChatGPTLogo" class="phb-ai-logo" src="/static/icons/chatgpt-mark.svg" alt="ChatGPT" hidden>
+          <span id="phbChatGPTLabel">ChatGPT verbinden</span><span class="phb-ai-status-dot" id="phbChatGPTDot"></span>
+        </button>
+        <section id="phbImportCenter" class="phb-import-center" aria-label="Warteschlange">
+          <button type="button" id="phbImportToggle" class="phb-import-toggle" aria-expanded="false" aria-controls="phbImportFeed" title="Warteschlange öffnen">
+            <span class="phb-import-toggle-icon" aria-hidden="true">⇪</span>
+            <span class="phb-import-toggle-copy"><strong>Warteschlange</strong><small id="phbImportCount">Keine Aufträge</small></span>
+          </button>
+        </section>
+      </div>
+    </header>
+
+<div id="phbLoadTrack" hidden aria-hidden="true"></div>
+<div id="phbBusyOverlay" hidden role="status" aria-live="polite" aria-atomic="true">
+  <div class="phb-busy-panel">
+    <span class="phb-busy-spinner" aria-hidden="true"></span>
+    <div><strong id="phbBusyTitle">Daten werden verarbeitet</strong>
+      <p id="phbBusyMessage">Der Vorgang läuft. Bitte Änderungen erst nach der Rückmeldung erneut starten.</p></div>
+  </div>
+</div>
+<span id="phbBusyStatus" class="visually-hidden" role="status" aria-live="polite"></span>
+
+<div id="phbImportFeed" class="phb-import-feed" hidden>
+  <div class="phb-import-feed-head"><h2>Verarbeitung &amp; Prüfung</h2>
+    <div class="phb-import-feed-actions"><button type="button" id="phbImportDismissAll" hidden>Erledigte ausblenden</button>
+    <button type="button" id="phbImportClose" aria-label="Importübersicht schließen">Schließen</button></div>
+  </div>
+  <p>Dateien werden einzeln verarbeitet. Du kannst auf anderen Seiten weiterarbeiten; fertige Entwürfe warten auf deine Prüfung.</p>
+  <div id="phbImportList" class="phb-import-list" aria-live="polite"></div>
+</div>
+<div id="phbImportToast" class="phb-import-toast" role="status" aria-live="polite" hidden></div>
+<script defer src="/static/import_jobs.js"></script>

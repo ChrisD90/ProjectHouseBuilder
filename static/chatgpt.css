@@ -1,0 +1,66 @@
+/* Compact AI connection surface. Existing layout/brand remain unchanged. */
+.phb-topbar-right{display:flex;align-items:center;gap:10px}
+.phb-ai-topbar{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;border:1px solid #d8dfe7;border-radius:24px;padding:7px 11px;background:#fff;color:#243747;font-weight:650;font-size:12px;cursor:pointer}
+.phb-ai-topbar:hover{border-color:#7b95a4;background:#f8fafb}
+.phb-ai-logo{width:20px;height:20px}
+.phb-ai-status-dot{height:7px;width:7px;background:#98a4ad;border-radius:50%}
+.phb-ai-dot-on{background:#238568}
+.phb-ai-dialog{width:min(94vw,590px);max-height:85vh;border:1px solid #dbe4e8;border-radius:16px;padding:24px;background:white;color:#223847;box-shadow:0 25px 95px #0b2a3b40}
+.phb-ai-dialog::backdrop{background:#132e3c90}
+.phb-ai-dialog h2{margin:0 0 6px;font-size:22px}
+.phb-ai-dialog p{margin:8px 0 14px;line-height:1.5}
+.phb-ai-close{position:absolute;top:10px;right:12px;border:0;background:transparent;font-size:26px;cursor:pointer}
+.phb-ai-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:18px 0}
+
+.phb-ai-primary{background:#0f5366;color:white;border:1px solid #0f5366}
+.phb-ai-warning{background:#f5f8fb;border:1px solid #e0e7eb;border-radius:10px;padding:14px}
+.phb-ai-warning p{font-size:13px}
+.phb-ai-confirm{display:flex;align-items:start;gap:8px;line-height:1.4;font-size:13px}
+.phb-ai-confirm input{margin-top:3px;flex:none}
+.phb-ai-disclosure{font-size:12px;color:#536573}
+.phb-ai-diagnostics{margin:10px 0 16px;border:1px solid #d6e0e7;border-radius:10px;background:#f8fafb;font-size:13px}
+.phb-ai-diagnostics[hidden]{display:none}
+.phb-ai-diagnostics summary{cursor:pointer;padding:11px 13px;font-weight:650;color:#21455a;list-style-position:inside}
+.phb-ai-diagnostics summary:hover{background:#edf3f6}
+.phb-ai-diagnostics summary:focus-visible{outline:2px solid #0e7782;outline-offset:2px}
+.phb-ai-diagnostics-content{margin:0;padding:12px 14px 15px;border-top:1px solid #d6e0e7;white-space:pre-wrap;overflow-wrap:anywhere;max-height:45vh;overflow:auto;font-size:12px;line-height:1.6;color:#354e5f;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.phb-ai-report{white-space:pre-wrap;word-break:break-word;max-height:70vh;overflow:auto;background:#f5f8fa;color:#2a4151;border:1px solid #e2eaf0;border-radius:12px;padding:18px;font:inherit;line-height:1.55}
+.phb-ai-offer-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin:14px 0}
+.phb-ai-offer-choices label{display:flex;align-items:center;gap:9px;border:1px solid #e2e7ea;border-radius:8px;padding:10px 12px}
+.phb-ai-offer-choices input{flex:none}
+.phb-ai-schedule{margin-bottom:22px}
+.phb-ai-schedule label{display:block}
+.phb-ai-schedule textarea{display:block;width:100%;margin:8px 0 14px}
+@media(max-width:700px){.phb-ai-topbar{padding:8px}.phb-ai-topbar #phbChatGPTLabel{display:none}.phb-ai-dialog{padding:19px}.phb-topbar-right{gap:5px}}
+
+/* Dialog rhythm and readable spacing across all app pages. */
+.phb-ai-dialog{box-sizing:border-box;overflow-y:auto;padding:26px}
+.phb-ai-dialog h2{padding-right:24px;margin:0 0 10px;line-height:1.3}
+.phb-ai-dialog #phbAIConnection{margin:0 0 18px;color:#566c78;line-height:1.55}
+.phb-ai-dialog .phb-ai-controls{margin:0 0 20px;gap:12px}
+.phb-ai-dialog .phb-ai-controls label{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:13px}
+.phb-ai-dialog .phb-ai-controls select{max-width:100%}
+
+.phb-ai-dialog .phb-ai-warning{padding:18px 20px}
+.phb-ai-dialog .phb-ai-warning>strong{display:block;line-height:1.5}
+.phb-ai-dialog .phb-ai-warning p{margin:10px 0 12px;line-height:1.6}
+.phb-ai-dialog .phb-ai-warning p:last-of-type{margin-bottom:16px}
+.phb-ai-dialog .phb-ai-confirm{gap:10px;line-height:1.6;margin:0}
+.phb-ai-dialog .phb-ai-confirm input{margin:3px 0 0}
+.phb-ai-dialog .phb-ai-disclosure{margin:16px 0 0;line-height:1.6}
+.phb-ai-dialog #phbAIMessage{margin:14px 0 0;overflow-wrap:anywhere}
+.phb-ai-dialog #phbAIMessage:empty{display:none}
+.phb-ai-dialog .phb-ai-diagnostics{margin:12px 0 0}
+.phb-ai-offer-choices input[type=checkbox]{width:17px;height:17px;margin:0;accent-color:#0e7782}
+.phb-ai-offer-choices label{cursor:pointer}
+.phb-ai-offer-choices label:hover{border-color:#92c4c2;background:#f8fbfb}
+@media(max-width:700px){
+  .phb-ai-dialog{padding:20px}
+  .phb-ai-dialog .phb-ai-warning{padding:15px}
+  .phb-ai-dialog .phb-ai-controls{align-items:stretch}
+  .phb-ai-dialog .phb-ai-controls button{flex:1 1 auto}
+}
+
+.phb-ai-confirm[hidden]{display:none!important}
+.phb-ai-usage{margin:12px 0;padding:13px 14px;border:1px solid var(--ui-line,#cfe0e3);border-radius:10px;background:var(--ui-soft,#f4f9fa);color:var(--ui-ink-soft,#34545d)}
+.phb-ai-usage[hidden]{display:none}.phb-ai-usage strong{display:block;margin-bottom:7px}.phb-ai-usage p{margin:4px 0;font-size:12px;line-height:1.5}.phb-ai-usage-note{color:var(--ui-muted,#60767d)}.phb-ai-usage a{font-weight:650}
