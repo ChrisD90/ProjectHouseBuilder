@@ -16,7 +16,7 @@ for (const theme of ["light", "dark"])
       ).toBeVisible();
       await expect(page.locator(".paper").first()).toHaveScreenshot(
         `project-card-${theme}-${width}.png`,
-        { style: "* { font-family: Arial, sans-serif !important; }" },
+        { style: '* { font-family: "Liberation Sans", sans-serif !important; }' },
       );
     });
     test(`receipt tools ${theme} ${width}`, async ({ page }) => {
@@ -76,7 +76,7 @@ for (const theme of ["light", "dark"])
       ).toBeLessThan(2);
       await expect(card).toHaveScreenshot(
         `receipt-card-${theme}-${width}.png`,
-        { style: "* { font-family: Arial, sans-serif !important; }" },
+        { style: '* { font-family: "Liberation Sans", sans-serif !important; }' },
       );
     });
   }

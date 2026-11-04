@@ -37,6 +37,10 @@ for (const theme of ["light", "dark"])
                 ],
                 materials: [],
                 tools: [],
+                receipt_ids: [],
+                receipts: [],
+                actual_cost: 0,
+                procured_material_cost: 0,
                 notes: "",
                 archived: false,
                 estimated_cost: 125.5,
@@ -58,7 +62,7 @@ for (const theme of ["light", "dark"])
       ).toBeVisible();
       await expect(card).toHaveScreenshot(
         `self-work-card-${theme}-${width}.png`,
-        { style: "* { font-family: Arial, sans-serif !important; }" },
+        { style: '* { font-family: "Liberation Sans", sans-serif !important; }' },
       );
     });
   }
