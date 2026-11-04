@@ -54,7 +54,8 @@ function setup(){
   addEventListener(name,handler){windowEvents[name]=handler;}
  };
  const context={document,window,HTMLElement:Element,HTMLDialogElement:Dialog,
-  console,Number,Set,Map,JSON,Promise,String,Boolean};
+  console,Number,Set,Map,JSON,Promise,String,Boolean,URL,
+  location:{href:'http://localhost/p/1/belege'}};
  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../static/phb-workflow.js'),'utf8'),context);
  const flow=window.PHBFlow.manage({dialog:'dialog',forms:['form'],dismiss:['cancel']});
  return {window,windowEvents,dialog,form,text,button,action,flow,opener,

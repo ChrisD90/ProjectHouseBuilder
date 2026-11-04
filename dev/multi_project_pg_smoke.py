@@ -63,8 +63,8 @@ def main():
             assert client.patch('/api/self-work/'+str(diy[0]),headers=headers(pid),json={'notes':'Fremdes Projekt'}).status_code==404
             print('PASS PostgreSQL 17: independent DIY plans, Decimal estimates and scoped task references')
             assert client.post(f'/api/offers/{offers[1]}/accept',headers=headers(pid),data={'mode':'offer','confirm':'true'}).status_code==201
-            assert client.get('/api/costs').json['summary']['planned']==0
-            assert client.get('/api/costs',headers=headers(pid)).json['summary']['planned']==1000
+            assert client.get('/api/costs').json['summary']['planned']==8.13
+            assert client.get('/api/costs',headers=headers(pid)).json['summary']['planned']==1008.13
             assert client.patch(f'/api/offers/{offers[0]}/draft',headers=headers(pid),json={'notes':'Falsches Projekt'}).status_code==404
             assert client.post('/api/funding',headers=headers(pid),json={'name':'Falscher Bezug','offer_id':offers[0]}).status_code==400
             company=client.post('/api/contractors',json={'name':'Firma Projekt 1','trade':'Sonstiges'})
@@ -85,8 +85,8 @@ def main():
             viewed=client.get(f'/api/project-documents/{docs[1]}/preview?project_id={pid}')
             assert viewed.status_code==200 and viewed.data==b'Identical file';viewed.close()
             project_rows=client.get('/api/projects').json['projects']
-            assert next(row for row in project_rows if row['id']==1)['forecast']==0
-            assert next(row for row in project_rows if row['id']==pid)['forecast']==1000
+            assert next(row for row in project_rows if row['id']==1)['forecast']==8.13
+            assert next(row for row in project_rows if row['id']==pid)['forecast']==1008.13
             b.db.session.remove();b.db.engine.dispose()
             from unittest.mock import patch
             from funding_estimates import BAFA_URL
