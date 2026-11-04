@@ -17,7 +17,6 @@ AREAS = ('Allgemein', 'Bauzeitenplan', 'Elektrik', 'Heizung & Sanitär',
          'Dach & Fassade', 'Innenausbau', 'Finanzierung', 'Versicherung', 'Energetische Planung')
 STATUSES = ('Aktuell', 'Entwurf', 'Überholt')
 EXTENSIONS = {'.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt', '.docx'}
-MAX_BYTES = 12 * 1024 * 1024
 MAX_PAGES = 50
 MAX_TEXT = 32000
 MAX_AI_DOCUMENTS = 3
@@ -80,8 +79,8 @@ def inspect_upload(filename, raw):
     extension = Path(name).suffix.lower()
     if extension not in EXTENSIONS:
         raise ValueError('Unterstützt werden PDF, DOCX, TXT, JPG, PNG und WEBP.')
-    if not raw or len(raw) > MAX_BYTES:
-        raise ValueError('Dokument muss zwischen 1 Byte und 12 MB groß sein.')
+    if not raw:
+        raise ValueError('Das Dokument ist leer.')
     if extension == '.pdf' and not raw.startswith(b'%PDF-'):
         raise ValueError('Keine gültige PDF-Datei.')
     if extension == '.docx' and not raw.startswith(b'PK'):

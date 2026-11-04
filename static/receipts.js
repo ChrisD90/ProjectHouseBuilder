@@ -249,11 +249,10 @@ function renderReceiptList(){
    <div class="receipt-entry-tools">${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}${PHBWorkUI.button('receipt',x.id)}</div>
   </div>
   <button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}">
-   <strong class="receipt-card-title">${safe(x.supplier||x.filename)}</strong>
-   <span class="receipt-card-meta"><span class="receipt-kind-badge"><svg class="phb-icon receipt-kind-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#${x.kind==='Kassenzettel'?'receipt':'file-invoice'}"></use></svg>${safe(x.kind||'Rechnung')}</span><span>${safe(x.document_date||'Ohne Datum')}</span></span>
-   <span class="receipt-card-amount"><strong>${money(x.counted_amount)}</strong><small>${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'}</small></span>
-   <span class="receipt-card-details"><small>${safe(x.category)}</small><small>${safe(assignmentLabel(x))}</small></span>
-   ${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}
+   <span class="receipt-card-title"><span class="receipt-kind-badge" role="img" aria-label="${safe(x.kind||'Rechnung')}" title="${safe(x.kind||'Rechnung')}"><svg class="phb-icon receipt-kind-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#${x.kind==='Kassenzettel'?'receipt':'file-invoice'}"></use></svg></span><strong title="${safe(x.supplier||x.filename)}">${safe(x.supplier||x.filename)}</strong></span>
+   <span class="receipt-card-meta">${safe(x.document_date||'Ohne Datum')}</span>
+   <span class="receipt-card-amount"><strong>${money(x.counted_amount)}</strong>${x.status==='Storniert'?'<small>Originalbetrag</small>':''}</span>
+   <span class="receipt-card-details">${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:'<small class="receipt-labor-placeholder" aria-hidden="true">&nbsp;</small>'}<small class="receipt-card-assignment" title="${safe(assignmentLabel(x))}">${safe(assignmentLabel(x))}</small></span>
   </button>
  </article>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
  $('list').querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));

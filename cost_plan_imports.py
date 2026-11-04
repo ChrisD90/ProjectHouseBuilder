@@ -54,9 +54,9 @@ def register_cost_plan_imports(app, db, BudgetLine, Document, *, document_root,
         ext = Path(filename).suffix.lower()
         if not filename or ext not in EXTENSIONS:
             return jsonify(error='Kostenplanung als PDF, Excel, CSV, DOCX, TXT oder Bild auswählen.'), 400
-        data = file.read(15 * 1024 * 1024 + 1)
-        if not data or len(data) > 15 * 1024 * 1024 or (ext == '.pdf' and not data.startswith(b'%PDF-')):
-            return jsonify(error='Datei leer, ungültig oder größer als 15 MB.'), 400
+        data = file.read()
+        if not data or (ext == '.pdf' and not data.startswith(b'%PDF-')):
+            return jsonify(error='Datei leer oder ungültig.'), 400
         digest = sha256(data).hexdigest()
         existing = db.session.scalar(select(CostPlanImport).where(CostPlanImport.digest == digest))
         if existing:

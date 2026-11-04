@@ -412,7 +412,7 @@ export function Documents() {
           <Stack>
             <FileInput
               label="Dateien"
-              description="Bis zu 8 Dateien à 12 MB. Dateien werden lokal eingelesen."
+              description="Bis zu 8 Dateien. Dateien werden lokal eingelesen."
               accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.docx"
               multiple
               required

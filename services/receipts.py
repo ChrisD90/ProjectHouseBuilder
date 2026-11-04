@@ -202,9 +202,9 @@ def register(runtime: ModuleType):
         ext = runtime.Path(name).suffix.lower()
         if ext not in runtime.RECEIPT_EXTENSIONS:
             return (runtime.jsonify(error='Nur PDF, JPG, PNG und WEBP erlaubt.'), 400)
-        data = file.read(15 * 1024 * 1024 + 1)
-        if not data or len(data) > 15 * 1024 * 1024:
-            return (runtime.jsonify(error='Belege dürfen maximal 15 MB groß sein.'), 400)
+        data = file.read()
+        if not data:
+            return (runtime.jsonify(error='Der Beleg ist leer.'), 400)
         if ext == '.pdf' and (not data.startswith(b'%PDF-')):
             return (runtime.jsonify(error='Keine gültige PDF-Datei.'), 400)
         if ext != '.pdf':

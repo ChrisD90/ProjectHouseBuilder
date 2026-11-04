@@ -299,7 +299,6 @@ def register(runtime: ModuleType):
         if not 1 <= len(files) <= runtime._MAX_IMPORT_COUNT:
             return (runtime.jsonify(error='Bitte eine bis acht Dateien auswählen.'), 400)
         staged = []
-        total = 0
         runtime.IMPORT_QUEUE_ROOT.mkdir(parents=True, exist_ok=True)
         try:
             for file in files:
@@ -307,12 +306,9 @@ def register(runtime: ModuleType):
                 extension = runtime.Path(filename).suffix.lower()
                 if extension not in runtime._ALLOWED_IMPORTS[kind]:
                     raise ValueError('Nicht unterstützte Datei: ' + filename)
-                data = file.read(15 * 1024 * 1024 + 1)
-                total += len(data)
-                if not data or len(data) > 15 * 1024 * 1024:
-                    raise ValueError('Datei leer oder zu groß (15 MB je Datei): ' + filename)
-                if total > runtime._MAX_IMPORT_BATCH_BYTES:
-                    raise ValueError('Maximal 75 MB je Upload-Durchgang.')
+                data = file.read()
+                if not data:
+                    raise ValueError('Datei leer: ' + filename)
                 if extension == '.pdf' and (not data.startswith(b'%PDF-')):
                     raise ValueError('PDF-Signatur ungültig: ' + filename)
                 stored = runtime.uuid4().hex + extension

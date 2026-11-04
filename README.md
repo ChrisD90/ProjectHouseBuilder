@@ -273,7 +273,7 @@ Der Start auf dem Mac führt vor der neuen Schema-Migration `0008` wie gewohnt e
 
 In **Finanzierung → Darlehen → + Kredit** bleibt der manuelle Weg erhalten. Alternativ im Kreditdialog eine Vertrags-PDF oder ein Vertragsfoto auswählen und **„Mit ChatGPT vorausfüllen“** starten. Nur nach ChatGPT-Verbindung und bestätigter Plannutzung wird die Datei übertragen. ChatGPT liefert **einen Vorschlag**, niemals eine fertige Buchung. Fehlende oder unplausible Konditionen werden gekennzeichnet; Kreditsumme, Sollzins, Monatsrate, Tilgung, Sondertilgung und Datumsangaben unbedingt mit den Vertragsunterlagen abgleichen. Erst der ausdrückliche Klick auf **„Kredit speichern“** legt die Daten an.
 
-Für bestehende Kredite erscheint darunter **„Kreditunterlagen & Schriftverkehr“**. PDF, JPG, PNG und WEBP bis 15 MB können mit optionaler Beschreibung angehängt, wieder heruntergeladen oder einzeln entfernt werden. Sie werden lokal unter `private/loans/` gespeichert, gehören zum vollständigen Projektbackup und werden nicht automatisch an ChatGPT weitergegeben. Ein Kredit mit Dokumenten lässt sich erst nach deren ausdrücklicher Entfernung löschen.
+Für bestehende Kredite erscheint darunter **„Kreditunterlagen & Schriftverkehr“**. PDF, JPG, PNG und WEBP können mit optionaler Beschreibung angehängt, wieder heruntergeladen oder einzeln entfernt werden. Sie werden lokal unter `private/loans/` gespeichert, gehören zum vollständigen Projektbackup und werden nicht automatisch an ChatGPT weitergegeben. Ein Kredit mit Dokumenten lässt sich erst nach deren ausdrücklicher Entfernung löschen.
 
 Unter **Rechnungen & Belege** gibt es bei der manuellen Änderung des Bruttobetrags die Auswahl **19 %**, **7 %**, **0 %** oder **„Gemischte Steuersätze / manuell“**. Bei festen Sätzen werden Nettobetrag und Umsatzsteuer auf Cent genau automatisch aus dem Brutto zurückgerechnet. Vorhandene erkannte Werte werden beim Öffnen eines Belegs nicht verändert. Bei gemischten Steuersätzen, Steuerbefreiungen oder Sonderfällen die Beträge selbst nach dem Originalbeleg erfassen und kontrollieren.
 
@@ -329,7 +329,7 @@ Die Migration `0012` ergänzt nur die optionalen Spalten `receipt.labor_amount` 
 
 ## Projektdokumente (Migration 0013)
 
-Unter /dokumente lassen sich Baupläne, technische Zeichnungen, Versicherungsunterlagen, Verträge und Genehmigungen zentral speichern, suchen und bearbeiten. PDF, DOCX, TXT, JPG, PNG und WEBP bis 12 MB sind möglich. Dateien liegen privat unter private/project-documents; die Datenbank speichert Titel, Kategorie, Bereich, Status, Schlagworte und Beschreibung. Originale und Metadaten gehören zum geprüften Komplettbackup.
+Unter /dokumente lassen sich Baupläne, technische Zeichnungen, Versicherungsunterlagen, Verträge und Genehmigungen zentral speichern, suchen und bearbeiten. PDF, DOCX, TXT, JPG, PNG und WEBP sind ohne feste Upload-Größengrenze möglich. Dateien liegen privat unter private/project-documents; die Datenbank speichert Titel, Kategorie, Bereich, Status, Schlagworte und Beschreibung. Originale und Metadaten gehören zum geprüften Komplettbackup.
 
 Beim Hochladen wird vorhandener PDF-/DOCX-/TXT-Text ausschließlich lokal ausgelesen. Scans und Zeichnungen werden nicht automatisch oder ungefragt von ChatGPT interpretiert. Im Bauzeitenplan-Chat lassen sich je Nachricht bis zu drei aktuelle Dokumente explizit auswählen. Nur diese Dateien werden dann im Rahmen der bereits freigegebenen ChatGPT-Anfrage übertragen. Antworten sollen Dokumentquellen als DOK-ID bezeichnen; verwendete Dateiversionen mit Prüfsumme werden in der Entscheidungshistorie festgehalten. Änderungen am Bauzeitenplan bleiben bestätigungspflichtig.
 
@@ -351,7 +351,7 @@ Alle Uploaddialoge behalten Lade- und Fehlermeldungen sichtbar, während ein Vor
 
 ## Serielle Dokumentenverarbeitung im Hintergrund (Migration 0014)
 
-Unter **Angebote**, **Rechnungen & Belege** und **Projektdokumente** können jetzt bis zu **acht Dateien auf einmal** ausgewählt werden. Angebote akzeptieren PDF; Rechnungen PDF und Bilddateien; Projektdokumente PDF, DOCX, TXT und Bilder. Der jeweilige Dialog lädt die Dateien zuerst auf den lokalen ProjectHouseBuilder-Server und fügt sie einer **einzigen seriellen Warteschlange** hinzu. Pro Datei gelten weiterhin die ursprünglichen Größenlimits (i. d. R. 15 MB bei Angeboten/Rechnungen, 12 MB bei Projektdokumenten), insgesamt maximal 75 MB je Anfrage. Die Dateien werden dort nacheinander ausgeführt; es gibt keine parallelen ChatGPT-Auswertungen durch diese Warteschlange.
+Unter **Angebote**, **Rechnungen & Belege** und **Projektdokumente** können jetzt bis zu **acht Dateien auf einmal** ausgewählt werden. Angebote akzeptieren PDF; Rechnungen PDF und Bilddateien; Projektdokumente PDF, DOCX, TXT und Bilder. Der jeweilige Dialog lädt die Dateien zuerst auf den lokalen ProjectHouseBuilder-Server und fügt sie einer **einzigen seriellen Warteschlange** hinzu. Für Dokumentuploads gibt es keine feste Dateigrößen- oder Gesamtgrößengrenze in der App. Die Dateien werden dort nacheinander ausgeführt; es gibt keine parallelen ChatGPT-Auswertungen durch diese Warteschlange.
 
 Angebote und Rechnungen unterstützen die Wahl **lokal / ChatGPT** wie bisher. ChatGPT wird ausschließlich nach expliziter Freigabe der Plannutzung und mit dem gewählten Modell gestartet. Keine API-Schlüssel, kein kostenpflichtiger Fallback, keine automatische Buchung. Die Hintergrundaufträge verwenden dieselben bestehenden geprüften Importfunktionen, sodass PDF-Entwürfe, Einzelpositionen, Lohnkosten und Rechnungszuordnungen nach Abschluss **unverändert manuell geprüft** werden können.
 
@@ -379,7 +379,7 @@ legt den Kredit an oder aktualisiert ihn; dabei wird der Import als übernommen 
 Ein erneutes Öffnen eines schon übernommenen Scan-Links öffnet den vorhandenen Kredit.
 Kreditunterlagen können weiterhin separat als Original an einen gespeicherten Kredit angehängt werden.
 
-Bei **manuell erfassten Angeboten** kann ein optionales Angebots-PDF bis 15 MB angehängt
+Bei **manuell erfassten Angeboten** kann ein optionales Angebots-PDF angehängt
 werden. Es wird als herunterladbares Original abgelegt, ohne OCR oder ChatGPT; die
 manuell eingegebenen Beträge bleiben unverändert. Ungültige Dateien oder Speicherfehler
 hinterlassen weder ein halbes Angebot noch eine verwaiste Datei.

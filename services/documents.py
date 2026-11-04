@@ -87,7 +87,7 @@ def register(runtime: ModuleType):
         upload = runtime.request.files.get('file')
         if not upload or not upload.filename:
             return (runtime.jsonify(error='Bitte eine Projektunterlage auswählen.'), 400)
-        raw = upload.read(runtime.MAX_DOCUMENT_BYTES + 1)
+        raw = upload.read()
         try:
             filename, ext, text_value, note = runtime.inspect_upload(upload.filename, raw)
             if runtime.db.session.scalar(runtime.select(runtime.ProjectDocument.id).where(runtime.ProjectDocument.digest == runtime.sha256(raw).hexdigest()).limit(1)):

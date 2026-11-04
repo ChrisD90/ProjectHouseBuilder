@@ -285,30 +285,34 @@ body.phb-app.phb-page-belege .receipt-kind-icon{width:15px;height:15px;flex:0 0 
 @media(max-width:1080px){body.phb-app.phb-page-belege .receipt-list-head{display:grid}body.phb-app.phb-page-belege .receipt-list-tools{grid-template-columns:repeat(3,minmax(0,1fr));width:100%}body.phb-app.phb-page-belege .receipt-search{grid-column:1/-1}}
 @media(max-width:650px){body.phb-app.phb-page-belege .receipt-list-tools{grid-template-columns:repeat(2,minmax(0,1fr))}body.phb-app.phb-page-belege .receipt-labor-filter{grid-column:1/-1}}
 
-/* Receipt tiles keep every summary field visible, including long assignments. */
+/* Equal-size receipt tiles; full titles and assignments remain available as tooltips. */
 body.phb-app.phb-page-belege #list{
  display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));
- gap:12px;align-items:start;max-height:650px;padding:2px;scrollbar-gutter:stable;
+ gap:12px;align-items:start;grid-auto-rows:240px;max-height:650px;padding:2px;scrollbar-gutter:stable;
 }
 body.phb-app.phb-page-belege #list>p{grid-column:1/-1;margin:0;padding:12px}
 body.phb-app.phb-page-belege #list .receipt-entry-row{
- display:flex;flex-direction:column;min-width:0;background:var(--ui-surface);
+ display:flex;flex-direction:column;min-width:0;height:240px;background:var(--ui-surface);
  box-shadow:0 2px 8px rgb(16 39 51 / 5%);
 }
 body.phb-app.phb-page-belege #list .receipt-entry-row:hover{border-color:var(--ui-line-strong)}
 body.phb-app.phb-page-belege #list .receipt-entry-row.active{border-color:var(--ui-accent)}
-body.phb-app.phb-page-belege #list .receipt-entry-heading{grid-template-columns:auto minmax(0,1fr);gap:8px}
+body.phb-app.phb-page-belege #list .receipt-entry-heading{grid-template-columns:auto minmax(0,1fr);gap:8px;height:42px;flex:0 0 42px}
 body.phb-app.phb-page-belege #list .receipt-entry-tools .receipt-payment-badge{font-size:10px;line-height:1.4}
 body.phb-app.phb-page-belege #list .entry{
- display:flex;flex-direction:column;align-items:stretch;gap:9px;flex:1;
+ display:flex;flex-direction:column;align-items:stretch;gap:7px;flex:1;min-height:0;
  padding:10px 12px 12px;text-align:left;min-width:0;white-space:normal;
 }
 body.phb-app.phb-page-belege #list .entry:hover{background:var(--ui-soft)}
 body.phb-app.phb-page-belege #list .entry:focus-visible{outline:3px solid var(--ui-accent);outline-offset:-3px}
-body.phb-app.phb-page-belege #list .receipt-card-title{font-size:15px;line-height:1.35;overflow-wrap:anywhere}
+body.phb-app.phb-page-belege #list .receipt-card-title{display:flex;align-items:flex-start;gap:7px;font-size:15px;line-height:1.35;min-height:41px}
+body.phb-app.phb-page-belege #list .receipt-card-title>strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+body.phb-app.phb-page-belege #list .receipt-kind-badge{padding:2px 0 0;background:transparent;flex-shrink:0}
+body.phb-app.phb-page-belege #list .receipt-kind-icon{width:18px;height:18px}
 body.phb-app.phb-page-belege #list .receipt-card-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;font-size:11px;color:var(--ui-muted)}
 body.phb-app.phb-page-belege #list .receipt-card-amount{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}
 body.phb-app.phb-page-belege #list .receipt-card-amount>strong{font-size:20px;line-height:1.3;color:var(--ui-ink);font-variant-numeric:tabular-nums}
 body.phb-app.phb-page-belege #list .entry small{margin:0;line-height:1.5;font-size:11px;white-space:normal;overflow-wrap:anywhere;color:var(--ui-muted)}
-body.phb-app.phb-page-belege #list .receipt-card-details{display:grid;gap:3px}
-body.phb-app.phb-page-belege #list .entry .receipt-labor-preview{margin-top:auto;padding-top:9px;border-top:1px solid var(--ui-line);color:var(--ui-success)}
+body.phb-app.phb-page-belege #list .receipt-card-details{display:grid;gap:5px;margin-top:auto}
+body.phb-app.phb-page-belege #list .receipt-card-assignment{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body.phb-app.phb-page-belege #list .entry .receipt-labor-preview{color:var(--ui-success)}

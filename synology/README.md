@@ -93,7 +93,7 @@ Die offizielle Synology-Dokumentation zur Projektverwaltung: https://kb.synology
 
 ## Rechnungen und Kassenzettel (lokales OCR)
 
-Unter **Kosten → Rechnungen & Kassenzettel** können PDF, JPG, PNG und WEBP (bis 15 MB) hochgeladen werden. PDFs mit Textebene werden direkt gelesen; bei Scans/Fotos verwenden wir **Tesseract (Deutsch/Englisch)** und Poppler ausschließlich **lokal im App-Container**. Kein externer KI- oder OCR-Dienst erhält die Dateien. Die erste Container-Erstellung installiert deshalb Tesseract und Poppler; auf der DS223 mit 2 GB RAM können große Scans langsamer sein.
+Unter **Kosten → Rechnungen & Kassenzettel** können PDF, JPG, PNG und WEBP hochgeladen werden. PDFs mit Textebene werden direkt gelesen; bei Scans/Fotos verwenden wir **Tesseract (Deutsch/Englisch)** und Poppler ausschließlich **lokal im App-Container**. Kein externer KI- oder OCR-Dienst erhält die Dateien. Die erste Container-Erstellung installiert deshalb Tesseract und Poppler; auf der DS223 mit 2 GB RAM können große Scans langsamer sein.
 
 Der OCR-Vorschlag wird **immer erst als Entwurf gespeichert**. Lieferant, Datum, Referenz, Brutto/Nettobetrag, Steuern, Gewerk und Zuordnung lassen sich prüfen und korrigieren. Erst nach **Verbindlich buchen** zählt der Beleg in der Kostenübersicht. Ein gebuchter, aber unbezahlter Rechnungsbetrag erhöht nur die Ausgabe/den Ist-Kostenstand, **nicht** die schon gezahlten Beträge. Zahlungen werden getrennt als tatsächlich bezahlter Betrag eingetragen.
 

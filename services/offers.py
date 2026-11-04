@@ -231,9 +231,9 @@ def register(runtime: ModuleType):
         f = runtime.request.files.get('file')
         if not f or not f.filename or runtime.Path(f.filename).suffix.lower() != '.pdf':
             return (runtime.jsonify(error='Bitte eine PDF-Datei auswählen.'), 400)
-        data = f.read(15 * 1024 * 1024 + 1)
-        if not data or len(data) > 15 * 1024 * 1024:
-            return (runtime.jsonify(error='Maximal 15 MB je Angebot.'), 413)
+        data = f.read()
+        if not data:
+            return (runtime.jsonify(error='Die Angebotsdatei ist leer.'), 400)
         if not data.startswith(b'%PDF'):
             return (runtime.jsonify(error='Die Datei ist kein gültiges PDF.'), 400)
         digest = runtime.sha256(data).hexdigest()
@@ -418,9 +418,9 @@ def register(runtime: ModuleType):
             if uploaded and uploaded.filename:
                 if runtime.Path(uploaded.filename).suffix.lower() != '.pdf':
                     raise ValueError('Bitte einen PDF-Anhang auswählen.')
-                data = uploaded.read(15 * 1024 * 1024 + 1)
-                if not data or len(data) > 15 * 1024 * 1024 or (not data.startswith(b'%PDF-')):
-                    raise ValueError('PDF-Anhang muss eine gültige PDF-Datei bis 15 MB sein.')
+                data = uploaded.read()
+                if not data or (not data.startswith(b'%PDF-')):
+                    raise ValueError('PDF-Anhang muss eine gültige PDF-Datei sein.')
                 try:
                     from pypdf import PdfReader
                     pdf = PdfReader(runtime.io.BytesIO(data))
@@ -469,8 +469,6 @@ def register(runtime: ModuleType):
         if not f or not f.filename or runtime.Path(f.filename).suffix.lower() != '.pdf':
             return (runtime.jsonify(error='Bitte eine PDF-Datei auswählen.'), 400)
         data = f.read()
-        if len(data) > 15 * 1024 * 1024:
-            return (runtime.jsonify(error='Maximal 15 MB je Angebot.'), 413)
         if not data.startswith(b'%PDF'):
             return (runtime.jsonify(error='Die Datei ist kein gültiges PDF.'), 400)
         digest = runtime.sha256(data).hexdigest()
@@ -714,9 +712,9 @@ def register(runtime: ModuleType):
         if mode == 'confirmation':
             if not uploaded or not uploaded.filename or runtime.Path(uploaded.filename).suffix.lower() != '.pdf':
                 return (runtime.jsonify(error='Bitte die Auftragsbestätigung als PDF hochladen.'), 400)
-            data = uploaded.read(15 * 1024 * 1024 + 1)
-            if not data or len(data) > 15 * 1024 * 1024 or (not data.startswith(b'%PDF-')):
-                return (runtime.jsonify(error='Die Auftragsbestätigung muss ein gültiges PDF bis 15 MB sein.'), 400)
+            data = uploaded.read()
+            if not data or (not data.startswith(b'%PDF-')):
+                return (runtime.jsonify(error='Die Auftragsbestätigung muss ein gültiges PDF sein.'), 400)
             try:
                 from pypdf import PdfReader
                 pdf = PdfReader(runtime.io.BytesIO(data))

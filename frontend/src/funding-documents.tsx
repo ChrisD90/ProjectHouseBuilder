@@ -160,7 +160,7 @@ export function FundingDocumentIntake({
             </Text>
             <FileInput
               label="Dateien"
-              description="Bis zu 8 Dateien à 12 MB. Verarbeitung lokal auf dem App-Server."
+              description="Bis zu 8 Dateien. Verarbeitung lokal auf dem App-Server."
               accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.docx"
               multiple
               required

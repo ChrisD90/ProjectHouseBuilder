@@ -22,7 +22,7 @@
     <label>Bruttogesamtsumme (€) <input name="gross" inputmode="decimal" required placeholder="z. B. 8.500,00"></label>
     <label>Gewerk / Kategorie <select name="category" id="offerManualCategory" required></select></label>
     <label>Kostenplanposition (optional) <select name="budget_line_id" id="offerManualBudget"></select></label>
-    <label class="offer-wide">Angebots-PDF anhängen (optional, max. 15 MB)<input name="file" type="file" accept=".pdf,application/pdf"><small>Wird als Original gespeichert. Deine manuell eingetragenen Werte bleiben maßgeblich; es erfolgt keine automatische Analyse.</small></label>
+    <label class="offer-wide">Angebots-PDF anhängen (optional)<input name="file" type="file" accept=".pdf,application/pdf"><small>Wird als Original gespeichert. Deine manuell eingetragenen Werte bleiben maßgeblich; es erfolgt keine automatische Analyse.</small></label>
     <details class="offer-manual-more"><summary>Weitere Angaben (optional)</summary><div class="offer-optional-fields">
       <label>Angebotsnummer <input name="number" maxlength="100"></label>
       <label>Datum <input name="issued" maxlength="20" placeholder="TT.MM.JJJJ"></label>
@@ -80,7 +80,7 @@
         <label><input type="radio" name="mode" value="confirmation"> <span><strong>Auftragsbestätigung hochladen</strong><small>Original-PDF ablegen und endgültigen Auftragswert bei Abweichungen korrigieren.</small></span></label>
       </fieldset>
       <div id="offerAcceptanceUpload" class="offer-acceptance-upload" hidden>
-        <label>Auftragsbestätigung (PDF, max. 15 MB)<input id="offerAcceptanceFile" type="file" name="confirmation" accept=".pdf,application/pdf"></label>
+        <label>Auftragsbestätigung (PDF)<input id="offerAcceptanceFile" type="file" name="confirmation" accept=".pdf,application/pdf"></label>
         <label>Verbindlicher Brutto-Auftragswert (€)<input id="offerAcceptanceGross" type="text" name="agreed_gross" inputmode="decimal" data-euro="true" required></label>
         <p class="muted">Bitte den Betrag mit der Auftragsbestätigung vergleichen. Der Angebotspreis bleibt im Original erhalten.</p>
       </div>

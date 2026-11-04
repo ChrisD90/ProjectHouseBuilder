@@ -419,7 +419,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('id="offerInvoicesContent"',page)
         self.assertIn('#offerList .offer-tile',css)
         self.assertIn('grid-template-columns:repeat(3',css)
-        self.assertIn('max-height:610px',css)
+        self.assertRegex(css,r'#offerList\s*\{[^}]*max-height:\d+px')
         self.assertIn('overflow-y:auto',css)
         self.assertIn('.offer-tile-corner-actions',css)
         self.assertIn('.offer-drafts-icon',css)

@@ -25,6 +25,17 @@ class ImportJobsTest(unittest.TestCase):
             db.session.add(Offer(id=ident,digest='mock-offer-'+str(ident),vendor='Testfirma',filename='test.pdf',status='Entwurf'))
             db.session.commit()
         return jsonify(id=ident),201
+
+    def test_upload_over_previous_file_batch_and_request_limits(self):
+        self.assertIsNone(app.config['MAX_CONTENT_LENGTH'])
+        content=b'%PDF-1.4\n%'+b'x'*(86*1024*1024)
+        result=self.enqueue(mode='none',content=content)
+        self.assertEqual(result.status_code,202,result.json)
+        ident=result.json['jobs'][0]['id'];job=db.session.get(ImportJob,ident)
+        self.assertEqual((IMPORT_QUEUE_ROOT/job.stored_name).stat().st_size,len(content))
+        _run_import_job(ident);db.session.expire_all();job=db.session.get(ImportJob,ident)
+        self.assertEqual(job.status,'Fertig',job.error)
+        self.assertEqual(self.client.delete('/api/receipts/'+str(job.result_id)).status_code,200)
     def enqueue(self,kind='receipts',names=('one.pdf',),mode='local',extra=None,content=None):
         data={'kind':kind,'analysis_mode':mode,'files':[
             (io.BytesIO(content or b'%PDF-1.4\nMinimal PDF'),filename) for filename in names
