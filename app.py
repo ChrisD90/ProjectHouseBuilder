@@ -28,7 +28,6 @@ from project_documents import (CATEGORIES as DOCUMENT_CATEGORIES, AREAS as DOCUM
     MAX_AI_DOCUMENTS, MAX_AI_TOTAL_BYTES, inspect_upload, plain, matching_score)
 from sample_schedule import load_schedule_template, schedule_template_summary
 from pathlib import Path
-import hmac
 from werkzeug.middleware.proxy_fix import ProxyFix
 from chatgpt_local import chatgpt, AIError, IdentityValidationError, extract_json, _background_hooks as ai_background_hooks
 import base64
@@ -37,14 +36,14 @@ import secrets
 from queue import Queue, Empty
 from threading import Thread, Lock
 from werkzeug.datastructures import FileStorage
-from flask import Flask, jsonify, render_template, request, Response, send_file, session, redirect, url_for
+from flask import Flask, jsonify, render_template, request, Response, send_file, session, redirect
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import select, text, inspect as sa_inspect
 from multi_projects import ProjectModel, ProjectSession, current_project_id, project_context, all_projects, install_project_scope, register_project_routes, project_files, register_planning_state
 
 ROOT = Path(os.environ.get('PHB_APP_ROOT') or Path(__file__).resolve().parent).resolve()
 app = Flask(__name__)
-# Authentication is opt-in for local tests, mandatory in the Docker/LAN deployment.
+# Sessions retain the local ChatGPT connection flow; the app itself needs no login.
 def _local_session_secret():
     if os.environ.get('APP_SECRET_KEY'):
         return os.environ['APP_SECRET_KEY']
@@ -62,36 +61,12 @@ app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 @app.before_request
-def require_local_login():
-    secret = os.environ.get('APP_PASSWORD')
-    if not secret or request.endpoint in ('login','pwa_manifest','service_worker','app_icon','static'):
-        return None
-    if session.get('signed_in') is not True:
-        if request.path.startswith('/api/'):
-            return jsonify(error='Nicht angemeldet'), 401
-        return redirect(url_for('login'))
+def validate_request_origin():
     if request.method not in ('GET','HEAD','OPTIONS'):
         origin = request.headers.get('Origin')
         if origin and origin.rstrip('/') != request.host_url.rstrip('/'):
             return jsonify(error='Ungültiger Anfrage-Ursprung'),403
     return None
-
-@app.route('/login', methods=['GET','POST'])
-def login():
-    if request.method == 'POST':
-        expected=os.environ.get('APP_PASSWORD','')
-        provided=request.form.get('password','')
-        if expected and hmac.compare_digest(provided,expected):
-            session.clear(); session['signed_in']=True;session.permanent=True
-            return redirect('/')
-        return render_template('login.html',error='Passwort nicht korrekt'),401
-    if session.get('signed_in'):return redirect('/')
-    return render_template('login.html',error='')
-
-@app.post('/logout')
-def logout():
-    session.clear()
-    return redirect('/login')
 
 # React owns the shared frame; the reviewed classic workflows remain available
 # as isolated same-origin documents while their native components are migrated.

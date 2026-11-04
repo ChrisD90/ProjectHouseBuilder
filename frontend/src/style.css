@@ -37,9 +37,6 @@ input {
 .app-sidebar[data-collapsed='true'] .mantine-NavLink-body {
   display: none;
 }
-.sidebar-footer {
-  flex-shrink: 0;
-}
 .app-header-left {
   flex: 1;
   min-width: 0;

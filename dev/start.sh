@@ -8,10 +8,10 @@ fi
 if [ ! -f .env.dev ]; then
   cp .env.dev.example .env.dev
   chmod 600 .env.dev
-  echo 'Bitte zuerst .env.dev bearbeiten und drei sichere, verschiedene Geheimnisse setzen.' >&2
+  echo 'Bitte zuerst .env.dev bearbeiten und zwei sichere, verschiedene Geheimnisse setzen.' >&2
   exit 1
 fi
-if grep -Eq '^DEV_(POSTGRES_PASSWORD|APP_PASSWORD|APP_SECRET_KEY)=HIER_' .env.dev; then
+if grep -Eq '^DEV_(POSTGRES_PASSWORD|APP_SECRET_KEY)=HIER_' .env.dev; then
   echo 'Bitte die Platzhalter in .env.dev durch echte Geheimnisse ersetzen.' >&2
   exit 1
 fi

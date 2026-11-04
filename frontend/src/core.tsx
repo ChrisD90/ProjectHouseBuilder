@@ -24,10 +24,6 @@ export async function api<T = Row>(
       headers,
       body: body === undefined ? undefined : form ? body : JSON.stringify(body),
     });
-    if (r.status === 401) {
-      location.assign('/login');
-      throw Error('Bitte erneut anmelden.');
-    }
     let data;
     try {
       data = await r.json();

@@ -27,7 +27,6 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg://sanierung_dev:${DEV_POSTGRES_PASSWORD:?Setze DEV_POSTGRES_PASSWORD in .env.dev}@db:5432/sanierung_dev
-      APP_PASSWORD: ${DEV_APP_PASSWORD:?Setze DEV_APP_PASSWORD in .env.dev}
       APP_SECRET_KEY: ${DEV_APP_SECRET_KEY:?Setze DEV_APP_SECRET_KEY in .env.dev}
       SECURE_COOKIES: '0' # Nur unter http://localhost fuer die Entwicklung
       PYTHONDONTWRITEBYTECODE: '1'

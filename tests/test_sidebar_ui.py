@@ -42,7 +42,7 @@ class SidebarUITest(unittest.TestCase):
                 if name == 'stammdaten':
                     self.assertIn('/static/stammdaten.js', content)
                     self.assertIn('/static/stammdaten.css', content)
-                self.assertIn('<form method="post" action="/logout"', content)
+                self.assertNotIn('/logout', content)
                 self.assertEqual(content.count('aria-current="page"'), 1)
                 self.assertNotIn('← Zum Gantt-Plan', content)
 
@@ -552,9 +552,6 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("updateLaborHint(x.labor_source,x.labor_amount)",js)
         self.assertIn("x.labor_amount!==null",js)
         self.assertIn("Manuell eingetragen",js)
-
-    def test_login_does_not_show_application_sidebar(self):
-        self.assertNotIn('phbSidebar', self.render('login'))
 
     def test_pwa_cache_includes_offline_shell_and_never_api_or_html(self):
         worker = (STATIC / 'sw.js').read_text()

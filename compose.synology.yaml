@@ -40,7 +40,6 @@ services:
         condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql+psycopg://sanierung:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD in .env setzen}@db:5432/sanierung
-      APP_PASSWORD: ${APP_PASSWORD:?APP_PASSWORD in .env setzen}
       APP_SECRET_KEY: ${APP_SECRET_KEY:?APP_SECRET_KEY in .env setzen}
       SECURE_COOKIES: '1'
       PHB_BACKUP_ROOT: /app/backup-target

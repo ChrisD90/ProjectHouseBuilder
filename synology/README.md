@@ -11,11 +11,11 @@ Die Synology-Version nutzt weiterhin **Flask/Gunicorn**, **PostgreSQL 17** und *
 
 ## Installation ueber Container Manager
 
-1. Repo-Branch `feature/synology-nas` herunterladen (ZIP/Clone). **Alle Projektdateien**, nicht nur die Compose-Datei, in einen Ordner auf der NAS legen, z. B. unter `/volume1/docker/projecthousebuilder`. Mit Synology **File Station** entpacken/hochladen.
+1. Repo-Branch `main` herunterladen (ZIP/Clone). **Alle Projektdateien**, nicht nur die Compose-Datei, in einen Ordner auf der NAS legen, z. B. unter `/volume1/docker/projecthousebuilder`. Mit Synology **File Station** entpacken/hochladen.
 2. `.env.synology.example` nach `.env` kopieren, `LAN_HOST` auf die lokale NAS-IP setzen und alle Platzhalter durch sichere, voneinander unterschiedliche Geheimnisse ersetzen. Den `APP_SECRET_KEY` zufaellig generieren. Die `.env` enthaelt Zugangsdaten und darf nicht in Git/GitHub gespeichert werden.
 3. **Container Manager → Projekt → Erstellen**. Als **Projektpfad** den Ordner mit `Dockerfile`, `app.py`, `Caddyfile`, `.env` und `compose.synology.yaml` waehlen. Als Projektname `projecthousebuilder` festlegen. In **Quelle** die Datei `compose.synology.yaml` auswaehlen oder ihren Text in den YAML-Editor kopieren. Bei manchen DSM-Versionen muss die Datei dafuer `docker-compose.yml` heissen. Achtung: Eine benutzte YAML-Datei muss relativ zum gewaehlten Projektordner bleiben (`build: .`).
 4. Projekt **erstellen und starten**. Den Build der Flask-App und Download von PostgreSQL/Caddy abwarten. Im Bereich **Container** sicherstellen, dass `db`, `app`, `https` laufen. Falls etwas nicht startet, die Container-Logs pruefen.
-5. Browser im Heimnetz: `https://NAS-IP:8443`, z. B. `https://192.168.178.20:8443`. Passwort aus `APP_PASSWORD` verwenden.
+5. Browser im Heimnetz: `https://NAS-IP:8443`, z. B. `https://192.168.178.20:8443`. Die Projektuebersicht oeffnet sich direkt ohne Anmeldung.
 6. Das erste Zertifikat ist intern von Caddy ausgestellt. Fuer eine warnungsfreie Verbindung und PWA auf anderen Geraeten muss die lokale Root-CA auf jedem Geraet einmalig vertrauenswuerdig installiert werden (siehe unten).
 
 **Hinweis zu Compose-Variablen:** Container Manager muss die `.env` im Projektordner lesen koennen. Falls Variablen als fehlend gemeldet werden, das Projekt mit `docker compose -f compose.synology.yaml config` ueber SSH pruefen oder die Variablen in den Compose-Projekteinstellungen hinterlegen. Niemals Geheimnisse in den oeffentlichen GitHub-Code schreiben.

@@ -10,12 +10,12 @@
 
 ## Start auf macOS / Linux
 
-1. Branch `feature/synology-nas` klonen bzw. herunterladen.
+1. Branch `main` klonen bzw. herunterladen.
 2. Im Projektordner: `cp .env.dev.example .env.dev`.
-3. In `.env.dev` drei **verschiedene, sichere** Werte für `DEV_POSTGRES_PASSWORD`, `DEV_APP_PASSWORD` und `DEV_APP_SECRET_KEY` vergeben. Der Datenbankwert sollte ausschließlich alphanumerische/URL-taugliche Zeichen enthalten. Der geheime Schlüssel sollte mindestens 32 zufällige Zeichen besitzen. Diese Datei ist gitignoriert.
+3. In `.env.dev` zwei **verschiedene, sichere** Werte für `DEV_POSTGRES_PASSWORD` und `DEV_APP_SECRET_KEY` vergeben. Der Datenbankwert sollte ausschließlich alphanumerische/URL-taugliche Zeichen enthalten. Der geheime Schlüssel sollte mindestens 32 zufällige Zeichen besitzen. Diese Datei ist gitignoriert.
 4. `sh dev/start.sh` ausführen. Beim ersten Start lädt Docker die Images und installiert die OCR-Pakete; deshalb ist zunächst Internet erforderlich.
-5. `http://localhost:5080` öffnen, mit `DEV_APP_PASSWORD` anmelden.
-6. `sh dev/check.sh` prüft, ob die Login-Seite erreichbar ist.
+5. `http://localhost:5080` öffnen. Die Projektübersicht erscheint direkt ohne Anmeldung.
+6. `sh dev/check.sh` prüft, ob die Projektübersicht erreichbar ist.
 
 **Windows PowerShell:** `Copy-Item .env.dev.example .env.dev`; Datei bearbeiten; `docker compose --env-file .env.dev -f compose.dev.yaml up --build -d`.
 

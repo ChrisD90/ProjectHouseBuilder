@@ -43,12 +43,17 @@ describe('shared API boundary', () => {
     await api('/api/ai/example', 'POST', { plan_only: true }, true);
     expect(fetcher.mock.calls[1][1].headers['X-PHB-AI']).toBe('1');
   });
-  it('redirects an expired session without leaving the app locked', async () => {
+  it('reports unauthorized responses without navigating away or leaving the app locked', async () => {
     const assign = vi.fn();
     vi.stubGlobal('location', { assign });
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })));
-    await expect(api('/api/example', 'POST', {})).rejects.toThrow('Bitte erneut anmelden.');
-    expect(assign).toHaveBeenCalledWith('/login');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(Response.json({ error: 'ChatGPT-Verbindung fehlt.' }, { status: 401 })),
+    );
+    await expect(api('/api/example', 'POST', {})).rejects.toThrow('ChatGPT-Verbindung fehlt.');
+    expect(assign).not.toHaveBeenCalled();
     expect(hasWrites()).toBe(false);
   });
 });

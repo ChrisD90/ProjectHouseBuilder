@@ -29,7 +29,6 @@ import {
   IconFiles,
   IconLeaf,
   IconListCheck,
-  IconLogout,
   IconReceipt,
   IconSparkles,
   IconUsers,
@@ -405,21 +404,6 @@ export function App() {
                 </section>
               ))}
             </Stack>
-            <Group justify={mini ? 'center' : 'flex-end'} mt="md" className="sidebar-footer">
-              <form action="/logout" method="post">
-                <Tooltip label="Abmelden">
-                  <ActionIcon
-                    type="submit"
-                    variant="subtle"
-                    className="sidebar-icon-button"
-                    size={32}
-                    aria-label="Abmelden"
-                  >
-                    <IconLogout size={19} />
-                  </ActionIcon>
-                </Tooltip>
-              </form>
-            </Group>
           </AppShell.Navbar>
           <AppShell.Header px={{ base: 15, sm: 26 }}>
             <Group h="100%" justify="space-between" wrap="nowrap">
@@ -637,9 +621,7 @@ export function App() {
                         if (refs.current[path] !== node) return;
                         try {
                           if (node.contentWindow?.location.href === 'about:blank') return;
-                          if (node.contentWindow?.location.pathname === '/login')
-                            window.location.assign('/login');
-                          else if (!(node.contentWindow as any)?.PHBEmbed) setFailed(path);
+                          if (!(node.contentWindow as any)?.PHBEmbed) setFailed(path);
                         } catch {
                           setFailed(path);
                         }
