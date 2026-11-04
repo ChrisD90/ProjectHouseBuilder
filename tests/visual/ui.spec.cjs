@@ -62,6 +62,13 @@ for (const theme of ["light", "dark"])
       const frame = page.frameLocator('iframe[title="Rechnungen & Belege"]');
       const card = frame.locator(".receipt-entry-row").first();
       await expect(card).toBeVisible();
+      // Apply inside the embedded document too: screenshot style injection
+      // differs between system Chromium and Playwright's bundled browser.
+      await card.evaluate((element) => {
+        const style = element.ownerDocument.createElement("style");
+        style.textContent = '* { font-family: "Liberation Sans", sans-serif !important; }';
+        element.ownerDocument.head.append(style);
+      });
       await expect(card.locator("[data-work-open]")).toBeVisible();
       const status = await card.locator(".status").boundingBox();
       const assigned = await card
