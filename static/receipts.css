@@ -277,3 +277,5 @@ body.phb-app.phb-page-belege .receipt-amount-fields{grid-template-columns:repeat
 body.phb-app.phb-page-belege .receipt-amount-fields .receipt-tax-rate{width:100%}
 body.phb-app.phb-page-belege .receipt-draft-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
 @media(max-width:650px){body.phb-app.phb-page-belege .receipt-draft-actions{width:100%}}
+body.phb-app.phb-page-belege .receipt-entry-statuses{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+body.phb-app.phb-page-belege .receipt-kind-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:var(--ui-surface);color:var(--ui-muted);font-size:10px;line-height:1.4;font-weight:600}

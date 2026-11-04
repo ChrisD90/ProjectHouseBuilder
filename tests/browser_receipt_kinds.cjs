@@ -1,0 +1,82 @@
+const {chromium,expect}=require('../frontend/node_modules/@playwright/test');
+const assert=require('node:assert/strict');
+const base=process.env.PHB_TEST_URL;
+if(!base)throw Error('Use dev/ui_browser_smoke.py.');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
+ const page=await browser.newPage({locale:'de-DE'}),errors=[];
+ page.on('pageerror',error=>errors.push(error.message));
+ try{
+  const owner=(await(await page.request.post(base+'/api/projects',{data:{title:'Rechnung oder Kassenzettel'}})).json()).project.id;
+  const headers={'X-PHB-Project':String(owner)};
+  async function get(path){return(await page.request.get(base+path,{headers})).json();}
+  async function post(path,data){const response=await page.request.post(base+path,{headers,data});assert(response.ok(),await response.text());return response.json();}
+  const vendor=(await post('/api/contractors',{name:'Baumarkt Test',trade:'Sonstiges'})).contractor.id;
+  const equity=(await post('/api/financing/equity',{name:'Baukonto',opening_balance:500,reserve:0})).id;
+  const task=(await post('/api/tasks',{code:'E1',name:'Streichen',trade:'Maler & Lackierer',duration:1})).id;
+  const plan=(await post('/api/self-work',{title:'Zimmer streichen',task_id:task})).plan.id;
+  async function upload(kind,extra={}){
+   const response=await page.request.post(base+'/api/receipts',{headers,multipart:{analysis_mode:'none',receipt_kind:kind,...extra,file:{name:kind+'.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\n'+kind)}}});
+   assert.equal(response.status(),201,await response.text());return(await response.json()).id;
+  }
+  const invoice=await upload('Rechnung'),till=await upload('Kassenzettel',{self_work_id:String(plan)});
+  await page.goto(base+'/p/'+owner+'/belege');
+  const frame=page.frameLocator('iframe[title="Rechnungen & Belege"]:not([hidden])');
+  const open=async id=>{await frame.locator('.entry[data-id="'+id+'"]').click();await expect(frame.locator('#receiptWorkflowDialog')).toBeVisible();};
+  const close=async()=>{await frame.locator('#closeReceiptWorkflow').click();await expect(frame.locator('#receiptWorkflowDialog')).not.toBeVisible();};
+  await expect(frame.locator('[data-receipt-kind="Kassenzettel"] .receipt-kind-badge')).toHaveText('Kassenzettel');
+  await expect(frame.locator('[data-receipt-kind="Rechnung"] .receipt-kind-badge')).toHaveText('Rechnung');
+  await open(invoice);await expect(frame.locator('#receiptWorkflowTitle')).toHaveText('Rechnung prüfen');await close();
+  await open(till);
+  await expect(frame.locator('#receiptWorkflowTitle')).toHaveText('Kassenzettel prüfen');
+  assert.equal(await frame.locator('#receiptAssignmentType option[value="Eigenleistung"]').evaluate(option=>option.hidden),false);
+  await expect(frame.locator('#receiptAssignmentType')).toHaveValue('Eigenleistung');
+  await frame.locator('#receiptSupplierCompany').selectOption(String(vendor));
+  await expect(frame.locator('#receiptAssignmentType')).toHaveValue('Eigenleistung');
+  await expect(frame.locator('#receiptSelfWork')).toHaveValue(String(plan));
+  await expect(frame.locator('#receiptTrade')).toHaveValue('Maler & Lackierer');
+  await frame.locator('[name=document_date]').fill('2026-11-04');
+  await frame.locator('#receiptTaxRate').selectOption('19');await frame.locator('#receiptGross').fill('119,00');
+  await frame.locator('#saveReceiptDraft').click();
+  await expect(frame.locator('#receiptSaveStatus')).toContainText('Entwurf gespeichert.');
+  let saved=await get('/api/receipts/'+till);
+  assert.equal(saved.kind,'Kassenzettel');assert.equal(saved.assignment_type,'Eigenleistung');assert.equal(saved.contractor_id,null);assert.equal(saved.self_work_id,plan);
+  await close();await open(invoice);await close();await open(till);
+  await expect(frame.locator('#receiptSupplierCompany')).toHaveValue(String(vendor));
+  await expect(frame.locator('#tillFinancingSource')).toHaveValue('equity:'+equity);
+  const confirm=frame.locator('dialog.phb-messagebox');
+  await frame.locator('#book').click();await expect(confirm).toContainText('beim Einkauf bezahlt');
+  await confirm.getByRole('button',{name:'Bestätigen',exact:true}).click();
+  await expect(frame.locator('#receiptReviewState')).toHaveText('Gebucht');
+  await close();await open(till);
+  await expect(frame.locator('#receiptWorkflowTitle')).toHaveText('Gebuchter Kassenzettel');
+  await expect(frame.locator('#book')).toBeHidden();await expect(frame.locator('[data-flow-step="2"]')).toBeHidden();
+  await frame.locator('#saveReceiptDraft').click();await expect(frame.locator('#receiptSaveStatus')).toContainText('Änderungen gespeichert.');
+  let finance=await get('/api/financing');
+  assert.equal(finance.payments.filter(payment=>payment.receipt_id===till).length,1);
+  assert.equal(finance.equity.find(account=>account.id===equity).balance.available,381);
+  await close();await open(invoice);
+  await frame.locator('#billingType').selectOption('Abschlagsrechnung');
+  await frame.locator('[name=kind]').selectOption('Kassenzettel');
+  await expect(frame.locator('#receiptWorkflowTitle')).toHaveText('Kassenzettel prüfen');
+  await expect(frame.locator('#billingType')).toHaveValue('Normal');
+  await expect(frame.locator('#receiptAssignmentType')).toHaveValue('Eigenleistung');
+  await frame.locator('[name=kind]').selectOption('Rechnung');
+  await expect(frame.locator('#receiptWorkflowTitle')).toHaveText('Rechnung prüfen');
+  await expect(frame.locator('#receiptAssignmentType')).toHaveValue('');
+  await frame.locator('[name=kind]').selectOption('Kassenzettel');
+  await expect(frame.locator('#tillFinancingSource')).toBeEnabled();
+  await frame.locator('#receiptSupplierCompany').selectOption(String(vendor));
+  await frame.locator('[name=document_date]').fill('2026-11-04');await frame.locator('#receiptGross').fill('50,00');
+  await frame.locator('#book').click();await confirm.getByRole('button',{name:'Bestätigen',exact:true}).click();
+  await expect(frame.locator('#receiptReviewState')).toHaveText('Gebucht');
+  saved=await get('/api/receipts/'+invoice);
+  assert.equal(saved.kind,'Kassenzettel');assert.equal(saved.assignment_type,'Eigenleistung');assert.equal(saved.paid_amount,50);
+  finance=await get('/api/financing');
+  assert.equal(finance.payments.filter(payment=>payment.receipt_id===invoice).length,1);
+  assert.equal(finance.equity.find(account=>account.id===equity).balance.available,331);
+  assert.deepEqual(errors,[]);
+  console.log('PASS list document kinds, alternating invoice/till dialogs, independent shop supplier and DIY attribution, persisted cash workflow and exactly one payment per booking.');
+ }catch(error){await page.screenshot({path:'/tmp/phb-receipt-kinds-failure.png'});throw error;}
+ finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exit(1);});

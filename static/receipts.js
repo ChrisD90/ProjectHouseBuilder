@@ -89,10 +89,14 @@ function applyTillMode(enabled){
  tillFinance.hidden=tillInfo.hidden||currentReceipt?.status!=='Entwurf';
  for(const name of ['due_date','budget_line_id'])$('review').elements.namedItem(name)?.closest('label')?.setAttribute('data-till-extra','');
  for(const node of [$('billingType')?.closest('label'),$('review').querySelector('.receipt-labor')])node?.setAttribute('data-till-extra','');
- if(enabled&&receiptDialog.classList.contains('is-reviewing')){
-   $('receiptWorkflowTitle').textContent=currentReceipt?.status==='Entwurf'?'Kassenzettel prüfen':currentReceipt?.status==='Storniert'?'Stornierter Kassenzettel':'Gebuchter Kassenzettel';
+ if(receiptDialog.classList.contains('is-reviewing')){
+   const kind=enabled?'Kassenzettel':$('review').elements.namedItem('kind').value==='Gutschrift'?'Gutschrift':'Rechnung';
+   const title=kind==='Kassenzettel'
+     ? currentReceipt?.status==='Entwurf'?'Kassenzettel prüfen':currentReceipt?.status==='Storniert'?'Stornierter Kassenzettel':'Gebuchter Kassenzettel'
+     : currentReceipt?.status==='Entwurf'?kind+' prüfen':currentReceipt?.status==='Storniert'?'Stornierte '+kind:'Gebuchte '+kind;
+   $('receiptWorkflowTitle').textContent=title;
    $('receiptReviewTitle').textContent=$('receiptWorkflowTitle').textContent;
-   if(currentReceipt?.status==='Entwurf')$('receiptReviewHelp').textContent='Lieferant, Bonnummer, Datum und Beträge prüfen. Erst beim bestätigten Buchen wird der Kassenzettel als bezahlt erfasst.';
+   if(currentReceipt?.status==='Entwurf')$('receiptReviewHelp').textContent=enabled?'Lieferant, Bonnummer, Datum und Beträge prüfen. Erst beim bestätigten Buchen wird der Kassenzettel als bezahlt erfasst.':'Rechnungsdaten und Zuordnung prüfen. Die Zahlung erfasst du nach dem Buchen separat.';
  }
  $('book').textContent=enabled?'Kassenzettel buchen':'Verbindlich buchen';
  $('payReceipt').textContent=enabled?'Finanzierung zuordnen (optional)':'Zahlung erfassen';
@@ -238,7 +242,7 @@ function renderReceiptList(){
  $('receiptSearchResult').textContent=filtered
   ?`${visible.length} von ${list.length} Belegen gefunden`
   :`${list.length} Belege insgesamt`;
- $('list').innerHTML=visible.map(x=>`<article class="receipt-entry-row ${selected===x.id?'active':''}"><div class="receipt-entry-heading"><span class="status ${x.status==='Gebucht'?'booked':x.status==='Storniert'?'cancelled':'draft'}">${safe(x.status)}</span><div class="receipt-entry-tools">${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}${PHBWorkUI.button('receipt',x.id)}</div></div><button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button></article>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
+ $('list').innerHTML=visible.map(x=>`<article class="receipt-entry-row ${selected===x.id?'active':''}" data-receipt-kind="${safe(x.kind||'Rechnung')}"><div class="receipt-entry-heading"><div class="receipt-entry-statuses"><span class="status ${x.status==='Gebucht'?'booked':x.status==='Storniert'?'cancelled':'draft'}">${safe(x.status)}</span><span class="receipt-kind-badge">${safe(x.kind||'Rechnung')}</span></div><div class="receipt-entry-tools">${x.status==='Gebucht'&&x.paid_amount>0?`<span class="receipt-payment-badge">${safe(x.payment_assignment)}${x.unassigned_amount>0?' · '+money(x.unassigned_amount):''}</span>`:''}${PHBWorkUI.button('receipt',x.id)}</div></div><button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}"><strong>${safe(x.supplier||x.filename)}</strong><small>${safe(x.document_date||'Ohne Datum')} · ${money(x.counted_amount)} ${x.status==='Storniert'?'Originalbetrag':'neu abgerechnet'} · ${safe(x.category)} · ${safe(assignmentLabel(x))}</small>${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:''}</button></article>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
  $('list').querySelectorAll('.entry').forEach(b=>b.onclick=()=>open(Number(b.dataset.id)));
  renderLaborSummary();
 }
@@ -328,7 +332,9 @@ function updateInvoiceControls(){
  $('costItems').disabled=frozen||(mode!=='Angebot'&&mode!=='Kostenposition');
  $('receiptContractor').disabled=frozen||mode!=='Betrieb';
  $('receiptSupplierCompany').disabled=mode==='Angebot';
- if(mode!=='Angebot')$('receiptSupplierCompany').value=$('receiptContractor').value;
+ if(mode!=='Angebot')$('receiptSupplierCompany').value=till&&mode==='Eigenleistung'
+   ? (overview?.contractors||[]).find(company=>normalizedSearch(company.name)===normalizedSearch($('review').elements.namedItem('supplier').value))?.id||''
+   : $('receiptContractor').value;
  $('receiptAssignmentType').disabled=frozen;
  const cost=overview?.items?.find(x=>x.id===Number($('costItems').value));
  const offer=(overview?.offers||[]).find(o=>o.id===cost?.offer_id);
@@ -368,6 +374,12 @@ $('receiptAssignmentType').addEventListener('change',()=>{
 });
 $('receiptSupplierCompany').addEventListener('change',()=>{
  const company=(overview?.contractors||[]).find(c=>String(c.id)===$('receiptSupplierCompany').value);
+ const ownPurchase=$('review').elements.namedItem('kind').value==='Kassenzettel'&&$('receiptAssignmentType').value==='Eigenleistung';
+ if(ownPurchase){
+   $('receiptContractor').value='';
+   if(company)$('review').elements.namedItem('supplier').value=company.name;
+   updateInvoiceControls();return;
+ }
  $('receiptContractor').value=company?String(company.id):'';
  if(company){$('review').elements.namedItem('supplier').value=company.name;$('receiptAssignmentType').value='Betrieb';}
  else if($('review').elements.namedItem('kind').value!=='Kassenzettel')$('review').elements.namedItem('supplier').value='';
@@ -391,7 +403,18 @@ $('costItems').addEventListener('change',()=>{
 $('receiptSelfWork').addEventListener('change',()=>{if($('receiptSelfWork').value)$('budgetLines').value='';updateInvoiceControls();});
 $('billingType').addEventListener('change',()=>{if($('billingType').value!=='Schlussrechnung')$('advanceDeduction').value='0';updateInvoiceControls();});
 $('review').elements.namedItem('kind').addEventListener('change',event=>{
- const till=event.currentTarget.value==='Kassenzettel';applyTillMode(till);
+ const till=event.currentTarget.value==='Kassenzettel';
+ if(till){
+  $('billingType').value='Normal';$('advanceDeduction').value='0';
+  $('review').elements.namedItem('due_date').value='';
+  if(!$('receiptAssignmentType').value){
+   $('receiptAssignmentType').value='Eigenleistung';
+   if([...$('categories').options].some(option=>option.value==='Eigenleistungen / Material'))$('categories').value='Eigenleistungen / Material';
+  }
+ }else if($('receiptAssignmentType').value==='Eigenleistung'&&(currentReceipt?.kind==='Kassenzettel'||currentReceipt?.assignment_type!=='Eigenleistung')){
+  $('receiptAssignmentType').value='';$('receiptSelfWork').value='';
+ }
+ applyTillMode(till);
  updateInvoiceControls();
  if(till&&currentReceipt?.status==='Entwurf')void loadTillFinancing(currentReceipt);
 });
@@ -461,6 +484,7 @@ async function reload(keepId=selected,reopen=true){
 async function open(id){
  const version=++receiptNavigationVersion;
  try{let x=await api('/api/receipts/'+id);if(version!==receiptNavigationVersion)return;selected=id;currentReceipt=x;assignmentEditing=false;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
+ $('review').elements.namedItem('kind').value=x.kind||'Rechnung';
  if(x.kind==='Kassenzettel'&&x.status==='Entwurf')await loadTillFinancing(x);
  if(selected!==id||version!==receiptNavigationVersion)return;
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;

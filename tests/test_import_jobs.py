@@ -159,6 +159,22 @@ class ImportJobsTest(unittest.TestCase):
         rejected=self.enqueue(kind='offers',mode='none')
         self.assertEqual(rejected.status_code,400)
 
+    def test_recognized_till_receipt_uses_same_defaults_as_explicit_till_upload(self):
+        queued=self.enqueue()
+        jid=queued.json['jobs'][0]['id']
+        with patch('app.extract_text',return_value=('Bauhaus GmbH\nKassenbon 123\nDatum 04.11.2026\nGesamtbetrag 119,00 EUR','PDF-Text')):
+            _run_import_job(jid)
+        job=db.session.get(ImportJob,jid)
+        self.assertEqual(job.status,'Fertig',job.error)
+        receipt=db.session.get(Receipt,job.result_id)
+        self.assertEqual(receipt.kind,'Kassenzettel')
+        self.assertEqual(receipt.assignment_type,'Eigenleistung')
+        self.assertEqual(receipt.category,'Eigenleistungen / Material')
+        self.assertEqual(receipt.billing_type,'Normal')
+        self.assertEqual(receipt.due_date,'')
+        self.assertEqual(receipt.status,'Entwurf')
+        self.assertEqual(receipt.paid_amount,0)
+
     def test_till_upload_defaults_and_atomic_paid_booking_without_account(self):
         from app import ReceiptFinancingPayment
         queued=self.enqueue(extra={'receipt_kind':'Kassenzettel'})

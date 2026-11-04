@@ -242,6 +242,7 @@ def register(runtime: ModuleType):
                 content = ''
                 source = 'Nicht ausgelesen'
                 guessed = {'supplier': '', 'invoice_number': '', 'document_date': '', 'gross_amount': None, 'net_amount': None, 'vat_amount': None, 'labor_amount': None, 'category': 'Sonstiges', 'warnings': ['Lokale Erkennung fehlgeschlagen: ' + str(err)[:180]]}
+        till = till or guessed.get('kind') == 'Kassenzettel'
         if till and guessed.get('kind')=='Gutschrift':
             return runtime.jsonify(error='Der Beleg wurde als Gutschrift erkannt. Bitte über den Rechnungsupload als Korrektur prüfen; keine automatische Zahlung für Kassenzettel.'),400
         runtime.RECEIPT_ROOT.mkdir(parents=True, exist_ok=True)

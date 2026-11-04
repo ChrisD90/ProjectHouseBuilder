@@ -74,6 +74,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await frame.locator('#review [name=kind]').evaluate(n=>n.disabled=true);
   const bookingURL='**/api/receipts/'+rid+'/book-till';
   await page.route(bookingURL,route=>route.fulfill({status:404,contentType:'application/json',body:JSON.stringify({error:'Route fehlt',code:'http_404'})}));
+  assert.deepEqual(await frame.locator('#review').evaluate(form=>[...form.elements].filter(field=>field.willValidate&&!field.validity.valid).map(field=>({name:field.name,value:field.value,message:field.validationMessage}))),[]);
   await frame.locator('#book').click();
   await confirm.getByRole('button',{name:'Bestätigen',exact:true}).click();
   await expect(frame.locator('#receiptSaveStatus')).toContainText('Bitte die App neu starten');
