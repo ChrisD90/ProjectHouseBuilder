@@ -237,7 +237,7 @@ class SidebarUITest(unittest.TestCase):
         receipt=(STATIC/'receipts.js').read_text()
         self.assertIn('openReceiptDialog(true)',receipt)
         self.assertIn("kind:'receipts'",receipt)
-        self.assertIn('linkReceipt',receipt)
+        self.assertIn('linkedReceipt',receipt)
         self.assertIn("receiptDialog.classList.toggle('is-reviewing'",receipt)
         docs=(STATIC/'dokumente.js').read_text()
         self.assertIn('uploadDialog.close();',docs)
