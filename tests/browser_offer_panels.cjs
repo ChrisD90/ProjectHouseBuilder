@@ -27,19 +27,20 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
    const saved=await page.request.patch(base+'/api/receipts/'+rid,{headers,data:{invoice_number:number,supplier:'Fachbetrieb',document_date:'2026-11-04',gross_amount:100,cost_item_id:cost}});
    assert(saved.ok(),await saved.text());
   }
-  for(let i=0;i<4;i++){
+  for(let i=0;i<6;i++){
    const response=await page.request.post(base+'/api/offers/manual',{headers,data:{vendor:'Weiterer Betrieb '+i,gross:100,category:'Elektro'}});assert(response.ok(),await response.text());
   }
   await page.goto(base+'/p/'+owner+'/angebote');
   const frame=page.frameLocator('iframe[title="Angebote"]:not([hidden])');
   await expect(frame.locator('.offers-heading')).toContainText('Erst wenn du');
   await expect(frame.locator('.offers-how,.offers-clarity')).toHaveCount(0);
-  await expect(frame.locator('#angebotsliste [data-offer-card]')).toHaveCount(7);
+  await expect(frame.locator('#angebotsliste [data-offer-card]')).toHaveCount(9);
   for(const theme of ['light','dark']){
    await frame.locator('body').evaluate((_,theme)=>window.PHBUI.setTheme(theme),theme);
-   for(const width of [1280,820,390]){
+   for(const width of [1600,1280,1040,820,390]){
     await page.setViewportSize({width,height:1000});
     await expect.poll(()=>frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    if(width===1600)await expect.poll(()=>frame.locator('#offerList').evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').length)).toBe(4);
     const tile=frame.locator('#offerList [data-offer-card="'+accepted+'"]');
     const layout=await tile.evaluate(node=>{
      const rect=node.getBoundingClientRect(),header=node.querySelector('.offer-tile-header').getBoundingClientRect(),vendor=node.querySelector('.offer-tile-vendor').getBoundingClientRect(),price=node.querySelector('.offer-tile-price').getBoundingClientRect(),actions=node.querySelector('.offer-tile-actions').getBoundingClientRect();
@@ -50,7 +51,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
     assert(layout.vendorTop>=layout.headerBottom&&layout.vendorHeight<=40,'Langer Firmenname darf die Kopfaktionen nicht überdecken.');
     assert(layout.actionsBottom<=layout.bottom+1,'Aktionen dürfen nicht abgeschnitten werden.');
     assert(layout.priceBottom<=layout.actionsTop,'Preis darf die Aktionen nicht überdecken.');
-    assert(layout.scrolls,'Nach sechs Kacheln soll die Liste scrollen.');assert(!layout.overflow,'Kein horizontaler Seitenüberlauf.');
+    assert(layout.scrolls,'Nach zwei beziehungsweise maximal sechs Zeilen soll die Liste scrollen.');assert(!layout.overflow,'Kein horizontaler Seitenüberlauf.');
     await tile.locator('[data-offer-invoices]').click();
     const dialog=frame.locator('#offerInvoicesDialog');await expect(dialog).toBeVisible();
     await expect(dialog.locator('tbody tr')).toHaveCount(2);
@@ -62,7 +63,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
     if(width===1280)await dialog.screenshot({path:'/tmp/phb-offer-invoices-'+theme+'.png'});
     await dialog.locator('#closeOfferInvoices').click();
    }
-   await page.setViewportSize({width:1280,height:1000});
+   await page.setViewportSize({width:1600,height:1000});
    await frame.locator('#offerList').screenshot({path:'/tmp/phb-offer-tiles-'+theme+'.png'});
   }
   const panel=frame.locator('#ki-angebotsvergleich'),summary=panel.locator(':scope > summary');
@@ -92,6 +93,6 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   const fits=await summary.evaluate(node=>node.getBoundingClientRect().right<=innerWidth+1);assert(fits);
   await panel.screenshot({path:'/tmp/phb-offer-comparison.png'});
   assert.deepEqual(errors,[]);
-  console.log('PASS compact offer tiles, six-card scrolling, long vendor names, aligned invoice actions in light/dark and mobile, collapsed comparison and live connection guard.');
+  console.log('PASS four-column offer tiles, responsive scrolling, long vendor names, aligned invoice actions in light/dark and mobile, collapsed comparison and live connection guard.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
