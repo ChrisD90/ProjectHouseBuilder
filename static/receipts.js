@@ -250,8 +250,7 @@ function renderReceiptList(){
   </div>
   <button type="button" data-id="${x.id}" class="entry ${selected===x.id?'active':''}">
    <span class="receipt-card-title"><span class="receipt-kind-badge" role="img" aria-label="${safe(x.kind||'Rechnung')}" title="${safe(x.kind||'Rechnung')}"><svg class="phb-icon receipt-kind-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#${x.kind==='Kassenzettel'?'receipt':'file-invoice'}"></use></svg></span><strong title="${safe(x.supplier||x.filename)}">${safe(x.supplier||x.filename)}</strong></span>
-   <span class="receipt-card-meta">${safe(x.document_date||'Ohne Datum')}</span>
-   <span class="receipt-card-amount"><strong>${money(x.counted_amount)}</strong>${x.status==='Storniert'?'<small>Originalbetrag</small>':''}</span>
+   <span class="receipt-card-totals"><span class="receipt-card-amount"><strong>${money(x.counted_amount)}</strong></span><span class="receipt-card-date"><span class="receipt-card-meta">${safe(x.document_date||'Ohne Datum')}</span>${x.status==='Storniert'?'<small>Originalbetrag</small>':''}</span></span>
    <span class="receipt-card-details">${x.labor_amount!==null?`<small class="receipt-labor-preview">Arbeits-/Lohnkosten brutto: <strong>${money(x.labor_amount)}</strong></small>`:'<small class="receipt-labor-placeholder" aria-hidden="true">&nbsp;</small>'}<small class="receipt-card-assignment" title="${safe(assignmentLabel(x))}">${safe(assignmentLabel(x))}</small></span>
   </button>
  </article>`).join('')||(filtered?'<p>Keine Belege entsprechen der Suche oder dem Filter.</p>':'<p>Du hast noch keine Belege erfasst.</p>');
