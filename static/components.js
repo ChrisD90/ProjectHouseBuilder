@@ -3,7 +3,7 @@
  const contracts=[['.offer-card-head,.receipt-entry-heading,.docs-card-head','phb-card-heading'],
   ['.actions,.offer-form-actions,.phb-dialog-actions','phb-action-bar'],
   ['.linked-work-button','phb-source-button'],['aside.phb-inline-pdf,.offer-inline-pdf','phb-document-preview']];
- const fields=new Set(['receiptSearch','receiptKindFilter','receiptLaborFilter','receiptYearFilter','filter','phase','workType','scale','offerSearch','documentSearch']);
+ const fields=new Set(['receiptSearch','receiptKindFilter','receiptPaymentFilter','receiptCancellationFilter','receiptLaborFilter','receiptYearFilter','filter','phase','workType','scale','offerSearch','documentSearch']);
  const applied=new WeakSet();
  const prefix=()=>`phb-view:${window.PHBProject?.id||1}:${location.pathname}:`;
  function decorate(){

@@ -297,6 +297,14 @@ def register(runtime: ModuleType):
             return runtime.jsonify(error='Unbekannte Belegart.'),400
         if kind:
             rows = [row for row in rows if (row.kind or 'Rechnung') == kind]
+        payment = runtime.request.args.get('payment', '')
+        if payment not in ('', 'paid', 'unpaid'):
+            return runtime.jsonify(error='Unbekannter Zahlungsstatus.'),400
+        if payment:
+            def settled(row):
+                amount = runtime._receipt_increment(row)
+                return amount > 0 and Decimal(row.paid_amount or 0) >= amount
+            rows = [row for row in rows if settled(row) == (payment == 'paid')]
         if not rows:
             return (runtime.jsonify(error='Für dieses Jahr sind keine gebuchten Belege mit Lohnkosten vorhanden.'), 404)
 

@@ -279,7 +279,7 @@ body.phb-app.phb-page-belege .receipt-draft-actions{display:flex;align-items:cen
 @media(max-width:650px){body.phb-app.phb-page-belege .receipt-draft-actions{width:100%}}
 body.phb-app.phb-page-belege .receipt-entry-statuses{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
 body.phb-app.phb-page-belege .receipt-kind-badge{display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;background:var(--ui-surface);color:var(--ui-muted);font-size:10px;line-height:1.4;font-weight:600}
-body.phb-app.phb-page-belege .receipt-list-tools{grid-template-columns:minmax(210px,1fr) minmax(145px,170px) minmax(100px,120px) minmax(190px,215px);gap:10px}
+body.phb-app.phb-page-belege .receipt-list-tools{grid-template-columns:minmax(210px,1fr) repeat(2,minmax(160px,200px));gap:10px}
 body.phb-app.phb-page-belege .receipt-kind-badge{gap:5px}
 body.phb-app.phb-page-belege .receipt-kind-icon{width:15px;height:15px;flex:0 0 15px;color:var(--ui-accent)}
 @media(max-width:1080px){body.phb-app.phb-page-belege .receipt-list-head{display:grid}body.phb-app.phb-page-belege .receipt-list-tools{grid-template-columns:repeat(3,minmax(0,1fr));width:100%}body.phb-app.phb-page-belege .receipt-search{grid-column:1/-1}}
@@ -299,18 +299,19 @@ body.phb-app.phb-page-belege #list .receipt-entry-row{
  display:flex;flex-direction:column;min-width:0;height:180px;background:var(--ui-surface);
  box-shadow:0 2px 8px rgb(16 39 51 / 5%);
 }
-body.phb-app.phb-page-belege #list .receipt-entry-row:hover{border-color:var(--ui-line-strong)}
+body.phb-app.phb-page-belege #list .receipt-entry-row:hover{border-color:var(--ui-line-strong);background:var(--ui-soft)}
 body.phb-app.phb-page-belege #list .receipt-entry-row.active{border-color:var(--ui-accent)}
-body.phb-app.phb-page-belege #list .receipt-entry-heading{grid-template-columns:auto minmax(0,1fr);grid-template-rows:18px 26px;gap:2px 8px;height:52px;flex:0 0 52px;padding-top:6px}
+body.phb-app.phb-page-belege #list .receipt-entry-heading{grid-template-columns:auto minmax(0,1fr);grid-template-rows:18px 26px;gap:2px 8px;height:52px;flex:0 0 52px;padding-top:6px;background:transparent}
 body.phb-app.phb-page-belege #list .receipt-entry-row .status{font-size:10px;line-height:1.2;padding:3px 7px}
 body.phb-app.phb-page-belege #list .receipt-entry-tools{grid-column:1/-1;grid-row:2}
-body.phb-app.phb-page-belege #list .receipt-entry-heading .linked-work-button{height:26px;min-height:26px;padding:3px}
+body.phb-app.phb-page-belege #list .receipt-entry-heading .linked-work-button{height:26px;min-height:26px;padding:3px;border:1px solid var(--ui-line);border-radius:7px;background:var(--ui-surface);box-shadow:0 1px 3px rgb(16 39 51 / 6%)}
+body.phb-app.phb-page-belege #list .receipt-entry-heading .linked-work-button:hover{border-color:var(--ui-accent);background:var(--ui-soft-accent)}
 body.phb-app.phb-page-belege #list .receipt-entry-tools .receipt-payment-badge{font-size:10px;line-height:1.2}
 body.phb-app.phb-page-belege #list .entry{
  display:flex;flex-direction:column;align-items:stretch;gap:4px;flex:1;min-height:0;
- padding:6px 12px 8px;text-align:left;min-width:0;white-space:normal;
+ padding:6px 12px 8px;text-align:left;min-width:0;white-space:normal;background:transparent;
 }
-body.phb-app.phb-page-belege #list .entry:hover{background:var(--ui-soft)}
+body.phb-app.phb-page-belege #list .entry:hover{background:transparent}
 body.phb-app.phb-page-belege #list .entry:focus-visible{outline:3px solid var(--ui-accent);outline-offset:-3px}
 body.phb-app.phb-page-belege #list .receipt-card-title{display:flex;align-items:flex-start;gap:6px;font-size:14px;line-height:1.3;min-height:37px}
 body.phb-app.phb-page-belege #list .receipt-card-title>strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}

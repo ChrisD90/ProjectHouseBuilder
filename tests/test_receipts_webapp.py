@@ -218,6 +218,15 @@ class ReceiptWebappTest(unittest.TestCase):
         self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&kind=Rechnung').status_code,200)
         self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&kind=Kassenzettel').status_code,404)
         self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&kind=unknown').status_code,400)
+        self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&payment=unknown').status_code,400)
+        self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&payment=unpaid').status_code,200)
+        self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&payment=paid').status_code,404)
+        for amount in (10,1180):
+            payment=self.client.post('/api/financing/payments',json={'receipt_id':rid,'source':'unassigned','amount':amount,'payment_date':'2026-10-21'})
+            self.assertEqual(payment.status_code,201,payment.json)
+            settled=amount==1180
+            self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&payment=paid').status_code,200 if settled else 404)
+            self.assertEqual(self.client.get('/api/receipts/labor-export.zip?year=2026&payment=unpaid').status_code,404 if settled else 200)
 
     def test_exclusive_assignment_to_contractor_or_own_work(self):
         contractor=Contractor(name='Sanitärbetrieb Beispiel',trade='Sanitär')

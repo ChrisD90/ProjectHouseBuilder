@@ -17,7 +17,7 @@ if(!$('receiptSelfWork')&&$('receiptAssignmentType')){
 const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
 let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;
-let receiptSearchText='',receiptLaborFilter='all',receiptYearFilter='',receiptKindFilter='all';
+let receiptSearchText='',receiptLaborFilter='all',receiptYearFilter='',receiptKindFilter='all',receiptPaymentFilter='all',receiptCancellationFilter='all';
 const receiptDialog=$('receiptWorkflowDialog');
 let uploadReceiptKind='Rechnung';
 // Also support a still-rendered older template during an application update.
@@ -207,7 +207,16 @@ function renderCostItems(){
 function normalizedSearch(value){
  return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('de-DE').trim();
 }
+function receiptMatchesPayment(receipt){
+ const amount=Math.round(Number(receipt.counted_amount||0)*100);
+ const paid=Math.round(Number(receipt.paid_amount||0)*100);
+ const settled=receipt.status==='Gebucht'&&amount>0&&paid>=amount;
+ return receiptPaymentFilter==='all'||(receiptPaymentFilter==='paid'?settled:!settled);
+}
 function receiptMatchesSearch(receipt){
+ if(!receiptMatchesPayment(receipt))return false;
+ if(receiptCancellationFilter==='cancelled'&&receipt.status!=='Storniert')return false;
+ if(receiptCancellationFilter==='active'&&receipt.status==='Storniert')return false;
  if(receiptKindFilter!=='all'&&(receipt.kind||'Rechnung')!==receiptKindFilter)return false;
  if(receiptLaborFilter==='labor'&&!(Number(receipt.labor_amount)>0))return false;
  if(receiptYearFilter&&String(receipt.document_date||'').slice(0,4)!==receiptYearFilter)return false;
@@ -228,18 +237,18 @@ function renderReceiptFilters(){
 function renderLaborSummary(){
  const panel=$('receiptLaborSummary');panel.hidden=receiptLaborFilter!=='labor';
  if(panel.hidden)return;
- const rows=list.filter(row=>Number(row.labor_amount)>0&&row.status==='Gebucht'&&(receiptKindFilter==='all'||(row.kind||'Rechnung')===receiptKindFilter)&&(!receiptYearFilter||String(row.document_date||'').slice(0,4)===receiptYearFilter));
+ const rows=list.filter(row=>Number(row.labor_amount)>0&&row.status==='Gebucht'&&receiptCancellationFilter!=='cancelled'&&receiptMatchesPayment(row)&&(receiptKindFilter==='all'||(row.kind||'Rechnung')===receiptKindFilter)&&(!receiptYearFilter||String(row.document_date||'').slice(0,4)===receiptYearFilter));
  const total=rows.reduce((sum,row)=>sum+Number(row.labor_amount),0),link=$('receiptLaborExport');
  $('receiptLaborTotal').textContent=money(total);
  $('receiptLaborCount').textContent=rows.length===1?'1 gebuchter Beleg':rows.length+' gebuchte Belege';
  const available=Boolean(receiptYearFilter&&rows.length);
  link.setAttribute('aria-disabled',String(!available));link.tabIndex=available?0:-1;
- link.href=available?'/api/receipts/labor-export.zip?year='+encodeURIComponent(receiptYearFilter)+(receiptKindFilter!=='all'?'&kind='+encodeURIComponent(receiptKindFilter):''):'#';
+ link.href=available?'/api/receipts/labor-export.zip?year='+encodeURIComponent(receiptYearFilter)+(receiptKindFilter!=='all'?'&kind='+encodeURIComponent(receiptKindFilter):'')+(receiptPaymentFilter!=='all'?'&payment='+receiptPaymentFilter:''):'#';
  link.textContent=receiptYearFilter?'Steuerunterlagen '+receiptYearFilter+' als ZIP':'Jahr für Export wählen';
 }
 function renderReceiptList(){
  const visible=list.filter(receiptMatchesSearch);
- const filtered=Boolean(receiptSearchText||receiptLaborFilter!=='all'||receiptYearFilter||receiptKindFilter!=='all');
+ const filtered=Boolean(receiptSearchText||receiptLaborFilter!=='all'||receiptYearFilter||receiptKindFilter!=='all'||receiptPaymentFilter!=='all'||receiptCancellationFilter!=='all');
  $('list').innerHTML=visible.map(x=>`<article class="receipt-entry-row ${selected===x.id?'active':''}" data-receipt-kind="${safe(x.kind||'Rechnung')}">
   <div class="receipt-entry-heading">
    <div class="receipt-entry-statuses"><span class="status ${x.status==='Gebucht'?'booked':x.status==='Storniert'?'cancelled':'draft'}">${safe(x.status)}</span></div>
@@ -261,6 +270,8 @@ $('receiptSearch').addEventListener('input',event=>{
  renderReceiptList();
 });
 $('receiptKindFilter')?.addEventListener('change',event=>{receiptKindFilter=event.currentTarget.value;renderReceiptList();});
+$('receiptPaymentFilter').addEventListener('change',event=>{receiptPaymentFilter=event.currentTarget.value;renderReceiptList();});
+$('receiptCancellationFilter').addEventListener('change',event=>{receiptCancellationFilter=event.currentTarget.value;renderReceiptList();});
 $('receiptLaborFilter').addEventListener('change',event=>{receiptLaborFilter=event.currentTarget.value;renderReceiptList();});
 $('receiptYearFilter').addEventListener('change',event=>{receiptYearFilter=event.currentTarget.value;renderReceiptList();});
 $('receiptLaborExport').addEventListener('click',event=>{if(event.currentTarget.getAttribute('aria-disabled')==='true')event.preventDefault();});
