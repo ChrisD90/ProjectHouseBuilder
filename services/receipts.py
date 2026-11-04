@@ -676,6 +676,7 @@ def register(runtime: ModuleType):
         path = runtime.RECEIPT_ROOT / r.stored_name
         for link in runtime.db.session.scalars(runtime.select(runtime.SelfWorkReceipt).where(runtime.SelfWorkReceipt.receipt_id == rid)):
             runtime.db.session.delete(link)
+        runtime._forget_import_result('receipts', rid)
         runtime.db.session.flush()
         runtime.db.session.delete(r)
         runtime.db.session.commit()

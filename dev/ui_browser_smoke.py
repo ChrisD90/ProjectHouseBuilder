@@ -59,4 +59,5 @@ if __name__=='__main__':
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_list_sorting.cjs')+1,'tests/browser_offer_panels.cjs')
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_react_ui.cjs')+1,'tests/browser_sidebar_header.cjs')
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_receipt_phase_ui.cjs')+1,'tests/browser_dialog_navigation.cjs')
+    if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_dialog_navigation.cjs')+1,'tests/browser_import_deletion.cjs')
     for script in scripts:run(script)

@@ -18,6 +18,13 @@ class ImportJobsTest(unittest.TestCase):
         for job in db.session.query(ImportJob).all():
             (IMPORT_QUEUE_ROOT/job.stored_name).unlink(missing_ok=True)
         db.session.remove();db.drop_all();self.ctx.pop()
+    def mock_offer_result(self,ident):
+        from app import Offer
+        from flask import jsonify
+        if db.session.get(Offer,ident) is None:
+            db.session.add(Offer(id=ident,digest='mock-offer-'+str(ident),vendor='Testfirma',filename='test.pdf',status='Entwurf'))
+            db.session.commit()
+        return jsonify(id=ident),201
     def enqueue(self,kind='receipts',names=('one.pdf',),mode='local',extra=None,content=None):
         data={'kind':kind,'analysis_mode':mode,'files':[
             (io.BytesIO(content or b'%PDF-1.4\nMinimal PDF'),filename) for filename in names
@@ -82,7 +89,7 @@ class ImportJobsTest(unittest.TestCase):
         def fake_offer():
             from flask import request
             stages.append(request.files['file'].filename)
-            return jsonify(id=100+len(stages)),201
+            return self.mock_offer_result(100+len(stages))
         with patch('app.offers_import',side_effect=fake_offer):
             _run_import_job(ids[0])
             self.assertEqual(db.session.get(ImportJob,ids[1]).status,'Wartend')
@@ -96,6 +103,55 @@ class ImportJobsTest(unittest.TestCase):
         self.assertTrue(all(j['review_url'].startswith('/angebote?offer_draft=') for j in jobs))
         self.assertFalse((IMPORT_QUEUE_ROOT/db.session.get(ImportJob,ids[0]).stored_name).exists())
 
+    def test_deleted_receipt_and_document_clear_queue_links_and_keep_history(self):
+        cases=[('receipts','none','/api/receipts/',None),('documents','local','/api/project-documents/','memo.txt')]
+        for kind,mode,path,name in cases:
+            with self.subTest(kind=kind):
+                result=self.enqueue(kind=kind,mode=mode,names=(name or 'delete.pdf',))
+                self.assertEqual(result.status_code,202,result.json)
+                jid=result.json['jobs'][0]['id'];_run_import_job(jid)
+                job=db.session.get(ImportJob,jid);self.assertEqual(job.status,'Fertig',job.error)
+                self.assertEqual(self.client.delete(path+str(job.result_id)).status_code,200)
+                db.session.expire_all();job=db.session.get(ImportJob,jid)
+                self.assertEqual(job.status,'Ausgeblendet');self.assertIsNone(job.result_id)
+                self.assertNotIn(jid,[row['id'] for row in self.client.get('/api/import-jobs').json['jobs']])
+                batch=self.client.get('/api/import-jobs/batches/'+job.batch_id).json['jobs']
+                self.assertIsNone(next(row for row in batch if row['id']==jid)['review_url'])
+
+    def test_missing_results_are_repaired_only_in_the_current_project(self):
+        from multi_projects import project_context
+        other=self.client.post('/api/projects',json={'title':'Andere Baustelle'}).json['project']['id']
+        kinds=('receipts','offers','versions','documents','costplans','loans')
+        records={}
+        for owner in (1,other):
+            with project_context(owner):
+                for kind in kinds:
+                    job=ImportJob(batch_id='a'*32,kind=kind,filename='missing.pdf',stored_name='missing.pdf',analysis_mode='local',status='Fertig',result_id=999999,extra_json=json.dumps({'version_number':2,'loan_id':999999}))
+                    db.session.add(job);db.session.flush();records[(owner,kind)]=job.id
+                db.session.commit()
+        self.assertEqual(self.client.get('/api/import-jobs').json['jobs'],[])
+        for owner in (1,other):
+            with project_context(owner):
+                for kind in kinds:
+                    job=db.session.get(ImportJob,records[(owner,kind)])
+                    self.assertEqual(job.status,'Ausgeblendet' if owner==1 else 'Fertig')
+                    self.assertEqual(job.result_id,None if owner==1 else 999999)
+        self.assertEqual(self.client.get('/api/import-jobs',headers={'X-PHB-Project':str(other)}).json['jobs'],[])
+
+    def test_reviewed_version_does_not_hide_another_pending_version(self):
+        from app import Offer,OfferVersion
+        offer=Offer(digest='version-cleanup',vendor='Testfirma',filename='test.pdf',status='Entwurf');db.session.add(offer);db.session.flush()
+        ids=[]
+        for number,state in ((2,'discarded'),(3,'draft')):
+            db.session.add(OfferVersion(offer_id=offer.id,version_number=number,state=state,snapshot='{}'))
+            job=ImportJob(batch_id='b'*32,kind='versions',filename='version.pdf',stored_name='version.pdf',analysis_mode='local',status='Fertig',result_id=offer.id,extra_json=json.dumps({'version_number':number}))
+            db.session.add(job);db.session.flush();ids.append(job.id)
+        db.session.commit()
+        jobs=self.client.get('/api/import-jobs').json['jobs']
+        self.assertEqual([job['id'] for job in jobs],[ids[1]])
+        self.assertEqual(db.session.get(ImportJob,ids[0]).status,'Übernommen')
+        self.assertEqual(db.session.get(ImportJob,ids[1]).status,'Fertig')
+
     def test_dismiss_single_and_all_completed_import_notifications_only(self):
         from flask import jsonify
         result=self.enqueue(kind='offers',names=('a.pdf','b.pdf','c.pdf'))
@@ -103,7 +159,7 @@ class ImportJobsTest(unittest.TestCase):
         # No waiting/running job may be dismissed.
         blocked=self.client.post('/api/import-jobs/'+str(ids[1])+'/dismiss')
         self.assertEqual(blocked.status_code,409,blocked.json)
-        with patch('app.offers_import',return_value=(jsonify(id=123),201)):
+        with patch('app.offers_import',return_value=self.mock_offer_result(123)):
             _run_import_job(ids[0])
             _run_import_job(ids[2])
         self.assertEqual(self.client.get('/api/import-jobs').status_code,200)
@@ -418,6 +474,9 @@ class ImportJobsTest(unittest.TestCase):
             enqueued=self.client.post('/api/import-jobs',data=data,content_type='multipart/form-data')
         self.assertEqual(enqueued.status_code,202,enqueued.json)
         from flask import jsonify
+        from app import OfferVersion
+        db.session.add(OfferVersion(offer_id=oid,version_number=2,state='draft',snapshot='{}'))
+        db.session.commit()
         with patch('app.upload_offer_version',
                    return_value=(jsonify(offer_id=oid,version={'version':2}),201)) as mocked:
             _run_import_job(enqueued.json['jobs'][0]['id'])

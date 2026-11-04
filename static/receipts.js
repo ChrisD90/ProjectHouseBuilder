@@ -805,7 +805,9 @@ $('delete').onclick=async()=>{
  const button=$('delete');receiptBusy=true;button.disabled=true;
  try{
   await api('/api/receipts/'+selected,{method:'DELETE'});
-  selected=null;await reload(null);
+  receiptFlow.finish();
+  selected=null;currentReceipt=null;await reload(null,false);
+  await window.PHBImports?.refresh();
   notice('Entwurf gelöscht.');
  }catch(error){notice(error.message,true);}
  finally{receiptBusy=false;button.disabled=false;}

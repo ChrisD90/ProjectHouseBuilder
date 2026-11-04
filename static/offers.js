@@ -795,8 +795,10 @@
       }else{
         if(!await PHBUI.confirm('Versionsentwurf verwerfen? Das PDF bleibt als historischer Nachweis gespeichert.'))return;
         await request(offerUrl(id)+'/versions/'+v+'/discard',{method:'POST'});
+        if(button.closest('#offerDrafts'))workflowFlow.finish();
       }
       await reload();
+      await window.PHBImports?.refresh();
     }catch(err){await PHBUI.alert(err.message)}
   });
   document.addEventListener('click',event=>{
@@ -843,6 +845,7 @@
           await request(offerUrl(id),{method:'DELETE'});
           if(deletingDraft)workflowFlow.finish();
           await reload();
+          await window.PHBImports?.refresh();
         }finally{button.disabled=false;}
       }
     } catch(err) {await PHBUI.alert(err.message)}

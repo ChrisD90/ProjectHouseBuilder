@@ -191,6 +191,7 @@ def register(runtime: ModuleType):
         if not record:
             return (runtime.jsonify(error='Dokument nicht gefunden.'), 404)
         path = runtime.PROJECT_DOCUMENT_ROOT / record.stored_name
+        runtime._forget_import_result('documents', did)
         runtime.db.session.query(runtime.FundingDocument).filter_by(document_id=did).delete()
         runtime.db.session.delete(record)
         runtime.db.session.commit()

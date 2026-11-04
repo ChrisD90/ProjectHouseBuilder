@@ -20,27 +20,61 @@ def register(runtime: ModuleType):
 
     runtime._mark_import_reviewed = _mark_import_reviewed
 
+    def _forget_import_job(job):
+        job.result_id = None
+        job.status = 'Ausgeblendet'
+        job.stage = 'Importiertes Dokument oder Entwurf wurde gelöscht'
+        job.updated_at = runtime.datetime.utcnow()
+
+    def _forget_import_result(kind, result_id):
+        """Unlink deleted results atomically with deletion, retaining import history."""
+        for job in runtime.db.session.scalars(runtime.select(runtime.ImportJob).where(
+                runtime.ImportJob.kind == kind, runtime.ImportJob.result_id == result_id,
+                runtime.ImportJob.status.notin_(['Wartend', 'Läuft']))):
+            _forget_import_job(job)
+
+    runtime._forget_import_result = _forget_import_result
+
     def _sync_import_reviews():
         """Detect final business decisions even if they were made elsewhere."""
         for job in runtime.db.session.scalars(runtime.select(runtime.ImportJob).where(runtime.ImportJob.status == 'Fertig')).all():
+            if job.result_id is None:
+                _forget_import_job(job)
+                continue
+            missing = False
             if job.kind == 'offers':
                 offer = runtime.db.session.get(runtime.Offer, job.result_id)
+                missing = offer is None
                 reviewed = offer is not None and offer.status != 'Entwurf'
             elif job.kind == 'receipts':
                 receipt = runtime.db.session.get(runtime.Receipt, job.result_id)
+                missing = receipt is None
                 reviewed = receipt is not None and receipt.status == 'Gebucht'
             elif job.kind == 'versions':
                 meta = runtime.json.loads(job.extra_json or '{}')
                 number = meta.get('version_number')
                 version = runtime.db.session.scalar(runtime.select(runtime.OfferVersion).where(runtime.OfferVersion.offer_id == job.result_id, runtime.OfferVersion.version_number == number)) if number else None
+                missing = runtime.db.session.get(runtime.Offer, job.result_id) is None or bool(number and version is None)
                 reviewed = version is not None and version.state != 'draft'
+            elif job.kind == 'documents':
+                missing = runtime.db.session.get(runtime.ProjectDocument, job.result_id) is None
+                reviewed = False
+            elif job.kind == 'loans':
+                meta = runtime.json.loads(job.extra_json or '{}')
+                missing = bool(meta.get('loan_id') and runtime.db.session.get(runtime.Loan, meta['loan_id']) is None)
+                reviewed = bool(meta.get('saved'))
             else:
                 reviewed = False
             if job.kind == 'costplans':
                 plan = runtime.db.session.get(runtime.CostPlanImport, job.result_id)
+                missing = plan is None
                 reviewed = plan is not None and plan.status == 'Übernommen'
-            if reviewed:
-                runtime._mark_import_reviewed(job.kind, job.result_id)
+            if missing:
+                _forget_import_job(job)
+            elif reviewed:
+                job.status = 'Übernommen'
+                job.stage = 'Fachlich geprüft und übernommen'
+                job.updated_at = runtime.datetime.utcnow()
         runtime.db.session.commit()
 
     runtime._sync_import_reviews = _sync_import_reviews
@@ -369,6 +403,7 @@ def register(runtime: ModuleType):
         runtime._ensure_import_recovery()
         if len(batch_id) != 32 or any((c not in '0123456789abcdef' for c in batch_id)):
             return (runtime.jsonify(error='Ungültiger Importdurchgang.'), 400)
+        runtime._sync_import_reviews()
         jobs = runtime.db.session.scalars(runtime.select(runtime.ImportJob).where(runtime.ImportJob.batch_id == batch_id).order_by(runtime.ImportJob.id)).all()
         if not jobs:
             return (runtime.jsonify(error='Importdurchgang nicht gefunden.'), 404)
