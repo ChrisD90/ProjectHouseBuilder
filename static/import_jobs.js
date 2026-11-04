@@ -33,7 +33,7 @@
   if(!waitDialog){
    waitDialog=document.createElement('dialog');waitDialog.id='phbImportWait';waitDialog.className='phb-import-wait';
    waitDialog.setAttribute('aria-labelledby','phbImportWaitTitle');
-   waitDialog.innerHTML='<div class="phb-busy-spinner" aria-hidden="true"></div><h2 id="phbImportWaitTitle"></h2><p id="phbImportWaitStage" role="status" aria-live="polite"></p><small>Die aufbereiteten Daten kannst du anschließend prüfen und bearbeiten.</small>';
+   waitDialog.innerHTML='<div class="phb-busy-spinner" aria-hidden="true"></div><h2 id="phbImportWaitTitle"></h2><p id="phbImportWaitStage" role="status" aria-live="polite"></p><button type="button" id="phbImportBackground" class="primary">Im Hintergrund fortsetzen</button>';
    waitDialog.addEventListener('cancel',e=>e.preventDefault());document.body.append(waitDialog);
   }
   $('phbImportWaitTitle').textContent=mode==='background'?'Dateien werden hochgeladen':'Dokumente werden verarbeitet';
@@ -44,7 +44,10 @@
   const mode=processingMode||form?.querySelector('[name=processing_mode]')?.value||'foreground';
   if(!['foreground','background'].includes(mode))throw Error('Bitte eine Verarbeitungsart auswählen.');
   showWait(mode);
-  try{return {jobs:await enqueue({...options,processingMode:mode}),background:mode==='background'};}
+  const handoff={background:false,queued:()=>{$('phbImportBackground').disabled=false;}};
+  $('phbImportBackground').hidden=mode!=='foreground';$('phbImportBackground').disabled=true;
+  $('phbImportBackground').onclick=()=>{handoff.background=true;$('phbImportBackground').disabled=true;};
+  try{return {jobs:await enqueue({...options,processingMode:mode,handoff}),background:mode==='background'||handoff.background};}
   finally{waitDialog.close();waitDialog.removeAttribute('aria-busy');}
  }
  function review(jobs){
@@ -228,7 +231,7 @@
   try{return await processBatch(options);}
   finally{submitting.delete(kind);working.delete(kind);await poll();syncLocks();for(const job of records.filter(j=>j.kind===kind))foregroundJobs.delete(job.id);}
  }
- async function processBatch({kind,files,analysisMode='local',model='',fields={},processingMode='foreground'}){
+ async function processBatch({kind,files,analysisMode='local',model='',fields={},processingMode='foreground',handoff}){
    const selected=Array.from(files||[]);
    if(!selected.length)throw Error('Bitte mindestens eine Datei auswählen.');
    if(selected.length>8)throw Error('Maximal acht Dateien pro Durchgang.');
@@ -241,7 +244,7 @@
    for(const [key,value] of Object.entries(fields))data.set(key,value??'');
    // Optional system notification only after an explicit import action.
    // In-app notifications never depend on this permission.
-   if(processingMode==='background'&&'Notification' in window&&Notification.permission==='default'){
+   if(processingMode==='background'&&analysisMode!=='none'&&'Notification' in window&&Notification.permission==='default'){
      try{Notification.requestPermission().catch(()=>{});}catch(_){}
    }
    syncLocks();
@@ -253,10 +256,12 @@
    if(processingMode==='foreground')result.jobs.forEach(j=>foregroundJobs.add(j.id));
    panelOpen=false;
    await poll();schedule();
+   handoff?.queued();
    if(processingMode==='background')return result.jobs;
    working.add(kind);syncLocks();
    let failures=0;
    while(true){
+    if(handoff?.background)return result.jobs;
     let jobs;
     try{
      const status=await fetch('/api/import-jobs/batches/'+result.batch_id,{cache:'no-store'});

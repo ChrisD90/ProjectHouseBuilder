@@ -222,9 +222,15 @@ def register(runtime: ModuleType):
         if original:
             return (runtime.jsonify(error='Dieser Beleg wurde bereits hochgeladen.', existing_id=original.id), 409)
         mode = runtime.request.form.get('analysis_mode', 'local')
-        if mode not in ('local', 'ai'):
+        if mode not in ('local', 'ai', 'none'):
             return (runtime.jsonify(error='Unbekannte Analyseart.'), 400)
-        if mode == 'ai':
+        if mode == 'none':
+            content = ''
+            source = 'Ohne Analyse'
+            guessed = {'supplier': '', 'invoice_number': '', 'document_date': '',
+                       'gross_amount': None, 'net_amount': None, 'vat_amount': None,
+                       'labor_amount': None, 'category': 'Sonstiges', 'warnings': []}
+        elif mode == 'ai':
             guessed = runtime._ai_receipt_guess(data, name, ext)
             content = ''
             source = 'ChatGPT'

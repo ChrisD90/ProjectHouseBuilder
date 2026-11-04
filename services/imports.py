@@ -117,7 +117,7 @@ def register(runtime: ModuleType):
             runtime.db.session.info['phb_import_lease']=(job_id,job.project_id,token)
             job = runtime.db.session.get(runtime.ImportJob, job_id)
             job.status = 'Läuft'
-            job.stage = 'ChatGPT analysiert die Datei …' if job.analysis_mode == 'ai' else 'Datei wird lokal eingelesen …'
+            job.stage = 'Beleg wird ohne Analyse abgelegt …' if job.analysis_mode == 'none' else 'ChatGPT analysiert die Datei …' if job.analysis_mode == 'ai' else 'Datei wird lokal eingelesen …'
             job.updated_at = runtime.datetime.utcnow()
             runtime.db.session.commit()
             filename = job.filename
@@ -185,7 +185,7 @@ def register(runtime: ModuleType):
                     meta['version_number'] = payload.get('version', {}).get('version')
                     job.extra_json = runtime.json.dumps(meta, ensure_ascii=False)
                 job.status = 'Fertig'
-                job.stage = 'Entwurf angelegt – bitte Daten prüfen'
+                job.stage = 'Entwurf ohne Analyse gespeichert – Angaben später ergänzen' if mode == 'none' else 'Entwurf angelegt – bitte Daten prüfen'
                 job.error = ''
                 job.finished_at = runtime.datetime.utcnow()
                 job.updated_at = runtime.datetime.utcnow()
@@ -252,7 +252,7 @@ def register(runtime: ModuleType):
         if kind not in runtime._ALLOWED_IMPORTS:
             return (runtime.jsonify(error='Unbekannter Dokumenttyp.'), 400)
         mode = runtime.request.form.get('analysis_mode', 'local')
-        if mode not in ('ai', 'local') or (kind == 'documents' and mode != 'local'):
+        if mode not in ('ai', 'local', 'none') or (mode == 'none' and kind != 'receipts') or (kind == 'documents' and mode != 'local'):
             return (runtime.jsonify(error='Unbekannte Analyseart.'), 400)
         if kind == 'loans' and mode != 'ai':
             return (runtime.jsonify(error='Kreditunterlagen werden mit ChatGPT analysiert.'), 400)

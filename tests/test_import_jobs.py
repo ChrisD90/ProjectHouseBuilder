@@ -18,9 +18,9 @@ class ImportJobsTest(unittest.TestCase):
         for job in db.session.query(ImportJob).all():
             (IMPORT_QUEUE_ROOT/job.stored_name).unlink(missing_ok=True)
         db.session.remove();db.drop_all();self.ctx.pop()
-    def enqueue(self,kind='receipts',names=('one.pdf',),mode='local',extra=None):
+    def enqueue(self,kind='receipts',names=('one.pdf',),mode='local',extra=None,content=None):
         data={'kind':kind,'analysis_mode':mode,'files':[
-            (io.BytesIO(b'%PDF-1.4\nMinimal PDF'),filename) for filename in names
+            (io.BytesIO(content or b'%PDF-1.4\nMinimal PDF'),filename) for filename in names
         ]}
         if mode=='ai':
             data.update(model='test-model',plan_only='true')
@@ -134,6 +134,30 @@ class ImportJobsTest(unittest.TestCase):
         self.assertTrue(final['review_url'].startswith('/belege?receipt_id='))
         receipt=db.session.get(Receipt,final['result_id'])
         self.assertEqual(receipt.status,'Entwurf')
+
+    def test_receipts_without_analysis_keep_originals_and_never_book_or_pay(self):
+        from app import ReceiptFinancingPayment
+        for kind in ('Rechnung','Kassenzettel'):
+            with self.subTest(kind=kind):
+                # Distinct originals retain duplicate detection across both upload paths.
+                queued=self.enqueue(names=(kind+'.pdf',),mode='none',extra={'receipt_kind':kind},content=b'%PDF-1.4\n'+kind.encode())
+                self.assertEqual(queued.status_code,202,queued.json)
+                jid=queued.json['jobs'][0]['id']
+                with patch('app.extract_text',side_effect=AssertionError('OCR must not run')), patch('app._ai_receipt_guess',side_effect=AssertionError('AI must not run')):
+                    _run_import_job(jid)
+                job=db.session.get(ImportJob,jid)
+                self.assertEqual(job.status,'Fertig',job.error)
+                receipt=db.session.get(Receipt,job.result_id)
+                self.assertEqual(receipt.status,'Entwurf')
+                self.assertEqual(receipt.source,'Ohne Analyse')
+                self.assertEqual(receipt.kind,kind)
+                self.assertEqual(receipt.supplier,'')
+                self.assertIsNone(receipt.gross_amount)
+                self.assertEqual(receipt.paid_amount,0)
+                self.assertTrue((__import__('app').RECEIPT_ROOT/receipt.stored_name).is_file())
+        self.assertEqual(db.session.query(ReceiptFinancingPayment).count(),0)
+        rejected=self.enqueue(kind='offers',mode='none')
+        self.assertEqual(rejected.status_code,400)
 
     def test_till_upload_defaults_and_atomic_paid_booking_without_account(self):
         from app import ReceiptFinancingPayment
