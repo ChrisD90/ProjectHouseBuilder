@@ -273,7 +273,23 @@
   const stage = o => ({Entwurf:['Noch prüfen','stage-draft'],Angebot:['Zum Vergleich','stage-listed'],Angenommen:['Angenommen','stage-accepted'],Beauftragt:['Angenommen','stage-accepted'],Abgelehnt:['Abgelehnt','stage-rejected']}[o.status] || [o.status,'stage-listed']);
   const notice = o => (o.warnings||[]).length
     ? `<details class="offer-warnings"><summary>Hinweise zur Erkennung (${o.warnings.length})</summary><ul>${o.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>` : '';
-  const parsedPositions = o => (o.positions||[]).length ? `<details class="offer-details"><summary>Einzelpositionen (${o.positions.length}) – geprüft / ergänzt</summary><div class="tablewrap"><table><thead><tr><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td>${esc(p.number)}</td><td>${esc(p.description)}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div></details>` : '';
+  function diySummary(value) {
+    return `<div class="offer-diy-summary"><span>Preis mit Eigenleistungen (Restangebot): <strong>${value.complete?fmt(value.remaining_gross)+' brutto':'Noch nicht berechenbar'}</strong></span><span>${value.selected_count} ausgewählte Position(en) · Angebotsanteil: ${value.selected_gross==null?'Betrag offen':fmt(value.selected_gross)+' brutto'}</span>${value.reason?`<span>${esc(value.reason)}</span>`:''}<small>Planungsszenario: Material- und Werkzeugkosten für die Eigenleistung kommen gegebenenfalls hinzu. Brutto wird proportional zum Angebotsnetto geschätzt. Die verbindliche Auftragssumme bleibt unverändert.</small></div>`;
+  }
+  function diyPreview(o, positions) {
+    const selected=positions.filter(p=>p.own_work&&!p.optional),total=selected.reduce((sum,p)=>sum+(readMoney(p.net_amount)||0),0);
+    let reason='';
+    if(selected.some(p=>readMoney(p.net_amount)==null||!Number.isFinite(readMoney(p.net_amount))))reason='Bei ausgewählten Positionen fehlen Nettobeträge.';
+    else if(selected.length&&(o.net==null||Number(o.net)<=0||o.gross==null))reason='Für den Bruttopreis müssen Angebotsnetto und Angebotsbrutto bekannt sein.';
+    else if(selected.length&&total>Number(o.net)+.000001)reason='Die ausgewählten Positionen übersteigen die Angebotsnettosumme. Bitte Beträge prüfen.';
+    const deduction=reason?null:selected.length?Math.round((total*Number(o.gross)/Number(o.net)+Number.EPSILON)*100)/100:0;
+    return {selected_count:selected.length,selected_gross:deduction,remaining_gross:reason?null:Number(o.gross)-deduction,complete:!reason,reason};
+  }
+  const parsedPositions=o=>(o.positions||[]).length?`<section class="offer-diy-plan"><h3>Positionen & mögliche Eigenleistungen</h3><form data-offer-diy="${o.id}"><div class="tablewrap"><table><thead><tr><th>Eigenleistung</th><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td><input type="checkbox" name="own_work" data-diy-position value="${p.id}" aria-label="Position ${esc(p.number)} als Eigenleistung planen" ${p.own_work?'checked':''} ${p.optional?'disabled title="Optionale Position – nicht in der Angebotssumme enthalten"':''}></td><td>${esc(p.number)}</td><td>${esc(p.description)}${p.optional?' · Optional':''}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div><div data-diy-summary>${diySummary(o.diy_estimate||diyPreview(o,o.positions))}</div><div class="offer-form-actions"><button type="submit" class="primary mini">Auswahl speichern</button></div></form></section>`:'';
+  function attachmentSection(o){
+    return `<section class="offer-attachments"><h3>Weitere Anhänge</h3><div class="offer-attachment-list">${(o.attachments||[]).map(d=>`<div class="offer-attachment-row"><span>${esc(d.filename)}</span><div class="offer-attachment-actions">${d.view_url?`<a class="mini" target="_blank" rel="noopener" href="${esc(d.view_url)}">Öffnen</a>`:''}<a class="mini" href="${esc(d.download_url)}">Herunterladen</a><button type="button" class="offer-tile-icon danger" data-attachment-delete="${o.id}:${d.id}" aria-label="Anhang ${esc(d.filename)} löschen" title="Anhang löschen">${icon('trash')}</button></div></div>`).join('')||'<p class="muted">Noch keine weiteren Anhänge.</p>'}</div><form data-offer-attachments="${o.id}" class="offer-attachment-upload"><label>Weitere Dateien (PDF, DOCX, TXT oder Bilder)<input type="file" name="files" multiple required accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"></label><button type="submit" class="primary mini">Anhänge hochladen</button></form><small>Die Anhänge werden auch unter Dokumente geführt. Das ursprüngliche Angebots-PDF bleibt erhalten.</small></section>`;
+  }
+
 
   function fields(o) {
     const recognized=o.vendor==='Firma nicht erkannt'?'':o.vendor;
@@ -308,6 +324,7 @@
         <label>Optionaler Positionsbetrag (€)<input data-position-field="optional_amount" data-euro="true" inputmode="decimal" value="${moneyInput(p.optional_amount)}" placeholder="Nur bei optionaler Position"></label>
         <label>PDF-Seite (optional)<input data-position-field="page" type="number" min="1" max="9999" step="1" value="${moneyInput(p.page)}" placeholder="Seite"></label>
         <label class="offer-position-optional"><input type="checkbox" data-position-field="optional" ${p.optional?'checked':''}> Optionale / nicht beauftragte Position</label>
+        <label class="offer-position-optional"><input type="checkbox" data-position-field="own_work" ${p.own_work?'checked':''}> Als mögliche Eigenleistung planen</label>
         <div class="offer-position-tools"><button type="button" class="mini" data-position-calculate>Aus Menge × Einzelpreis berechnen</button><button type="button" class="offer-text-danger" data-position-remove>Position entfernen</button></div>
       </div>
     </details>`;
@@ -332,7 +349,7 @@
         section:field('section').value,quantity:field('quantity').value,
         unit:field('unit').value,unit_price:field('unit_price').value,
         net_amount:field('net_amount').value,optional_amount:field('optional_amount').value,
-        page:field('page').value,optional:field('optional').checked};
+        page:field('page').value,optional:field('optional').checked,own_work:field('own_work')?.checked||false};
     });
     for(const item of data.positions){
       for(const field of ['unit_price','net_amount','optional_amount']){
@@ -372,6 +389,7 @@
       +(different?`<span>Abweichung zur Angebotsnettosumme: ${fmt(subtotal-target)}. Bitte Preise und Gesamtbetrag prüfen.</span>`:'')
       +(matching?'<span>✓ Positionssumme und Angebotsnetto stimmen überein.</span>':'')
       +(!matching&&!different&&target==null?'<span>Für den Nettovergleich bitte auch Angebot netto oder MwSt. prüfen.</span>':'');
+    if(positions.some(p=>p.own_work))summary.innerHTML+=diySummary(diyPreview({gross:formGross,net:formNet},positions));
     form.querySelector('[data-position-empty]').hidden=positions.length>0;
     for (const row of form.querySelectorAll('[data-position-row]')) {
       const label=row.querySelector('[data-position-label]');
@@ -508,7 +526,7 @@
       </section>
       ${(o.acceptance_reversals||[]).length?`<details class="offer-details"><summary>Zurückgenommene Annahmen (${o.acceptance_reversals.length})</summary>${o.acceptance_reversals.map(r=>`<p>${esc(r.reversed_at.slice(0,10))} · ${fmt(r.agreed_gross)}${r.document_id?` · <a href="/api/documents/${r.document_id}/preview" target="_blank" rel="noopener">Frühere Auftragsbestätigung ansehen</a>`:''}</p>`).join('')}</details>`:''}
       ${accepted?billingBlock(o):''}
-      ${parsedPositions(o)}
+      ${parsedPositions(o)}${attachmentSection(o)}
       ${versionUpload(o)}${versionHistory(o)}`;
     detailsFlow.open();
   }
@@ -765,6 +783,38 @@
     }catch(err){status.textContent='Fehler: '+err.message;}
     finally{window.PHBImports.release(button);}
   });
+  async function detailsAction(button, callback){
+    if(detailsFlow.isBusy())return;
+    const controls=[...detailsDialog.querySelectorAll('input,button')],disabled=controls.map(node=>node.disabled);
+    await detailsFlow.run(async()=>{
+      controls.forEach(node=>node.disabled=true);
+      try{await callback();}finally{controls.forEach((node,index)=>node.disabled=disabled[index]);}
+    },{button});
+  }
+  document.addEventListener('change',event=>{
+    const form=event.target.closest('form[data-offer-diy]');if(!form)return;
+    const offer=offers.find(o=>o.id===Number(form.dataset.offerDiy));
+    const checked=new Set([...form.querySelectorAll('[data-diy-position]:checked')].map(input=>Number(input.value)));
+    form.querySelector('[data-diy-summary]').innerHTML=diySummary(diyPreview(offer,offer.positions.map(p=>({...p,own_work:checked.has(p.id)}))));
+  });
+  document.addEventListener('submit',async event=>{
+    const form=event.target;if(!form.matches('form[data-offer-diy],form[data-offer-attachments]'))return;
+    event.preventDefault();if(detailsFlow.isBusy())return;
+    const id=Number(form.dataset.offerDiy||form.dataset.offerAttachments),button=form.querySelector('button[type=submit]');
+    const selected=[...form.querySelectorAll('[data-diy-position]:checked')].map(input=>Number(input.value));
+    const files=[...(form.querySelector('input[type=file]')?.files||[])];
+    await detailsAction(button,async()=>{
+      if(form.dataset.offerDiy)await request(offerUrl(id)+'/diy',{method:'PATCH',data:{position_ids:selected}});
+      else for(const file of files){const payload=new FormData();payload.set('file',file);await request(offerUrl(id)+'/attachments',{method:'POST',formData:payload});}
+      await reload();openOfferDetails(id);
+    });
+  });
+  document.addEventListener('click',async event=>{
+    const button=event.target.closest('[data-attachment-delete]');if(!button||detailsFlow.isBusy())return;
+    if(!await PHBUI.confirm('Diesen zusätzlichen Anhang endgültig löschen?'))return;
+    const [id,documentId]=button.dataset.attachmentDelete.split(':').map(Number);
+    await detailsAction(button,async()=>{await request(offerUrl(id)+'/attachments/'+documentId,{method:'DELETE'});await reload();openOfferDetails(id);});
+  });
   document.addEventListener('toggle',async e=>{
     const details=e.target;
     if(!details.matches?.('[data-version-history]')||!details.open)return;
@@ -825,7 +875,7 @@
         const checked=checkPositions(form);
         if(checked.warning && !await PHBUI.confirm('Einige Positionsbeträge fehlen oder die Positionssumme weicht von der Angebotssumme ab. Trotzdem als geprüft in die Liste übernehmen?'))return;
         await update(id,collectDraft(form));await changeStatus(id,'Angebot');
-        workflow.close();
+        workflowFlow.finish();
       }
       if(key==='offerAccept'){
         openOfferAcceptance(Number(id));

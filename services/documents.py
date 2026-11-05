@@ -54,6 +54,7 @@ def register(runtime: ModuleType):
             entries.append({'source': 'Projektdokumente', 'id': 'project-' + str(d.id), 'title': d.title, 'filename': d.original_name, 'type': d.category, 'status': d.status, 'description': d.description or d.tags, 'date': d.uploaded_at.isoformat() if d.uploaded_at else '', 'download_url': f'/api/project-documents/{d.id}/download', 'view_url': f'/api/project-documents/{d.id}/preview' if d.extension.lower() in ('.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt') else None, 'module_url': f'/dokumente?document_id={d.id}', 'project_document_id': d.id})
         offers = runtime.db.session.scalars(runtime.select(runtime.Offer)).all()
         by_document = {}
+        by_offer = {o.id:o for o in offers}
         plans = {x.document_id: x for x in runtime.db.session.scalars(runtime.select(runtime.CostPlanImport))}
         for o in offers:
             if o.document_id:
@@ -65,7 +66,7 @@ def register(runtime: ModuleType):
             if accepted.confirmation_document_id:
                 by_document[accepted.confirmation_document_id] = runtime.db.session.get(runtime.Offer, accepted.offer_id)
         for d in runtime.db.session.scalars(runtime.select(runtime.Document)).all():
-            offer = by_document.get(d.id)
+            offer = by_document.get(d.id) or by_offer.get(d.offer_id)
             plan = plans.get(d.id)
             entries.append({'source': 'Angebote' if offer else 'Kostenplanung' if plan else 'Weitere Projektunterlagen', 'id': 'file-' + str(d.id), 'title': d.original_name, 'filename': d.original_name, 'type': d.kind or 'Dokument', 'status': offer.status if offer else 'Abgelegt', 'description': offer.vendor if offer else d.notes or '', 'date': d.uploaded_at.isoformat() if d.uploaded_at else '', 'download_url': f'/api/documents/{d.id}/download', 'view_url': f'/api/documents/{d.id}/preview' if runtime.Path(d.original_name).suffix.lower() == '.pdf' else None, 'module_url': f'/angebote?offer_id={offer.id}' if offer else f'/kosten?cost_plan_import={plan.id}' if plan else '/kosten#kosten-unterlagen', 'legacy_document_id': d.id if not offer and (not plan) else None})
         for r in runtime.db.session.scalars(runtime.select(runtime.Receipt)).all():
