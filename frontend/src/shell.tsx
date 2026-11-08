@@ -44,6 +44,7 @@ import { fundingDocumentOnly, projectID, workspaceURL } from './project-context'
 import { useServices } from './services';
 import { WorkPage, WorkProvider } from './work';
 import { SelfWorkPage } from './self-work';
+import { UnpaidReceipts } from './unpaid-receipts';
 const items = [
   ['/', 'Bauzeitenplan', IconCalendar],
   ['/aufgaben', 'To-dos & Notizen', IconListCheck],
@@ -453,6 +454,7 @@ export function App() {
                     { value: 'dark', label: 'Dunkel' },
                   ]}
                 />
+                <UnpaidReceipts />
                 <Tooltip label="Verarbeitung & Prüfung">
                   <Button
                     size="xs"

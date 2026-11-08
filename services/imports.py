@@ -20,27 +20,61 @@ def register(runtime: ModuleType):
 
     runtime._mark_import_reviewed = _mark_import_reviewed
 
+    def _forget_import_job(job):
+        job.result_id = None
+        job.status = 'Ausgeblendet'
+        job.stage = 'Importiertes Dokument oder Entwurf wurde gelöscht'
+        job.updated_at = runtime.datetime.utcnow()
+
+    def _forget_import_result(kind, result_id):
+        """Unlink deleted results atomically with deletion, retaining import history."""
+        for job in runtime.db.session.scalars(runtime.select(runtime.ImportJob).where(
+                runtime.ImportJob.kind == kind, runtime.ImportJob.result_id == result_id,
+                runtime.ImportJob.status.notin_(['Wartend', 'Läuft']))):
+            _forget_import_job(job)
+
+    runtime._forget_import_result = _forget_import_result
+
     def _sync_import_reviews():
         """Detect final business decisions even if they were made elsewhere."""
         for job in runtime.db.session.scalars(runtime.select(runtime.ImportJob).where(runtime.ImportJob.status == 'Fertig')).all():
+            if job.result_id is None:
+                _forget_import_job(job)
+                continue
+            missing = False
             if job.kind == 'offers':
                 offer = runtime.db.session.get(runtime.Offer, job.result_id)
+                missing = offer is None
                 reviewed = offer is not None and offer.status != 'Entwurf'
             elif job.kind == 'receipts':
                 receipt = runtime.db.session.get(runtime.Receipt, job.result_id)
+                missing = receipt is None
                 reviewed = receipt is not None and receipt.status == 'Gebucht'
             elif job.kind == 'versions':
                 meta = runtime.json.loads(job.extra_json or '{}')
                 number = meta.get('version_number')
                 version = runtime.db.session.scalar(runtime.select(runtime.OfferVersion).where(runtime.OfferVersion.offer_id == job.result_id, runtime.OfferVersion.version_number == number)) if number else None
+                missing = runtime.db.session.get(runtime.Offer, job.result_id) is None or bool(number and version is None)
                 reviewed = version is not None and version.state != 'draft'
+            elif job.kind == 'documents':
+                missing = runtime.db.session.get(runtime.ProjectDocument, job.result_id) is None
+                reviewed = False
+            elif job.kind == 'loans':
+                meta = runtime.json.loads(job.extra_json or '{}')
+                missing = bool(meta.get('loan_id') and runtime.db.session.get(runtime.Loan, meta['loan_id']) is None)
+                reviewed = bool(meta.get('saved'))
             else:
                 reviewed = False
             if job.kind == 'costplans':
                 plan = runtime.db.session.get(runtime.CostPlanImport, job.result_id)
+                missing = plan is None
                 reviewed = plan is not None and plan.status == 'Übernommen'
-            if reviewed:
-                runtime._mark_import_reviewed(job.kind, job.result_id)
+            if missing:
+                _forget_import_job(job)
+            elif reviewed:
+                job.status = 'Übernommen'
+                job.stage = 'Fachlich geprüft und übernommen'
+                job.updated_at = runtime.datetime.utcnow()
         runtime.db.session.commit()
 
     runtime._sync_import_reviews = _sync_import_reviews
@@ -117,7 +151,7 @@ def register(runtime: ModuleType):
             runtime.db.session.info['phb_import_lease']=(job_id,job.project_id,token)
             job = runtime.db.session.get(runtime.ImportJob, job_id)
             job.status = 'Läuft'
-            job.stage = 'ChatGPT analysiert die Datei …' if job.analysis_mode == 'ai' else 'Datei wird lokal eingelesen …'
+            job.stage = 'Beleg wird ohne Analyse abgelegt …' if job.analysis_mode == 'none' else 'ChatGPT analysiert die Datei …' if job.analysis_mode == 'ai' else 'Datei wird lokal eingelesen …'
             job.updated_at = runtime.datetime.utcnow()
             runtime.db.session.commit()
             filename = job.filename
@@ -185,7 +219,7 @@ def register(runtime: ModuleType):
                     meta['version_number'] = payload.get('version', {}).get('version')
                     job.extra_json = runtime.json.dumps(meta, ensure_ascii=False)
                 job.status = 'Fertig'
-                job.stage = 'Entwurf angelegt – bitte Daten prüfen'
+                job.stage = 'Entwurf ohne Analyse gespeichert – Angaben später ergänzen' if mode == 'none' else 'Entwurf angelegt – bitte Daten prüfen'
                 job.error = ''
                 job.finished_at = runtime.datetime.utcnow()
                 job.updated_at = runtime.datetime.utcnow()
@@ -252,7 +286,7 @@ def register(runtime: ModuleType):
         if kind not in runtime._ALLOWED_IMPORTS:
             return (runtime.jsonify(error='Unbekannter Dokumenttyp.'), 400)
         mode = runtime.request.form.get('analysis_mode', 'local')
-        if mode not in ('ai', 'local') or (kind == 'documents' and mode != 'local'):
+        if mode not in ('ai', 'local', 'none') or (mode == 'none' and kind != 'receipts') or (kind == 'documents' and mode != 'local'):
             return (runtime.jsonify(error='Unbekannte Analyseart.'), 400)
         if kind == 'loans' and mode != 'ai':
             return (runtime.jsonify(error='Kreditunterlagen werden mit ChatGPT analysiert.'), 400)
@@ -265,7 +299,6 @@ def register(runtime: ModuleType):
         if not 1 <= len(files) <= runtime._MAX_IMPORT_COUNT:
             return (runtime.jsonify(error='Bitte eine bis acht Dateien auswählen.'), 400)
         staged = []
-        total = 0
         runtime.IMPORT_QUEUE_ROOT.mkdir(parents=True, exist_ok=True)
         try:
             for file in files:
@@ -273,12 +306,9 @@ def register(runtime: ModuleType):
                 extension = runtime.Path(filename).suffix.lower()
                 if extension not in runtime._ALLOWED_IMPORTS[kind]:
                     raise ValueError('Nicht unterstützte Datei: ' + filename)
-                data = file.read(15 * 1024 * 1024 + 1)
-                total += len(data)
-                if not data or len(data) > 15 * 1024 * 1024:
-                    raise ValueError('Datei leer oder zu groß (15 MB je Datei): ' + filename)
-                if total > runtime._MAX_IMPORT_BATCH_BYTES:
-                    raise ValueError('Maximal 75 MB je Upload-Durchgang.')
+                data = file.read()
+                if not data:
+                    raise ValueError('Datei leer: ' + filename)
                 if extension == '.pdf' and (not data.startswith(b'%PDF-')):
                     raise ValueError('PDF-Signatur ungültig: ' + filename)
                 stored = runtime.uuid4().hex + extension
@@ -369,6 +399,7 @@ def register(runtime: ModuleType):
         runtime._ensure_import_recovery()
         if len(batch_id) != 32 or any((c not in '0123456789abcdef' for c in batch_id)):
             return (runtime.jsonify(error='Ungültiger Importdurchgang.'), 400)
+        runtime._sync_import_reviews()
         jobs = runtime.db.session.scalars(runtime.select(runtime.ImportJob).where(runtime.ImportJob.batch_id == batch_id).order_by(runtime.ImportJob.id)).all()
         if not jobs:
             return (runtime.jsonify(error='Importdurchgang nicht gefunden.'), 404)

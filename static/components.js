@@ -3,7 +3,7 @@
  const contracts=[['.offer-card-head,.receipt-entry-heading,.docs-card-head','phb-card-heading'],
   ['.actions,.offer-form-actions,.phb-dialog-actions','phb-action-bar'],
   ['.linked-work-button','phb-source-button'],['aside.phb-inline-pdf,.offer-inline-pdf','phb-document-preview']];
- const fields=new Set(['receiptSearch','receiptLaborFilter','receiptYearFilter','filter','phase','workType','scale','offerSearch','documentSearch']);
+ const fields=new Set(['receiptSearch','receiptKindFilter','receiptPaymentFilter','receiptCancellationFilter','receiptLaborFilter','receiptYearFilter','filter','phase','workType','scale','offerSearch','documentSearch']);
  const applied=new WeakSet();
  const prefix=()=>`phb-view:${window.PHBProject?.id||1}:${location.pathname}:`;
  function decorate(){
@@ -28,7 +28,7 @@
   form.querySelector('.phb-change-impact')?.remove();
  }
  function changed(event){
-  const form=event.target.closest?.('form');if(!form||!previews.has(form))return;
+  const form=event.target.closest?.('form');if(!form||form.dataset.changePreview==='off'||!previews.has(form))return;
   let before,current;
   try{before=new Map(JSON.parse(previews.get(form)));current=JSON.parse(window.PHBFlow.signature(form));}catch{return;}
   const changes=current.filter(([key,value])=>monetary.has(key)&&before.has(key)&&JSON.stringify(before.get(key))!==JSON.stringify(value));

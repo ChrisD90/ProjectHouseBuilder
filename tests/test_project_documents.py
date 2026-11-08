@@ -63,12 +63,13 @@ class ProjectDocumentTests(unittest.TestCase):
         self.assertEqual(result['suggestions'][0]['id'],uploaded.json['document']['id'])
         self.assertGreater(result['suggestions'][0]['score'],0)
 
-    def test_malformed_and_large_documents_rejected(self):
+    def test_malformed_documents_rejected_and_large_upload_accepted(self):
         self.assertEqual(self.upload(b'not a pdf').status_code,400)
         self.assertEqual(self.upload(b'invalid',name='a.docx').status_code,400)
         self.assertEqual(self.upload(b'abc',name='evil.exe').status_code,400)
-        self.assertEqual(self.upload(b'a'*(12*1024*1024+1),name='a.txt').status_code,400)
         self.assertEqual(self.client.get('/api/project-documents').json['documents'],[])
+        result=self.upload(b'a'*(12*1024*1024+1),name='a.txt')
+        self.assertEqual(result.status_code,201,result.json)
 
     def test_drawing_is_never_sent_without_selection_and_is_audited(self):
         from PIL import Image

@@ -205,8 +205,9 @@ $('docDelete').onclick=async()=>{
   'Originaldokument endgültig löschen? Der Quellenvermerk in der Entscheidungshistorie bleibt erhalten.'))return;
  await editFlow.run(async()=>{
   await api('/api/project-documents/'+id,'DELETE');
-  $('docEditDialog').close();
+  editFlow.finish();
   await reload();
+  await window.PHBImports?.refresh();
   report('Dokument gelöscht.',false,'docPageStatus');
  },{button:$('docDelete')});
 };

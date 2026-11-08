@@ -36,7 +36,7 @@
     <label>Datum<input name="usage_date" type="date" required></label>
     <label class="wide" id="usagePurposeWrap" hidden>Verwendungszweck<input name="purpose" maxlength="240" placeholder="z. B. direkte Zahlung für Baustelleneinrichtung"></label>
     <label class="wide">Notiz (optional)<textarea name="notes" maxlength="2000" rows="2"></textarea></label>
-    <label class="wide" id="usageFileWrap" hidden>Nachweis (optional)<input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"><small>PDF oder Bild, maximal 15 MB.</small></label>
+    <label class="wide" id="usageFileWrap" hidden>Nachweis (optional)<input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"><small>PDF oder Bild.</small></label>
   </div>
   <p id="usageAvailable" class="usage-available"></p><p id="usageStatus" class="hint" role="status"></p>
   <div class="modal-actions phb-dialog-actions"><button type="button" id="cancelUsage" class="secondary">Abbrechen</button><span class="push"></span><button type="submit" id="saveUsage" class="primary">Verwendung buchen</button></div>
@@ -49,7 +49,7 @@
   <details class="loan-ai-assistant loan-ai-collapsible" id="loanAiDetails">
     <summary><strong>Kreditunterlagen mit ChatGPT einlesen</strong><small>Optional · Vertragsdaten automatisch vorausfüllen</small></summary>
     <div class="loan-ai-actions">
-      <label>Kreditunterlage (PDF oder Foto, maximal 15 MB)
+      <label>Kreditunterlage (PDF oder Foto)
         <input id="loanAiFile" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
       </label>
       <label class="phb-processing-control">Verarbeitung<select id="loanProcessingMode"><option value="foreground">Im Vordergrund – direkt prüfen</option><option value="background">Im Hintergrund – später prüfen</option></select></label>
@@ -87,7 +87,7 @@
     <summary>+ Dokument an Kredit anhängen</summary>
   <form id="loanDocumentUpload" class="loan-doc-form">
     <label>Dokumentart<select name="document_type"><option value="attachment">Allgemeine Kreditunterlage</option><option value="drawdown_template">Vorlage für Kreditabruf</option></select></label>
-    <label>Dokument (PDF oder Foto, maximal 15 MB)
+    <label>Dokument (PDF oder Foto)
       <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*">
     </label>
     <label>Beschreibung (optional)<input type="text" name="notes" maxlength="500" placeholder="z. B. Bankbrief vom 15.10.2026"></label>
