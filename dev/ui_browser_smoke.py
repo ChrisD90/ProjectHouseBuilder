@@ -57,7 +57,7 @@ if __name__=='__main__':
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_financing_receipts.cjs')+1,'tests/browser_unassigned_financing.cjs')
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_self_work_upload.cjs')+1,'tests/browser_list_sorting.cjs')
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_list_sorting.cjs')+1,'tests/browser_offer_panels.cjs')
-    if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_offer_panels.cjs')+1,'tests/browser_offer_extensions.cjs')
+    if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_offer_panels.cjs')+1,'tests/browser_offer_editor.cjs','tests/browser_offer_extensions.cjs')
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_react_ui.cjs')+1,'tests/browser_sidebar_header.cjs')
     if not sys.argv[1:]:scripts.insert(scripts.index('tests/browser_receipt_phase_ui.cjs')+1,'tests/browser_dialog_navigation.cjs')
     for script in scripts:run(script)

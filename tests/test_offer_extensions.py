@@ -39,6 +39,17 @@ class OfferExtensionsTests(unittest.TestCase):
         stale=self.client.patch(self.path+'/draft',headers={'If-Match':before},json={'notes':'Nicht überschreiben'})
         self.assertEqual(stale.status_code,409);self.assertEqual(self.offer()['notes'],'Geprüft')
 
+    def test_metadata_and_diy_can_be_saved_atomically(self):
+        self.client.patch(self.path,json={'status':'Angebot'})
+        position=self.offer()['positions'][0]['id']
+        saved=self.client.patch(self.path+'/draft',json={'notes':'Gemeinsam gespeichert','own_work_position_ids':[position]})
+        self.assertEqual(saved.status_code,200,saved.json)
+        self.assertEqual(saved.json['offer']['notes'],'Gemeinsam gespeichert')
+        self.assertTrue(saved.json['offer']['positions'][0]['own_work'])
+        rejected=self.client.patch(self.path+'/draft',json={'notes':'Darf nicht bleiben','own_work_position_ids':[999999]})
+        self.assertEqual(rejected.status_code,400)
+        self.assertEqual(self.offer()['notes'],'Gemeinsam gespeichert')
+
     def test_diy_selection_preserves_order_and_financial_totals(self):
         self.assertEqual(self.client.patch(self.path,json={'status':'Angebot'}).status_code,200)
         accepted=self.client.patch(self.path,json={'status':'Angenommen'});self.assertEqual(accepted.status_code,200,accepted.json)

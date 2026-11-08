@@ -676,6 +676,12 @@ def register(runtime: ModuleType):
             return (runtime.jsonify(error='Einzelpositionen können nur vor der Übernahme aus dem PDF-Entwurf geändert werden.'), 409)
         try:
             positions = runtime._validated_offer_positions(values['positions']) if 'positions' in values else None
+            own_ids = values.get('own_work_position_ids')
+            if 'own_work_position_ids' in values:
+                if positions is not None or not isinstance(own_ids, list) or any(type(ident) is not int for ident in own_ids) or not set(own_ids) <= {p.id for p in offer.positions}:
+                    raise ValueError('Bitte nur aktuelle Positionen dieses Angebots als Eigenleistung auswählen.')
+                for position in offer.positions:
+                    position.own_work = position.id in own_ids
             runtime._apply_offer_fields(offer, values)
             if positions is not None:
                 runtime._update_draft_positions(offer, positions)

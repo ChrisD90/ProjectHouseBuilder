@@ -129,9 +129,10 @@
     finally{acceptanceBusy=false;$('offerAcceptanceSubmit').disabled=false;}
   };
   const editDialog=$('offerEditDialog');
-  let editingOfferId=null,offerEditBusy=false;
+  let editingOfferId=null,offerEditBusy=false,editMetadataBaseline='';
   const editFlow=PHBFlow.manage({
-    dialog:'offerEditDialog',forms:['offerEditForm'],
+    routeParams:['offer_id'],
+    dialog:'offerEditDialog',forms:['offerEditForm','offerEditExtras'],
     dismiss:['closeOfferEdit','cancelOfferEdit'],
     isBusy:()=>offerEditBusy,
     onClose:()=>{
@@ -155,6 +156,8 @@
     editingOfferId=id;
     $('offerEditTitle').textContent='Angebot '+(offer.number||'#'+offer.id)+' bearbeiten';
     $('offerEditFields').innerHTML=fields(offer);
+    renderEditorExtras(offer);
+    $('offerEditForm').dataset.offerAmountSource='gross';
     $('offerEditError').textContent='';
     $('reverseOfferAcceptance').hidden=!['Angenommen','Beauftragt'].includes(offer.status);
     const pane=$('offerEditPdfPane'),frame=$('offerEditPdfFrame');
@@ -164,6 +167,7 @@
       $('offerEditPdfDownload').href='/api/documents/'+offer.document_id+'/preview';
     }else frame.removeAttribute('src');
     editFlow.open();
+    editMetadataBaseline=PHBFlow.signature($('offerEditForm'));
   }
   $('reverseOfferAcceptance').onclick=async()=>{
     if(!editingOfferId||offerEditBusy)return;
@@ -186,16 +190,21 @@
   editDialog.addEventListener('cancel',e=>{if(offerEditBusy)e.preventDefault();});
   $('offerEditForm').onsubmit=async e=>{
     e.preventDefault();if(!editingOfferId||offerEditBusy)return;
-    const submit=e.currentTarget.querySelector('button[type=submit]');
+    const submit=editDialog.querySelector('button[form=offerEditForm]');
+    let payload;try{payload=readForm(e.currentTarget);}catch(error){$('offerEditError').textContent=error.message;return;}
+    const controls=[...editDialog.querySelectorAll('button,input,select,textarea')],disabled=controls.map(node=>node.disabled);
+    controls.forEach(node=>node.disabled=true);
     offerEditBusy=true;
     submit.disabled=true;
     $('closeOfferEdit').disabled=true;
     $('cancelOfferEdit').disabled=true;
     try{
       // Only the reviewed metadata is updated; positions belong to PDF drafts/versions.
-      await update(editingOfferId,readForm(e.currentTarget));
+      const diy=$('offerEditExtras').querySelector('form[data-offer-diy]');
+      if(diy)payload.own_work_position_ids=[...diy.querySelectorAll('[data-diy-position]:checked')].map(input=>Number(input.value));
+      await update(editingOfferId,payload);
       await reload();
-      editDialog.close();
+      editFlow.finish();
       $('offerEditPdfFrame').removeAttribute('src');
       editingOfferId=null;
       await PHBUI.alert('Angebotsangaben gespeichert.');
@@ -203,6 +212,7 @@
       $('offerEditError').textContent=error.message;
     }finally{
       offerEditBusy=false;
+      controls.forEach((node,index)=>node.disabled=disabled[index]);
       submit.disabled=false;
       $('closeOfferEdit').disabled=false;
       $('cancelOfferEdit').disabled=false;
@@ -287,22 +297,55 @@
   }
   const parsedPositions=o=>(o.positions||[]).length?`<section class="offer-diy-plan"><h3>Positionen & mögliche Eigenleistungen</h3><form data-offer-diy="${o.id}"><div class="tablewrap"><table><thead><tr><th>Eigenleistung</th><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td><input type="checkbox" name="own_work" data-diy-position value="${p.id}" aria-label="Position ${esc(p.number)} als Eigenleistung planen" ${p.own_work?'checked':''} ${p.optional?'disabled title="Optionale Position – nicht in der Angebotssumme enthalten"':''}></td><td>${esc(p.number)}</td><td>${esc(p.description)}${p.optional?' · Optional':''}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div><div data-diy-summary>${diySummary(o.diy_estimate||diyPreview(o,o.positions))}</div><div class="offer-form-actions"><button type="submit" class="primary mini">Auswahl speichern</button></div></form></section>`:'';
   function attachmentSection(o){
-    return `<section class="offer-attachments"><h3>Weitere Anhänge</h3><div class="offer-attachment-list">${(o.attachments||[]).map(d=>`<div class="offer-attachment-row"><span>${esc(d.filename)}</span><div class="offer-attachment-actions">${d.view_url?`<a class="mini" target="_blank" rel="noopener" href="${esc(d.view_url)}">Öffnen</a>`:''}<a class="mini" href="${esc(d.download_url)}">Herunterladen</a><button type="button" class="offer-tile-icon danger" data-attachment-delete="${o.id}:${d.id}" aria-label="Anhang ${esc(d.filename)} löschen" title="Anhang löschen">${icon('trash')}</button></div></div>`).join('')||'<p class="muted">Noch keine weiteren Anhänge.</p>'}</div><form data-offer-attachments="${o.id}" class="offer-attachment-upload"><label>Weitere Dateien (PDF, DOCX, TXT oder Bilder)<input type="file" name="files" multiple required accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"></label><button type="submit" class="primary mini">Anhänge hochladen</button></form><small>Die Anhänge werden auch unter Dokumente geführt. Das ursprüngliche Angebots-PDF bleibt erhalten.</small></section>`;
+    return `<details class="offer-attachments"><summary>Weitere Dokumente (${(o.attachments||[]).length})</summary><div class="offer-attachment-body"><div class="offer-attachment-list">${(o.attachments||[]).map(d=>`<div class="offer-attachment-row"><span>${esc(d.filename)}</span><div class="offer-attachment-actions">${d.view_url?`<a class="mini" target="_blank" rel="noopener" href="${esc(d.view_url)}">Öffnen</a>`:''}<a class="mini" href="${esc(d.download_url)}">Herunterladen</a><button type="button" class="offer-tile-icon danger" data-attachment-delete="${o.id}:${d.id}" aria-label="Anhang ${esc(d.filename)} löschen" title="Anhang löschen">${icon('trash')}</button></div></div>`).join('')||'<p class="muted">Noch keine weiteren Anhänge.</p>'}</div><form data-offer-attachments="${o.id}" class="offer-attachment-upload"><label>Weitere Dateien (PDF, DOCX, TXT oder Bilder)<input type="file" name="files" multiple required accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"></label><button type="submit" class="primary mini">Anhänge hochladen</button></form><small>Die Anhänge werden auch unter Dokumente geführt. Das ursprüngliche Angebots-PDF bleibt erhalten.</small></div></details>`;
   }
 
 
+  function offerTaxRate(o){
+    if(o.net>0&&o.gross!=null){
+      return [19,7,0].find(rate=>Math.abs(Math.round(Number(o.net)*100*(1+rate/100))-Math.round(Number(o.gross)*100))<=1)??'manual';
+    }
+    return o.gross!=null&&o.net==null&&o.vat!=null?'manual':19;
+  }
+  function taxField(o){
+    const rate=offerTaxRate(o);
+    return `<label>Umsatzsteuer<select data-offer-tax aria-label="Umsatzsteuersatz">${[19,7,0,'manual'].map(value=>`<option value="${value}" ${value===rate?'selected':''}>${value==='manual'?'Manuell / gemischt':value+' %'}</option>`).join('')}</select></label>`;
+  }
+  function calculateOfferAmounts(form, source){
+    const select=form.querySelector('[data-offer-tax]');if(!select||select.value==='manual')return;
+    const rate=Number(select.value),read=name=>PHBUI.currency.parse(form.elements.namedItem(name)?.value);
+    const base=read(source);if(base==null){for(const name of ['gross','net','vat'])if(name!==source)form.elements.namedItem(name).value='';return;}
+    if(!Number.isFinite(base)||base<0)return;
+    const cents=Math.round(base*100),factor=1+rate/100;
+    const gross=source==='net'?Math.round(cents*factor):cents,net=source==='net'?cents:Math.round(cents/factor);
+    for(const [name,value] of [['gross',gross],['net',net],['vat',gross-net]]){
+      const input=form.elements.namedItem(name);if(input&&name!==source)input.value=PHBUI.currency.format(value/100);
+    }
+    form.dataset.offerAmountSource=source;
+  }
+  document.addEventListener('input',event=>{
+    const form=event.target.form;if(!form?.querySelector('[data-offer-tax]'))return;
+    if(['gross','net'].includes(event.target.name))calculateOfferAmounts(form,event.target.name);
+    else if(event.target.name==='vat')form.querySelector('[data-offer-tax]').value='manual';
+  });
+  document.addEventListener('change',event=>{
+    if(!event.target.matches('[data-offer-tax]'))return;
+    const form=event.target.form,source=form.dataset.offerAmountSource||(form.elements.gross.value?'gross':'net');
+    calculateOfferAmounts(form,source);if(form.matches('[data-review],[data-version-review]'))checkPositions(form);
+  });
   function fields(o) {
     const recognized=o.vendor==='Firma nicht erkannt'?'':o.vendor;
     return `<label>Anbieter / Firma<select name="contractor_id" data-offer-company data-recognized-name="${esc(recognized)}" required>${companyOptions(o.contractor_id,recognized)}</select><small>${o.contractor_id?'Mit den Stammdaten verknüpft.':'Bitte eine vorhandene Firma wählen oder den erkannten Anbieter ausdrücklich neu anlegen.'}</small></label>
       <label>Bruttogesamtbetrag (€)<input name="gross" inputmode="decimal" value="${o.gross==null?'':esc(o.gross)}" required placeholder="z. B. 12.450,00"></label>
+      ${taxField(o)}
+      <label>Netto (€)<input name="net" inputmode="decimal" value="${o.net==null?'':esc(o.net)}"></label>
+      <label>MwSt. (€)<input name="vat" inputmode="decimal" value="${o.vat==null?'':esc(o.vat)}"></label>
       <label>Kategorie / Gewerk<select name="category" required>${categoryOptions(o.category)}</select></label>
       <label>Kostenplanposition <select name="budget_line_id">${budgetOptions(o.budget_line_id)}</select></label>
       <details class="offer-extra-fields offer-wide"><summary>Weitere Angaben (optional)</summary><div class="offer-extra-grid">
         <label>Angebotsnummer<input name="number" value="${esc(o.number)}" maxlength="100"></label>
         <label>Datum<input name="issued" value="${esc(o.issued)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
         <label>Gültig bis<input name="expires" value="${esc(o.expires)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
-        <label>Netto (€)<input name="net" inputmode="decimal" value="${o.net==null?'':esc(o.net)}"></label>
-        <label>MwSt. (€)<input name="vat" inputmode="decimal" value="${o.vat==null?'':esc(o.vat)}"></label>
         <label class="offer-wide">Notiz<textarea name="notes" rows="2" maxlength="2000">${esc(o.notes)}</textarea></label>
       </div></details>`;
   }
@@ -510,26 +553,37 @@
     invoicesFlow.open();
   }
 
-  function openOfferDetails(id){
-    const o=offers.find(item=>Number(item.id)===Number(id));
-    if(!o)return;
+  function renderEditorExtras(o){
     const accepted=['Angenommen','Beauftragt'].includes(o.status);
-    $('offerDetailsTitle').textContent=o.vendor+' · '+fmt(accepted?o.agreed_gross:o.gross);
-    $('offerDetailsMeta').textContent=[o.category,o.issued||'Ohne Datum',o.number?'Nr. '+o.number:''].filter(Boolean).join(' · ');
-    $('offerDetailsContent').innerHTML=`
-      <section class="offer-detail-summary">
-        <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>
-        ${o.notes?`<p class="offer-notes">${esc(o.notes)}</p>`:''}
-        ${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/preview" target="_blank" rel="noopener">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}
-        ${o.document_id?`<p><a class="mini" href="/api/documents/${o.document_id}/preview" target="_blank" rel="noopener">Angebots-PDF öffnen</a></p>`:''}
-        ${o.deletion_reason?`<p class="offer-mapping">${esc(o.deletion_reason)}</p>`:''}${notice(o)}
-      </section>
-      ${(o.acceptance_reversals||[]).length?`<details class="offer-details"><summary>Zurückgenommene Annahmen (${o.acceptance_reversals.length})</summary>${o.acceptance_reversals.map(r=>`<p>${esc(r.reversed_at.slice(0,10))} · ${fmt(r.agreed_gross)}${r.document_id?` · <a href="/api/documents/${r.document_id}/preview" target="_blank" rel="noopener">Frühere Auftragsbestätigung ansehen</a>`:''}</p>`).join('')}</details>`:''}
-      ${accepted?billingBlock(o):''}
-      ${parsedPositions(o)}${attachmentSection(o)}
-      ${versionUpload(o)}${versionHistory(o)}`;
-    detailsFlow.open();
+    $('offerEditExtras').innerHTML=`${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/preview" target="_blank" rel="noopener">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}${(o.acceptance_reversals||[]).length?`<details class="offer-details"><summary>Zurückgenommene Annahmen (${o.acceptance_reversals.length})</summary>${o.acceptance_reversals.map(r=>`<p>${esc(r.reversed_at.slice(0,10))} · ${fmt(r.agreed_gross)}${r.document_id?` · <a href="/api/documents/${r.document_id}/preview" target="_blank" rel="noopener">Frühere Auftragsbestätigung ansehen</a>`:''}</p>`).join('')}</details>`:''}${accepted?billingBlock(o):''}${notice(o)}${parsedPositions(o)}${attachmentSection(o)}`;
   }
+  function refreshEditorSection(id,selector){
+    const offer=offers.find(o=>o.id===id),current=$('offerEditExtras').querySelector(selector);
+    const template=document.createElement('template');template.innerHTML=selector==='.offer-diy-plan'?parsedPositions(offer):attachmentSection(offer);
+    const next=template.content.firstElementChild;
+    if(current instanceof HTMLDetailsElement&&next instanceof HTMLDetailsElement)next.open=current.open;
+    if(current&&next)current.replaceWith(next);
+  }
+  function openOfferDetails(id){openOfferEdit(id);}
+  const versionUploadFlow=PHBFlow.manage({dialog:'offerVersionUploadDialog',forms:['offerVersionUploadContent'],dismiss:['closeOfferVersionUpload']});
+  const versionHistoryFlow=PHBFlow.manage({dialog:'offerVersionHistoryDialog',dismiss:['closeOfferVersionHistory'],track:false});
+  $('openOfferVersionUpload').onclick=async()=>{
+    if(offerEditBusy||!editingOfferId)return;
+    if(editFlow.dirty()){await PHBUI.alert('Bitte deine Änderungen zuerst speichern, bevor du eine neue Version hochlädst.');return;}
+    const o=offers.find(o=>o.id===editingOfferId);
+    $('offerVersionUploadContent').innerHTML=versionUpload(o);
+    $('offerVersionUploadContent').querySelector('details').open=true;
+    versionUploadFlow.open();
+  };
+  $('openOfferVersionHistory').onclick=async()=>{
+    if(!editingOfferId||offerEditBusy)return;
+    const id=editingOfferId;
+    $('offerVersionHistoryContent').textContent='Versionshistorie wird geladen …';versionHistoryFlow.open();
+    await versionHistoryFlow.run(async()=>{
+      const history=await request(offerUrl(id)+'/versions');
+      $('offerVersionHistoryContent').innerHTML=renderHistory(history.versions);
+    });
+  };
 
   function refreshUI() {
     const drafts=offers.filter(o=>o.status==='Entwurf');
@@ -773,6 +827,8 @@
         model,fields:{offer_id:String(id)}
       });
       form.reset();
+      versionUploadFlow.finish();
+      if(editDialog.open)editFlow.finish();
       status.textContent=result.background?'Analyse läuft in der Warteschlange.':'PDF analysiert.';
       if(result.background){
         if(workflow.open)workflowFlow.finish();
@@ -784,12 +840,13 @@
     finally{window.PHBImports.release(button);}
   });
   async function detailsAction(button, callback){
-    if(detailsFlow.isBusy())return;
-    const controls=[...detailsDialog.querySelectorAll('input,button')],disabled=controls.map(node=>node.disabled);
-    await detailsFlow.run(async()=>{
-      controls.forEach(node=>node.disabled=true);
-      try{await callback();}finally{controls.forEach((node,index)=>node.disabled=disabled[index]);}
-    },{button});
+    if(offerEditBusy)return;
+    const metadataDirty=PHBFlow.signature($('offerEditForm'))!==editMetadataBaseline;
+    const controls=[...editDialog.querySelectorAll('input,select,textarea,button')],disabled=controls.map(node=>node.disabled);
+    offerEditBusy=true;editFlow.setBusy(true);controls.forEach(node=>node.disabled=true);
+    try{await callback();if(!metadataDirty)editFlow.snapshot();}
+    catch(error){await PHBUI.alert(error.message);}
+    finally{offerEditBusy=false;editFlow.setBusy(false);controls.forEach((node,index)=>node.disabled=disabled[index]);}
   }
   document.addEventListener('change',event=>{
     const form=event.target.closest('form[data-offer-diy]');if(!form)return;
@@ -799,21 +856,21 @@
   });
   document.addEventListener('submit',async event=>{
     const form=event.target;if(!form.matches('form[data-offer-diy],form[data-offer-attachments]'))return;
-    event.preventDefault();if(detailsFlow.isBusy())return;
+    event.preventDefault();if(offerEditBusy)return;
     const id=Number(form.dataset.offerDiy||form.dataset.offerAttachments),button=form.querySelector('button[type=submit]');
     const selected=[...form.querySelectorAll('[data-diy-position]:checked')].map(input=>Number(input.value));
     const files=[...(form.querySelector('input[type=file]')?.files||[])];
     await detailsAction(button,async()=>{
       if(form.dataset.offerDiy)await request(offerUrl(id)+'/diy',{method:'PATCH',data:{position_ids:selected}});
       else for(const file of files){const payload=new FormData();payload.set('file',file);await request(offerUrl(id)+'/attachments',{method:'POST',formData:payload});}
-      await reload();openOfferDetails(id);
+      await reload();refreshEditorSection(id,form.dataset.offerDiy?'.offer-diy-plan':'.offer-attachments');
     });
   });
   document.addEventListener('click',async event=>{
-    const button=event.target.closest('[data-attachment-delete]');if(!button||detailsFlow.isBusy())return;
+    const button=event.target.closest('[data-attachment-delete]');if(!button||offerEditBusy)return;
     if(!await PHBUI.confirm('Diesen zusätzlichen Anhang endgültig löschen?'))return;
     const [id,documentId]=button.dataset.attachmentDelete.split(':').map(Number);
-    await detailsAction(button,async()=>{await request(offerUrl(id)+'/attachments/'+documentId,{method:'DELETE'});await reload();openOfferDetails(id);});
+    await detailsAction(button,async()=>{await request(offerUrl(id)+'/attachments/'+documentId,{method:'DELETE'});await reload();refreshEditorSection(id,'.offer-attachments');});
   });
   document.addEventListener('toggle',async e=>{
     const details=e.target;

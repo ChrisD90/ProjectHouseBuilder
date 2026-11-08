@@ -27,16 +27,17 @@ function pdf(){
   await draft.locator('[data-offer-promote]').click();
   await expect(frame.locator('#offerWorkflowDialog')).toBeHidden();await expect(page).toHaveURL(base+'/p/'+owner+'/angebote');
   assert.equal((await offer()).status,'Angebot');assert.equal((await offer()).positions[0].own_work,true);
-  await frame.locator('[data-offer-details="'+id+'"]').click();const details=frame.locator('#offerDetailsDialog');
+  await frame.locator('[data-offer-details="'+id+'"]').click();const details=frame.locator('#offerEditDialog');
   await expect(details.locator('.offer-diy-summary')).toContainText('595,00');
   const choice=details.locator('[data-diy-position]');await choice.nth(1).check();await choice.nth(0).uncheck();
   await details.getByRole('button',{name:'Auswahl speichern',exact:true}).click();
   await expect.poll(async()=>(await offer()).positions.map(position=>position.own_work)).toEqual([false,true]);
-  await details.locator('#closeOfferDetails').click();
+  await details.locator('#closeOfferEdit').click();
   await api('patch','/api/offers/'+id,{status:'Angenommen'});await page.reload();
   await frame.locator('[data-offer-details="'+id+'"]').click();await details.locator('[data-diy-position]').first().check();
   await details.getByRole('button',{name:'Auswahl speichern',exact:true}).click();await expect.poll(async()=>(await offer()).diy_estimate.remaining_gross).toBe(0);
   assert.equal((await offer()).agreed_gross,1190);assert.equal((await api('get','/api/costs')).items.find(row=>row.offer_id===id).committed,1190);
+  await details.locator('.offer-attachments > summary').click();
   await details.locator('form[data-offer-attachments] input[type=file]').setInputFiles([{name:'Zusatz.txt',mimeType:'text/plain',buffer:Buffer.from('Weitere Vereinbarung')},{name:'Anlage.pdf',mimeType:'application/pdf',buffer:pdf()}]);
   await details.getByRole('button',{name:'Anhänge hochladen',exact:true}).click();await expect(details.locator('.offer-attachment-row')).toHaveCount(2);
   const documents=(await api('get','/api/document-library')).documents;assert(documents.some(row=>row.filename==='Zusatz.txt'&&row.source==='Angebote'));
@@ -44,11 +45,11 @@ function pdf(){
    await frame.locator('body').evaluate((_,mode)=>window.PHBUI.setTheme(mode),mode);
    await details.screenshot({path:'/tmp/phb-offer-diy-attachments-'+mode+'.png'});
   }
-  await page.setViewportSize({width:390,height:844});await expect(details.locator('#closeOfferDetails')).toBeInViewport();
+  await page.setViewportSize({width:390,height:844});await expect(details.locator('#closeOfferEdit')).toBeInViewport();
   await expect.poll(()=>frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await details.screenshot({path:'/tmp/phb-offer-diy-attachments-mobile.png'});
   await details.locator('[data-attachment-delete]').first().click();await frame.locator('dialog.phb-messagebox').getByRole('button',{name:'Bestätigen',exact:true}).click();await expect(details.locator('.offer-attachment-row')).toHaveCount(1);
-  await details.locator('#closeOfferDetails').click();await frame.locator('[data-offer-details="'+id+'"]').click();await expect(details.locator('.offer-diy-summary')).toContainText('0,00');
+  await details.locator('#closeOfferEdit').click();await frame.locator('[data-offer-details="'+id+'"]').click();await expect(details.locator('.offer-diy-summary')).toContainText('0,00');
   assert.deepEqual(errors,[]);console.log('PASS draft save/promote without false conflicts, persisted DIY scenarios, unchanged accepted order totals, attachment uploads/deletion/document index and light/dark/mobile views.');
  }catch(error){await page.screenshot({path:'/tmp/phb-offer-extensions-failure.png'});throw error;}
  finally{await browser.close();}
