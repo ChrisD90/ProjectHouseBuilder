@@ -44,7 +44,7 @@ def register(app,db,Project,models):
         'contractors':'contractors','categories':'categories','trades':'trades','receipts':'receipts',
         'offers':'offers','documents':'project-documents','funding':'funding','loans':'financing/loans',
         'equity_accounts':'financing/equity','accounts':'financing/equity','budget_lines':'budget/lines'}
-    children={'offer':{'offer_position','offer_section','order_acceptance'},
+    children={'offer':{'offer_position','offer_section','order_acceptance','document'},
               'self_work_plan':{'self_work_receipt'},
               'receipt':{'finance_receipt_payment','receipt_cancellation','receipt_cancellation_reversal','self_work_receipt'},
               'funding':{'funding_plan','funding_plan_offer','funding_document','funding_assessment'}}
@@ -198,6 +198,11 @@ def register(app,db,Project,models):
             if isinstance(data,dict):
                 family=target[0] if target else request.path.removeprefix('/api/').rstrip('/')
                 visit(data,family)
+                # Successful commands commonly return envelopes such as {ok, offer}.
+                # Always acknowledge the command's own resource, even without a root id.
+                if target:
+                    token=fingerprint(*target)
+                    if token:versions['/api/'+target[0]+'/'+str(target[1])]=token
                 if versions:
                     data['_versions']=versions;response.set_data(app.json.dumps(data))
         if operation:

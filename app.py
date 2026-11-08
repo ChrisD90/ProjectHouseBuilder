@@ -549,7 +549,7 @@ register_offers(__import__('sys').modules[__name__])
 _OFFER_VERSION_FIELDS=('vendor','number','issued','expires','gross','net','vat','tax_rate',
     'category','budget_line_id','notes','status','reconciled','warnings','filename','digest','document_id','contractor_id')
 _POSITION_VERSION_FIELDS=('number','section','description','quantity','unit','unit_price',
-    'net_amount','optional_amount','optional','page')
+    'net_amount','optional_amount','optional','page','own_work')
 _SECTION_VERSION_FIELDS=('name','net','gross','budget_line_id','selected','sort_order')
 
 

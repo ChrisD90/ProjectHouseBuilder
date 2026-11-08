@@ -19,7 +19,7 @@
      <button type="submit" class="primary">Dateien analysieren</button><p class="offer-import-status" id="offerImportStatus" role="status">Die Dateien werden nacheinander analysiert. Im Vordergrund öffnet sich danach die Prüfung automatisch. Im Hintergrund kannst du weiterarbeiten und später über die Warteschlange prüfen.</p></form>
    <form id="offerManualForm" class="offer-entry-form offer-manual-form" hidden>
     <label>Firma / Anbieter <select name="contractor_id" id="offerManualContractor" data-offer-company required><option value="">Firma aus Stammdaten auswählen</option></select><small>Fehlt die Firma, kannst du sie hier ausdrücklich neu anlegen.</small></label>
-    <label>Bruttogesamtsumme (€) <input name="gross" inputmode="decimal" required placeholder="z. B. 8.500,00"></label>
+    <label>Bruttogesamtsumme (€) <input name="gross" inputmode="decimal" required placeholder="z. B. 8.500,00"></label><label>Umsatzsteuer<select data-offer-tax aria-label="Umsatzsteuersatz"><option value="19">19 %</option><option value="7">7 %</option><option value="0">0 %</option><option value="manual">Manuell / gemischt</option></select></label>
     <label>Gewerk / Kategorie <select name="category" id="offerManualCategory" required></select></label>
     <label>Kostenplanposition (optional) <select name="budget_line_id" id="offerManualBudget"></select></label>
     <label class="offer-wide">Angebots-PDF anhängen (optional, max. 15 MB)<input name="file" type="file" accept=".pdf,application/pdf"><small>Wird als Original gespeichert. Deine manuell eingetragenen Werte bleiben maßgeblich; es erfolgt keine automatische Analyse.</small></label>
@@ -47,22 +47,24 @@
     </form>
   </dialog>
   <dialog id="offerEditDialog" class="phb-workflow-dialog phb-offer-edit-dialog" aria-labelledby="offerEditTitle">
-  <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebote / Bearbeitung</span><h2 id="offerEditTitle">Angebot bearbeiten</h2><p>Werte mit dem Original-PDF prüfen und anschließend speichern.</p></div><button id="closeOfferEdit" type="button" class="subtle">Schließen</button></div>
+  <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebote / Bearbeitung</span><h2 id="offerEditTitle">Angebot bearbeiten</h2><p>Werte mit dem Original-PDF prüfen und anschließend speichern.</p></div><div class="offer-editor-actions"><button id="openOfferVersionUpload" type="button" class="offer-tile-icon" aria-label="Neue PDF-Version hochladen" title="Neue PDF-Version hochladen"><svg class="phb-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#upload"></use></svg></button><button id="openOfferVersionHistory" type="button" class="offer-tile-icon" aria-label="Versionshistorie anzeigen" title="Versionshistorie anzeigen"><svg class="phb-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#history"></use></svg></button><button id="closeOfferEdit" type="button" class="subtle">Schließen</button></div></div>
   <div class="phb-workflow-body">
     <div class="phb-offer-edit-layout">
-      <form id="offerEditForm" class="offer-review-form">
+      <div class="offer-edit-main"><form id="offerEditForm" class="offer-review-form">
         <div id="offerEditFields" class="offer-edit-fields"></div>
         <button id="reverseOfferAcceptance" type="button" class="danger offer-wide" hidden>Annahme zurücknehmen</button>
         <p id="offerEditError" role="alert" class="offer-wide"></p>
-        <div class="offer-form-actions offer-wide phb-dialog-actions"><button type="submit" class="primary">Änderungen speichern</button><button id="cancelOfferEdit" type="button" class="subtle">Abbrechen</button></div>
-      </form>
+      </form><div id="offerEditExtras" class="offer-editor-extras"></div></div>
       <aside id="offerEditPdfPane" class="phb-inline-pdf" hidden>
         <header><strong>Originalangebot parallel prüfen</strong><a id="offerEditPdfDownload" class="mini" target="_blank" rel="noopener">Original-PDF</a></header>
         <iframe id="offerEditPdfFrame" title="PDF des bearbeiteten Angebots"></iframe>
       </aside>
     </div>
   </div>
+  <div class="offer-editor-footer phb-dialog-actions"><button id="cancelOfferEdit" type="button" class="subtle">Abbrechen</button><button type="submit" form="offerEditForm" class="primary">Speichern</button></div>
 </dialog>
+<dialog id="offerVersionUploadDialog" class="phb-workflow-dialog offer-version-dialog" aria-labelledby="offerVersionUploadTitle"><div class="phb-workflow-head"><h2 id="offerVersionUploadTitle">Neue PDF-Version hochladen</h2><button id="closeOfferVersionUpload" type="button" class="subtle">Schließen</button></div><div id="offerVersionUploadContent" class="phb-workflow-body"></div></dialog>
+<dialog id="offerVersionHistoryDialog" class="phb-workflow-dialog offer-version-dialog" aria-labelledby="offerVersionHistoryTitle"><div class="phb-workflow-head"><h2 id="offerVersionHistoryTitle">Versionshistorie</h2><button id="closeOfferVersionHistory" type="button" class="subtle">Schließen</button></div><div id="offerVersionHistoryContent" class="phb-workflow-body" role="status"></div></dialog>
 <dialog id="offerDetailsDialog" class="phb-workflow-dialog phb-offer-details-dialog" aria-labelledby="offerDetailsTitle">
   <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebotsverwaltung</span><h2 id="offerDetailsTitle">Angebotsdetails</h2><p id="offerDetailsMeta"></p></div><button id="closeOfferDetails" type="button" class="subtle">Schließen</button></div>
   <div id="offerDetailsContent" class="phb-workflow-body offer-details-content"></div>

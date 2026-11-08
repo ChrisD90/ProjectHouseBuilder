@@ -72,7 +72,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await expect(receipts.locator('#receiptWorkflowDialog')).not.toBeVisible();
   await expect(page).toHaveURL(path('/belege'));
   for(const [route,title,dialog,close,key,id] of [
-   ['/angebote','Angebote','#offerDetailsDialog','#closeOfferDetails','offer_id',offer.id],
+   ['/angebote','Angebote','#offerEditDialog','#closeOfferEdit','offer_id',offer.id],
    ['/finanzierung','Kredite & Eigenkapital','#loanDialog','#closeLoan','loan_id',loan],
    ['/','Bauzeitenplan','#overlay','#closeTask','task_id',task],
    ['/','Bauzeitenplan','#phaseDialog','#closePhaseDialog','phase_id',phase],

@@ -354,3 +354,42 @@ body.phb-app.phb-page-angebote .offers-list-header h2{margin:0}
 .phb-page-angebote .offer-ai-connection-hint{font-size:13px;line-height:1.5;color:var(--ui-muted);margin:10px 0 0}
 .phb-page-angebote .offer-ai-connection-hint[hidden]{display:none}
 body.phb-app.phb-page-angebote #aiCompareOffers:disabled{background:var(--ui-soft);border-color:var(--ui-line);color:var(--ui-muted);opacity:1;cursor:not-allowed}
+
+/* Position editors and planning views share the light/dark palette. */
+body.phb-app.phb-page-angebote :is(.offer-positions-editor,.offer-position-row,.offer-position-empty,.offer-diy-plan,.offer-attachments){background:var(--ui-surface);border:1px solid var(--ui-line);color:var(--ui-ink);border-radius:10px}
+body.phb-app.phb-page-angebote :is(.offer-positions-head h4,.offer-position-title,.offer-position-amount,.offer-position-fields label,.offer-positions-footnote){color:var(--ui-ink-soft)}
+body.phb-app.phb-page-angebote :is(.offer-positions-head p,.offer-diy-summary small,.offer-attachments small){color:var(--ui-muted)}
+body.phb-app.phb-page-angebote :is(.offer-position-fields,.offer-position-row[open]){border-color:var(--ui-line)}
+body.phb-app.phb-page-angebote .offer-positions-reconcile{background:var(--ui-soft-accent);border-color:var(--ui-line);color:var(--ui-ink)}
+body.phb-app.phb-page-angebote .offer-position-alert{background:color-mix(in srgb,var(--ui-warning) 10%,var(--ui-surface));color:var(--ui-ink);border-color:color-mix(in srgb,var(--ui-warning) 40%,var(--ui-line))}
+body.phb-app.phb-page-angebote :is(.offer-diy-plan,.offer-attachments){padding:14px;min-width:0}
+.offer-diy-plan h3,.offer-attachments h3{font-size:16px;margin:0 0 12px}
+.offer-diy-plan table{width:100%;min-width:550px}
+.offer-diy-plan :is(th,td){padding:9px;vertical-align:middle;text-align:left;border-bottom:1px solid var(--ui-line)}
+.offer-diy-plan input[type=checkbox]{width:17px;height:17px;margin:0;accent-color:var(--ui-accent)}
+.offer-diy-summary{display:grid;gap:7px;margin-top:12px;padding:12px;border-radius:9px;background:var(--ui-soft);color:var(--ui-ink);font-size:13px;line-height:1.5}
+.offer-diy-summary small{font-size:11px}
+.offer-attachment-list{display:grid;gap:8px}
+.offer-attachment-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px;border:1px solid var(--ui-line);border-radius:8px;flex-wrap:wrap}
+.offer-attachment-row>span{min-width:0;overflow-wrap:anywhere;flex:1 1 180px;font-size:13px}
+.offer-attachment-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.offer-attachment-actions button{width:32px;height:32px;min-height:32px;padding:6px}
+.offer-attachment-upload{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:14px 0}
+.offer-attachment-upload label{flex:1 1 220px;min-width:0;display:grid;gap:7px;font-size:12px}
+.offer-attachment-upload input{max-width:100%}
+
+/* One offer editor, with compact header tools and separate supporting documents. */
+body.phb-app .offer-editor-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+body.phb-app .offer-edit-main{display:flex;flex-direction:column;gap:16px;min-width:0}
+body.phb-app .offer-editor-extras{display:grid;gap:16px;min-width:0}
+body.phb-app .offer-editor-extras .tablewrap{overflow-x:auto;max-width:100%}
+body.phb-app .offer-editor-footer{flex-shrink:0;border-top:1px solid var(--ui-line);padding:12px 24px;background:var(--ui-surface);display:flex;justify-content:flex-end;gap:8px}
+body.phb-app .offer-attachments>summary{font-weight:650;cursor:pointer}
+body.phb-app .offer-attachment-body{display:grid;gap:12px;padding-top:14px;min-width:0}
+body.phb-app .offer-version-dialog{width:min(880px,calc(100vw - 28px));max-height:90dvh}
+body.phb-app .offer-version-dialog .offer-version-upload{grid-template-columns:1fr;min-width:0}
+body.phb-app .offer-version-dialog .offer-version-upload-details>summary{display:none}
+body.phb-app .offer-version-record{border:1px solid var(--ui-line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--ui-surface);color:var(--ui-ink)}
+body.phb-app .offer-version-record-details{padding-top:12px;overflow-x:auto}
+body.phb-app .offer-version-record summary{display:flex;justify-content:space-between;gap:12px;cursor:pointer;flex-wrap:wrap}
+@media(max-width:600px){body.phb-app .phb-offer-edit-dialog .phb-workflow-head{flex-wrap:wrap;gap:10px}body.phb-app .offer-editor-actions{width:100%}body.phb-app .offer-editor-footer{padding:10px 14px}}

@@ -4,6 +4,7 @@ Original entry points stay exported on runtime for CLI integrations and tests.
 No imports of app.py and no implicit application context are required.
 """
 from types import ModuleType
+from offer_diy import estimate as diy_estimate
 
 def register(runtime: ModuleType):
     def add_parsed_offer(parsed, digest, source_document=None, category='Sonstiges'):
@@ -137,7 +138,7 @@ def register(runtime: ModuleType):
             if not isinstance(pos, dict) or not str(pos.get('description') or '').strip():
                 continue
             clean = {f: pos.get(f) for f in runtime._POSITION_VERSION_FIELDS}
-            clean.update(number=str(pos.get('number') or i), section=str(pos.get('section') or ''), description=str(pos.get('description') or ''), unit=str(pos.get('unit') or ''), optional=bool(pos.get('optional')))
+            clean.update(number=str(pos.get('number') or i), section=str(pos.get('section') or ''), description=str(pos.get('description') or ''), unit=str(pos.get('unit') or ''), optional=bool(pos.get('optional')), own_work=False)
             for money_key in ('unit_price', 'net_amount', 'optional_amount'):
                 if clean[money_key] is not None:
                     try:
@@ -354,7 +355,7 @@ def register(runtime: ModuleType):
         reversals = [dict(reversed_at=x.reversed_at.isoformat(), agreed_gross=float(x.agreed_gross), document_id=x.confirmation_document_id) for x in runtime.db.session.scalars(runtime.select(runtime.OfferAcceptanceReversal).where(runtime.OfferAcceptanceReversal.offer_id == o.id).order_by(runtime.OfferAcceptanceReversal.id.desc()))]
         acceptance_json = {'id': acceptance.id, 'mode': acceptance.mode, 'quoted_gross': float(acceptance.quoted_gross), 'agreed_gross': float(acceptance.agreed_gross), 'document_id': acceptance.confirmation_document_id, 'created_at': acceptance.created_at.isoformat() if acceptance.created_at else ''} if acceptance else None
         deletion_reason = runtime._offer_deletion_reason(o)
-        return {'acceptance_reversals': reversals, 'acceptance': acceptance_json, 'agreed_gross': runtime._contract_gross(o), 'can_delete': not deletion_reason, 'deletion_reason': deletion_reason, 'id': o.id, 'number': o.number, 'vendor': o.vendor, 'filename': o.filename, 'issued': o.issued, 'expires': o.expires, 'net': o.net, 'vat': o.vat, 'gross': o.gross, 'category': o.category, 'budget_line_id': o.budget_line_id, 'notes': o.notes, 'tax_rate': o.tax_rate, 'status': o.status, 'reconciled': o.reconciled, 'warnings': runtime.json.loads(o.warnings or '[]'), 'document_id': o.document_id, 'contractor_id': o.contractor_id, 'billing': runtime.offer_billing_dict(o), 'current_version': o.current_version or 1, 'versions': [runtime._version_json(v) for v in reversed(o.versions)], 'sections': [{'id': g.id, 'name': g.name, 'net': g.net, 'gross': g.gross, 'budget_line_id': g.budget_line_id, 'selected': g.selected} for g in sorted(o.sections, key=lambda x: x.sort_order)], 'positions': [{'id': p.id, 'number': p.number, 'section': p.section, 'description': p.description, 'quantity': p.quantity, 'unit': p.unit, 'unit_price': p.unit_price, 'net_amount': p.net_amount, 'optional_amount': p.optional_amount, 'optional': p.optional, 'page': p.page} for p in sorted(o.positions, key=lambda x: x.id)]}
+        return {'diy_estimate':diy_estimate(o),'attachments':[{'id':d.id,'filename':d.original_name,'uploaded_at':d.uploaded_at.isoformat() if d.uploaded_at else '', 'view_url':f'/api/documents/{d.id}/preview' if runtime.Path(d.original_name).suffix.lower() in ('.pdf','.jpg','.jpeg','.png','.webp','.txt') else None,'download_url':f'/api/documents/{d.id}/download'} for d in runtime.db.session.scalars(runtime.select(runtime.Document).where(runtime.Document.offer_id==o.id).order_by(runtime.Document.id.desc()))], 'acceptance_reversals': reversals, 'acceptance': acceptance_json, 'agreed_gross': runtime._contract_gross(o), 'can_delete': not deletion_reason, 'deletion_reason': deletion_reason, 'id': o.id, 'number': o.number, 'vendor': o.vendor, 'filename': o.filename, 'issued': o.issued, 'expires': o.expires, 'net': o.net, 'vat': o.vat, 'gross': o.gross, 'category': o.category, 'budget_line_id': o.budget_line_id, 'notes': o.notes, 'tax_rate': o.tax_rate, 'status': o.status, 'reconciled': o.reconciled, 'warnings': runtime.json.loads(o.warnings or '[]'), 'document_id': o.document_id, 'contractor_id': o.contractor_id, 'billing': runtime.offer_billing_dict(o), 'current_version': o.current_version or 1, 'versions': [runtime._version_json(v) for v in reversed(o.versions)], 'sections': [{'id': g.id, 'name': g.name, 'net': g.net, 'gross': g.gross, 'budget_line_id': g.budget_line_id, 'selected': g.selected} for g in sorted(o.sections, key=lambda x: x.sort_order)], 'positions': [{'id': p.id, 'number': p.number, 'section': p.section, 'description': p.description, 'quantity': p.quantity, 'unit': p.unit, 'unit_price': p.unit_price, 'net_amount': p.net_amount, 'optional_amount': p.optional_amount, 'optional': p.optional, 'page': p.page, 'own_work': bool(p.own_work)} for p in sorted(o.positions, key=lambda x: x.id)]}
 
     runtime.offer_dict = offer_dict
 
@@ -604,6 +605,10 @@ def register(runtime: ModuleType):
             if not isinstance(optional, bool):
                 raise ValueError(f'Position {index}: optionale Leistung muss Ja oder Nein sein.')
             output['optional'] = optional
+            own_work=item.get('own_work',False)
+            if not isinstance(own_work,bool):
+                raise ValueError(f'Position {index}: Eigenleistung muss Ja oder Nein sein.')
+            output['own_work']=own_work
             for field in ('unit_price', 'net_amount', 'optional_amount'):
                 output[field] = runtime._offer_amount(item.get(field), f'Position {index}, {field}')
             qty = item.get('quantity')
@@ -671,6 +676,12 @@ def register(runtime: ModuleType):
             return (runtime.jsonify(error='Einzelpositionen können nur vor der Übernahme aus dem PDF-Entwurf geändert werden.'), 409)
         try:
             positions = runtime._validated_offer_positions(values['positions']) if 'positions' in values else None
+            own_ids = values.get('own_work_position_ids')
+            if 'own_work_position_ids' in values:
+                if positions is not None or not isinstance(own_ids, list) or any(type(ident) is not int for ident in own_ids) or not set(own_ids) <= {p.id for p in offer.positions}:
+                    raise ValueError('Bitte nur aktuelle Positionen dieses Angebots als Eigenleistung auswählen.')
+                for position in offer.positions:
+                    position.own_work = position.id in own_ids
             runtime._apply_offer_fields(offer, values)
             if positions is not None:
                 runtime._update_draft_positions(offer, positions)
@@ -832,9 +843,10 @@ def register(runtime: ModuleType):
         path = runtime.DOCUMENT_ROOT / item.stored_name
         if not path.is_file():
             return (runtime.jsonify(error='Originaldatei fehlt.'), 404)
-        if path.suffix.lower() != '.pdf':
-            return (runtime.jsonify(error='Vorschau nur für PDF möglich.'), 415)
-        response = runtime.send_file(path, as_attachment=False, mimetype='application/pdf', download_name=item.original_name)
+        mime={'.pdf':'application/pdf','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webp':'image/webp','.txt':'text/plain'}.get(path.suffix.lower())
+        if not mime:
+            return (runtime.jsonify(error='Eine Vorschau ist für PDF, Bilder und Textdateien möglich.'), 415)
+        response = runtime.send_file(path, as_attachment=False, mimetype=mime, download_name=item.original_name)
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Cache-Control'] = 'private, no-store'
         return response
@@ -894,6 +906,9 @@ def register(runtime: ModuleType):
             for item in linked:
                 runtime.db.session.delete(item)
             runtime.db.session.flush()
+            for doc in documents:
+                if doc.offer_id==offer.id:doc.offer_id=None
+            runtime.db.session.flush()
             runtime.db.session.delete(offer)
             runtime.db.session.flush()
             for doc in documents:
@@ -917,7 +932,7 @@ def register(runtime: ModuleType):
     runtime.offer_delete = offer_delete
 
     def _offer_document_ids(offer):
-        return {identifier for identifier in [offer.document_id, *[v.document_id for v in offer.versions]] if identifier is not None}
+        return {identifier for identifier in [offer.document_id, *[v.document_id for v in offer.versions], *runtime.db.session.scalars(runtime.select(runtime.Document.id).where(runtime.Document.offer_id==offer.id))] if identifier is not None}
 
     runtime._offer_document_ids = _offer_document_ids
 
@@ -937,3 +952,65 @@ def register(runtime: ModuleType):
         return ''
 
     runtime._offer_deletion_reason = _offer_deletion_reason
+
+    @runtime.app.patch('/api/offers/<int:offer_id>/diy')
+    def offer_diy_update(offer_id):
+        offer=runtime.db.session.get(runtime.Offer,offer_id)
+        if not offer:return runtime.jsonify(error='Angebot nicht gefunden.'),404
+        data=runtime.request.get_json(silent=True)
+        ids=data.get('position_ids') if isinstance(data,dict) else None
+        if not isinstance(ids,list) or any(type(ident) is not int for ident in ids) or not set(ids)<=set(p.id for p in offer.positions):
+            return runtime.jsonify(error='Bitte nur Positionen dieses Angebots auswählen.'),400
+        for position in offer.positions:position.own_work=position.id in ids
+        runtime._sync_current_version(offer)
+        runtime.db.session.commit()
+        return runtime.jsonify(ok=True,offer=runtime.offer_dict(offer))
+
+    @runtime.app.post('/api/offers/<int:offer_id>/attachments')
+    def offer_attachment_upload(offer_id):
+        offer=runtime.db.session.get(runtime.Offer,offer_id)
+        if not offer:return runtime.jsonify(error='Angebot nicht gefunden.'),404
+        upload=runtime.request.files.get('file')
+        if not upload or not upload.filename:return runtime.jsonify(error='Bitte eine Datei auswählen.'),400
+        from pypdf.errors import PdfReadError
+        raw=upload.read()
+        try:
+            name,extension,_,_=runtime.inspect_upload(upload.filename,raw)
+        except (ValueError,OSError,PdfReadError) as error:
+            return runtime.jsonify(error=str(error)),400
+        runtime.DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)
+        checksum=runtime.sha256(raw).digest()
+        for existing in runtime.db.session.scalars(runtime.select(runtime.Document).where(runtime.Document.offer_id==offer.id,runtime.Document.original_name==name)):
+            original=runtime.DOCUMENT_ROOT/existing.stored_name
+            if original.is_file() and original.stat().st_size==len(raw):
+                digest=runtime.sha256()
+                with original.open('rb') as source:
+                    for block in iter(lambda:source.read(1024*1024),b''):digest.update(block)
+                if digest.digest()==checksum:return runtime.jsonify(ok=True,offer=runtime.offer_dict(offer))
+        path=runtime.DOCUMENT_ROOT/(runtime.uuid4().hex+extension)
+        try:
+            path.write_bytes(raw)
+            doc=runtime.Document(original_name=name,stored_name=path.name,kind='Angebotsanhang',offer_id=offer.id,contractor_id=offer.contractor_id)
+            runtime.db.session.add(doc);runtime.db.session.commit()
+            return runtime.jsonify(ok=True,offer=runtime.offer_dict(offer)),201
+        except Exception:
+            runtime.db.session.rollback();path.unlink(missing_ok=True)
+            raise
+
+    @runtime.app.delete('/api/offers/<int:offer_id>/attachments/<int:document_id>')
+    def offer_attachment_delete(offer_id,document_id):
+        offer=runtime.db.session.get(runtime.Offer,offer_id)
+        doc=runtime.db.session.get(runtime.Document,document_id)
+        if not offer or not doc or doc.offer_id!=offer.id or doc.kind!='Angebotsanhang':
+            return runtime.jsonify(error='Anhang nicht gefunden.'),404
+        path=runtime.DOCUMENT_ROOT/doc.stored_name
+        with runtime.tempfile.TemporaryDirectory(prefix='.attachment-delete-',dir=runtime.DOCUMENT_ROOT) as trash:
+            moved=runtime.Path(trash)/path.name
+            if path.exists():path.replace(moved)
+            try:
+                runtime.db.session.delete(doc);runtime.db.session.commit()
+            except Exception:
+                runtime.db.session.rollback()
+                if moved.exists():moved.replace(path)
+                raise
+        return runtime.jsonify(ok=True,offer=runtime.offer_dict(offer))

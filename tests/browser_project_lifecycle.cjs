@@ -175,9 +175,9 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     assert.equal(accepted.status(), 201, await accepted.text());
     await page.goto(base + "/p/" + owner + "/angebote?offer_id=" + oid);
     const frame = page.frameLocator('iframe[title="Angebote"]:not([hidden])');
-    await expect(frame.locator("#offerDetailsDialog")).toBeVisible();
+    await expect(frame.locator("#offerEditDialog")).toBeVisible();
     await expect(
-      frame.locator("#offerDetailsContent [data-work-open]"),
+      frame.locator("#offerEditExtras [data-work-open]"),
     ).toHaveCount(0);
     await expect(
       frame.locator(
@@ -190,7 +190,7 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
         localStorage.setItem("mantine-color-scheme-value", theme);
       }, theme);
       await page.reload();
-      await expect(frame.locator("#offerDetailsDialog")).toBeVisible();
+      await expect(frame.locator("#offerEditDialog")).toBeVisible();
       for (const stage of ["normal", "warning", "overrun", "fully_billed"]) {
         const colors = await frame.locator(".offer-billing").evaluate(
           (element, { stage, theme }) => {

@@ -247,6 +247,10 @@ def load_rows(path, db, owner):
         total += len(rows)
         if total > MAX_ROWS: raise ValueError('Zu viele Datensätze im Backup.')
         for row in rows:
+            if name=='document' and 'offer_id' not in row:
+                row={**row,'offer_id':None}
+            if name=='offer_position' and 'own_work' not in row:
+                row={**row,'own_work':False}
             if name=='import_job' and set(table.c.keys())-set(row)<= {'lease_owner','lease_until'}:
                 row={**{'lease_owner':'','lease_until':None},**row}
             if set(row) != set(table.c.keys()): raise ValueError('Backup-Felder passen nicht zu ' + name)
