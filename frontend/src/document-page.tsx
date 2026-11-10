@@ -30,14 +30,18 @@ import {
   FilterSelect,
 } from './ui';
 import { SourceWork } from './work';
-export function Documents() {
+import { DocumentCards } from './document-cards';
+import { SortSelect } from './list-sorting';
+import { sortProjectDocuments } from './document-sorting';
+export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
+  const documentPath = projectOnly ? '/projektunterlagen' : '/dokumente';
   const query = useQuery({
-    queryKey: ['documents'],
+    queryKey: ['documents', projectOnly ? 'project' : 'library'],
     staleTime: 0,
     queryFn: async () => {
       const [docs, library] = await Promise.all([
         api('/api/project-documents'),
-        api('/api/document-library'),
+        projectOnly ? Promise.resolve<Row>({ documents: [] }) : api('/api/document-library'),
       ]);
       return { ...docs, library: library.documents || library.entries || [] };
     },
@@ -47,6 +51,8 @@ export function Documents() {
     ask = useConfirm(),
     [params] = useSearchParams();
   const [search, setSearch] = useViewState('search', ''),
+    [sort, setSort] = useViewState('sort', 'newest'),
+    [category, setCategory] = useState<string | null>(null),
     [area, setArea] = useState<string | null>(null),
     [status, setStatus] = useState<string | null>(null),
     [tab, setTab] = useState<string | null>('project'),
@@ -99,6 +105,7 @@ export function Documents() {
     (d: Row) =>
       (!area || d.area === area) &&
       (!status || d.status === status) &&
+      (!projectOnly || !category || d.category === category) &&
       [d.title, d.filename, d.category, d.tags, d.description].some((v) =>
         String(v || '')
           .toLowerCase()
@@ -162,7 +169,8 @@ export function Documents() {
         setTimeout(
           () =>
             navigate(
-              '/dokumente?document_id=' +
+              documentPath +
+                '?document_id=' +
                 result.jobs[0].result_id +
                 (params.get('return_to') === 'energy' ? '&return_to=energy' : ''),
             ),
@@ -177,8 +185,12 @@ export function Documents() {
   return (
     <div className="page">
       <PageHeader
-        title="Dokumente"
-        description="Projektunterlagen und Originalbelege an einem Ort."
+        title={projectOnly ? 'Projektunterlagen' : 'Dokumente'}
+        description={
+          projectOnly
+            ? 'Pläne, Genehmigungen und wichtige Unterlagen für dein Projekt.'
+            : 'Projektunterlagen und Originalbelege an einem Ort.'
+        }
       >
         <Button
           leftSection={<IconPlus size={17} />}
@@ -200,159 +212,218 @@ export function Documents() {
       </PageHeader>
       <ErrorBox value={query.error} />
       {query.isPending && <Loader />}
-      <Tabs value={tab} onChange={setTab}>
-        <Paper withBorder p="md" mb="lg" className="collection-toolbar">
-          <Tabs.List mb="lg">
-            <Tabs.Tab value="project">Projektunterlagen</Tabs.Tab>
-            <Tabs.Tab value="linked">Angebote, Rechnungen & Kreditunterlagen</Tabs.Tab>
-          </Tabs.List>
-          <Group align="end">
-            <SearchField
-              aria-label="Dokumente suchen"
-              placeholder="Dokumente suchen"
-              leftSection={<IconSearch size={16} />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ flex: 1, minWidth: 200 }}
-            />
-            {tab === 'project' ? (
-              <>
-                <FilterSelect
-                  aria-label="Bereich"
-                  placeholder="Alle Bereiche"
-                  clearable
-                  data={data.areas || []}
-                  value={area}
-                  onChange={setArea}
-                />
-                <FilterSelect
-                  aria-label="Dokumentstatus"
-                  placeholder="Alle Status"
-                  clearable
-                  data={data.statuses || []}
-                  value={status}
-                  onChange={setStatus}
-                />
-              </>
-            ) : (
+      {projectOnly ? (
+        <>
+          <Paper withBorder p="md" mb="lg" className="collection-toolbar">
+            <Group className="project-document-toolbar" align="end">
+              <SearchField
+                className="project-document-search"
+                aria-label="Projektunterlagen suchen"
+                placeholder="Projektunterlagen suchen"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
               <FilterSelect
-                aria-label="Dokumentquelle"
+                aria-label="Kategorie"
+                placeholder="Alle Kategorien"
+                clearable
+                data={data.categories || []}
+                value={category}
+                onChange={setCategory}
+              />
+              <FilterSelect
+                aria-label="Bereich"
                 placeholder="Alle Bereiche"
                 clearable
-                data={
-                  [
-                    ...new Set(
-                      (data.library || [])
-                        .filter((d: Row) => d.source !== 'Projektdokumente')
-                        .map((d: Row) => d.source),
-                    ),
-                  ] as string[]
-                }
-                value={source}
-                onChange={setSource}
+                data={data.areas || []}
+                value={area}
+                onChange={setArea}
               />
-            )}
-          </Group>
-        </Paper>
-        <Paper withBorder p="md" className="collection-content">
-          <div className="collection-scroll">
-            <Tabs.Panel value="project">
-              <Stack>
-                {documents.map((d) => (
-                  <Paper withBorder p="md" key={d.id}>
-                    <Group justify="space-between">
-                      <div>
-                        <Text fw={600} size="sm">
-                          {d.title}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          {[d.category, d.area, d.filename].filter(Boolean).join(' · ')}
-                        </Text>
-                      </div>
-                      <StatusPill variant="light" color={d.status === 'Aktuell' ? 'teal' : 'gray'}>
-                        {d.status}
-                      </StatusPill>
-                    </Group>
-                    {d.description && (
-                      <Text size="sm" mt="xs">
-                        {d.description}
-                      </Text>
-                    )}
-                    <Group mt="sm">
-                      {['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt'].includes(d.extension) && (
-                        <Button
+              <FilterSelect
+                aria-label="Dokumentstatus"
+                placeholder="Alle Status"
+                clearable
+                data={data.statuses || []}
+                value={status}
+                onChange={setStatus}
+              />
+              <SortSelect
+                value={sort}
+                onChange={setSort}
+                extra={[
+                  { value: 'status', label: 'Status' },
+                  { value: 'size-desc', label: 'Größte Dateien' },
+                  { value: 'size-asc', label: 'Kleinste Dateien' },
+                ]}
+              />
+            </Group>
+          </Paper>
+          <Paper withBorder p="sm" className="collection-content">
+            <div className="collection-scroll">
+              <DocumentCards documents={sortProjectDocuments(documents, sort)} onOpen={open} />
+            </div>
+          </Paper>
+        </>
+      ) : (
+        <Tabs value={tab} onChange={setTab}>
+          <Paper withBorder p="md" mb="lg" className="collection-toolbar">
+            <Tabs.List mb="lg">
+              <Tabs.Tab value="project">Projektunterlagen</Tabs.Tab>
+              <Tabs.Tab value="linked">Angebote, Rechnungen & Kreditunterlagen</Tabs.Tab>
+            </Tabs.List>
+            <Group align="end">
+              <SearchField
+                aria-label="Dokumente suchen"
+                placeholder="Dokumente suchen"
+                leftSection={<IconSearch size={16} />}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{ flex: 1, minWidth: 200 }}
+              />
+              {tab === 'project' ? (
+                <>
+                  <FilterSelect
+                    aria-label="Bereich"
+                    placeholder="Alle Bereiche"
+                    clearable
+                    data={data.areas || []}
+                    value={area}
+                    onChange={setArea}
+                  />
+                  <FilterSelect
+                    aria-label="Dokumentstatus"
+                    placeholder="Alle Status"
+                    clearable
+                    data={data.statuses || []}
+                    value={status}
+                    onChange={setStatus}
+                  />
+                </>
+              ) : (
+                <FilterSelect
+                  aria-label="Dokumentquelle"
+                  placeholder="Alle Bereiche"
+                  clearable
+                  data={
+                    [
+                      ...new Set(
+                        (data.library || [])
+                          .filter((d: Row) => d.source !== 'Projektdokumente')
+                          .map((d: Row) => d.source),
+                      ),
+                    ] as string[]
+                  }
+                  value={source}
+                  onChange={setSource}
+                />
+              )}
+            </Group>
+          </Paper>
+          <Paper withBorder p="md" className="collection-content">
+            <div className="collection-scroll">
+              <Tabs.Panel value="project">
+                <Stack>
+                  {documents.map((d) => (
+                    <Paper withBorder p="md" key={d.id}>
+                      <Group justify="space-between">
+                        <div>
+                          <Text fw={600} size="sm">
+                            {d.title}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {[d.category, d.area, d.filename].filter(Boolean).join(' · ')}
+                          </Text>
+                        </div>
+                        <StatusPill
                           variant="light"
+                          color={d.status === 'Aktuell' ? 'teal' : 'gray'}
+                        >
+                          {d.status}
+                        </StatusPill>
+                      </Group>
+                      {d.description && (
+                        <Text size="sm" mt="xs">
+                          {d.description}
+                        </Text>
+                      )}
+                      <Group mt="sm">
+                        {['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt'].includes(
+                          d.extension,
+                        ) && (
+                          <Button
+                            variant="light"
+                            size="xs"
+                            component="a"
+                            href={projectURL('/api/project-documents/' + d.id + '/preview')}
+                            target="_blank"
+                          >
+                            Ansehen
+                          </Button>
+                        )}
+                        <Button
+                          variant="default"
                           size="xs"
                           component="a"
-                          href={projectURL('/api/project-documents/' + d.id + '/preview')}
-                          target="_blank"
+                          href={projectURL('/api/project-documents/' + d.id + '/download')}
                         >
-                          Ansehen
+                          Herunterladen
                         </Button>
-                      )}
-                      <Button
-                        variant="default"
-                        size="xs"
-                        component="a"
-                        href={projectURL('/api/project-documents/' + d.id + '/download')}
-                      >
-                        Herunterladen
-                      </Button>
-                      <Button variant="subtle" size="xs" onClick={() => open(d)}>
-                        Bearbeiten
-                      </Button>
-                    </Group>
-                  </Paper>
-                ))}
-                {!documents.length && (
-                  <Text c="dimmed" size="sm">
-                    Keine passenden Projektdokumente.
-                  </Text>
-                )}
-              </Stack>
-            </Tabs.Panel>
-            <Tabs.Panel value="linked">
-              <Text size="xs" c="dimmed" mb="md">
-                Originale bleiben in ihrem Fachbereich. Eine Änderung erfolgt dort.
-              </Text>
-              <Stack>
-                {library.map((d) => (
-                  <Paper withBorder p="md" key={d.id}>
-                    <Group justify="space-between">
-                      <div>
-                        <Text size="sm" fw={600}>
-                          {d.title}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          {d.source} · {d.type} · {d.status}
-                        </Text>
-                      </div>
-                      <Button variant="subtle" size="xs" onClick={() => navigate(d.module_url)}>
-                        Im Bereich öffnen
-                      </Button>
-                    </Group>
-                    <Group mt="sm">
-                      {d.view_url && (
-                        <Anchor size="xs" href={projectURL(d.view_url)} target="_blank">
-                          Original ansehen
+                        <Button variant="subtle" size="xs" onClick={() => open(d)}>
+                          Bearbeiten
+                        </Button>
+                      </Group>
+                    </Paper>
+                  ))}
+                  {!documents.length && (
+                    <Text c="dimmed" size="sm">
+                      Keine passenden Projektdokumente.
+                    </Text>
+                  )}
+                </Stack>
+              </Tabs.Panel>
+              <Tabs.Panel value="linked">
+                <Text size="xs" c="dimmed" mb="md">
+                  Originale bleiben in ihrem Fachbereich. Eine Änderung erfolgt dort.
+                </Text>
+                <Stack>
+                  {library.map((d) => (
+                    <Paper withBorder p="md" key={d.id}>
+                      <Group justify="space-between">
+                        <div>
+                          <Text size="sm" fw={600}>
+                            {d.title}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {d.source} · {d.type} · {d.status}
+                          </Text>
+                        </div>
+                        <Button variant="subtle" size="xs" onClick={() => navigate(d.module_url)}>
+                          Im Bereich öffnen
+                        </Button>
+                      </Group>
+                      <Group mt="sm">
+                        {d.view_url && (
+                          <Anchor size="xs" href={projectURL(d.view_url)} target="_blank">
+                            Original ansehen
+                          </Anchor>
+                        )}
+                        <Anchor size="xs" href={projectURL(d.download_url)}>
+                          Herunterladen
                         </Anchor>
-                      )}
-                      <Anchor size="xs" href={projectURL(d.download_url)}>
-                        Herunterladen
-                      </Anchor>
-                    </Group>
-                  </Paper>
-                ))}
-                {!library.length && (
-                  <Text size="sm" c="dimmed">
-                    Keine passenden Originalbelege.
-                  </Text>
-                )}
-              </Stack>
-            </Tabs.Panel>
-          </div>
-        </Paper>
-      </Tabs>
+                      </Group>
+                    </Paper>
+                  ))}
+                  {!library.length && (
+                    <Text size="sm" c="dimmed">
+                      Keine passenden Originalbelege.
+                    </Text>
+                  )}
+                </Stack>
+              </Tabs.Panel>
+            </div>
+          </Paper>
+        </Tabs>
+      )}
       <Editor
         opened={opened}
         title="Dokument pflegen"
@@ -369,13 +440,14 @@ export function Documents() {
           }}
         >
           <Stack>
-            {record && /\.(pdf|png|jpe?g|webp)$/i.test(record.original_name || '') && (
-              <DocumentPreview
-                url={projectURL('/api/project-documents/' + record.id + '/preview')}
-                title="Vorschau des Dokuments"
-                image={!/\.pdf$/i.test(record.original_name)}
-              />
-            )}
+            {record &&
+              /\.(pdf|png|jpe?g|webp)$/i.test(record.original_name || record.filename || '') && (
+                <DocumentPreview
+                  url={projectURL('/api/project-documents/' + record.id + '/preview')}
+                  title="Vorschau des Dokuments"
+                  image={!/\.pdf$/i.test(record.original_name || record.filename || '')}
+                />
+              )}
             <DocumentFields form={edit} options={data} />
             {record && <SourceWork type="document" id={record.id} />}
             <Text size="xs" c="dimmed">

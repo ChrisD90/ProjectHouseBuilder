@@ -33,6 +33,11 @@ def register(runtime: ModuleType):
 
     runtime.project_documents_page = project_documents_page
 
+    @runtime.app.get('/projektunterlagen')
+    def project_document_cards_page():
+        return runtime.render_template('dokumente.html', project_only=True)
+
+
     @runtime.app.get('/api/project-documents')
     def project_documents_list():
         docs = runtime.db.session.scalars(runtime.select(runtime.ProjectDocument).order_by(runtime.ProjectDocument.uploaded_at.desc(), runtime.ProjectDocument.id.desc())).all()

@@ -3,6 +3,7 @@
 const $=id=>document.getElementById(id);
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let records=[],library=[],options=null;
+const projectCards=document.body.classList.contains('phb-project-document-cards');
 const uploadDialog=$('docUploadDialog');
 let uploadRunning=false;
 const uploadFlow=PHBFlow.manage({
@@ -37,6 +38,7 @@ function setup(){
    selectOptions('doc'+mode+'Area',options.areas);
    selectOptions('doc'+mode+'Status',options.statuses);
  }
+ if(projectCards){selectOptions('docFilterCategory',options.categories,'Alle Kategorien');PHBUI.decorateSelect($('docFilterCategory'),'filter');PHBUI.decorateSelect($('docSort'),'sort');}
  selectOptions('docFilterArea',options.areas,'Alle Bereiche');
  selectOptions('docFilterStatus',options.statuses,'Alle');
  $('docUploadStatus').value='Aktuell';
@@ -85,6 +87,13 @@ function documentRow(doc,editable){
     moduleLink.textContent='Im Fachbereich öffnen';moduleLink.className='docs-owner-link';
     actions.append(moduleLink);
   }
+  if(projectCards){
+    for(const action of actions.children){
+      const caption=action.textContent;action.title=caption;action.setAttribute('aria-label',caption);
+      action.innerHTML='<svg class="phb-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#'+(caption==='Bearbeiten'?'pencil':caption==='Ansehen'?'file-check':'download')+'"></use></svg>';
+    }
+    row.addEventListener('click',event=>{if(!event.target.closest('button,a'))edit(doc.project_document_id);});
+  }
   row.append(info,actions);
   return row;
 }
@@ -95,7 +104,8 @@ function refresh(){
   const filtered=general.filter(doc=>
     documentMatches(doc,search)
     &&(!area||records.some(record=>record.id===doc.project_document_id&&record.area===area))
-    &&(!status||doc.status===status));
+    &&(!status||doc.status===status)&&(!projectCards||!$('docFilterCategory').value||doc.type===$('docFilterCategory').value));
+  if(projectCards){const order=$('docSort').value;filtered.sort((a,b)=>{const title=String(a.title).localeCompare(String(b.title),'de',{numeric:true,sensitivity:'base'});if(order==='az')return title;if(order==='za')return -title;if(order==='status')return String(a.status).localeCompare(String(b.status),'de')||title;return String(a.date).localeCompare(String(b.date))*(order==='oldest'?1:-1)||a.project_document_id-b.project_document_id;});}
   $('docCount').textContent=filtered.length+' von '+general.length+' Unterlagen';
   const list=$('docList');list.replaceChildren();
   if(!filtered.length){
@@ -155,6 +165,7 @@ function edit(id){
    form.elements.namedItem(key).value=doc[key]??'';
  report('',false,'docEditMessage');editFlow.open();
 }
+if(projectCards){$('docSort').addEventListener('change',refresh);$('docFilterCategory').addEventListener('change',refresh);}
 $('docSearch').addEventListener('input',refresh);
 $('docFilterArea').addEventListener('change',refresh);
 $('docFilterStatus').addEventListener('change',refresh);

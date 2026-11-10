@@ -1,0 +1,63 @@
+.project-document-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+  gap: 10px;
+  align-items: start;
+}
+.project-document-card {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 7px;
+  height: 190px;
+  min-width: 0;
+  padding: 11px;
+  cursor: pointer;
+  border-radius: 12px;
+  background: var(--mantine-color-body);
+}
+.project-document-card:hover {
+  border-color: var(--brand-accent);
+}
+.project-document-card-open {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.project-document-card-open:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
+}
+.project-document-card-open > * {
+  max-width: 100%;
+  min-width: 0;
+}
+.project-document-title {
+  line-height: 1.3;
+  min-height: 36px;
+}
+.project-document-toolbar {
+  gap: 8px;
+}
+.project-document-toolbar .mantine-Select-root {
+  flex: 0 1 165px;
+  min-width: 130px;
+}
+.project-document-toolbar .project-document-search {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+@media (max-width: 600px) {
+  .project-document-toolbar .project-document-search {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .project-document-toolbar .mantine-Select-root {
+    flex: 1 1 calc(50% - 4px);
+    max-width: calc(50% - 4px);
+    min-width: 0;
+  }
+}

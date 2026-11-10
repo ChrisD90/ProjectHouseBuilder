@@ -46,6 +46,7 @@ import { WorkPage, WorkProvider } from './work';
 import { SelfWorkPage } from './self-work';
 import { UnpaidReceipts } from './unpaid-receipts';
 const items = [
+  ['/projektunterlagen', 'Projektunterlagen', IconFiles],
   ['/', 'Bauzeitenplan', IconCalendar],
   ['/aufgaben', 'To-dos & Notizen', IconListCheck],
   ['/eigenleistungen', 'Eigenleistungen', IconTool],
@@ -59,7 +60,7 @@ const items = [
   ['/daten', 'Daten & Sicherung', IconDatabase],
 ] as const;
 const navigationGroups = [
-  { label: 'Projekt', paths: ['/', '/aufgaben', '/eigenleistungen'] },
+  { label: 'Projekt', paths: ['/projektunterlagen', '/', '/aufgaben', '/eigenleistungen'] },
   {
     label: 'Finanzen',
     paths: ['/kosten', '/angebote', '/belege', '/finanzierung', '/energieplanung'],
@@ -67,6 +68,7 @@ const navigationGroups = [
   { label: 'Verwaltung', paths: ['/dokumente', '/stammdaten', '/daten'] },
 ];
 const native = new Set([
+  '/projektunterlagen',
   '/aufgaben',
   '/kosten',
   '/stammdaten',
@@ -547,8 +549,10 @@ export function App() {
                 <Costs />
               ) : location.pathname === '/energieplanung' ? (
                 <Energy />
+              ) : location.pathname === '/projektunterlagen' ? (
+                <Documents key="project-documents" projectOnly />
               ) : location.pathname === '/dokumente' ? (
-                <Documents />
+                <Documents key="document-library" />
               ) : null}
             </div>
             {!native.has(location.pathname) && !route && (

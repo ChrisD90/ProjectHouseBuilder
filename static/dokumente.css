@@ -173,3 +173,16 @@ body.phb-app.phb-page-dokumente .docs-actions{
   body.phb-app.phb-page-dokumente .docs-item-actions :is(a,button){flex:1 1 auto}
   body.phb-app.phb-page-dokumente .docs-dialog-inner{padding:15px}
 }
+
+/* Optional project-only view; the complete document library retains its list. */
+.phb-project-document-cards #fachunterlagen[hidden]{display:none!important}
+.phb-project-document-cards .docs-toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.phb-project-document-cards .docs-toolbar>label{flex:1 1 150px;min-width:120px}
+.phb-project-document-cards #docList{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:10px;max-height:70dvh;overflow-y:auto;scrollbar-gutter:stable}
+.phb-project-document-cards .docs-item{display:flex;flex-direction:column;justify-content:space-between;gap:6px;height:190px;padding:11px;min-width:0;cursor:pointer}
+.phb-project-document-cards .docs-item-text{min-width:0;overflow:hidden}
+.phb-project-document-cards .docs-item h3{font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.phb-project-document-cards .docs-item :is(p,small){display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phb-project-document-cards .docs-item-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:nowrap}
+.phb-project-document-cards .docs-item-actions :is(a,button){padding:4px;width:28px;height:28px;min-height:28px;display:grid;place-items:center}
+.phb-project-document-cards .docs-item-actions svg{width:16px;height:16px}

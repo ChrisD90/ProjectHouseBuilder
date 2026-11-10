@@ -21,6 +21,7 @@
     <div class="phb-sidebar__scroll">
       <div class="phb-nav-label">PROJEKT</div>
       <nav class="phb-nav" aria-label="Hauptnavigation">
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'projektunterlagen' else '' }}" data-section="projektunterlagen" href="/projektunterlagen" title="Projektunterlagen" {% if phb_active == 'projektunterlagen' %}aria-current="page"{% endif %}>{{ icon('file-check') }}<span class="phb-nav-text">Projektunterlagen</span></a>
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'zeitplan' else '' }}" data-section="zeitplan" href="/" title="Bauzeitenplan" {% if phb_active == 'zeitplan' %}aria-current="page"{% endif %}>{{ icon('calendar') }}<span class="phb-nav-text">Bauzeitenplan</span></a>
       </nav>
       <div class="phb-nav-label">FINANZEN</div>
@@ -33,7 +34,7 @@
       <nav class="phb-nav" aria-label="Energetische Planung"><a class="phb-nav-link {{ 'is-current' if phb_active == 'energieplanung' else '' }}" data-section="energieplanung" href="/energieplanung" {% if phb_active == 'energieplanung' %}aria-current="page"{% endif %}>{{ icon('house') }}<span class="phb-nav-text">Energetische Planung</span></a></nav>
       <div class="phb-nav-label">VERWALTUNG</div>
       <nav class="phb-nav" aria-label="Verwaltung">
-        <a class="phb-nav-link {{ 'is-current' if phb_active == 'dokumente' else '' }}" data-section="dokumente" href="/dokumente" title="Projektdokumente" {% if phb_active == 'dokumente' %}aria-current="page"{% endif %}>{{ icon('file-check') }}<span class="phb-nav-text">Projektdokumente</span></a>
+        <a class="phb-nav-link {{ 'is-current' if phb_active == 'dokumente' else '' }}" data-section="dokumente" href="/dokumente" title="Dokumente" {% if phb_active == 'dokumente' %}aria-current="page"{% endif %}>{{ icon('file-check') }}<span class="phb-nav-text">Dokumente</span></a>
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'stammdaten' else '' }}" data-section="stammdaten" href="/stammdaten" title="Stammdaten" {% if phb_active == 'stammdaten' %}aria-current="page"{% endif %}>{{ icon('users') }}<span class="phb-nav-text">Stammdaten</span></a>
         <a class="phb-nav-link {{ 'is-current' if phb_active == 'daten' else '' }}" data-section="daten" href="/daten" title="Backup, Export & Datenverwaltung" {% if phb_active == 'daten' %}aria-current="page"{% endif %}>{{ icon('database') }}<span class="phb-nav-text">Backup, Export &amp; Daten</span></a>
       </nav>
