@@ -521,6 +521,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         loan=db.session.get(Loan,r.loan_id);receipt=db.session.get(Receipt,r.receipt_id) if r.receipt_id else None
         return {'id':r.id,'loan_id':r.loan_id,'loan_name':loan.name if loan else 'Kredit fehlt',
                 'receipt_id':r.receipt_id,'receipt_name':(receipt.supplier or receipt.original_name) if receipt else '',
+                'payment_ids':sorted(usage_payment_ids(r)),
                 'kind':r.kind,'amount':float(r.amount),'usage_date':r.usage_date,
                 'purpose':r.purpose,'notes':r.notes,'status':r.status,
                 'created_at':r.created_at.isoformat() if r.created_at else None,

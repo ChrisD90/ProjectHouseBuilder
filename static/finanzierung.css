@@ -291,3 +291,31 @@
 .phb-page-finanzierung .finance-warning-link{font-size:13px;font-weight:650;white-space:nowrap}
 .phb-page-finanzierung .finance-warning-action:focus-visible{outline:2px solid var(--ui-accent);outline-offset:3px}
 @media(max-width:600px){.phb-page-finanzierung button.finance-warning-action{align-items:flex-start;flex-direction:column;gap:5px}}
+
+/* A shared entry point and audit timeline; existing accounting stays unchanged. */
+.phb-page-finanzierung .credit-activity-dialog{width:min(720px,calc(100vw - 28px))}
+.phb-page-finanzierung .credit-activity-body{display:grid;gap:18px}
+.phb-page-finanzierung .credit-activity-body>label{display:grid;gap:6px;font-size:13px;color:var(--ui-ink-soft)}
+.phb-page-finanzierung .credit-activity-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.phb-page-finanzierung button.credit-activity-choice{display:flex;flex-direction:column;gap:10px;padding:18px;text-align:left;white-space:normal;height:auto;border:1px solid var(--ui-line);border-radius:12px;background:var(--ui-surface);color:var(--ui-ink);line-height:1.5}
+.phb-page-finanzierung .credit-activity-choice strong{font-size:15px}
+.phb-page-finanzierung .credit-activity-choice span,.phb-page-finanzierung .credit-activity-choice small{font-size:12px;color:var(--ui-muted)}
+.phb-page-finanzierung button.credit-activity-choice:hover:enabled{border-color:var(--ui-accent);background:var(--ui-soft-accent)}
+.phb-page-finanzierung .credit-activity-manual{justify-self:start;font-size:12px}
+.phb-page-finanzierung .credit-history-filter{min-width:160px;max-width:100%;margin:0}
+.phb-page-finanzierung .credit-history{display:grid;gap:10px;padding:0 18px 18px}
+.phb-page-finanzierung .credit-history-row{display:flex;align-items:start;justify-content:space-between;gap:18px;padding:16px;border:1px solid var(--ui-line);border-radius:12px;background:var(--ui-surface);color:var(--ui-ink)}
+.phb-page-finanzierung .credit-history-main{min-width:0;flex:1}
+.phb-page-finanzierung .credit-history-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.phb-page-finanzierung .credit-history-title strong{font-size:14px}
+.phb-page-finanzierung .credit-history-main>small,.phb-page-finanzierung .credit-history-main>p{font-size:12px;color:var(--ui-muted);margin:8px 0 0;overflow-wrap:anywhere}
+.phb-page-finanzierung .credit-history-actions{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:42%}
+.phb-page-finanzierung .credit-history-actions :is(button,a){font-size:12px}
+.phb-page-finanzierung .credit-linked-usages{margin-top:12px;font-size:12px}
+.phb-page-finanzierung .credit-linked-usages summary{cursor:pointer;color:var(--ui-accent)}
+.phb-page-finanzierung .credit-linked-usages ul{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:8px}
+.phb-page-finanzierung .credit-linked-usages li{display:flex;justify-content:space-between;gap:12px;padding:8px;background:var(--ui-soft);border-radius:8px}
+.phb-page-finanzierung .credit-linked-usages small{display:block;color:var(--ui-muted)}
+.phb-page-finanzierung .credit-history-row.is-reversed{opacity:.72}
+.phb-page-finanzierung .status-verwendet{background:var(--ui-soft-accent);color:var(--ui-success)!important}
+@media(max-width:680px){.phb-page-finanzierung .credit-activity-choices{grid-template-columns:1fr}.phb-page-finanzierung .credit-history-row{flex-direction:column;gap:12px}.phb-page-finanzierung .credit-history-actions{max-width:100%;justify-content:flex-start}.phb-page-finanzierung .credit-history-panel .panel-title{flex-wrap:wrap;gap:12px}}

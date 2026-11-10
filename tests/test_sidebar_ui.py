@@ -382,7 +382,7 @@ class SidebarUITest(unittest.TestCase):
         for page,button in (('angebote','openOfferWorkflow'),
                             ('belege','openReceiptWorkflow'),
                             ('dokumente','openDocUpload'),
-                            ('finanzierung','newDrawdown')):
+                            ('finanzierung','newCreditActivity')):
             html=self.render(page)
             header=html.index('phb-action-header')
             button_index=html.index('id="'+button+'"')
@@ -489,7 +489,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('title="Kredit hinzufügen"',finance)
         self.assertIn('title="Eigenkapital hinzufügen"',finance)
         self.assertIn('loan-drawdown-count',finance_js)
-        self.assertIn("['Eingereicht','Ausgezahlt','Bestätigt']",finance_js)
+        self.assertIn('PHBCreditActivity.build(state)',finance_js)
         self.assertNotIn('id="paymentForm"',finance)
         self.assertNotIn('Liquiditätsvorschau',finance)
         self.assertNotIn('id="editBudget"',costs)

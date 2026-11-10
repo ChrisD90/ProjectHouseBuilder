@@ -122,7 +122,7 @@ class FinanceWorkflowTest(unittest.TestCase):
         self.assertIn(b'id="loanDialogTitle"',page.data)
         self.assertIn(b'id="newDrawdown"',page.data)
         self.assertIn(b'id="drawdownDialog"',page.data)
-        self.assertIn(b'id="drawdownHistory"',page.data)
+        self.assertIn(b'id="creditHistory"',page.data)
         self.assertIn(b'id="drawdownPreviewStage"',page.data)
         self.assertIn(b'id="manualDrawdownDocument"',page.data)
         self.assertIn(b'id="loanDrawdownProfileForm"',page.data)
@@ -584,6 +584,28 @@ class FinanceWorkflowTest(unittest.TestCase):
             'action':'reimburse','loan_id':loan,'receipt_id':receipt_id,'amount':'121','usage_date':'2026-10-29'})
         self.assertEqual(rejected.status_code,400,rejected.json)
 
+    def test_legacy_drawdown_history_is_read_only_and_retains_exact_links(self):
+        from app import LoanDrawdownItem
+        loan=self.loan('1000');receipt_id=self.receipt('100')
+        event=self.event('loan_drawdown','400',loan_id=loan)
+        self.assertEqual(event.status_code,201,event.json)
+        payment=self.post('/api/financing/payments',{'receipt_id':receipt_id,'source':'loan',
+            'loan_id':loan,'amount':'100','payment_date':'2026-10-29'})
+        self.assertEqual(payment.status_code,201,payment.json)
+        row=LoanDrawdown(loan_id=loan,event_id=event.json['id'],requested_amount=400,
+            requested_date='2026-10-29',stored_name='legacy-history.zip',status='Bestätigt',payout_type='own_account')
+        db.session.add(row);db.session.flush()
+        item=LoanDrawdownItem(drawdown_id=row.id,receipt_id=receipt_id,claimed_amount=100,
+            snapshot_json=json.dumps({'created_payment_id':payment.json['id'],'receipt':{'supplier':'Altbestand'}}))
+        db.session.add(item);db.session.commit();original=item.snapshot_json
+        before=self.state()
+        view=self.client.get('/api/financing/drawdowns').json['drawdowns'][0]
+        self.assertEqual(view['event_id'],event.json['id'])
+        self.assertEqual(view['applications'][0]['payment_ids'],[payment.json['id']])
+        self.assertEqual(view['applications'][0]['amount'],100)
+        self.assertEqual(before,self.state())
+        self.assertEqual(db.session.get(LoanDrawdownItem,item.id).snapshot_json,original)
+
     def test_direct_drawdown_marks_open_invoice_paid_on_payout(self):
         loan=self.loan('1000');receipt_id=self.receipt('300')
         receipt=db.session.get(Receipt,receipt_id);path=Path(app.root_path)/'private'/'receipts'/receipt.stored_name
@@ -598,6 +620,13 @@ class FinanceWorkflowTest(unittest.TestCase):
         paid=self.client.post(f'/api/financing/drawdowns/{drawdown_id}/confirm',json={'confirmed_date':'2026-10-29'})
         self.assertEqual(paid.status_code,200,paid.json)
         self.assertEqual(paid.json['status'],'Ausgezahlt')
+        self.assertIsNotNone(paid.json['event_id'])
+        self.assertEqual(paid.json['applications'][0]['kind'],'receipt_payment')
+        self.assertEqual(paid.json['applications'][0]['amount'],300)
+        before=self.state()
+        listing=self.client.get('/api/financing/drawdowns').json['drawdowns']
+        self.assertEqual(listing[0]['event_id'],paid.json['event_id'])
+        self.assertEqual(before,self.state(),'Die gemeinsame Ansicht darf keine Buchungen verändern.')
         self.assertEqual(float(db.session.get(Receipt,receipt_id).paid_amount),300)
         self.assertEqual(self.state()['summary']['loan_unallocated'],0)
         reversed_=self.client.delete(f'/api/financing/drawdowns/{drawdown_id}')

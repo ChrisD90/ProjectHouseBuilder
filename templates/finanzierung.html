@@ -6,7 +6,7 @@
 {% set phb_active = 'finanzierung' %}{% set phb_title = 'Finanzierung' %}{% include '_shell_open.html' %}
 
 <main id="phbMain" class="phb-main">
-<section class="intro phb-action-header"><div><span class="phb-page-kicker">Finanzen / Finanzierung</span><h1>Kredite &amp; Eigenkapital</h1><p>Auszahlungen, Verwendungen und Restbeträge nachvollziehbar steuern.</p></div><div class="phb-header-actions"><button type="button" id="newDrawdown" class="primary">+ Mittelabruf</button><button type="button" id="newUsage">Verwendung erfassen</button></div></section>
+<section class="intro phb-action-header"><div><span class="phb-page-kicker">Finanzen / Finanzierung</span><h1>Kredite &amp; Eigenkapital</h1><p>Auszahlungen, Verwendungen und Restbeträge nachvollziehbar steuern.</p></div><div class="phb-header-actions"><button type="button" id="newCreditActivity" class="primary">+ Kredit nutzen</button></div></section>
 <div id="notice" role="status" class="notice" hidden></div>
 <section class="tiles" id="totals"><p>Lade Finanzierungsübersicht …</p></section>
 <section id="warnings" class="alerts" aria-live="polite"></section>
@@ -14,14 +14,19 @@
 <div class="panel"><div class="panel-title"><div><h2>Kredite</h2><p>Rahmen, Auszahlung und Verwendung auf einen Blick.</p></div><button type="button" id="newLoan" class="finance-add-button" title="Kredit hinzufügen" aria-label="Kredit hinzufügen"><svg class="phb-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div><div id="loanList" class="cards"></div></div>
 <div class="panel"><div class="panel-title"><div><h2>Eigenkapital</h2><p>Kontostand und gewünschte Sicherheitsreserve verwalten.</p></div><button type="button" id="newEquity" class="finance-add-button" title="Eigenkapital hinzufügen" aria-label="Eigenkapital hinzufügen"><svg class="phb-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button></div><div id="equityList" class="cards"></div></div>
 </section>
-<section class="panel drawdown-history-panel"><div class="panel-title"><div><h2>Mittelabrufe</h2><p>Vom Entwurf bis zur tatsächlich eingegangenen Auszahlung.</p></div></div><div id="drawdownHistory" class="drawdown-history"><p>Noch keine Mittelabrufe erstellt.</p></div></section>
-<section class="panel usage-history-panel"><div class="panel-title"><div><h2>Verwendungen</h2><p>Rechnungszahlungen, Erstattungen und manuell erfasste Projektverwendungen.</p></div></div><div id="usageHistory" class="usage-history"><p>Noch keine Kreditverwendung erfasst.</p></div></section>
+<section class="panel credit-history-panel"><div class="panel-title"><div><h2>Kreditverlauf</h2><p>Abrufe, Auszahlungen und Verwendungen gemeinsam im Überblick.</p></div><label class="credit-history-filter"><span class="visually-hidden">Kredit filtern</span><select id="creditHistoryLoanFilter" aria-label="Kredit filtern"><option value="">Alle Kredite</option></select></label></div><div id="creditHistory" class="credit-history"><p>Noch keine Kreditvorgänge vorhanden.</p></div></section>
 
 <details class="panel finance-booking-details"><summary>Weitere Buchungen und Kontobewegungen</summary><section class="finance-events">
 <div><p class="hint">Bereits erfolgte Auszahlung, Tilgung, Zinsen, Gebühren oder Eigenkapitalbewegung manuell nachtragen.</p><form id="eventForm" class="fields"><label>Vorgang<select name="kind" id="eventKind"><option value="loan_drawdown">Kreditauszahlung manuell nachtragen</option><option value="loan_repayment">Tilgung</option><option value="loan_interest">Gezahlte Zinsen</option><option value="loan_fee">Bankgebühren</option><option value="equity_deposit">Eigenkapital aufstocken</option><option value="equity_withdrawal">Eigenkapital entnehmen</option></select></label>
 <label>Quelle<select id="eventSource" required></select></label><label>Betrag (€)<input required name="amount" type="number" min="0.01" step="0.01"></label><label>Datum<input required name="event_date" type="date"></label><label class="wide">Notiz<input name="notes" maxlength="2000" placeholder="Optional"></label><label class="wide manual-drawdown-document" id="manualDrawdownDocumentWrap">Auszahlungsformular (optional)<input id="manualDrawdownDocument" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"><small>Das eingereichte oder ausgezahlte Formular wird als Nachweis an der Geldbewegung gespeichert.</small></label><button type="submit" class="primary wide">Geldbewegung speichern</button></form><p class="hint">Tilgungen und Zinsen sind Finanzierungsvorgänge und keine erneuten Baukosten. Kreditauszahlungen sind kein Ertrag.</p><div id="events" class="records"></div></div>
 </section></details>
 
+<dialog id="creditActivityDialog" class="phb-workflow-dialog credit-activity-dialog" aria-labelledby="creditActivityTitle">
+ <div class="phb-workflow-head"><h2 id="creditActivityTitle">Kredit nutzen</h2><button id="closeCreditActivity" type="button" class="secondary">Schließen</button></div>
+ <div class="phb-workflow-body credit-activity-body"><label>Kredit<select id="creditActivityLoan" aria-label="Kredit auswählen"></select></label>
+ <div class="credit-activity-choices"><button type="button" id="newDrawdown" class="credit-activity-choice"><strong>Geld abrufen</strong><span>Belege und Bankformular vorbereiten. Die Buchung erfolgt nach bestätigter Auszahlung.</span></button><button type="button" id="newUsage" class="credit-activity-choice"><strong>Ausgezahltes Geld verwenden</strong><span>Rechnungen bezahlen, Eigenkapital erstatten oder eine sonstige Verwendung erfassen.</span><small id="creditActivityAvailable"></small></button></div>
+ <button type="button" id="creditActivityManual" class="credit-activity-manual">Bereits erhaltene Auszahlung nachtragen</button><p class="hint">Ein Bankabruf zählt einmal. Seine späteren Verwendungen erhöhen den Abrufzähler nicht.</p></div>
+</dialog>
 <dialog id="usageDialog" class="usage-dialog" aria-labelledby="usageDialogTitle"><form id="usageForm" class="modal">
   <div class="modal-head"><div><h2 id="usageDialogTitle">Kredit verwenden</h2><p>Wähle, wofür eine bereits ausgezahlte Kreditsumme verwendet wurde.</p></div><button type="button" id="closeUsage" class="secondary">Schließen</button></div>
   <div class="usage-kind-picker" role="radiogroup" aria-label="Art der Kreditverwendung">
@@ -137,7 +142,7 @@
 <dialog id="equityDialog" aria-labelledby="equityDialogTitle"><form id="equityForm" class="modal"><div class="modal-head"><h2 id="equityDialogTitle">Eigenkapitalkonto</h2><button type="button" class="secondary" id="closeEquity">Schließen</button></div><input type="hidden" name="id"><div class="fields"><label>Bezeichnung<input name="name" maxlength="160" required placeholder="Eigenkapital Sanierung"></label><label>Startbestand (€)<input name="opening_balance" type="number" min="0" step="0.01" required></label><label>Sicherheitsreserve (€)<input name="reserve" type="number" min="0" step="0.01" value="0"></label><label class="wide">Notizen<textarea name="notes" rows="2" maxlength="2000"></textarea></label></div><div class="modal-actions phb-dialog-actions"><button type="button" id="deleteEquity" class="danger">Konto löschen</button><button type="submit" class="primary">Konto speichern</button></div></form></dialog>
 </main>
   </div>
-</div><script src="/static/finanzierung.js"></script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
+</div><script src="/static/credit_activity.js"></script><script src="/static/finanzierung.js"></script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
   <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>
   <h2 id="phbAITitle">ChatGPT verbinden</h2>
   <p id="phbAIConnection">Verbindung wird geprüft …</p>
