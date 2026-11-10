@@ -133,7 +133,7 @@
   const editFlow=PHBFlow.manage({
     routeParams:['offer_id'],
     dialog:'offerEditDialog',forms:['offerEditForm','offerEditExtras'],
-    dismiss:['closeOfferEdit','cancelOfferEdit'],
+    dismiss:['closeOfferEdit'],
     isBusy:()=>offerEditBusy,
     onClose:()=>{
       $('offerEditPdfFrame').removeAttribute('src');
@@ -155,7 +155,9 @@
     if(!offer)return;
     editingOfferId=id;
     $('offerEditTitle').textContent='Angebot '+(offer.number||'#'+offer.id)+' bearbeiten';
-    $('offerEditFields').innerHTML=fields(offer);
+    $('offerEditFields').innerHTML=editFields(offer);
+    PHBUI.currency.bind($('offerEditForm'));
+    updateDocumentsCount(offer);
     renderEditorExtras(offer);
     $('offerEditForm').dataset.offerAmountSource='gross';
     $('offerEditError').textContent='';
@@ -186,7 +188,6 @@
     editingOfferId=null;
   };
   $('closeOfferEdit').onclick=closeEdit;
-  $('cancelOfferEdit').onclick=closeEdit;
   editDialog.addEventListener('cancel',e=>{if(offerEditBusy)e.preventDefault();});
   $('offerEditForm').onsubmit=async e=>{
     e.preventDefault();if(!editingOfferId||offerEditBusy)return;
@@ -197,7 +198,6 @@
     offerEditBusy=true;
     submit.disabled=true;
     $('closeOfferEdit').disabled=true;
-    $('cancelOfferEdit').disabled=true;
     try{
       // Only the reviewed metadata is updated; positions belong to PDF drafts/versions.
       const diy=$('offerEditExtras').querySelector('form[data-offer-diy]');
@@ -215,7 +215,6 @@
       controls.forEach((node,index)=>node.disabled=disabled[index]);
       submit.disabled=false;
       $('closeOfferEdit').disabled=false;
-      $('cancelOfferEdit').disabled=false;
     }
   };
     const workflow=$('offerWorkflowDialog');
@@ -295,9 +294,9 @@
     const deduction=reason?null:selected.length?Math.round((total*Number(o.gross)/Number(o.net)+Number.EPSILON)*100)/100:0;
     return {selected_count:selected.length,selected_gross:deduction,remaining_gross:reason?null:Number(o.gross)-deduction,complete:!reason,reason};
   }
-  const parsedPositions=o=>(o.positions||[]).length?`<section class="offer-diy-plan"><h3>Positionen & mögliche Eigenleistungen</h3><form data-offer-diy="${o.id}"><div class="tablewrap"><table><thead><tr><th>Eigenleistung</th><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td><input type="checkbox" name="own_work" data-diy-position value="${p.id}" aria-label="Position ${esc(p.number)} als Eigenleistung planen" ${p.own_work?'checked':''} ${p.optional?'disabled title="Optionale Position – nicht in der Angebotssumme enthalten"':''}></td><td>${esc(p.number)}</td><td>${esc(p.description)}${p.optional?' · Optional':''}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div><div data-diy-summary>${diySummary(o.diy_estimate||diyPreview(o,o.positions))}</div><div class="offer-form-actions"><button type="submit" class="primary mini">Auswahl speichern</button></div></form></section>`:'';
+  const parsedPositions=o=>(o.positions||[]).length?`<details class="offer-diy-plan"><summary>Positionen & mögliche Eigenleistungen (${o.positions.length})</summary><div class="offer-position-body"><form data-offer-diy="${o.id}"><div class="tablewrap"><table><thead><tr><th>Eigenleistung</th><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td><input type="checkbox" name="own_work" data-diy-position value="${p.id}" aria-label="Position ${esc(p.number)} als Eigenleistung planen" ${p.own_work?'checked':''} ${p.optional?'disabled title="Optionale Position – nicht in der Angebotssumme enthalten"':''}></td><td>${esc(p.number)}</td><td>${esc(p.description)}${p.optional?' · Optional':''}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div><div data-diy-summary>${diySummary(o.diy_estimate||diyPreview(o,o.positions))}</div><div class="offer-form-actions"><button type="submit" class="primary mini">Auswahl speichern</button></div></form></div></details>`:'';
   function attachmentSection(o){
-    return `<details class="offer-attachments"><summary>Weitere Dokumente (${(o.attachments||[]).length})</summary><div class="offer-attachment-body"><div class="offer-attachment-list">${(o.attachments||[]).map(d=>`<div class="offer-attachment-row"><span>${esc(d.filename)}</span><div class="offer-attachment-actions">${d.view_url?`<a class="mini" target="_blank" rel="noopener" href="${esc(d.view_url)}">Öffnen</a>`:''}<a class="mini" href="${esc(d.download_url)}">Herunterladen</a><button type="button" class="offer-tile-icon danger" data-attachment-delete="${o.id}:${d.id}" aria-label="Anhang ${esc(d.filename)} löschen" title="Anhang löschen">${icon('trash')}</button></div></div>`).join('')||'<p class="muted">Noch keine weiteren Anhänge.</p>'}</div><form data-offer-attachments="${o.id}" class="offer-attachment-upload"><label>Weitere Dateien (PDF, DOCX, TXT oder Bilder)<input type="file" name="files" multiple required accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"></label><button type="submit" class="primary mini">Anhänge hochladen</button></form><small>Die Anhänge werden auch unter Dokumente geführt. Das ursprüngliche Angebots-PDF bleibt erhalten.</small></div></details>`;
+    return `<section class="offer-attachments"><div class="offer-attachment-body"><div class="offer-attachment-list">${(o.attachments||[]).map(d=>`<div class="offer-attachment-row"><span>${esc(d.filename)}</span><div class="offer-attachment-actions">${d.view_url?`<a class="mini" target="_blank" rel="noopener" href="${esc(d.view_url)}">Öffnen</a>`:''}<a class="mini" href="${esc(d.download_url)}">Herunterladen</a><button type="button" class="offer-tile-icon danger" data-attachment-delete="${o.id}:${d.id}" aria-label="Anhang ${esc(d.filename)} löschen" title="Anhang löschen">${icon('trash')}</button></div></div>`).join('')||'<p class="muted">Noch keine weiteren Anhänge.</p>'}</div><form data-offer-attachments="${o.id}" class="offer-attachment-upload"><label>Weitere Dateien (PDF, DOCX, TXT oder Bilder)<input type="file" name="files" multiple required accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"></label><button type="submit" class="primary mini">Anhänge hochladen</button></form><small>Die Anhänge werden auch unter Dokumente geführt. Das ursprüngliche Angebots-PDF bleibt erhalten.</small></div></section>`;
   }
 
 
@@ -333,6 +332,22 @@
     const form=event.target.form,source=form.dataset.offerAmountSource||(form.elements.gross.value?'gross':'net');
     calculateOfferAmounts(form,source);if(form.matches('[data-review],[data-version-review]'))checkPositions(form);
   });
+  function editFields(o){
+    const recognized=o.vendor==='Firma nicht erkannt'?'':o.vendor;
+    const taxOptions=[19,7,0,'manual'].map(value=>`<option value="${value}" ${value===offerTaxRate(o)?'selected':''}>${value==='manual'?'Manuell / gemischt':value+' %'}</option>`).join('');
+    return `<div class="offer-field-row offer-field-row-two">
+      <label>Anbieter / Firma<select name="contractor_id" data-offer-company data-recognized-name="${esc(recognized)}" required>${companyOptions(o.contractor_id,recognized)}</select></label>
+      <label>Kategorie / Gewerk<select name="category" required>${categoryOptions(o.category)}</select></label>
+    </div><div class="offer-field-row offer-field-row-three">
+      <label>Angebotsnummer<input name="number" value="${esc(o.number)}" maxlength="100"></label>
+      <label>Datum<input name="issued" value="${esc(o.issued)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
+      <label>Gültig bis<input name="expires" value="${esc(o.expires)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
+    </div><div class="offer-field-row offer-field-row-three offer-amount-row">
+      <label>Brutto (€)<input name="gross" inputmode="decimal" value="${o.gross==null?'':esc(o.gross)}" required></label>
+      <div class="offer-tax-field"><label for="offerEditVat">MwSt. (€)</label><div class="offer-tax-input"><input id="offerEditVat" name="vat" aria-label="MwSt. (€)" inputmode="decimal" value="${o.vat==null?'':esc(o.vat)}"><select data-offer-tax aria-label="Umsatzsteuersatz">${taxOptions}</select></div></div>
+      <label>Netto (€)<input name="net" inputmode="decimal" value="${o.net==null?'':esc(o.net)}"></label>
+    </div><label>Notizen<textarea name="notes" rows="3" maxlength="2000">${esc(o.notes)}</textarea></label>`;
+  }
   function fields(o) {
     const recognized=o.vendor==='Firma nicht erkannt'?'':o.vendor;
     return `<label>Anbieter / Firma<select name="contractor_id" data-offer-company data-recognized-name="${esc(recognized)}" required>${companyOptions(o.contractor_id,recognized)}</select><small>${o.contractor_id?'Mit den Stammdaten verknüpft.':'Bitte eine vorhandene Firma wählen oder den erkannten Anbieter ausdrücklich neu anlegen.'}</small></label>
@@ -516,6 +531,15 @@
     </section>`;
   }
 
+  function paymentIndicator(o){
+    if(!['Angenommen','Beauftragt'].includes(o.status)||!o.billing)return '';
+    const agreed=Number(o.billing.agreed),paid=Number(o.billing.paid)||0;
+    if(!Number.isFinite(agreed)||agreed<=0)return '';
+    const percentage=Math.max(0,paid/agreed*100),width=Math.min(100,percentage);
+    const label=new Intl.NumberFormat('de-DE',{maximumFractionDigits:0}).format(percentage)+' % bezahlt';
+    const description=fmt(paid)+' von '+fmt(agreed)+' bezahlt';
+    return `<span class="offer-tile-paid" title="${esc(description)}"><span class="offer-tile-paid-track" role="progressbar" aria-label="Bezahlter Anteil des Auftrags" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${width}" aria-valuetext="${esc(description)}"><span style="width:${width}%"></span></span><small>${esc(label)}</small></span>`;
+  }
   function renderListed(o) {
     const [label,color]=stage(o);
     const accepted=['Angenommen','Beauftragt'].includes(o.status);
@@ -526,14 +550,15 @@
       ? `<a class="mini" href="/?firmenvorschlaege=1" title="Arbeitspaket im Bauzeitenplan zuordnen" aria-label="Arbeitspaket zuordnen">Arbeitspaket<span class="offer-action-detail"> zuordnen</span></a><a class="mini" href="/energieplanung?offer_id=${o.id}" title="Förderung prüfen" aria-label="Förderung prüfen">Förderung<span class="offer-action-detail"> prüfen</span></a>`
       : `<button class="primary mini" type="button" data-offer-accept="${o.id}">Annehmen</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
     const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${accepted?`<button class="offer-tile-icon" type="button" data-offer-invoices="${o.id}" aria-label="Zugeordnete Rechnungen anzeigen: ${invoiceCount}" title="Zugeordnete Rechnungen anzeigen">${icon('receipt')}<span class="offer-icon-badge">${invoiceCount}</span></button>`:''}${PHBWorkUI.button('offer',o.id,'offer-tile-icon')}${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
-    return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
+    return `<article class="offer-card offer-list-card offer-tile ${accepted?'offer-tile-with-payment':''}" data-offer-card="${o.id}">
       <div class="offer-tile-header"><span class="offer-stage ${color}">${label}</span>${corner}</div>
       <button type="button" class="offer-tile-open" data-offer-details="${o.id}"
-        aria-haspopup="dialog" aria-controls="offerDetailsDialog"
+        aria-haspopup="dialog" aria-controls="offerEditDialog"
         aria-label="Details zu ${esc(o.vendor)} öffnen">
         <strong class="offer-tile-vendor">${esc(o.vendor)}</strong>
         <span class="offer-tile-meta">${meta}${o.number?` · Nr. ${esc(o.number)}`:''}</span>
         <strong class="offer-tile-price">${fmt(accepted?o.agreed_gross:o.gross)}</strong>
+        ${paymentIndicator(o)}
         <span class="offer-tile-chevron" aria-hidden="true">→</span>
       </button>
       <div class="offer-actions offer-tile-actions">${actions}</div>
@@ -553,15 +578,27 @@
   }
 
   function renderEditorExtras(o){
-    const accepted=['Angenommen','Beauftragt'].includes(o.status);
-    $('offerEditExtras').innerHTML=`${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/preview" target="_blank" rel="noopener">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}${(o.acceptance_reversals||[]).length?`<details class="offer-details"><summary>Zurückgenommene Annahmen (${o.acceptance_reversals.length})</summary>${o.acceptance_reversals.map(r=>`<p>${esc(r.reversed_at.slice(0,10))} · ${fmt(r.agreed_gross)}${r.document_id?` · <a href="/api/documents/${r.document_id}/preview" target="_blank" rel="noopener">Frühere Auftragsbestätigung ansehen</a>`:''}</p>`).join('')}</details>`:''}${accepted?billingBlock(o):''}${notice(o)}${parsedPositions(o)}${attachmentSection(o)}`;
+    $('offerEditExtras').innerHTML=`${parsedPositions(o)}${notice(o)}`;
   }
+  function updateDocumentsCount(o){
+    const count=(o.attachments||[]).length;
+    $('offerDocumentsCount').textContent=String(count);$('offerDocumentsCount').hidden=!count;
+    $('openOfferDocuments').setAttribute('aria-label',count?'Weitere Dokumente: '+count:'Weitere Dokumente');
+  }
+  const documentsFlow=PHBFlow.manage({dialog:'offerDocumentsDialog',forms:['offerDocumentsContent'],dismiss:['closeOfferDocuments'],isBusy:()=>offerEditBusy});
+  $('openOfferDocuments').onclick=()=>{
+    if(offerEditBusy||!editingOfferId)return;
+    const offer=offers.find(o=>o.id===editingOfferId);
+    $('offerDocumentsContent').innerHTML=attachmentSection(offer);documentsFlow.open();
+  };
   function refreshEditorSection(id,selector){
-    const offer=offers.find(o=>o.id===id),current=$('offerEditExtras').querySelector(selector);
+    const offer=offers.find(o=>o.id===id),container=selector==='.offer-attachments'?$('offerDocumentsContent'):$('offerEditExtras'),current=container.querySelector(selector);
+    updateDocumentsCount(offer);
     const template=document.createElement('template');template.innerHTML=selector==='.offer-diy-plan'?parsedPositions(offer):attachmentSection(offer);
     const next=template.content.firstElementChild;
     if(current instanceof HTMLDetailsElement&&next instanceof HTMLDetailsElement)next.open=current.open;
     if(current&&next)current.replaceWith(next);
+    if(selector==='.offer-attachments')documentsFlow.snapshot();
   }
   function openOfferDetails(id){openOfferEdit(id);}
   const versionUploadFlow=PHBFlow.manage({dialog:'offerVersionUploadDialog',forms:['offerVersionUploadContent'],dismiss:['closeOfferVersionUpload']});
@@ -841,11 +878,16 @@
   async function detailsAction(button, callback){
     if(offerEditBusy)return;
     const metadataDirty=PHBFlow.signature($('offerEditForm'))!==editMetadataBaseline;
-    const controls=[...editDialog.querySelectorAll('input,select,textarea,button')],disabled=controls.map(node=>node.disabled);
-    offerEditBusy=true;editFlow.setBusy(true);controls.forEach(node=>node.disabled=true);
-    try{await callback();if(!metadataDirty)editFlow.snapshot();}
+    const inDocuments=Boolean(button.closest('#offerDocumentsDialog'));
+    const path=offerUrl(editingOfferId),previous=window.PHBRequests?.version(button.closest('form'),path)||window.PHBRequests?.version(button.closest('dialog'),path);
+    const controls=[...editDialog.querySelectorAll('input,select,textarea,button'),...$('offerDocumentsDialog').querySelectorAll('input,select,textarea,button')],disabled=controls.map(node=>node.disabled);
+    offerEditBusy=true;editFlow.setBusy(true);documentsFlow.setBusy(true);controls.forEach(node=>node.disabled=true);
+    try{await callback();
+      for(const node of [editDialog,$('offerEditForm'),...$('offerEditExtras').querySelectorAll('form')])window.PHBRequests?.acknowledge(node,path,previous);
+      if(!metadataDirty&&!inDocuments)editFlow.snapshot();
+    }
     catch(error){await PHBUI.alert(error.message);}
-    finally{offerEditBusy=false;editFlow.setBusy(false);controls.forEach((node,index)=>node.disabled=disabled[index]);}
+    finally{offerEditBusy=false;editFlow.setBusy(false);documentsFlow.setBusy(false);controls.forEach((node,index)=>node.disabled=disabled[index]);}
   }
   document.addEventListener('change',event=>{
     const form=event.target.closest('form[data-offer-diy]');if(!form)return;

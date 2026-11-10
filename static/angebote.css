@@ -406,3 +406,34 @@ body.phb-app .offer-version-record{border:1px solid var(--ui-line);border-radius
 body.phb-app .offer-version-record-details{padding-top:12px;overflow-x:auto}
 body.phb-app .offer-version-record summary{display:flex;justify-content:space-between;gap:12px;cursor:pointer;flex-wrap:wrap}
 @media(max-width:600px){body.phb-app .phb-offer-edit-dialog .phb-workflow-head{flex-wrap:wrap;gap:10px}body.phb-app .offer-editor-actions{width:100%}body.phb-app .offer-editor-footer{padding:10px 14px}}
+
+/* Compact offer detail rows and supporting documents in a separate dialog. */
+body.phb-app .phb-offer-edit-dialog .offer-edit-fields{grid-template-columns:minmax(0,1fr)}
+body.phb-app .offer-field-row{display:grid;gap:12px;align-items:end;min-width:0}
+body.phb-app .offer-field-row-two{grid-template-columns:repeat(2,minmax(0,1fr))}
+body.phb-app .offer-field-row-three{grid-template-columns:repeat(3,minmax(0,1fr))}
+body.phb-app .offer-field-row label,body.phb-app .offer-tax-field{display:grid;gap:6px;min-width:0;margin:0}
+body.phb-app .offer-tax-input{display:flex;gap:5px;min-width:0}
+body.phb-app .offer-tax-input input{flex:1 1 50%;width:50%;min-width:0}
+body.phb-app .offer-tax-input select{flex:1 1 50%;width:50%;min-width:0;padding-inline:6px}
+body.phb-app .offer-editor-actions .offer-documents-trigger{position:relative}
+body.phb-app .offer-documents-trigger .offer-icon-badge[hidden]{display:none!important}
+body.phb-app #offerDocumentsContent .offer-attachments{padding:14px}
+body.phb-app #offerDocumentsContent .offer-attachment-body{padding-top:0}
+body.phb-app .offer-diy-plan>summary{font-weight:650;cursor:pointer}
+body.phb-app .offer-position-body{padding-top:14px}
+.phb-page-angebote #offerList .offer-tile-with-payment .offer-tile-open{gap:3px 12px;padding-block:6px}
+.phb-page-angebote .offer-tile-paid{grid-column:1/-1;grid-row:4;display:flex;align-items:center;gap:8px;min-width:0;height:13px}
+.phb-page-angebote .offer-tile-paid-track{flex:1;height:4px;border-radius:999px;overflow:hidden;background:var(--ui-line);min-width:20px}
+.phb-page-angebote .offer-tile-paid-track>span{display:block;height:100%;background:var(--ui-success);border-radius:inherit}
+.phb-page-angebote .offer-tile-paid>small{font-size:10px;line-height:1.3;color:var(--ui-muted);white-space:nowrap}
+@media(max-width:600px){body.phb-app .offer-field-row{gap:8px}body.phb-app .offer-amount-row .offer-tax-input{flex-direction:column}body.phb-app .offer-amount-row .offer-tax-input :is(input,select){width:100%;flex:auto}body.phb-app .offer-amount-row{align-items:start}}
+
+body.phb-app .offer-editor-actions .offer-tile-icon{display:grid;place-items:center;position:relative;width:36px;height:36px;min-height:36px;padding:0;border:1px solid var(--ui-line);border-radius:9px;background:var(--ui-surface);color:var(--ui-ink-soft)}
+body.phb-app .offer-editor-actions .offer-tile-icon .phb-icon{width:18px;height:18px}
+body.phb-app .offer-editor-actions .offer-tile-icon:hover{background:var(--ui-soft);color:var(--ui-accent)}
+
+body.phb-app .phb-offer-edit-layout:has(>#offerEditPdfPane[hidden]){grid-template-columns:minmax(0,1fr)}
+
+body.phb-app .offer-tax-field{font-size:12px;font-weight:650;color:var(--ui-ink-soft)}
+body.phb-app .offer-tax-input :is(input,select){font:inherit}

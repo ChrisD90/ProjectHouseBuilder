@@ -28,19 +28,22 @@ function pdf(){
   await expect(frame.locator('#offerWorkflowDialog')).toBeHidden();await expect(page).toHaveURL(base+'/p/'+owner+'/angebote');
   assert.equal((await offer()).status,'Angebot');assert.equal((await offer()).positions[0].own_work,true);
   await frame.locator('[data-offer-details="'+id+'"]').click();const details=frame.locator('#offerEditDialog');
+  await expect(details.locator('.offer-diy-plan')).not.toHaveAttribute('open');await details.locator('.offer-diy-plan > summary').click();
   await expect(details.locator('.offer-diy-summary')).toContainText('595,00');
   const choice=details.locator('[data-diy-position]');await choice.nth(1).check();await choice.nth(0).uncheck();
   await details.getByRole('button',{name:'Auswahl speichern',exact:true}).click();
   await expect.poll(async()=>(await offer()).positions.map(position=>position.own_work)).toEqual([false,true]);
   await details.locator('#closeOfferEdit').click();
   await api('patch','/api/offers/'+id,{status:'Angenommen'});await page.reload();
-  await frame.locator('[data-offer-details="'+id+'"]').click();await details.locator('[data-diy-position]').first().check();
+  await frame.locator('[data-offer-details="'+id+'"]').click();await details.locator('.offer-diy-plan > summary').click();await details.locator('[data-diy-position]').first().check();
   await details.getByRole('button',{name:'Auswahl speichern',exact:true}).click();await expect.poll(async()=>(await offer()).diy_estimate.remaining_gross).toBe(0);
   assert.equal((await offer()).agreed_gross,1190);assert.equal((await api('get','/api/costs')).items.find(row=>row.offer_id===id).committed,1190);
-  await details.locator('.offer-attachments > summary').click();
-  await details.locator('form[data-offer-attachments] input[type=file]').setInputFiles([{name:'Zusatz.txt',mimeType:'text/plain',buffer:Buffer.from('Weitere Vereinbarung')},{name:'Anlage.pdf',mimeType:'application/pdf',buffer:pdf()}]);
-  await details.getByRole('button',{name:'Anhänge hochladen',exact:true}).click();await expect(details.locator('.offer-attachment-row')).toHaveCount(2);
-  const documents=(await api('get','/api/document-library')).documents;assert(documents.some(row=>row.filename==='Zusatz.txt'&&row.source==='Angebote'));
+  await details.locator('[data-diy-position]').first().uncheck();
+  await details.locator('#openOfferDocuments').click();const documents=frame.locator('#offerDocumentsDialog');
+  await documents.locator('form[data-offer-attachments] input[type=file]').setInputFiles([{name:'Zusatz.txt',mimeType:'text/plain',buffer:Buffer.from('Weitere Vereinbarung')},{name:'Anlage.pdf',mimeType:'application/pdf',buffer:pdf()}]);
+  await documents.getByRole('button',{name:'Anhänge hochladen',exact:true}).click();await expect(documents.locator('.offer-attachment-row')).toHaveCount(2);await expect(details.locator('#offerDocumentsCount')).toHaveText('2');await documents.locator('#closeOfferDocuments').click();
+  await expect(details.locator('[data-diy-position]').first()).not.toBeChecked();assert(await details.evaluate(()=>window.PHBFlow.get('offerEditDialog').dirty()));await details.locator('[data-diy-position]').first().check();
+  const library=(await api('get','/api/document-library')).documents;assert(library.some(row=>row.filename==='Zusatz.txt'&&row.source==='Angebote'));
   for(const mode of ['light','dark']){
    await frame.locator('body').evaluate((_,mode)=>window.PHBUI.setTheme(mode),mode);
    await details.screenshot({path:'/tmp/phb-offer-diy-attachments-'+mode+'.png'});
@@ -48,7 +51,7 @@ function pdf(){
   await page.setViewportSize({width:390,height:844});await expect(details.locator('#closeOfferEdit')).toBeInViewport();
   await expect.poll(()=>frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await details.screenshot({path:'/tmp/phb-offer-diy-attachments-mobile.png'});
-  await details.locator('[data-attachment-delete]').first().click();await frame.locator('dialog.phb-messagebox').getByRole('button',{name:'Bestätigen',exact:true}).click();await expect(details.locator('.offer-attachment-row')).toHaveCount(1);
+  await details.locator('#openOfferDocuments').click();await documents.locator('[data-attachment-delete]').first().click();await frame.locator('dialog.phb-messagebox').getByRole('button',{name:'Bestätigen',exact:true}).click();await expect(documents.locator('.offer-attachment-row')).toHaveCount(1);await expect(details.locator('#offerDocumentsCount')).toHaveText('1');await documents.locator('#closeOfferDocuments').click();
   await details.locator('#closeOfferEdit').click();await frame.locator('[data-offer-details="'+id+'"]').click();await expect(details.locator('.offer-diy-summary')).toContainText('0,00');
   assert.deepEqual(errors,[]);console.log('PASS draft save/promote without false conflicts, persisted DIY scenarios, unchanged accepted order totals, attachment uploads/deletion/document index and light/dark/mobile views.');
  }catch(error){await page.screenshot({path:'/tmp/phb-offer-extensions-failure.png'});throw error;}

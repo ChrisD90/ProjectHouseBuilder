@@ -63,7 +63,13 @@
   }
   close=document.createElement('button');close.type='button';close.textContent='Zurück zu meinen Eingaben';close.onclick=()=>{dialog.close();dialog.remove();document.dispatchEvent(new CustomEvent('phb-request-notice-closed'));};dialog.append(close);dialog.addEventListener('cancel',event=>{event.preventDefault();close.click();});document.body.append(dialog);dialog.showModal();
  }
- window.PHBRequests={snapshot,notify,versions};
+ // A child dialog can acknowledge its own successful write to the same resource.
+ // Advance only matching old tokens, never field baselines or unrelated resources.
+ function acknowledge(node,path,previous){
+  const saved=snapshots.get(node);
+  if(previous&&saved?.get(path)===previous&&versions.has(path))saved.set(path,versions.get(path));
+ }
+ window.PHBRequests={snapshot,notify,versions,version:(node,path)=>snapshots.get(node)?.get(path),acknowledge};
  document.addEventListener('input',event=>{const form=event.target.closest?.('form');if(form&&!snapshots.has(form))snapshot(form);},true);
  document.addEventListener('phb-write-complete',event=>{const form=event.detail?.form;if(form){snapshot(form);snapshot(form.closest('dialog'));}});
  const start=()=>new MutationObserver(()=>{for(const node of document.querySelectorAll('dialog[open],[role="dialog"]'))if(!snapshots.has(node))snapshot(node);}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['open']});
