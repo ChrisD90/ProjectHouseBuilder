@@ -57,6 +57,7 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
       .getByRole("link", { name: "Alle Projekte", exact: true })
       .waitFor();
     const frame = page.frameLocator('iframe[title="Bauzeitenplan"]');
+    await frame.locator('[data-schedule-view="gantt"]').click();
     await frame.locator("#count").filter({ hasText: "0" }).waitFor();
     await frame.locator("#managePhases").click();
     await frame.locator("#phaseForm [name=title]").fill("Gartenphase");

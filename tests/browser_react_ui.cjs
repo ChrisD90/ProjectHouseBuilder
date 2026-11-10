@@ -315,6 +315,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
 
     await visit("Bauzeitenplan");
     const plan = page.frameLocator('iframe[title="Bauzeitenplan"]');
+    await plan.locator('[data-schedule-view="gantt"]').click();
     await plan.locator("#newTask").click();
     await plan.locator("#taskForm [name=name]").fill("Browser-Arbeitspaket");
     await plan.locator("#taskForm button[type=submit]").click();

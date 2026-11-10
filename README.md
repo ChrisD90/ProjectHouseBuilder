@@ -290,6 +290,14 @@ Unter **Backup, Export & Daten** (`/daten`) liegen sämtliche Download-Optionen 
 Vor Datenbankmigration `0010` legt der lokale Starter wie bisher zwingend ein geprüftes Backup an. Die Anwendung darf dafür nicht parallel laufen.
 
 
+## Wochenplan, Monatskalender und Ablaufplan
+
+Der Bauzeitenplan startet als **Wochenplan**. **Monat** zeigt einen kompakten Kalender mit zusammenhängenden mehrtägigen Balken und einer Tagesliste hinter „+ weitere“. **Ablaufplan** öffnet das bisherige Gantt mit seinen Zeitrastern und einklappbaren Bauphasen. Die gewählte Ansicht wird je Projekt in diesem Browser gespeichert.
+
+Alle Ansichten nutzen dieselben Bauphasen, Arbeitspakete und Detaildialoge. Suche sowie Filter für Bauphase, Ausführungsart, Gewerk, Betrieb und Status gelten auch für die Arbeitspaketliste. Schnellfilter zeigen überfällige, diese Woche geplante oder laufende Pakete sowie Pakete ohne festen Endtermin. Laufende und ältere offene Pakete außerhalb des sichtbaren Zeitraums bleiben unter dem Kalender erreichbar.
+
+Im Kalender lassen sich offene Pakete durch Ziehen oder **Alt + Pfeiltaste** verschieben; mit zusätzlicher Umschalttaste um sieben Tage. Nach der Bestätigung werden Dauer, Bauphase und Vorgänger geprüft und abhängige Termine neu berechnet. Feste geplante Endtermine bleiben dabei bestehen. Abgeschlossene Pakete sind geschützt. Der Kalender benötigt keine Datenmigration und verändert beim Ansichtswechsel keine Projektdaten.
+
 ## Gantt-Dialog mit ChatGPT und Entscheidungshistorie (Migration 0011)
 
 Der **Bauzeitenplan** bietet nach einer Verbindung mit ChatGPT bei bereits vorhandenen Arbeitspaketen einen Dialog „Mit dem Bauzeitenplan sprechen“. Hier können neue Vorhaben, Eigenleistungen, Planungsänderungen oder Rückfragen in ganzen Sätzen besprochen werden. Beim Senden werden die aktuellen Arbeitsschritte einschließlich Abhängigkeiten, Projektstart und die jüngsten bestätigten Entscheidungen über die ausdrücklich freigegebene ChatGPT-Plannutzung übertragen. Bei unklaren Wünschen kann ChatGPT nachfragen, ohne einen Plan zu verändern.
