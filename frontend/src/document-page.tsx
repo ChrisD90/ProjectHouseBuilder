@@ -24,11 +24,11 @@ import {
   ActionBar,
   DocumentPreview,
   SearchField,
-  StatusPill,
   useViewState,
   useDialogRouteCleanup,
   FilterSelect,
 } from './ui';
+import { DocumentVersions } from './document-versions';
 import { SourceWork } from './work';
 import { DocumentCards } from './document-cards';
 import { SortSelect } from './list-sorting';
@@ -54,7 +54,6 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
     [sort, setSort] = useViewState('sort', 'newest'),
     [category, setCategory] = useState<string | null>(null),
     [area, setArea] = useState<string | null>(null),
-    [status, setStatus] = useState<string | null>(null),
     [tab, setTab] = useState<string | null>('project'),
     [source, setSource] = useState<string | null>(null),
     [opened, setOpened] = useState(false),
@@ -63,10 +62,19 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
     [mode, setMode] = useState<string | null>('foreground'),
     [record, setRecord] = useState<Row | null>(null),
     [busy, setBusy] = useState(false),
+    [versionLayer, setVersionLayer] = useState(false),
+    [versionBusy, setVersionBusy] = useState(false),
+    [versionRevision, setVersionRevision] = useState(0),
     [failure, setFailure] = useState<unknown>(null);
   const edit = useForm<Row>({ initialValues: emptyDocument }),
     metadata = useForm<Row>({ initialValues: emptyDocument });
-  useDialogRouteCleanup(opened || upload, ['document_id', 'upload', 'area', 'return_to']);
+  useDialogRouteCleanup(opened || upload, [
+    'document_id',
+    'document_version',
+    'upload',
+    'area',
+    'return_to',
+  ]);
   const uploadRoute = useRef('');
   const data: Row = query.data || {};
   useEffect(() => {
@@ -99,12 +107,11 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
   useEffect(() => {
     const id = Number(params.get('document_id'));
     const row = data.documents?.find((d: Row) => d.id === id);
-    if (row && record?.id !== id) open(row);
+    if (row && (!opened || record?.id !== id)) open(row);
   }, [data.documents, params.get('document_id')]);
   const documents: Row[] = (data.documents || []).filter(
     (d: Row) =>
       (!area || d.area === area) &&
-      (!status || d.status === status) &&
       (!projectOnly || !category || d.category === category) &&
       [d.title, d.filename, d.category, d.tags, d.description].some((v) =>
         String(v || '')
@@ -239,19 +246,10 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
                 value={area}
                 onChange={setArea}
               />
-              <FilterSelect
-                aria-label="Dokumentstatus"
-                placeholder="Alle Status"
-                clearable
-                data={data.statuses || []}
-                value={status}
-                onChange={setStatus}
-              />
               <SortSelect
                 value={sort}
                 onChange={setSort}
                 extra={[
-                  { value: 'status', label: 'Status' },
                   { value: 'size-desc', label: 'Größte Dateien' },
                   { value: 'size-asc', label: 'Kleinste Dateien' },
                 ]}
@@ -290,14 +288,6 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
                     value={area}
                     onChange={setArea}
                   />
-                  <FilterSelect
-                    aria-label="Dokumentstatus"
-                    placeholder="Alle Status"
-                    clearable
-                    data={data.statuses || []}
-                    value={status}
-                    onChange={setStatus}
-                  />
                 </>
               ) : (
                 <FilterSelect
@@ -334,12 +324,6 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
                             {[d.category, d.area, d.filename].filter(Boolean).join(' · ')}
                           </Text>
                         </div>
-                        <StatusPill
-                          variant="light"
-                          color={d.status === 'Aktuell' ? 'teal' : 'gray'}
-                        >
-                          {d.status}
-                        </StatusPill>
                       </Group>
                       {d.description && (
                         <Text size="sm" mt="xs">
@@ -427,10 +411,33 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
       <Editor
         opened={opened}
         title="Dokument pflegen"
+        headerActions={
+          record && (
+            <DocumentVersions
+              document={record}
+              dirty={edit.isDirty()}
+              initialVersion={Number(params.get('document_version')) || null}
+              onLayerChange={setVersionLayer}
+              onBusyChange={setVersionBusy}
+              onBackground={() => setOpened(false)}
+              onUpdated={async () => {
+                const response = await api('/api/project-documents');
+                const fresh = response.documents.find((row: Row) => row.id === record.id);
+                if (fresh) {
+                  open(fresh);
+                  setVersionRevision((value) => value + 1);
+                }
+                await cache.invalidateQueries({ queryKey: ['documents'] });
+              }}
+            />
+          )
+        }
+        suspended={versionLayer}
+        snapshotRevision={versionRevision}
         dirty={edit.isDirty()}
         changes={edit.values}
         original={edit.getInitialValues()}
-        busy={busy}
+        busy={busy || versionBusy}
         onClose={() => setOpened(false)}
       >
         <form
@@ -443,7 +450,13 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
             {record &&
               /\.(pdf|png|jpe?g|webp)$/i.test(record.original_name || record.filename || '') && (
                 <DocumentPreview
-                  url={projectURL('/api/project-documents/' + record.id + '/preview')}
+                  url={projectURL(
+                    '/api/project-documents/' +
+                      record.id +
+                      '/versions/' +
+                      (record.current_version || 1) +
+                      '/preview',
+                  )}
                   title="Vorschau des Dokuments"
                   image={!/\.pdf$/i.test(record.original_name || record.filename || '')}
                 />
@@ -451,8 +464,8 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
             <DocumentFields form={edit} options={data} />
             {record && <SourceWork type="document" id={record.id} />}
             <Text size="xs" c="dimmed">
-              Überholte Unterlagen bleiben archiviert und werden nicht automatisch mit ChatGPT
-              geteilt.
+              Frühere Fassungen bleiben in der Versionshistorie erhalten. Für ChatGPT wird nur die
+              ausdrücklich ausgewählte aktuelle Fassung verwendet.
             </Text>
             <ErrorBox value={failure} />
             <ActionBar>

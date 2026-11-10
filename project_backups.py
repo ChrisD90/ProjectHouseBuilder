@@ -24,6 +24,7 @@ MAX_ROWS = 500000
 FILE_TABLES = {
     'document': ('documents', True), 'receipt': ('receipts', True),
     'project_document': ('project-documents', True),
+    'project_document_version': ('project-documents', True),
     'finance_loan_document': ('loans', True),
     'finance_event_document': ('financing-events', True),
     'finance_loan_usage': ('loan-usages', True),
@@ -231,6 +232,9 @@ def load_rows(path, db, owner):
     expected = set(tables) - EPHEMERAL
     # Backups from revision 0028 predate both plan tables; they legitimately contain no plans.
     missing=expected-set(payload['tables'])
+    if 'project_document_version' in missing:
+        payload['tables']['project_document_version']=[]
+        missing.remove('project_document_version')
     # New project-owned DIY data defaults to empty in older archives.
     if 'self_work_receipt' in missing:
         payload['tables']['self_work_receipt']=[]
@@ -247,6 +251,8 @@ def load_rows(path, db, owner):
         total += len(rows)
         if total > MAX_ROWS: raise ValueError('Zu viele Datensätze im Backup.')
         for row in rows:
+            if name=='project_document' and 'current_version' not in row:
+                row={**row,'current_version':1}
             if name=='document' and 'offer_id' not in row:
                 row={**row,'offer_id':None}
             if name=='offer_position' and 'own_work' not in row:

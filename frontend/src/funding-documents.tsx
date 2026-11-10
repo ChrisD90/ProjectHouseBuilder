@@ -3,6 +3,7 @@ import { useForm } from '@mantine/form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, Editor, ErrorBox, Row, success } from './core';
+import { DocumentVersions } from './document-versions';
 import { DocumentFields, emptyDocument } from './document-fields';
 import { projectURL } from './project-context';
 import { useDirtyGuard } from './shell';
@@ -36,6 +37,9 @@ export function FundingDocumentIntake({
   const [files, setFiles] = useState<File[]>([]),
     [mode, setMode] = useState<string | null>('foreground'),
     [busy, setBusy] = useState(false),
+    [versionLayer, setVersionLayer] = useState(false),
+    [versionBusy, setVersionBusy] = useState(false),
+    [versionRevision, setVersionRevision] = useState(0),
     [failure, setFailure] = useState<unknown>(null);
   const metadata = useForm<Row>({
     initialValues: { ...emptyDocument, area: 'Energetische Planung', category: 'iSFP' },
@@ -193,10 +197,29 @@ export function FundingDocumentIntake({
       <Editor
         opened={!!reviewId}
         title="Förderunterlage prüfen"
+        headerActions={
+          record && (
+            <DocumentVersions
+              document={record}
+              dirty={edit.isDirty()}
+              onLayerChange={setVersionLayer}
+              onBusyChange={setVersionBusy}
+              onBackground={() => onReview(null)}
+              onUpdated={async () => {
+                initialized.current = null;
+                await query.refetch();
+                setVersionRevision((value) => value + 1);
+                await cache.invalidateQueries({ queryKey: ['documents'] });
+              }}
+            />
+          )
+        }
+        suspended={versionLayer}
+        snapshotRevision={versionRevision}
         dirty={edit.isDirty()}
         changes={edit.values}
         original={edit.getInitialValues()}
-        busy={busy}
+        busy={busy || versionBusy}
         onClose={() => onReview(null)}
         zIndex={260}
       >

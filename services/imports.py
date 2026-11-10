@@ -14,6 +14,10 @@ def register(runtime: ModuleType):
     def _mark_import_reviewed(kind, result_id):
         """Retain audited job history, remove reviewed items from active queue."""
         for job in runtime.db.session.scalars(runtime.select(runtime.ImportJob).where(runtime.ImportJob.kind == kind, runtime.ImportJob.result_id == result_id, runtime.ImportJob.status == 'Fertig')):
+            if kind=='documents':
+                number=runtime.json.loads(job.extra_json or '{}').get('version_number')
+                if number and runtime.db.session.scalar(runtime.select(runtime.ProjectDocumentVersion).where(runtime.ProjectDocumentVersion.document_id==result_id,runtime.ProjectDocumentVersion.version==number,runtime.ProjectDocumentVersion.state=='draft')):
+                    continue
             job.status = 'Übernommen'
             job.stage = 'Fachlich geprüft und übernommen'
             job.updated_at = runtime.datetime.utcnow()
@@ -58,7 +62,9 @@ def register(runtime: ModuleType):
                 reviewed = version is not None and version.state != 'draft'
             elif job.kind == 'documents':
                 missing = runtime.db.session.get(runtime.ProjectDocument, job.result_id) is None
-                reviewed = False
+                number=runtime.json.loads(job.extra_json or '{}').get('version_number')
+                version=runtime.db.session.scalar(runtime.select(runtime.ProjectDocumentVersion).where(runtime.ProjectDocumentVersion.document_id==job.result_id,runtime.ProjectDocumentVersion.version==number)) if number else None
+                reviewed = bool(number and (version is None or version.state!='draft'))
             elif job.kind == 'loans':
                 meta = runtime.json.loads(job.extra_json or '{}')
                 missing = bool(meta.get('loan_id') and runtime.db.session.get(runtime.Loan, meta['loan_id']) is None)
@@ -84,6 +90,8 @@ def register(runtime: ModuleType):
             return None
         if job.kind == 'documents':
             meta = runtime.json.loads(job.extra_json or '{}')
+            if meta.get('version_number'):
+                return '/projektunterlagen?document_id='+str(job.result_id)+'&document_version='+str(meta['version_number'])
             if meta.get('review_context') == 'funding':
                 result = '/energieplanung?funding_document=' + str(job.result_id)
                 if meta.get('funding_id'):
@@ -215,7 +223,7 @@ def register(runtime: ModuleType):
                 if job_type == 'loans':
                     meta['analysis'] = payload
                     job.extra_json = runtime.json.dumps(meta, ensure_ascii=False)
-                if job_type == 'versions':
+                if job_type == 'versions' or (job_type=='documents' and meta.get('version_document_id')):
                     meta['version_number'] = payload.get('version', {}).get('version')
                     job.extra_json = runtime.json.dumps(meta, ensure_ascii=False)
                 job.status = 'Fertig'
@@ -351,6 +359,12 @@ def register(runtime: ModuleType):
                     raise ValueError('Pro Angebotsversion genau ein PDF auswählen.')
                 meta['offer_id'] = offer_id
             if kind == 'documents':
+                if runtime.request.form.get('version_document_id'):
+                    ident=runtime.request.form['version_document_id']
+                    if not ident.isdigit() or runtime.db.session.get(runtime.ProjectDocument,int(ident)) is None:
+                        raise ValueError('Dokument für diese Version nicht gefunden.')
+                    if len(files)!=1:raise ValueError('Bitte genau eine Datei pro Dokumentversion auswählen.')
+                    meta['version_document_id']=int(ident)
                 context = runtime.request.form.get('review_context', '')
                 if context not in ('', 'funding'):
                     raise ValueError('Unbekannter Dokumentbereich.')

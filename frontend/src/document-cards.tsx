@@ -2,7 +2,6 @@ import { ActionIcon, Group, Paper, Text, Tooltip, UnstyledButton } from '@mantin
 import { IconDownload, IconEye, IconFileText, IconPencil } from '@tabler/icons-react';
 import { Row } from './core';
 import { projectURL } from './project-context';
-import { StatusPill } from './ui';
 import './document-cards.css';
 export function DocumentCards({
   documents,
@@ -36,9 +35,9 @@ export function DocumentCards({
                   {String(document.extension || '').replace('.', '')}
                 </Text>
               </Group>
-              <StatusPill size="xs" color={document.status === 'Aktuell' ? 'teal' : 'gray'}>
-                {document.status}
-              </StatusPill>
+              <Text size="10px" c="dimmed">
+                V{document.current_version || 1}
+              </Text>
             </Group>
             <UnstyledButton
               className="project-document-card-open"

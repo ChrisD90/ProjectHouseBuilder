@@ -202,7 +202,7 @@ class SidebarUITest(unittest.TestCase):
 
     def test_project_document_ui_and_gantt_context_are_separate(self):
         html=self.render('dokumente')
-        for marker in ('id="projectDocumentUpload"','id="docFilterStatus"',
+        for marker in ('id="projectDocumentUpload"','id="docVersionHistory"',
                        'id="docEditDialog"','/static/dokumente.js'):
             self.assertIn(marker,html)
         schedule=self.render('index')

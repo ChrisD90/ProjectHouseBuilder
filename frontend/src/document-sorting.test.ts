@@ -31,7 +31,7 @@ describe('project document sorting', () => {
   });
   it('keeps source data unchanged', () => {
     const before = JSON.stringify(documents);
-    ids('status');
+    ids('newest');
     expect(JSON.stringify(documents)).toBe(before);
   });
 });

@@ -19,7 +19,7 @@
 <label class="docs-wide">Titel<input name="title" maxlength="200" placeholder="z. B. Treppenplanung Variante 2"></label>
 <label>Kategorie<select name="category" id="docUploadCategory"></select></label>
 <label>Bereich<select name="area" id="docUploadArea"></select></label>
-<label>Status<select name="status" id="docUploadStatus"></select></label>
+
 <label>Schlagworte<input name="tags" maxlength="400" placeholder="Treppe, DG, Statik"></label>
 <label class="docs-wide">Beschreibung<textarea name="description" rows="2" maxlength="1500"></textarea></label>
 <button type="submit" id="docUploadButton" class="primary">Im Hintergrund einlesen</button></form>
@@ -38,10 +38,10 @@
     <span id="docCount" class="docs-section-count" aria-live="polite"></span>
   </div>
   <div class="docs-toolbar">
-    {% if project_only %}<label>Kategorie<select id="docFilterCategory"><option value="">Alle Kategorien</option></select></label><label>Sortierung<select id="docSort"><option value="newest">Neueste zuerst</option><option value="oldest">Älteste zuerst</option><option value="az">A–Z</option><option value="za">Z–A</option><option value="status">Status</option></select></label>{% endif %}
+    {% if project_only %}<label>Kategorie<select id="docFilterCategory"><option value="">Alle Kategorien</option></select></label><label>Sortierung<select id="docSort"><option value="newest">Neueste zuerst</option><option value="oldest">Älteste zuerst</option><option value="az">A–Z</option><option value="za">Z–A</option></select></label>{% endif %}
     <label>Allgemeine Dokumente durchsuchen<input type="search" id="docSearch" placeholder="Bauplan, Raum, Beschreibung …"></label>
     <label>Bereich<select id="docFilterArea"><option value="">Alle Bereiche</option></select></label>
-    <label>Status<select id="docFilterStatus"><option value="">Alle</option></select></label>
+
   </div>
   <div id="docList" class="docs-list"></div>
 </section>
@@ -65,17 +65,20 @@
   <div id="linkedDocGroups" class="docs-linked-groups" aria-live="polite"></div>
 </section>
 <dialog id="docEditDialog" class="docs-dialog" aria-labelledby="docEditTitle"><form id="docEditForm" class="docs-dialog-inner">
-<div class="docs-dialog-head"><h2 id="docEditTitle">Dokument pflegen</h2><button type="button" id="docClose">Schließen</button></div>
+<div class="docs-dialog-head"><h2 id="docEditTitle">Dokument pflegen</h2><div class="docs-version-actions"><button type="button" id="docNewVersion" title="Neue Version hochladen" aria-label="Neue Dokumentversion hochladen">↑</button><button type="button" id="docVersionHistory" title="Versionshistorie" aria-label="Dokument-Versionshistorie">↶</button><button type="button" id="docClose">Schließen</button></div></div>
 <input type="hidden" name="id">
 <label>Titel<input name="title" required maxlength="200"></label>
 <label>Kategorie<select name="category" id="docEditCategory"></select></label>
 <label>Bereich<select name="area" id="docEditArea"></select></label>
-<label>Status<select name="status" id="docEditStatus"></select></label>
+
 <label>Schlagworte<input name="tags" maxlength="400"></label>
 <label>Beschreibung<textarea name="description" rows="3" maxlength="1500"></textarea></label>
-<p>Überholte oder vorläufige Dokumente bleiben archiviert, werden aber nicht mit ChatGPT geteilt.</p>
+<p>Frühere Dateien bleiben in der Versionshistorie erhalten.</p>
 <div class="docs-actions phb-dialog-actions"><button type="button" id="docDelete" class="danger">Löschen</button><button type="submit" class="primary">Speichern</button></div>
-<p id="docEditMessage" role="status"></p></form></dialog></main>
+<p id="docEditMessage" role="status"></p></form></dialog>
+<dialog id="docVersionUploadDialog" class="phb-workflow-dialog" aria-labelledby="docVersionUploadTitle"><div class="phb-workflow-head"><h2 id="docVersionUploadTitle">Neue Dokumentversion hochladen</h2><button id="docVersionUploadClose" type="button">Schließen</button></div><form id="docVersionUploadForm" class="phb-workflow-body docs-form"><label>Datei<input name="file" type="file" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp" required></label><label>Verarbeitung<select name="mode"><option value="foreground">Im Vordergrund – direkt prüfen</option><option value="background">Im Hintergrund – später prüfen</option></select></label><p id="docVersionUploadMessage" role="status"></p><button type="submit" class="primary">Neue Version einlesen</button></form></dialog>
+<dialog id="docVersionHistoryDialog" class="phb-workflow-dialog" aria-labelledby="docVersionHistoryTitle"><div class="phb-workflow-head"><h2 id="docVersionHistoryTitle">Dokument-Versionshistorie</h2><button id="docVersionHistoryClose" type="button">Schließen</button></div><div id="docVersionHistoryContent" class="phb-workflow-body"></div></dialog>
+</main>
 </div></div>
 <script src="/static/dokumente.js"></script><dialog id="phbAIDialog" class="phb-ai-dialog" aria-labelledby="phbAITitle">
   <form method="dialog"><button class="phb-ai-close" aria-label="Schließen">×</button></form>

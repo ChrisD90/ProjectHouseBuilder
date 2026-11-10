@@ -5,13 +5,13 @@ const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'
 let records=[],library=[],options=null;
 const projectCards=document.body.classList.contains('phb-project-document-cards');
 const uploadDialog=$('docUploadDialog');
-let uploadRunning=false;
+let uploadRunning=false,versionBusy=false;
 const uploadFlow=PHBFlow.manage({
  dialog:'docUploadDialog',forms:['projectDocumentUpload'],
  dismiss:['closeDocUpload'],isBusy:()=>uploadRunning
 });
 const editFlow=PHBFlow.manage({
- dialog:'docEditDialog',forms:['docEditForm'],dismiss:['docClose'],
+ dialog:'docEditDialog',forms:['docEditForm'],dismiss:['docClose'],isBusy:()=>versionBusy,
  onError:error=>report(error.message||String(error),true,'docEditMessage')
 });
 $('openDocUpload').onclick=()=>uploadFlow.open();
@@ -36,12 +36,9 @@ function setup(){
  for(const mode of ['Upload','Edit']){
    selectOptions('doc'+mode+'Category',options.categories);
    selectOptions('doc'+mode+'Area',options.areas);
-   selectOptions('doc'+mode+'Status',options.statuses);
  }
  if(projectCards){selectOptions('docFilterCategory',options.categories,'Alle Kategorien');PHBUI.decorateSelect($('docFilterCategory'),'filter');PHBUI.decorateSelect($('docSort'),'sort');}
  selectOptions('docFilterArea',options.areas,'Alle Bereiche');
- selectOptions('docFilterStatus',options.statuses,'Alle');
- $('docUploadStatus').value='Aktuell';
  $('docUploadCategory').value='Bauplan';
 }
 const LINKED_GROUPS=[
@@ -59,7 +56,7 @@ function documentRow(doc,editable){
   const row=document.createElement('article');row.className='docs-item';
   const info=document.createElement('div');info.className='docs-item-text';
   const meta=document.createElement('div');meta.className='docs-item-meta';
-  for(const value of [doc.type,doc.status]){
+  for(const value of editable?[doc.type]:[doc.type,doc.status]){
     if(!value)continue;
     const chip=document.createElement('span');chip.className='docs-chip';
     chip.textContent=value;meta.append(chip);
@@ -99,12 +96,12 @@ function documentRow(doc,editable){
 }
 function refresh(){
   const search=$('docSearch').value.toLocaleLowerCase('de').trim();
-  const area=$('docFilterArea').value,status=$('docFilterStatus').value;
+  const area=$('docFilterArea').value;
   const general=library.filter(doc=>Boolean(doc.project_document_id));
   const filtered=general.filter(doc=>
     documentMatches(doc,search)
     &&(!area||records.some(record=>record.id===doc.project_document_id&&record.area===area))
-    &&(!status||doc.status===status)&&(!projectCards||!$('docFilterCategory').value||doc.type===$('docFilterCategory').value));
+    &&(!projectCards||!$('docFilterCategory').value||doc.type===$('docFilterCategory').value));
   if(projectCards){const order=$('docSort').value;filtered.sort((a,b)=>{const title=String(a.title).localeCompare(String(b.title),'de',{numeric:true,sensitivity:'base'});if(order==='az')return title;if(order==='za')return -title;if(order==='status')return String(a.status).localeCompare(String(b.status),'de')||title;return String(a.date).localeCompare(String(b.date))*(order==='oldest'?1:-1)||a.project_document_id-b.project_document_id;});}
   $('docCount').textContent=filtered.length+' von '+general.length+' Unterlagen';
   const list=$('docList');list.replaceChildren();
@@ -161,14 +158,13 @@ async function reload(){
 function edit(id){
  const doc=records.find(d=>d.id===id);if(!doc)return;
  const form=$('docEditForm');form.reset();
- for(const key of ['id','title','category','area','status','tags','description'])
+ for(const key of ['id','title','category','area','tags','description'])
    form.elements.namedItem(key).value=doc[key]??'';
  report('',false,'docEditMessage');editFlow.open();
 }
 if(projectCards){$('docSort').addEventListener('change',refresh);$('docFilterCategory').addEventListener('change',refresh);}
 $('docSearch').addEventListener('input',refresh);
 $('docFilterArea').addEventListener('change',refresh);
-$('docFilterStatus').addEventListener('change',refresh);
 $('linkedDocSearch').addEventListener('input',refreshLinked);
 $('linkedDocType').addEventListener('change',refreshLinked);
 $('projectDocumentUpload').elements.namedItem('files').addEventListener('change',event=>{
@@ -223,8 +219,36 @@ $('docDelete').onclick=async()=>{
  },{button:$('docDelete')});
 };
 
-reload().then(()=>{
+reload().then(async()=>{
  const documentId=Number(new URLSearchParams(location.search).get('document_id'));
  if(documentId)edit(documentId);
+ if(documentId&&new URLSearchParams(location.search).get('document_version')){await loadVersions();versionHistoryFlow.open();}
 }).catch(err=>report(err.message,true,'docPageStatus'));
+
+const versionUploadFlow=PHBFlow.manage({dialog:'docVersionUploadDialog',forms:['docVersionUploadForm'],dismiss:['docVersionUploadClose'],isBusy:()=>versionBusy});
+const versionHistoryFlow=PHBFlow.manage({dialog:'docVersionHistoryDialog',dismiss:['docVersionHistoryClose'],isBusy:()=>versionBusy});
+$('docNewVersion').onclick=async()=>{if(editFlow.dirty()){await PHBUI.alert('Bitte Änderungen zuerst speichern.');return;} $('docVersionUploadForm').reset();$('docVersionUploadMessage').textContent='';versionUploadFlow.open();};
+async function loadVersions(){
+ const id=Number($('docEditForm').elements.id.value),result=await api('/api/project-documents/'+id+'/versions');
+ $('docVersionHistoryContent').innerHTML=result.versions.map(v=>`<details class="docs-version-row" ${v.state==='draft'?'open':''}><summary>Version ${v.version} · ${v.state==='current'?'Aktuelle Fassung':v.state==='draft'?'Versionsentwurf':v.state==='discarded'?'Verworfener Entwurf':'Frühere Fassung'}</summary><p>${safe(v.filename)} · ${safe((v.uploaded_at||'').slice(0,10))}</p><div class="docs-version-actions">${v.view_url?`<a target="_blank" rel="noopener" href="${safe(v.view_url)}">Original öffnen</a>`:''}<a href="${safe(v.download_url)}">Herunterladen</a>${v.state==='draft'?`<button type="button" data-doc-version="${v.version}" data-decision="discard">Entwurf verwerfen</button><button type="button" class="primary" data-doc-version="${v.version}" data-decision="activate">Version übernehmen</button>`:''}</div></details>`).join('');
+}
+$('docVersionHistory').onclick=async()=>{try{await loadVersions();versionHistoryFlow.open();}catch(error){report(error.message,true,'docEditMessage');}};
+$('docVersionUploadForm').onsubmit=async event=>{
+ event.preventDefault();if(versionBusy)return;versionBusy=true;const form=event.currentTarget;
+ try{const id=$('docEditForm').elements.id.value;
+  const result=await window.PHBImports.run({form,kind:'documents',files:form.elements.file.files,analysisMode:'local',processingMode:form.elements.mode.value,fields:{version_document_id:id}});
+  versionUploadFlow.finish();
+  if(result.background){editFlow.finish();return;}
+  await reload();edit(Number(id));await loadVersions();versionHistoryFlow.open();
+ }catch(error){$('docVersionUploadMessage').textContent=error.message;}
+ finally{versionBusy=false;window.PHBImports.release(form.querySelector('button[type=submit]'));}
+};
+$('docVersionHistoryContent').onclick=async event=>{
+ const button=event.target.closest('[data-doc-version]');if(!button||versionBusy)return;
+ if(editFlow.dirty()){await PHBUI.alert('Bitte Änderungen zuerst speichern.');return;}
+ const id=$('docEditForm').elements.id.value;versionBusy=true;button.disabled=true;
+ try{await api('/api/project-documents/'+id+'/versions/'+button.dataset.docVersion+'/'+button.dataset.decision,'POST');await reload();edit(Number(id));await loadVersions();}
+ catch(error){await PHBUI.alert(error.message);}finally{versionBusy=false;button.disabled=false;}
+};
+
 })();

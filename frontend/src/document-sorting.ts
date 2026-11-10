@@ -5,7 +5,6 @@ export function sortProjectDocuments(documents: Row[], order: string): Row[] {
     const title = compareText(a.title, b.title);
     if (order === 'az') return title || a.id - b.id;
     if (order === 'za') return -title || a.id - b.id;
-    if (order === 'status') return compareText(a.status, b.status) || title || a.id - b.id;
     if (order === 'size-desc')
       return Number(b.size_bytes || 0) - Number(a.size_bytes || 0) || title || a.id - b.id;
     if (order === 'size-asc')

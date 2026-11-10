@@ -186,3 +186,5 @@ body.phb-app.phb-page-dokumente .docs-actions{
 .phb-project-document-cards .docs-item-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:nowrap}
 .phb-project-document-cards .docs-item-actions :is(a,button){padding:4px;width:28px;height:28px;min-height:28px;display:grid;place-items:center}
 .phb-project-document-cards .docs-item-actions svg{width:16px;height:16px}
+
+.docs-version-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.docs-version-row{padding:12px;border:1px solid var(--ui-line);border-radius:10px;margin-bottom:10px}.docs-version-row summary{cursor:pointer}
