@@ -214,7 +214,6 @@ body.phb-app.phb-page-belege .receipt-entry-row{border:1px solid var(--ui-line);
 body.phb-app.phb-page-belege .receipt-entry-row.active{border-color:var(--ui-accent)}
 body.phb-app.phb-page-belege .receipt-entry-heading{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;padding:10px 12px 0}
 body.phb-app.phb-page-belege .receipt-entry-tools{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
-body.phb-app.phb-page-belege .receipt-entry-tools .receipt-payment-badge{min-width:0;margin:0;overflow-wrap:anywhere;text-align:right}
 body.phb-app.phb-page-belege .receipt-entry-row .entry{background:transparent;border:0;border-radius:0;padding-top:8px;overflow-wrap:anywhere}
 body.phb-app.phb-page-belege .receipt-entry-heading .linked-work-button{margin:0;flex-shrink:0}
 body.phb-app.phb-page-belege .receipt-review-actions{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
@@ -305,8 +304,6 @@ body.phb-app.phb-page-belege #list .receipt-entry-heading{grid-template-columns:
 body.phb-app.phb-page-belege #list .receipt-entry-row .status{font-size:10px;line-height:1.2;padding:3px 7px}
 body.phb-app.phb-page-belege #list .receipt-entry-heading .linked-work-button{height:26px;min-height:26px;padding:3px;border:1px solid var(--ui-line);border-radius:7px;background:var(--ui-surface);box-shadow:0 1px 3px rgb(16 39 51 / 6%)}
 body.phb-app.phb-page-belege #list .receipt-entry-heading .linked-work-button:hover{border-color:var(--ui-accent);background:var(--ui-soft-accent)}
-body.phb-app.phb-page-belege #list .receipt-entry-tools .receipt-payment-badge{display:block;overflow:hidden;max-height:32px;padding:3px 5px;font-size:10px;line-height:1.2}
-body.phb-app.phb-page-belege #list .receipt-payment-label{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 body.phb-app.phb-page-belege #list .entry{
  display:flex;flex-direction:column;align-items:stretch;gap:4px;flex:1;min-height:0;
  padding:6px 12px 8px;text-align:left;min-width:0;white-space:normal;background:transparent;
@@ -338,3 +335,5 @@ body.phb-app.phb-page-belege .receipt-filter-panel .receipt-year-filter{flex-bas
 body.phb-app.phb-page-belege .receipt-filter-panel :is(.receipt-labor-filter,.receipt-cancellation-filter){flex-basis:152px}
 body.phb-app.phb-page-belege .receipt-filter-panel .receipt-labor-filter{flex-basis:164px}
 body.phb-app.phb-page-belege .receipt-filter-panel .receipt-filter select{height:34px;min-height:34px!important;padding-block:6px!important;font-size:12px}
+
+body.phb-app.phb-page-belege #list .receipt-unassigned-tag{display:inline-block;align-self:flex-start;margin-top:2px;padding:1px 6px;border:1px solid color-mix(in srgb,var(--ui-danger) 28%,var(--ui-line));border-radius:999px;background:color-mix(in srgb,var(--ui-danger) 10%,var(--ui-surface));color:var(--ui-danger);font-size:10px;font-weight:600;line-height:1.3;white-space:nowrap}

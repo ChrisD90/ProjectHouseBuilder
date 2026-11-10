@@ -14,6 +14,10 @@ const base=process.env.PHB_TEST_URL;
   const unpaid=await receipt('R-offen'),partial=await receipt('R-teilweise',20);await receipt('R-bezahlt',119);const draft=await receipt('R-Entwurf',0,false);
   await api('patch','/api/receipts/'+draft,{supplier:'Fachbetrieb für energetische Gebäudesanierung und moderne Haustechnik GmbH'});
   const canceled=await receipt('R-storniert');const preview=await api('get','/api/receipts/'+canceled+'/cancel-preview');await api('post','/api/receipts/'+canceled+'/cancel',{confirm:true,plan_digest:preview.plan_digest,reason:'Test'});
+  const equity=(await api('post','/api/financing/equity',{name:'Baukonto',opening_balance:1000,reserve:0})).id;
+  const assigned=await receipt('R-zugewiesen'),splitReceipt=await receipt('R-gemischt',119);
+  await api('post','/api/financing/payments',{receipt_id:assigned,source:'equity',equity_id:equity,amount:119,payment_date:'2026-11-04'});
+  await api('post','/api/financing/payments/assign',{receipt_id:splitReceipt,source:'equity',equity_id:equity,amount:99,payment_date:'2026-11-04'});
   await page.goto(base+'/p/'+owner+'/eigenleistungen');
   await page.getByRole('button',{name:'Offene Rechnungen: 2',exact:true}).click();
   const modal=page.getByRole('dialog',{name:'Offene Rechnungen',exact:true});await expect(modal).toBeVisible();
@@ -32,7 +36,14 @@ const base=process.env.PHB_TEST_URL;
   assert(await date.evaluate(node=>{const label=node.closest('.receipt-card-footer').querySelector('.receipt-card-assignment').getBoundingClientRect(),d=node.getBoundingClientRect(),card=node.closest('.receipt-entry-row').getBoundingClientRect();return d.left>=label.right&&Math.abs(d.y+d.height/2-label.y-label.height/2)<2&&Math.abs(card.right-d.right-13)<2&&card.bottom-d.bottom<=12;}));
   assert(await date.evaluate(node=>node.closest('.receipt-entry-row').getBoundingClientRect().height===180));
   for(const id of [unpaid,draft])assert(await frame.locator('.entry[data-id="'+id+'"] .receipt-card-title').evaluate(node=>{const title=node.querySelector('strong'),range=document.createRange();range.setStart(title.firstChild,0);range.setEnd(title.firstChild,1);const text=range.getBoundingClientRect(),icon=node.querySelector('svg').getBoundingClientRect();return Math.abs(icon.y+icon.height/2-text.y-text.height/2)<2&&icon.right<title.getBoundingClientRect().left;}),'Icon muss auf Höhe der ersten Titelzeile ausgerichtet sein.');
-  assert(await frame.locator('.receipt-entry-row').evaluateAll(cards=>cards.every(card=>{const badge=card.querySelector('.receipt-payment-badge');return !badge||badge.getBoundingClientRect().bottom<=card.querySelector('.receipt-card-title').getBoundingClientRect().top;})),'Finanzierungsstatus darf den Titel nicht überdecken.');
+  const card=id=>frame.locator('.entry[data-id="'+id+'"]').locator('..');
+  await expect(card(assigned).locator('.receipt-unassigned-tag')).toHaveCount(0);await expect(card(draft).locator('.receipt-unassigned-tag')).toHaveCount(0);await expect(card(canceled).locator('.receipt-unassigned-tag')).toHaveCount(0);
+  for(const id of [unpaid,partial,splitReceipt])await expect(card(id).locator('.receipt-unassigned-tag')).toHaveText('Nicht zugewiesen');
+  await expect(frame.locator('.receipt-payment-badge,.receipt-payment-label')).toHaveCount(0);
+  assert(await card(splitReceipt).evaluate(card=>{const amount=card.querySelector('.receipt-card-amount>strong').getBoundingClientRect(),tag=card.querySelector('.receipt-unassigned-tag'),box=tag.getBoundingClientRect();const rgb=getComputedStyle(tag).color.match(/[\d.]+/g).map(Number);return box.top>=amount.bottom&&Math.abs(box.left-amount.left)<1&&rgb[0]>rgb[1]&&rgb[0]>rgb[2]&&card.getBoundingClientRect().height===180&&card.scrollHeight<=card.clientHeight;}));
+  const persisted=(await api('get','/api/receipts')).receipts;assert.equal(persisted.find(row=>row.id===assigned).payment_assignment,'Zugewiesen');assert.equal(persisted.find(row=>row.id===splitReceipt).payment_assignment,'Teilweise zugewiesen');
+  for(const theme of ['light','dark']){await frame.locator('body').evaluate((_,theme)=>window.PHBUI.setTheme(theme),theme);await frame.locator('#list').screenshot({path:'/tmp/phb-receipt-unassigned-'+theme+'.png'});}
+
   await frame.locator('#list').screenshot({path:'/tmp/phb-receipt-footer-date.png'});
   await page.getByRole('button',{name:'Offene Rechnungen: 1',exact:true}).click();await modal.getByRole('button',{name:'Rechnung R-teilweise bezahlen',exact:true}).click();await expect(frame.locator('#receiptPaymentsPanel')).toBeVisible();
   await frame.locator('#submitReceiptPayment').click();await frame.locator('dialog.phb-messagebox').getByRole('button',{name:'Bestätigen',exact:true}).click();await expect(page.getByRole('button',{name:/Offene Rechnungen:/})).toHaveCount(0);await frame.locator('#closeReceiptWorkflow').click();
