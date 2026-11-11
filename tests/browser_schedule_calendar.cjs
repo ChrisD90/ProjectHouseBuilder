@@ -145,9 +145,11 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await page.reload();await expect(frame.locator('#scheduleFilters')).toBeVisible();await checkFilterRow();
   assert(usedLegacyTemplate,'The browser must have loaded the older two-group template');
   await expect(frame.locator('.schedule-secondary-filters')).toHaveCount(0);
-  for(const id of ['calendarTrade','calendarCompany','calendarStatus']){
-   const width=await frame.locator('#'+id).evaluate(node=>node.getBoundingClientRect().width);assert(width<=145,'Narrow dropdown: '+id);
-  }
+  const widths=await Promise.all(['phase','workType','calendarTrade','calendarCompany','calendarStatus'].map(id=>frame.locator('#'+id).evaluate(node=>node.getBoundingClientRect().width)));
+  assert(Math.max(...widths)-Math.min(...widths)<2,'Dropdowns share the available width evenly');
+  const reset=await frame.locator('#resetScheduleFilters').boundingBox(),field=await frame.locator('#calendarStatus').boundingBox(),icon=await frame.locator('#resetScheduleFilters svg').boundingBox();
+  assert(Math.abs(reset.height-field.height)<1&&Math.abs(reset.width-reset.height)<1,'Reset button is square and aligned with fields');
+  assert(Math.abs(icon.x+icon.width/2-reset.x-reset.width/2)<1&&Math.abs(icon.y+icon.height/2-reset.y-reset.height/2)<1,'Reset icon is centered');
   assert.deepEqual(errors,[]);
   console.log('PASS weekly/monthly calendar, filters, shared stacked details, confirmed keyboard/pointer moves, dependency rollback, fixed deadlines, theme/mobile layout, persisted project-specific views and existing Gantt.');
  }finally{await browser.close();}
