@@ -2,6 +2,18 @@
 (()=>{
  'use strict';
  const M=window.PHBScheduleCalendar,host=$('scheduleCalendar'),today=()=>new Date().toLocaleDateString('sv-SE');
+ // A running local server can retain an older two-group template after a static update.
+ // Move the existing controls (and their handlers) into the same row in either layout.
+ if(!$('scheduleFilters')){
+  const row=document.querySelector('.schedule-filterbar,.gantt-filters');
+  if(row){
+   const secondary=document.querySelector('.schedule-secondary-filters');
+   const controls=['filter','phase','workType','ganttScaleControl','calendarTrade','calendarCompany','calendarStatus','resetScheduleFilters'].map(id=>$(id)).filter(Boolean).map(node=>node.closest('.phb-select-control')||node);
+   row.replaceChildren(...controls);row.id='scheduleFilters';row.classList.remove('gantt-filters');row.classList.add('schedule-filterbar');row.setAttribute('role','search');row.setAttribute('aria-label','Bauzeitenplan filtern');
+   if(secondary?.isConnected)secondary.remove();
+   if(!row.parentElement.classList.contains('schedule-filter-scroll')){const scroll=document.createElement('div');scroll.className='schedule-filter-scroll';row.before(scroll);scroll.append(row);}
+  }
+ }
  const storage='phb-schedule-view:'+(window.PHBProject?.id||new URLSearchParams(location.search).get('project_id')||1);
  let view='week',anchor=today(),initialized=false,gesture=null,suppressClick=0,dayContext=null;
  try{const saved=localStorage.getItem(storage);if(['week','month','gantt'].includes(saved))view=saved;}catch{}

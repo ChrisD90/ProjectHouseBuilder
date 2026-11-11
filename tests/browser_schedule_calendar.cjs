@@ -133,6 +133,21 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await expect(frame.locator('.schedule-calendar-event')).toHaveCount(0);
   await frame.locator('#newTask').click();await frame.locator('#taskForm [name=name]').fill('Erstes zukünftiges Paket');await frame.locator('#taskForm button[type=submit]').click();await expect(frame.locator('#overlay')).toBeHidden();
   await expect(frame.locator('.schedule-calendar-event')).toContainText('Erstes zukünftiges Paket');
+  // Reproduce a cached server template with a separate group for trade/company/status.
+  let usedLegacyTemplate=false;
+  await page.route('**/*',async route=>{
+   const request=route.request();if(request.resourceType()!=='document'||!request.url().includes('_embedded=1'))return route.continue();
+   const response=await route.fetch();let html=await response.text();
+   html=html.replace('<div id="scheduleFilters" class="schedule-filterbar" role="search" aria-label="Bauzeitenplan filtern">','<div class="gantt-filters" role="search" aria-label="Bauzeitenplan filtern">').replace('<select id="calendarTrade"','</div><div class="schedule-secondary-filters"><select id="calendarTrade"');
+   usedLegacyTemplate=html.includes('class="schedule-secondary-filters"');
+   await route.fulfill({response,body:html});
+  });
+  await page.reload();await expect(frame.locator('#scheduleFilters')).toBeVisible();await checkFilterRow();
+  assert(usedLegacyTemplate,'The browser must have loaded the older two-group template');
+  await expect(frame.locator('.schedule-secondary-filters')).toHaveCount(0);
+  for(const id of ['calendarTrade','calendarCompany','calendarStatus']){
+   const width=await frame.locator('#'+id).evaluate(node=>node.getBoundingClientRect().width);assert(width<=145,'Narrow dropdown: '+id);
+  }
   assert.deepEqual(errors,[]);
   console.log('PASS weekly/monthly calendar, filters, shared stacked details, confirmed keyboard/pointer moves, dependency rollback, fixed deadlines, theme/mobile layout, persisted project-specific views and existing Gantt.');
  }finally{await browser.close();}
