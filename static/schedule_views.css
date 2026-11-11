@@ -27,20 +27,24 @@ body.phb-app.phb-page-zeitplan #scheduleFilters>#resetScheduleFilters{display:in
 body.phb-app.phb-page-zeitplan #scheduleFilters>#resetScheduleFilters svg{display:block;width:16px;height:16px;flex:0 0 16px;pointer-events:none}
 body.phb-app.phb-page-zeitplan #scheduleFilters>#resetScheduleFilters:hover{background:var(--ui-soft-accent);border-color:var(--ui-accent);color:var(--ui-accent)}
 body.phb-app.phb-page-zeitplan #scheduleFilters>#resetScheduleFilters:focus-visible{outline:3px solid var(--ui-ring);outline-offset:2px}
-body.phb-app.phb-page-zeitplan .schedule-calendar-scroll{max-height:70dvh;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;min-width:0}
+/* The calendar is a distinct inset workspace beneath the controls. */
+body.phb-app.phb-page-zeitplan #scheduleCalendarView{--schedule-canvas:var(--ui-raised);padding:12px 16px 0;background:var(--ui-bg)}
+body.phb-app.phb-page-zeitplan .schedule-calendar-scroll{max-height:70dvh;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;min-width:0;background:var(--schedule-canvas);border:1px solid var(--ui-line-strong);border-top:3px solid var(--ui-accent);border-radius:10px;box-shadow:0 2px 8px rgb(0 0 0 / 5%)}
 body.phb-app.phb-page-zeitplan #scheduleCalendar{min-width:875px}
 body.phb-app.phb-page-zeitplan #scheduleCalendarView[data-view=month] #scheduleCalendar{min-width:735px}
-body.phb-app.phb-page-zeitplan .schedule-calendar-week{border-bottom:1px solid var(--ui-line);min-width:0}
-body.phb-app.phb-page-zeitplan .schedule-calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:sticky;top:0;z-index:3;background:var(--ui-surface);border-bottom:1px solid var(--ui-line)}
-body.phb-app.phb-page-zeitplan #scheduleCalendar .schedule-day-heading{display:flex;align-items:center;justify-content:space-between;gap:4px;border:0;border-right:1px solid var(--ui-line);border-radius:0;background:var(--ui-surface);padding:9px;font-size:12px;min-height:36px;color:var(--ui-muted);font-weight:500}
+body.phb-app.phb-page-zeitplan .schedule-calendar-week{border-bottom:2px solid var(--ui-line-strong);min-width:0}
+body.phb-app.phb-page-zeitplan .schedule-calendar-week:last-child{border-bottom:0}
+body.phb-app.phb-page-zeitplan .schedule-calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:sticky;top:0;z-index:3;background:var(--ui-soft-accent);border-bottom:1px solid var(--ui-line-strong)}
+body.phb-app.phb-page-zeitplan #scheduleCalendar .schedule-day-heading{display:flex;align-items:center;justify-content:space-between;gap:4px;border:0;border-right:1px solid var(--ui-line-strong);border-radius:0;background:var(--ui-soft-accent);padding:9px;font-size:12px;min-height:36px;color:var(--ui-ink-soft);font-weight:600}
 body.phb-app.phb-page-zeitplan #scheduleCalendar .schedule-day-heading span{font-weight:700;color:var(--ui-ink)}
-body.phb-app.phb-page-zeitplan #scheduleCalendar .schedule-day-heading.is-today span{background:var(--ui-soft-accent);border-radius:999px;padding:2px 6px;color:var(--ui-accent)}
+body.phb-app.phb-page-zeitplan #scheduleCalendar .schedule-day-heading.is-today span{background:var(--ui-accent);border-radius:999px;padding:2px 6px;color:var(--ui-surface)}
 body.phb-app.phb-page-zeitplan #scheduleCalendar .schedule-day-heading.is-other-month{opacity:.55}
-body.phb-app.phb-page-zeitplan .schedule-calendar-body{position:relative;padding:6px 0;min-height:108px}
+body.phb-app.phb-page-zeitplan .schedule-calendar-body{position:relative;padding:6px 0;min-height:108px;background:var(--schedule-canvas)}
 body.phb-app.phb-page-zeitplan .schedule-week-background{position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));pointer-events:none}
-body.phb-app.phb-page-zeitplan .schedule-week-column{border-right:1px solid var(--ui-line)}
-body.phb-app.phb-page-zeitplan .schedule-week-column.is-weekend,body.phb-app.phb-page-zeitplan #scheduleCalendar .schedule-day-heading.is-weekend{background:var(--ui-soft)}
-body.phb-app.phb-page-zeitplan .schedule-week-column.is-today{background:color-mix(in srgb,var(--ui-accent) 5%,var(--ui-surface))}
+body.phb-app.phb-page-zeitplan .schedule-week-column{border-right:1px solid var(--ui-line-strong)}
+body.phb-app.phb-page-zeitplan .schedule-week-column.is-weekend{background:var(--ui-soft)}
+body.phb-app.phb-page-zeitplan #scheduleCalendar .schedule-day-heading.is-weekend{background:color-mix(in srgb,var(--ui-soft-accent) 60%,var(--ui-soft))}
+body.phb-app.phb-page-zeitplan .schedule-week-column.is-today{background:color-mix(in srgb,var(--ui-accent) 12%,var(--schedule-canvas))}
 body.phb-app.phb-page-zeitplan .schedule-week-column.is-drop-target{outline:2px solid var(--ui-accent);outline-offset:-2px;background:var(--ui-soft-accent)}
 body.phb-app.phb-page-zeitplan :is(.schedule-phase-grid,.schedule-event-grid,.schedule-day-overflow){display:grid;grid-template-columns:repeat(7,minmax(0,1fr));position:relative;gap:4px 0;min-width:0}
 body.phb-app.phb-page-zeitplan .schedule-phase-grid{margin-bottom:6px}
@@ -59,7 +63,7 @@ body.phb-app.phb-page-zeitplan #scheduleCalendar :is(.schedule-calendar-event,.s
 body.phb-app.phb-page-zeitplan #scheduleCalendar :is(.schedule-day-more,.schedule-more-phases){min-height:22px;padding:3px 6px;font-size:10px;border:0;background:var(--ui-surface);color:var(--ui-accent);margin:2px 3px;border-radius:4px}
 body.phb-app.phb-page-zeitplan .schedule-more-phases{position:relative}
 body.phb-app.phb-page-zeitplan .schedule-week-empty{position:relative;margin:10px;padding:12px;font-size:12px;color:var(--ui-muted)}
-body.phb-app.phb-page-zeitplan #scheduleCalendarView>.section-note{padding:12px 20px;margin:0;font-size:12px;color:var(--ui-muted)}
+body.phb-app.phb-page-zeitplan #scheduleCalendarView>.section-note{padding:10px 0;margin:0;font-size:12px;color:var(--ui-muted)}
 body.phb-app.phb-page-zeitplan button.schedule-context-task{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 11px;min-height:42px;border:1px solid var(--ui-line);border-radius:8px;background:var(--ui-surface);margin:6px 0;color:var(--ui-ink)}
 body.phb-app.phb-page-zeitplan .schedule-context-task>span{min-width:0}
 body.phb-app.phb-page-zeitplan .schedule-context-task strong{display:block;white-space:normal;font-size:12px}
@@ -69,6 +73,7 @@ body.phb-app.phb-page-zeitplan .calendar-day-dialog{width:min(760px,calc(100vw -
 body.phb-app.phb-page-zeitplan .calendar-day-dialog .modalhead{padding:18px;border-bottom:1px solid var(--ui-line)}
 body.phb-app.phb-page-zeitplan .calendar-day-tasks{max-height:65dvh;overflow:auto;padding:12px 18px}
 @media(max-width:700px){
+ body.phb-app.phb-page-zeitplan #scheduleCalendarView{padding:10px 12px 0}
  body.phb-app.phb-page-zeitplan .schedule-view-toolbar{padding:10px 12px}
  body.phb-app.phb-page-zeitplan .schedule-context-task{flex-wrap:wrap}
  body.phb-app.phb-page-zeitplan .schedule-filterbar :is(input,select):not([multiple]):not([type=checkbox]),body.phb-app.phb-page-zeitplan #scheduleFilters>#resetScheduleFilters{min-height:40px;height:40px}
