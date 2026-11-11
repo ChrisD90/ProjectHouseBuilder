@@ -1,15 +1,15 @@
 /* Shared week/calendar workspace. All colors follow the application's palette. */
 body.phb-app.phb-page-zeitplan :is(#scheduleCalendarView,#scheduleGanttView,#scheduleGanttHelp,#ganttScaleControl,#toggleAllPhases,#calendarPrevious,#calendarNext,#calendarPeriod)[hidden]{display:none!important}
 /* Today/period at left, views next, task-list indicators at the far right. */
-body.phb-app.phb-page-zeitplan .schedule-view-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;padding:10px 16px;border-bottom:1px solid var(--ui-line);overflow-x:auto;scrollbar-width:thin}
-body.phb-app.phb-page-zeitplan .schedule-view-toolbar>div{flex-shrink:0}
+body.phb-app.phb-page-zeitplan #scheduleViewToolbar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;padding:10px 16px;border-bottom:1px solid var(--ui-line);overflow-x:auto;scrollbar-width:thin}
+body.phb-app.phb-page-zeitplan #scheduleViewToolbar>div{flex-shrink:0;order:0}
 body.phb-app.phb-page-zeitplan .schedule-view-switch{display:flex;gap:3px;background:var(--ui-soft);border:1px solid var(--ui-line);border-radius:10px;padding:3px}
 body.phb-app.phb-page-zeitplan .schedule-view-switch button.phb-button{min-height:32px;padding:5px 9px;background:transparent;border:0;font-size:12px;white-space:nowrap}
 body.phb-app.phb-page-zeitplan .schedule-view-switch button[aria-pressed=true]{background:var(--ui-soft-accent);color:var(--ui-accent);box-shadow:0 1px 3px rgb(0 0 0 / 8%)}
 body.phb-app.phb-page-zeitplan .schedule-period-navigation{display:flex;align-items:center;gap:5px;flex-wrap:nowrap}
 body.phb-app.phb-page-zeitplan .schedule-period-navigation button.phb-button{min-height:32px;padding:5px 8px;font-size:12px}
 body.phb-app.phb-page-zeitplan #calendarPeriod{font-size:12px;white-space:nowrap;margin-left:4px}
-body.phb-app.phb-page-zeitplan .schedule-quick-filters{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:nowrap}
+body.phb-app.phb-page-zeitplan #scheduleViewToolbar .schedule-quick-filters{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:nowrap;padding:0;border:0;width:auto;align-self:center}
 body.phb-app.phb-page-zeitplan button.schedule-quick-filter{display:inline-flex;align-items:center;gap:6px;font-size:12px;line-height:20px;min-height:30px;padding:4px 8px;color:var(--ui-muted);background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:999px;white-space:nowrap}
 body.phb-app.phb-page-zeitplan .schedule-quick-filter span{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ui-ink)}
 body.phb-app.phb-page-zeitplan .schedule-quick-filter.is-overdue{color:var(--ui-danger)}

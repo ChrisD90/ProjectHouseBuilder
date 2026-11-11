@@ -14,6 +14,11 @@
    if(!row.parentElement.classList.contains('schedule-filter-scroll')){const scroll=document.createElement('div');scroll.className='schedule-filter-scroll';row.before(scroll);scroll.append(row);}
   }
  }
+ // Older templates placed the indicators below the toolbar; keep one shared row.
+ const viewToolbar=document.querySelector('.schedule-view-toolbar');
+ viewToolbar.id='scheduleViewToolbar';
+ viewToolbar.append(document.querySelector('.schedule-period-navigation'),document.querySelector('.schedule-view-switch'),$('scheduleQuickFilters'));
+ $('scheduleQuickFilters').setAttribute('aria-label','Arbeitspaketlisten');
  // Normalize the old text button as well as its geometry; cached templates keep its label.
  const resetButton=$('resetScheduleFilters');
  const resetIcon=document.createElementNS('http://www.w3.org/2000/svg','svg');

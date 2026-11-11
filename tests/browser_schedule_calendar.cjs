@@ -50,10 +50,8 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   assert(nav.x+nav.width<=views.x&&views.x+views.width<=indicators.x,'Today/period, views, then indicators from left to right');
   assert(Math.abs(nav.y+nav.height/2-indicators.y-indicators.height/2)<2,'Toolbar stays aligned in a single row');
   const checkFilterRow=async()=>{
-   const ids=['filter','phase','workType','calendarTrade','calendarCompany','calendarStatus','resetScheduleFilters'];
-   if(await frame.locator('#scale').isVisible())ids.push('scale');
-   const boxes=await Promise.all(ids.map(id=>frame.locator('#'+id).boundingBox()));
-   assert(Math.max(...boxes.map(box=>box.y))-Math.min(...boxes.map(box=>box.y))<2,'All filter controls share one row');
+   const tops=await frame.locator('#scheduleFilters').evaluate(row=>['filter','phase','workType','scale','calendarTrade','calendarCompany','calendarStatus','resetScheduleFilters'].map(id=>row.querySelector('#'+id)).filter(node=>node.getClientRects().length).map(node=>node.getBoundingClientRect().top));
+   assert(Math.max(...tops)-Math.min(...tops)<2,'All filter controls share one row');
   };
   await checkFilterRow();
   for(const width of [1280,1024,768]){
@@ -140,11 +138,17 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
    const response=await route.fetch();let html=await response.text();
    html=html.replace('<div id="scheduleFilters" class="schedule-filterbar" role="search" aria-label="Bauzeitenplan filtern">','<div class="gantt-filters" role="search" aria-label="Bauzeitenplan filtern">').replace('<select id="calendarTrade"','</div><div class="schedule-secondary-filters"><select id="calendarTrade"');
    html=html.replace(/(<button id="resetScheduleFilters"[^>]*>)[\s\S]*?<\/button>/,'$1Filter zurücksetzen</button>');
+   html=html.replace('<div id="scheduleViewToolbar" class="schedule-view-toolbar">','<div class="schedule-view-toolbar">').replace(/<div id="scheduleQuickFilters"[^>]*><\/div>/,'').replace('<div class="schedule-filter-scroll">','<div id="scheduleQuickFilters" class="schedule-quick-filters" role="group"></div><div class="schedule-filter-scroll">');
    usedLegacyTemplate=html.includes('class="schedule-secondary-filters"');
    await route.fulfill({response,body:html});
   });
   await page.reload();await expect(frame.locator('#scheduleFilters')).toBeVisible();await checkFilterRow();
   assert(usedLegacyTemplate,'The browser must have loaded the older two-group template');
+  await expect(frame.locator('#scheduleViewToolbar>#scheduleQuickFilters')).toBeVisible();
+  const legacyViews=await frame.locator('.schedule-view-switch').boundingBox(),legacyIndicators=await frame.locator('#scheduleQuickFilters').boundingBox(),legacyToolbar=await frame.locator('#scheduleViewToolbar').boundingBox();
+  assert(Math.abs(legacyViews.y+legacyViews.height/2-legacyIndicators.y-legacyIndicators.height/2)<2,'Indicators share the view-selector row even in older templates');
+  assert(Math.abs(legacyIndicators.x+legacyIndicators.width-(legacyToolbar.x+legacyToolbar.width-16))<2,'Indicators align to the right edge of the toolbar');
+
   await expect(frame.locator('.schedule-secondary-filters')).toHaveCount(0);
   const widths=await Promise.all(['phase','workType','calendarTrade','calendarCompany','calendarStatus'].map(id=>frame.locator('#'+id).evaluate(node=>node.getBoundingClientRect().width)));
   assert(Math.max(...widths)-Math.min(...widths)<2,'Dropdowns share the available width evenly');
