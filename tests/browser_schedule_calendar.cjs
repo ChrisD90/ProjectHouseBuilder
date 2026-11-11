@@ -51,10 +51,16 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   assert(Math.abs(nav.y+nav.height/2-indicators.y-indicators.height/2)<2,'Toolbar stays aligned in a single row');
   const checkFilterRow=async()=>{
    const ids=['filter','phase','workType','calendarTrade','calendarCompany','calendarStatus','resetScheduleFilters'];
+   if(await frame.locator('#scale').isVisible())ids.push('scale');
    const boxes=await Promise.all(ids.map(id=>frame.locator('#'+id).boundingBox()));
    assert(Math.max(...boxes.map(box=>box.y))-Math.min(...boxes.map(box=>box.y))<2,'All filter controls share one row');
   };
   await checkFilterRow();
+  for(const width of [1280,1024,768]){
+   await page.setViewportSize({width,height:1100});await checkFilterRow();
+   assert(await frame.locator('html').evaluate(node=>node.scrollWidth<=innerWidth+1),'Filter row must not overflow the document');
+  }
+  await page.setViewportSize({width:1520,height:1100});
   await frame.locator('[data-calendar-phase="'+phase.id+'"]').click();
   await expect(frame.locator('#phaseForm [name=title]')).toHaveValue(phase.title);
   await frame.locator('#phaseTaskDetails').evaluate(node=>node.open=true);

@@ -15,13 +15,13 @@ body.phb-app.phb-page-zeitplan .schedule-quick-filter span{font-variant-numeric:
 body.phb-app.phb-page-zeitplan .schedule-quick-filter.is-overdue{color:var(--ui-danger)}
 /* All filters share one row. Narrow screens scroll this row internally. */
 body.phb-app.phb-page-zeitplan .schedule-filter-scroll{overflow-x:auto;scrollbar-width:thin;border-bottom:1px solid var(--ui-line)}
-body.phb-app.phb-page-zeitplan .schedule-filterbar{display:grid;grid-template-columns:minmax(170px,1.5fr) repeat(5,minmax(95px,1fr)) auto;align-items:center;gap:6px;min-width:790px;padding:8px 16px}
-body.phb-app.phb-page-zeitplan .gantt-panel:has(#scheduleGanttView:not([hidden])) .schedule-filterbar{grid-template-columns:minmax(170px,1.5fr) repeat(6,minmax(85px,1fr)) auto;min-width:880px}
-body.phb-app.phb-page-zeitplan :is(.gantt-filters,.schedule-secondary-filters){display:contents}
-body.phb-app.phb-page-zeitplan .schedule-filterbar #filter{grid-column:auto}
-body.phb-app.phb-page-zeitplan .schedule-filterbar :is(.phb-select-control,label){min-width:0;margin:0}
+body.phb-app.phb-page-zeitplan #scheduleFilters{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:6px;min-width:790px;padding:8px 16px}
+body.phb-app.phb-page-zeitplan #scheduleFilters>.phb-select-control{flex:1 1 0;min-width:100px}
+body.phb-app.phb-page-zeitplan #scheduleFilters>label{flex:0 0 95px;min-width:0;margin:0}
+body.phb-app.phb-page-zeitplan #scheduleFilters>#filter{flex:1.5 1 0;min-width:170px;width:0;grid-column:auto}
+body.phb-app.phb-page-zeitplan #scheduleFilters>label .phb-select-control{min-width:0}
 body.phb-app.phb-page-zeitplan .schedule-filterbar :is(input,select):not([multiple]):not([type=checkbox]){min-height:32px;height:32px;width:100%;min-width:0;margin:0;padding-block:4px;font-size:12px;line-height:20px}
-body.phb-app.phb-page-zeitplan #resetScheduleFilters.phb-button{min-height:32px;height:32px;width:32px;padding:6px;justify-self:end}
+body.phb-app.phb-page-zeitplan #resetScheduleFilters.phb-button{min-height:32px;height:32px;width:32px;padding:6px;flex:0 0 32px}
 body.phb-app.phb-page-zeitplan .schedule-calendar-scroll{max-height:70dvh;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;min-width:0}
 body.phb-app.phb-page-zeitplan #scheduleCalendar{min-width:875px}
 body.phb-app.phb-page-zeitplan #scheduleCalendarView[data-view=month] #scheduleCalendar{min-width:735px}
