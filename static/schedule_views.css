@@ -29,7 +29,7 @@ body.phb-app.phb-page-zeitplan #scheduleFilters>#resetScheduleFilters:hover{back
 body.phb-app.phb-page-zeitplan #scheduleFilters>#resetScheduleFilters:focus-visible{outline:3px solid var(--ui-ring);outline-offset:2px}
 /* The calendar is a distinct inset workspace beneath the controls. */
 body.phb-app.phb-page-zeitplan #scheduleCalendarView{--schedule-canvas:var(--ui-raised);padding:12px 16px 0;background:var(--ui-bg)}
-body.phb-app.phb-page-zeitplan .schedule-calendar-scroll{max-height:70dvh;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;min-width:0;background:var(--schedule-canvas);border:1px solid var(--ui-line-strong);border-top:3px solid var(--ui-accent);border-radius:10px;box-shadow:0 2px 8px rgb(0 0 0 / 5%)}
+body.phb-app.phb-page-zeitplan .schedule-calendar-scroll{max-height:85dvh;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;min-width:0;background:var(--schedule-canvas);border:1px solid var(--ui-line-strong);border-top:3px solid var(--ui-accent);border-radius:10px;box-shadow:0 2px 8px rgb(0 0 0 / 5%)}
 body.phb-app.phb-page-zeitplan #scheduleCalendar{min-width:875px}
 body.phb-app.phb-page-zeitplan #scheduleCalendarView[data-view=month] #scheduleCalendar{min-width:735px}
 body.phb-app.phb-page-zeitplan .schedule-calendar-week{border-bottom:2px solid var(--ui-line-strong);min-width:0}
