@@ -667,6 +667,8 @@ def register(runtime: ModuleType):
             return (runtime.jsonify(error='Firma nicht gefunden.'), 404)
         try:
             if runtime.request.method == 'DELETE':
+                if runtime.db.session.scalar(runtime.select(runtime.TimePerson.id).where(runtime.TimePerson.contractor_id == item_id).limit(1)):
+                    return (runtime.jsonify(error='Firma ist mit der Stundenerfassung verknüpft. Bitte dort zuerst die Firmenzuordnung ändern.'), 409)
                 if runtime.db.session.scalar(runtime.select(runtime.CostItem.id).where(runtime.CostItem.contractor_id == item_id).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Document.id).where(runtime.Document.contractor_id == item_id).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Task.id).where(runtime.Task.contractor_id == item_id).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Receipt.id).where(runtime.Receipt.contractor_id == item_id).limit(1)):
                     return (runtime.jsonify(error='Firma ist mit Kostenpositionen verknüpft.'), 409)
                 runtime.db.session.delete(obj)

@@ -290,6 +290,14 @@ Unter **Backup, Export & Daten** (`/daten`) liegen sämtliche Download-Optionen 
 Vor Datenbankmigration `0010` legt der lokale Starter wie bisher zwingend ein geprüftes Backup an. Die Anwendung darf dafür nicht parallel laufen.
 
 
+## Stundenerfassung (Migration 0036)
+
+Unter **Projekt → Stundenerfassung** (`/stunden`) werden eigene Arbeit, Helfer, Architekten und andere Personen als kompakte Kacheln mit ihrer geleisteten Gesamtzeit angezeigt. Personen können optional einer Firma aus den projektbezogenen Stammdaten zugeordnet werden. Alternativ lässt sich direkt ein Firmenkonto aus den Stammdaten anlegen.
+
+Ein Klick auf eine Kachel öffnet die Stundenübersicht. Einzelne Einträge enthalten Datum, Stunden, Minuten und eine optionale Tätigkeitsbeschreibung; sie lassen sich dort anlegen, ändern und nach Bestätigung löschen. Personen und Firmenkonten können ebenfalls bearbeitet oder gemeinsam mit ihren Einträgen nach Bestätigung gelöscht werden. Suche, Artfilter und Sortierung helfen bei größeren Listen. Die Speicherung erfolgt in ganzen Minuten.
+
+Die neuen Tabellen sind strikt projektbezogen und Bestandteil der Projektbackups sowie des Projekt-Resets. Ältere Backups werden mit leerer Stundenerfassung eingelesen. Die Migration ergänzt ausschließlich neue Tabellen; bestehende Daten bleiben erhalten. Nach dem Update die Anwendung über den üblichen Starter neu starten.
+
 ## Wochenplan, Monatskalender und Ablaufplan
 
 Der Bauzeitenplan startet als **Wochenplan**. **Monat** zeigt einen kompakten Kalender mit zusammenhängenden mehrtägigen Balken und einer Tagesliste hinter „+ weitere“. **Ablaufplan** öffnet das bisherige Gantt mit seinen Zeitrastern und einklappbaren Bauphasen. Die gewählte Ansicht wird je Projekt in diesem Browser gespeichert.

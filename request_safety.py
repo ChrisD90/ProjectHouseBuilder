@@ -39,12 +39,12 @@ def register(app,db,Project,models):
         'categories':'Category','trades':'Trade','receipts':'Receipt','offers':'Offer',
         'project-documents':'ProjectDocument','project-work':'ProjectWork','funding':'Funding',
         'costs':'CostItem','budget/lines':'BudgetLine','financing/loans':'Loan',
-        'financing/equity':'EquityAccount','self-work':'SelfWorkPlan'}.items() if name in models}
-    fields={'project':'projects','projects':'projects','tasks':'tasks','phases':'phases',
+        'financing/equity':'EquityAccount','self-work':'SelfWorkPlan','time-people':'TimePerson','time-entries':'TimeEntry'}.items() if name in models}
+    fields={'people':'time-people','person':'time-people','entry':'time-entries','project':'projects','projects':'projects','tasks':'tasks','phases':'phases',
         'contractors':'contractors','categories':'categories','trades':'trades','receipts':'receipts',
         'offers':'offers','documents':'project-documents','funding':'funding','loans':'financing/loans',
         'equity_accounts':'financing/equity','accounts':'financing/equity','budget_lines':'budget/lines'}
-    children={'project_document':{'project_document_version'},'offer':{'offer_position','offer_section','order_acceptance','document'},
+    children={'time_person':{'time_entry'},'project_document':{'project_document_version'},'offer':{'offer_position','offer_section','order_acceptance','document'},
               'self_work_plan':{'self_work_receipt'},
               'receipt':{'finance_receipt_payment','receipt_cancellation','receipt_cancellation_reversal','self_work_receipt'},
               'funding':{'funding_plan','funding_plan_offer','funding_document','funding_assessment'}}
@@ -192,6 +192,7 @@ def register(app,db,Project,models):
                         next_family=fields.get(key)
                         if key in ('plan','plans') and request.path.startswith('/api/self-work'):next_family='self-work'
                         if key in ('items','entries') and request.path.startswith('/api/project-work'):next_family='project-work'
+                        if key=='entries' and request.path.startswith('/api/time-people'):next_family='time-entries'
                         if key=='items' and request.path.startswith('/api/costs'):next_family='costs'
                         if key=='documents' and request.path.startswith('/api/offers'):next_family=None
                         visit(entry,next_family)

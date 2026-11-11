@@ -90,6 +90,27 @@ class ProjectBackupTest(unittest.TestCase):
         with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED) as z:
             for name,value in files.items():z.writestr(name,value)
 
+    def test_hours_round_trip_and_old_archive_defaults_are_project_scoped(self):
+        ids={}
+        for owner in (1,self.other):
+            headers=self.headers(owner)
+            person=self.client.post('/api/time-people',headers=headers,json={'name':'Helfer '+str(owner)}).json['person']
+            entry=self.client.post('/api/time-entries',headers=headers,json={'person_id':person['id'],'minutes':95,'worked_on':'2026-11-11'}).json['entry']
+            ids[owner]=(person['id'],entry['id'])
+        path=self.create();other=self.snapshot(self.other)
+        self.client.patch('/api/time-entries/'+str(ids[1][1]),json={'minutes':180})
+        result=self.start_restore(path);self.assertEqual(result['state'],'done',result)
+        b.db.session.remove()
+        self.assertEqual(self.client.get('/api/time-tracking').json['people'][0]['total_minutes'],95)
+        self.assertEqual(self.snapshot(self.other),other)
+        self.rewrite(path,lambda data:[data['tables'].pop(name) for name in ('time_person','time_entry')])
+        _,rows=backups.load_rows(path,b.db,1)
+        self.assertEqual(rows['time_person'],[]);self.assertEqual(rows['time_entry'],[])
+        with b.project_context(1):
+            backups.clear_rows(b.db.session.connection(),b.db,1);b.db.session.commit()
+        self.assertEqual(self.client.get('/api/time-tracking').json['people'],[])
+        self.assertEqual(self.snapshot(self.other),other)
+
     def test_pre_0031_archive_adds_only_known_job_lease_defaults(self):
         job=b.ImportJob(batch_id='a'*32,kind='documents',filename='Alt.pdf',stored_name='already-processed.pdf',status='Fertig',analysis_mode='local')
         b.db.session.add(job);b.db.session.commit();ident=job.id

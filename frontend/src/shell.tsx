@@ -22,6 +22,7 @@ import {
   IconBuildingBank,
   IconHome,
   IconCalendar,
+  IconClock,
   IconChartBar,
   IconChevronLeft,
   IconChevronRight,
@@ -43,6 +44,7 @@ import { Costs, Documents, Energy, MasterData } from './pages';
 import { fundingDocumentOnly, projectID, workspaceURL } from './project-context';
 import { useServices } from './services';
 import { WorkPage, WorkProvider } from './work';
+import { TimeTracking } from './time-tracking';
 import { SelfWorkPage } from './self-work';
 import { UnpaidReceipts } from './unpaid-receipts';
 const items = [
@@ -50,6 +52,7 @@ const items = [
   ['/', 'Bauzeitenplan', IconCalendar],
   ['/aufgaben', 'To-dos & Notizen', IconListCheck],
   ['/eigenleistungen', 'Eigenleistungen', IconTool],
+  ['/stunden', 'Stundenerfassung', IconClock],
   ['/kosten', 'Kosten & Budget', IconChartBar],
   ['/angebote', 'Angebote', IconFiles],
   ['/belege', 'Rechnungen & Belege', IconReceipt],
@@ -60,7 +63,10 @@ const items = [
   ['/daten', 'Daten & Sicherung', IconDatabase],
 ] as const;
 const navigationGroups = [
-  { label: 'Projekt', paths: ['/projektunterlagen', '/', '/aufgaben', '/eigenleistungen'] },
+  {
+    label: 'Projekt',
+    paths: ['/projektunterlagen', '/', '/aufgaben', '/eigenleistungen', '/stunden'],
+  },
   {
     label: 'Finanzen',
     paths: ['/kosten', '/angebote', '/belege', '/finanzierung', '/energieplanung'],
@@ -75,6 +81,7 @@ const native = new Set([
   '/energieplanung',
   '/dokumente',
   '/eigenleistungen',
+  '/stunden',
 ]);
 const GuardContext = createContext<(guard: () => boolean) => () => void>(() => () => {});
 export function useDirtyGuard(dirty: boolean) {
@@ -543,6 +550,8 @@ export function App() {
                 <WorkPage />
               ) : location.pathname === '/eigenleistungen' ? (
                 <SelfWorkPage />
+              ) : location.pathname === '/stunden' ? (
+                <TimeTracking />
               ) : location.pathname === '/stammdaten' ? (
                 <MasterData />
               ) : location.pathname === '/kosten' ? (

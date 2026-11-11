@@ -18,7 +18,7 @@ def sqlite_write_lock(connection):
 
 def content_status(db, owner, categories, trades):
     connection=db.session.connection();details=[]
-    labels={'task':'Arbeitspakete','build_phase':'Bauphasen','contractor':'Firmen','category':'eigene Kategorien',
+    labels={'time_person':'Personen der Stundenerfassung','time_entry':'Stundeneinträge','task':'Arbeitspakete','build_phase':'Bauphasen','contractor':'Firmen','category':'eigene Kategorien',
         'trade':'eigene Gewerke','setting':'Projekteinstellungen','project_work':'To-dos oder Notizen',
         'offer':'Angebote','receipt':'Rechnungen oder Belege','import_job':'Importdaten','schedule_history':'Planungshistorien',
         'project_document':'Dokumente','document':'Angebotsdokumente','funding':'Förderungen',

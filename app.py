@@ -70,7 +70,7 @@ def validate_request_origin():
 
 # React owns the shared frame; the reviewed classic workflows remain available
 # as isolated same-origin documents while their native components are migrated.
-REACT_ROUTES={'/projektunterlagen','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen'}
+REACT_ROUTES={'/projektunterlagen','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen','/stunden'}
 
 @app.before_request
 def react_frontend():
@@ -632,6 +632,9 @@ ReceiptCancellation, ReceiptCancellationReversal = register_cancellations(
 from self_work import register_self_work
 SelfWorkPlan, SelfWorkReceipt, self_work_costs = register_self_work(app,db,Task,Receipt,ai_required=_ai_request_required,chatgpt=chatgpt,extract_json=extract_json,receipt_amount=_receipt_increment)
 work_sources['self_work']=(SelfWorkPlan,lambda x:'Eigenleistung · '+x.title,lambda x:'/eigenleistungen?plan_id='+str(x.id))
+
+from time_tracking import register_time_tracking
+TimePerson, TimeEntry = register_time_tracking(app, db, Contractor)
 
 # Backup settings belong to the server; a browser can only select reachable/mounted paths.
 PlanningBrowserState, planning_get, planning_put, planning_pop = register_planning_state(db)
