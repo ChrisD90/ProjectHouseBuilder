@@ -3,19 +3,19 @@
  'use strict';
  const M=window.PHBScheduleCalendar,host=$('scheduleCalendar'),today=()=>new Date().toLocaleDateString('sv-SE');
  const storage='phb-schedule-view:'+(window.PHBProject?.id||new URLSearchParams(location.search).get('project_id')||1);
- let view='week',anchor=today(),quick='',initialized=false,gesture=null,suppressClick=0,dayContext=null;
+ let view='week',anchor=today(),initialized=false,gesture=null,suppressClick=0,dayContext=null;
  try{const saved=localStorage.getItem(storage);if(['week','month','gantt'].includes(saved))view=saved;}catch{}
  const dayFlow=PHBFlow.manage({dialog:'calendarDayDialog',dismiss:['closeCalendarDay'],track:false,isBusy:()=>ganttBusy});
+ const quickLists=[['overdue','Überfällig'],['week','Diese Woche'],['running','Laufend'],['open-end','Endtermin offen']];
  const palette=['#6d9851','#548b88','#899746','#6c80a2','#9b805b','#8b7097'];
  const color=task=>task.phase_id?palette[Math.abs(Number(task.phase_id))%palette.length]:'#84958c';
  const periodLabel=(start,end)=>new Intl.DateTimeFormat('de-DE',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'}).formatRange(new Date(start+'T12:00:00Z'),new Date(end+'T12:00:00Z'));
- function matches(task,ignoreQuick=false){
+ function matches(task){
   return (!$('calendarTrade').value||task.trade===$('calendarTrade').value)
    &&(!$('calendarCompany').value||($('calendarCompany').value==='unassigned'?!task.contractor_id&&!assignedCompany(task):String(task.contractor_id)===$('calendarCompany').value))
-   &&(!$('calendarStatus').value||task.status===$('calendarStatus').value)
-   &&(ignoreQuick||M.quickMatch(task,quick,today()));
+   &&(!$('calendarStatus').value||task.status===$('calendarStatus').value);
  }
- function hasFilters(){return !!(quick||$('calendarTrade').value||$('calendarCompany').value||$('calendarStatus').value);}
+ function hasFilters(){return !!($('calendarTrade').value||$('calendarCompany').value||$('calendarStatus').value);}
  function options(id,rows,empty){const node=$(id),previous=node.value;node.innerHTML=`<option value="">${empty}</option>`+rows.map(([value,label])=>`<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join('');if(rows.some(([value])=>String(value)===previous))node.value=previous;}
  function refreshOptions(){
   const before=$('calendarTrade').value+'|'+$('calendarCompany').value;
@@ -63,6 +63,11 @@
  function row(task){return `<button type="button" class="schedule-context-task${M.overdue(task,today())?' is-overdue':''}" data-calendar-task="${task.id}"><span><strong>${escapeHtml(task.code)} · ${escapeHtml(task.name)}</strong><small>${escapeHtml(assignedCompany(task)||task.trade||'Ohne Betrieb')} · ${escapeHtml(task.status)}</small></span><small>${task.start?fmt(task.start):'Ohne Termin'}${task.planned_end?' · Ziel '+fmt(task.planned_end):' · Endtermin offen'}</small></button>`;}
  function renderDay(){
   if(!dayContext)return;
+  if(dayContext.quick){
+   const tasks=visible().filter(task=>M.quickMatch(task,dayContext.quick,today()));
+   $('calendarDayTitle').textContent=quickLists.find(([key])=>key===dayContext.quick)[1]+' ('+tasks.length+')';
+   $('calendarDayTasks').innerHTML=tasks.map(row).join('')||'<p>Keine passenden Arbeitspakete.</p>';return;
+  }
   if(dayContext.phases){$('calendarDayTitle').textContent='Bauphasen';$('calendarDayTasks').innerHTML=project.phases.filter(phase=>dayContext.phases.includes(phase.id)).map(phase=>`<button type="button" class="schedule-context-task" data-calendar-phase="${phase.id}">${escapeHtml(phase.title)}</button>`).join('');return;}
   $('calendarDayTitle').textContent='Arbeitspakete am '+fmt(dayContext.date);
   $('calendarDayTasks').innerHTML=visible().filter(task=>M.intersects(task,dayContext.date,dayContext.date)).map(row).join('')||'<p>Keine Arbeitspakete.</p>';
@@ -70,13 +75,16 @@
  function render(){
   if(!initialized&&project.start&&project.tasks.length){initialized=true;const first=project.tasks.map(task=>task.start).filter(M.valid).sort()[0];if(first&&first>today())anchor=first;}
   applyView();
-  const tasks=visible(),base=visible(true),period=M.period(view==='month'?'month':'week',anchor);
-  $('scheduleQuickFilters').innerHTML=[['overdue','Überfällig'],['week','Diese Woche'],['running','Laufend'],['open-end','Endtermin offen']].map(([key,label])=>`<button type="button" data-calendar-quick="${key}" class="schedule-quick-filter${key==='overdue'?' is-overdue':''}" aria-pressed="${quick===key}">${label}<span>${base.filter(task=>M.quickMatch(task,key,today())).length}</span></button>`).join('');
+  const tasks=visible(),period=M.period(view==='month'?'month':'week',anchor);
+  const indicators=$('scheduleQuickFilters');
+  if(!indicators.children.length)indicators.innerHTML=quickLists.map(([key,label])=>`<button type="button" data-calendar-quick="${key}" class="schedule-quick-filter${key==='overdue'?' is-overdue':''}" aria-haspopup="dialog" aria-controls="calendarDayDialog" title="${label}: Arbeitspakete anzeigen">${label}<span></span></button>`).join('');
+  indicators.querySelectorAll('[data-calendar-quick]').forEach(button=>{
+   button.disabled=!project.start;
+   button.querySelector('span').textContent=project.start?tasks.filter(task=>M.quickMatch(task,button.dataset.calendarQuick,today())).length:'–';
+  });
   $('calendarPeriod').textContent=view==='month'?new Intl.DateTimeFormat('de-DE',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(anchor+'T12:00:00Z')):periodLabel(period.start,period.end);
   if(view!=='gantt'){
    let markup='';for(let date=period.start;date<=period.end;date=M.add(date,7))markup+=week(date,tasks);host.innerHTML=markup;
-   const outside=tasks.filter(task=>!M.intersects(task,period.start,period.end)&&(quick||!M.valid(task.start)||M.running(task)||task.status!=='Erledigt'&&!task.planned_end&&task.start<=today()));
-   $('scheduleCalendarContext').innerHTML=outside.length?`<details class="schedule-context" open><summary>${quick?'Weitere Arbeitspakete zum Filter':'Laufende und offene Arbeitspakete außerhalb dieses Zeitraums'} (${outside.length})</summary><div>${outside.slice(0,8).map(row).join('')}</div>${outside.length>8?'<button type="button" data-calendar-list>Alle passenden Arbeitspakete anzeigen</button>':''}</details>`:'';
   }
   if(dayFlow.dialog.open)renderDay();
  }
@@ -91,15 +99,14 @@
  $('today').onclick=()=>{if(view==='gantt')originalToday();else{anchor=today();render();}};
  for(const id of ['filter','phase','workType'])$(id).addEventListener(id==='filter'?'input':'change',render);
  for(const id of ['calendarTrade','calendarCompany','calendarStatus']){$(id).onchange=refresh;window.PHBUI?.decorateSelect($(id),'filter');}
- $('resetScheduleFilters').onclick=()=>{for(const id of ['filter','phase','workType','calendarTrade','calendarCompany','calendarStatus'])$(id).value='';quick='';refresh();};
- $('scheduleQuickFilters').onclick=event=>{const button=event.target.closest('[data-calendar-quick]');if(button){quick=quick===button.dataset.calendarQuick?'':button.dataset.calendarQuick;refresh();}};
+ $('resetScheduleFilters').onclick=()=>{for(const id of ['filter','phase','workType','calendarTrade','calendarCompany','calendarStatus'])$(id).value='';refresh();};
+ $('scheduleQuickFilters').onclick=event=>{const button=event.target.closest('[data-calendar-quick]');if(button&&!ganttBusy&&!taskBusy){dayContext={quick:button.dataset.calendarQuick};renderDay();dayFlow.open();}};
  document.addEventListener('click',event=>{
   const task=event.target.closest('[data-calendar-task]');if(task){if(ganttBusy||Date.now()<suppressClick&&task.classList.contains('schedule-calendar-event'))return;openTask(Number(task.dataset.calendarTask));return;}
   const phase=event.target.closest('[data-calendar-phase]');if(phase){openPhase(Number(phase.dataset.calendarPhase),true);return;}
   const day=event.target.closest('[data-calendar-more]');if(day){dayContext={date:day.dataset.calendarMore};renderDay();dayFlow.open();return;}
   const phases=event.target.closest('[data-calendar-phases]');if(phases){dayContext={phases:phases.dataset.calendarPhases.split(',').map(Number)};renderDay();dayFlow.open();return;}
   const date=event.target.closest('[data-view-date]');if(date){anchor=date.dataset.viewDate;setView('week');return;}
-  if(event.target.closest('[data-calendar-list]'))taskListFlow.open();
  });
  async function move(task,start){
   if(ganttBusy||taskBusy||task.status==='Erledigt'||!M.valid(start)||start===task.start)return;

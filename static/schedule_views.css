@@ -1,22 +1,27 @@
 /* Shared week/calendar workspace. All colors follow the application's palette. */
 body.phb-app.phb-page-zeitplan :is(#scheduleCalendarView,#scheduleGanttView,#scheduleGanttHelp,#ganttScaleControl,#toggleAllPhases,#calendarPrevious,#calendarNext,#calendarPeriod)[hidden]{display:none!important}
-body.phb-app.phb-page-zeitplan .schedule-view-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid var(--ui-line)}
+/* Today/period at left, views next, task-list indicators at the far right. */
+body.phb-app.phb-page-zeitplan .schedule-view-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;padding:10px 16px;border-bottom:1px solid var(--ui-line);overflow-x:auto;scrollbar-width:thin}
+body.phb-app.phb-page-zeitplan .schedule-view-toolbar>div{flex-shrink:0}
 body.phb-app.phb-page-zeitplan .schedule-view-switch{display:flex;gap:3px;background:var(--ui-soft);border:1px solid var(--ui-line);border-radius:10px;padding:3px}
-body.phb-app.phb-page-zeitplan .schedule-view-switch button{min-height:32px;padding:5px 12px;background:transparent;border:0;font-size:12px}
+body.phb-app.phb-page-zeitplan .schedule-view-switch button.phb-button{min-height:32px;padding:5px 9px;background:transparent;border:0;font-size:12px;white-space:nowrap}
 body.phb-app.phb-page-zeitplan .schedule-view-switch button[aria-pressed=true]{background:var(--ui-soft-accent);color:var(--ui-accent);box-shadow:0 1px 3px rgb(0 0 0 / 8%)}
-body.phb-app.phb-page-zeitplan .schedule-period-navigation{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-body.phb-app.phb-page-zeitplan .schedule-period-navigation button{min-height:32px;padding:4px 10px}
-body.phb-app.phb-page-zeitplan #calendarPeriod{font-size:13px;min-width:180px;margin-left:6px}
-body.phb-app.phb-page-zeitplan .schedule-quick-filters{display:flex;align-items:center;gap:8px;padding:10px 20px;flex-wrap:wrap;border-bottom:1px solid var(--ui-line)}
-body.phb-app.phb-page-zeitplan button.schedule-quick-filter{display:inline-flex;align-items:center;gap:9px;font-size:12px;min-height:30px;padding:4px 9px;color:var(--ui-muted);background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:999px}
+body.phb-app.phb-page-zeitplan .schedule-period-navigation{display:flex;align-items:center;gap:5px;flex-wrap:nowrap}
+body.phb-app.phb-page-zeitplan .schedule-period-navigation button.phb-button{min-height:32px;padding:5px 8px;font-size:12px}
+body.phb-app.phb-page-zeitplan #calendarPeriod{font-size:12px;white-space:nowrap;margin-left:4px}
+body.phb-app.phb-page-zeitplan .schedule-quick-filters{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:nowrap}
+body.phb-app.phb-page-zeitplan button.schedule-quick-filter{display:inline-flex;align-items:center;gap:6px;font-size:12px;line-height:20px;min-height:30px;padding:4px 8px;color:var(--ui-muted);background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:999px;white-space:nowrap}
 body.phb-app.phb-page-zeitplan .schedule-quick-filter span{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ui-ink)}
 body.phb-app.phb-page-zeitplan .schedule-quick-filter.is-overdue{color:var(--ui-danger)}
-body.phb-app.phb-page-zeitplan .schedule-quick-filter[aria-pressed=true]{color:var(--ui-accent);background:var(--ui-soft-accent);border-color:var(--ui-accent)}
-body.phb-app.phb-page-zeitplan .schedule-quick-filter.is-overdue[aria-pressed=true]{border-color:var(--ui-danger);background:color-mix(in srgb,var(--ui-danger) 9%,var(--ui-surface));color:var(--ui-danger)}
-body.phb-app.phb-page-zeitplan .gantt-filters{grid-template-columns:minmax(180px,1fr) minmax(140px,.6fr) minmax(150px,.6fr) auto;gap:8px;padding-block:10px;background:var(--ui-surface)}
-body.phb-app.phb-page-zeitplan .schedule-secondary-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 20px 12px;border-bottom:1px solid var(--ui-line)}
-body.phb-app.phb-page-zeitplan .schedule-secondary-filters>.phb-select-control,body.phb-app.phb-page-zeitplan .schedule-secondary-filters>select,body.phb-app.phb-page-zeitplan .schedule-secondary-filters>label{flex:1 1 150px;min-width:0}
-body.phb-app.phb-page-zeitplan .schedule-secondary-filters :is(select,button){min-height:34px;font-size:12px}
+/* All filters share one row. Narrow screens scroll this row internally. */
+body.phb-app.phb-page-zeitplan .schedule-filter-scroll{overflow-x:auto;scrollbar-width:thin;border-bottom:1px solid var(--ui-line)}
+body.phb-app.phb-page-zeitplan .schedule-filterbar{display:grid;grid-template-columns:minmax(170px,1.5fr) repeat(5,minmax(95px,1fr)) auto;align-items:center;gap:6px;min-width:790px;padding:8px 16px}
+body.phb-app.phb-page-zeitplan .gantt-panel:has(#scheduleGanttView:not([hidden])) .schedule-filterbar{grid-template-columns:minmax(170px,1.5fr) repeat(6,minmax(85px,1fr)) auto;min-width:880px}
+body.phb-app.phb-page-zeitplan :is(.gantt-filters,.schedule-secondary-filters){display:contents}
+body.phb-app.phb-page-zeitplan .schedule-filterbar #filter{grid-column:auto}
+body.phb-app.phb-page-zeitplan .schedule-filterbar :is(.phb-select-control,label){min-width:0;margin:0}
+body.phb-app.phb-page-zeitplan .schedule-filterbar :is(input,select):not([multiple]):not([type=checkbox]){min-height:32px;height:32px;width:100%;min-width:0;margin:0;padding-block:4px;font-size:12px;line-height:20px}
+body.phb-app.phb-page-zeitplan #resetScheduleFilters.phb-button{min-height:32px;height:32px;width:32px;padding:6px;justify-self:end}
 body.phb-app.phb-page-zeitplan .schedule-calendar-scroll{max-height:70dvh;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;min-width:0}
 body.phb-app.phb-page-zeitplan #scheduleCalendar{min-width:875px}
 body.phb-app.phb-page-zeitplan #scheduleCalendarView[data-view=month] #scheduleCalendar{min-width:735px}
@@ -50,8 +55,6 @@ body.phb-app.phb-page-zeitplan #scheduleCalendar :is(.schedule-day-more,.schedul
 body.phb-app.phb-page-zeitplan .schedule-more-phases{position:relative}
 body.phb-app.phb-page-zeitplan .schedule-week-empty{position:relative;margin:10px;padding:12px;font-size:12px;color:var(--ui-muted)}
 body.phb-app.phb-page-zeitplan #scheduleCalendarView>.section-note{padding:12px 20px;margin:0;font-size:12px;color:var(--ui-muted)}
-body.phb-app.phb-page-zeitplan .schedule-context{margin:12px 20px;padding:12px;border:1px solid var(--ui-line);border-radius:10px;font-size:12px;background:var(--ui-soft)}
-body.phb-app.phb-page-zeitplan .schedule-context>summary{cursor:pointer;font-weight:650;margin-bottom:8px}
 body.phb-app.phb-page-zeitplan button.schedule-context-task{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:9px 11px;min-height:42px;border:1px solid var(--ui-line);border-radius:8px;background:var(--ui-surface);margin:6px 0;color:var(--ui-ink)}
 body.phb-app.phb-page-zeitplan .schedule-context-task>span{min-width:0}
 body.phb-app.phb-page-zeitplan .schedule-context-task strong{display:block;white-space:normal;font-size:12px}
@@ -60,4 +63,9 @@ body.phb-app.phb-page-zeitplan .schedule-context-task.is-overdue{border-color:va
 body.phb-app.phb-page-zeitplan .calendar-day-dialog{width:min(760px,calc(100vw - 24px))}
 body.phb-app.phb-page-zeitplan .calendar-day-dialog .modalhead{padding:18px;border-bottom:1px solid var(--ui-line)}
 body.phb-app.phb-page-zeitplan .calendar-day-tasks{max-height:65dvh;overflow:auto;padding:12px 18px}
-@media(max-width:700px){body.phb-app.phb-page-zeitplan :is(.schedule-view-toolbar,.schedule-quick-filters){padding:10px 12px}body.phb-app.phb-page-zeitplan .gantt-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding-inline:12px}body.phb-app.phb-page-zeitplan .gantt-filters #filter{grid-column:1/-1}body.phb-app.phb-page-zeitplan .schedule-secondary-filters{padding-inline:12px}body.phb-app.phb-page-zeitplan .schedule-period-navigation{width:100%}body.phb-app.phb-page-zeitplan #calendarPeriod{font-size:12px;min-width:0}body.phb-app.phb-page-zeitplan .schedule-context-task{flex-wrap:wrap}body.phb-app.phb-page-zeitplan .schedule-view-switch{width:100%}body.phb-app.phb-page-zeitplan .schedule-view-switch button{flex:1}}
+@media(max-width:700px){
+ body.phb-app.phb-page-zeitplan .schedule-view-toolbar{padding:10px 12px}
+ body.phb-app.phb-page-zeitplan .schedule-context-task{flex-wrap:wrap}
+ body.phb-app.phb-page-zeitplan .schedule-filterbar :is(input,select):not([multiple]):not([type=checkbox]),body.phb-app.phb-page-zeitplan #resetScheduleFilters.phb-button{min-height:40px;height:40px}
+ body.phb-app.phb-page-zeitplan .schedule-view-toolbar button.phb-button{min-height:40px}
+}
