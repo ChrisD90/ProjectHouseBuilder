@@ -14,6 +14,13 @@
    if(!row.parentElement.classList.contains('schedule-filter-scroll')){const scroll=document.createElement('div');scroll.className='schedule-filter-scroll';row.before(scroll);scroll.append(row);}
   }
  }
+ // Normalize the old text button as well as its geometry; cached templates keep its label.
+ const resetButton=$('resetScheduleFilters');
+ const resetIcon=document.createElementNS('http://www.w3.org/2000/svg','svg');
+ resetIcon.setAttribute('class','phb-icon');resetIcon.setAttribute('viewBox','0 0 24 24');resetIcon.setAttribute('aria-hidden','true');resetIcon.setAttribute('focusable','false');
+ const resetPath=document.createElementNS('http://www.w3.org/2000/svg','path');
+ resetPath.setAttribute('d','M18 6 6 18M6 6l12 12');resetPath.setAttribute('fill','none');resetPath.setAttribute('stroke','currentColor');resetPath.setAttribute('stroke-width','2');resetPath.setAttribute('stroke-linecap','round');
+ resetIcon.append(resetPath);resetButton.replaceChildren(resetIcon);resetButton.title='Filter zurücksetzen';resetButton.setAttribute('aria-label','Filter zurücksetzen');
  const storage='phb-schedule-view:'+(window.PHBProject?.id||new URLSearchParams(location.search).get('project_id')||1);
  let view='week',anchor=today(),initialized=false,gesture=null,suppressClick=0,dayContext=null;
  try{const saved=localStorage.getItem(storage);if(['week','month','gantt'].includes(saved))view=saved;}catch{}
