@@ -31,6 +31,7 @@ const base=process.env.PHB_TEST_URL;
   await expect(frame.locator('#receiptPaymentsPanel')).toBeVisible();await expect(frame.locator('#receiptReviewLayout')).toBeHidden();await expect(page).toHaveURL(new RegExp('receipt_id='+unpaid+'&financing=1'));
   await frame.locator('#submitReceiptPayment').click();await frame.locator('dialog.phb-messagebox').getByRole('button',{name:'Bestätigen',exact:true}).click();
   await expect(page.getByRole('button',{name:'Offene Rechnungen: 1',exact:true})).toBeVisible();
+  await expect(frame.locator('#receiptPaymentMessage')).toHaveText('Gespeichert. Zahlungsstand aktualisiert.');
   await frame.locator('#closeReceiptWorkflow').click();await expect(page).toHaveURL(base+'/p/'+owner+'/belege');
   const date=frame.locator('.entry[data-id="'+unpaid+'"] .receipt-card-date');await expect(date).toHaveText('04.11.2026');
   assert(await date.evaluate(node=>{const label=node.closest('.receipt-card-footer').querySelector('.receipt-card-assignment').getBoundingClientRect(),d=node.getBoundingClientRect(),card=node.closest('.receipt-entry-row').getBoundingClientRect();return d.left>=label.right&&Math.abs(d.y+d.height/2-label.y-label.height/2)<2&&Math.abs(card.right-d.right-13)<2&&card.bottom-d.bottom<=12;}));
@@ -46,7 +47,7 @@ const base=process.env.PHB_TEST_URL;
 
   await frame.locator('#list').screenshot({path:'/tmp/phb-receipt-footer-date.png'});
   await page.getByRole('button',{name:'Offene Rechnungen: 1',exact:true}).click();await modal.getByRole('button',{name:'Rechnung R-teilweise bezahlen',exact:true}).click();await expect(frame.locator('#receiptPaymentsPanel')).toBeVisible();
-  await frame.locator('#submitReceiptPayment').click();await frame.locator('dialog.phb-messagebox').getByRole('button',{name:'Bestätigen',exact:true}).click();await expect(page.getByRole('button',{name:/Offene Rechnungen:/})).toHaveCount(0);await frame.locator('#closeReceiptWorkflow').click();
+  await frame.locator('#submitReceiptPayment').click();await frame.locator('dialog.phb-messagebox').getByRole('button',{name:'Bestätigen',exact:true}).click();await expect(page.getByRole('button',{name:/Offene Rechnungen:/})).toHaveCount(0);await expect(frame.locator('#receiptPaymentMessage')).toHaveText('Gespeichert. Zahlungsstand aktualisiert.');await frame.locator('#closeReceiptWorkflow').click();
   const other=(await(await page.request.post(base+'/api/projects',{data:{title:'Anderes Projekt'}})).json()).project.id;await page.goto(base+'/p/'+other+'/belege');await expect(page.getByRole('button',{name:/Offene Rechnungen:/})).toHaveCount(0);
   const english=await browser.newContext({locale:'en-US'}),englishPage=await english.newPage();await englishPage.goto(base+'/p/'+owner+'/belege');
   const englishFrame=englishPage.frameLocator('iframe[title="Rechnungen & Belege"]:not([hidden])');await expect(englishFrame.locator('.entry[data-id="'+unpaid+'"] .receipt-card-date')).toHaveText('11/04/2026');await english.close();
