@@ -130,6 +130,28 @@ class DocumentInboxTest(unittest.TestCase):
             self.assertEqual(self.client.get('/api/document-inbox/folders',query_string={'folder':bad}).status_code,400)
         self.assertEqual(self.status()['config']['folder'],str(self.folder))
 
+    def test_native_picker_returns_local_selection_without_saving_and_cancel_preserves_config(self):
+        child=self.folder/'Auswahl';child.mkdir();self.configure()
+        def selected(initial):
+            self.assertEqual(initial,str(self.folder))
+            self.assertFalse(b.db.session().in_transaction(),'The OS dialog must not hold a DB transaction')
+            return str(child)
+        with patch('native_folder_picker.choose_folder',side_effect=selected):
+            result=self.client.post('/api/document-inbox/native-folder',json={'folder':str(self.folder)})
+        self.assertEqual(result.status_code,200,result.json);self.assertEqual(result.json,{'cancelled':False,'folder':str(child)})
+        self.assertEqual(self.status()['config']['folder'],str(self.folder))
+        with patch('native_folder_picker.choose_folder',return_value=None):
+            result=self.client.post('/api/document-inbox/native-folder',json={'folder':str(child)})
+        self.assertEqual(result.json,{'cancelled':True})
+        self.assertEqual(self.status()['config']['folder'],str(self.folder))
+
+    def test_native_picker_never_opens_for_remote_or_forwarded_requests(self):
+        with patch('native_folder_picker.choose_folder') as picker:
+            for options in ({'environ_overrides':{'REMOTE_ADDR':'192.168.1.5'}},{'base_url':'http://nas.example'},{'headers':{'X-Forwarded-For':'192.168.1.5'}}):
+                response=self.client.post('/api/document-inbox/native-folder',json={},**options)
+                self.assertEqual(response.status_code,409,response.json)
+            picker.assert_not_called()
+
     def test_api_config_validation_and_ai_requires_explicit_connection(self):
         for changes in ({'folder':'relative'},{'interval_minutes':0},{'interval_minutes':True},{'enabled':'yes'}):
             result=self.client.post('/api/document-inbox/configure',json={'folder':str(self.folder),**changes});self.assertEqual(result.status_code,400,result.json)

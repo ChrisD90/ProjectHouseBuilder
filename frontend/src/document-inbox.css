@@ -39,27 +39,3 @@
   min-width: 0;
   flex: 1 1 220px;
 }
-
-.document-inbox-folder-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 9px 10px;
-  border: 1px solid var(--mantine-color-default-border);
-  border-radius: var(--mantine-radius-sm);
-  background: var(--mantine-color-body);
-  color: var(--mantine-color-text);
-}
-.document-inbox-folder-option:hover {
-  background: var(--brand-soft);
-  border-color: var(--brand-accent);
-}
-.document-inbox-folder-option:focus-visible {
-  outline: 2px solid var(--brand-accent);
-  outline-offset: -2px;
-}
-.document-inbox-folder-option svg {
-  flex-shrink: 0;
-  color: var(--brand-muted);
-}

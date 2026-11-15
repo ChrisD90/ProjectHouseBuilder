@@ -104,7 +104,7 @@ def register(app,db,Project,models):
         g.phb_version_checked=False
         g.pop('phb_edit_conflict',None)
         if not request.path.startswith('/api/') or request.method in ('GET','HEAD','OPTIONS'):return
-        if request.path.startswith(('/api/ai/','/api/ocr','/api/backup/')):return
+        if request.path.startswith(('/api/ai/','/api/ocr','/api/backup/')) or request.path=='/api/document-inbox/native-folder':return
         owner=current_project_id()
         expensive=(request.mimetype=='multipart/form-data' and not request.path.startswith('/api/financing/')) or '/ai/' in request.path or request.path.endswith(('/import','/check','/estimate','/research','/compare','/suggest'))
         if expensive:return

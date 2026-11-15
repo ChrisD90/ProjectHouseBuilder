@@ -165,6 +165,30 @@ def register_document_inbox(runtime):
                               job={**runtime._import_json(job),'review_url':runtime._import_result(job)} if job else None,preview_url='/api/document-inbox/items/'+str(row.id)+'/preview'))
         return jsonify(config=config_json(cfg),items=items,count=count)
 
+    native_lock=ProcessLock(lambda:runtime.ROOT/'private'/'.document-inbox-native-dialog.lock')
+
+    @app.post('/api/document-inbox/native-folder')
+    def native_folder():
+        from urllib.parse import urlsplit
+        from native_folder_picker import choose_folder
+        peer=request.environ.get('werkzeug.proxy_fix.orig',{}).get('REMOTE_ADDR',request.remote_addr)
+        if peer not in ('127.0.0.1','::1') or request.remote_addr not in ('127.0.0.1','::1') or urlsplit(request.host_url).hostname not in ('127.0.0.1','localhost','::1'):
+            return jsonify(error='Der Systemdialog ist nur bei einer lokal auf diesem PC laufenden App verfügbar.'),409
+        data=request.get_json(silent=True) or {}
+        if not isinstance(data,dict) or set(data)-{'folder'}:return jsonify(error='Ungültige Ordnerauswahl.'),400
+        if not native_lock.acquire(blocking=False):return jsonify(error='Eine System-Ordnerauswahl ist bereits geöffnet.'),409
+        try:
+            cfg=configuration();initial=data.get('folder') or (cfg.folder if cfg else '')
+            try:initial=str(root_path(initial)) if initial else ''
+            except (OSError,ValueError):initial=''
+            # The chooser does not write data and must not hold a DB transaction while open.
+            db.session.rollback()
+            folder=choose_folder(initial)
+            if folder is None:return jsonify(cancelled=True)
+            return jsonify(cancelled=False,folder=str(root_path(folder)))
+        except (OSError,ValueError) as exc:return jsonify(error=str(exc)),409
+        finally:native_lock.release()
+
     @app.get('/api/document-inbox/folders')
     def browse_folders():
         try:
