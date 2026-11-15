@@ -26,6 +26,8 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const euro=n=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(n)||0);
 let state=null;
 const TODAY=new Date().toLocaleDateString('sv-SE');
+let creditActivity=null;
+const creditActivityFlow=PHBFlow.manage({dialog:'creditActivityDialog',dismiss:['closeCreditActivity'],track:false});
 $('eventForm').elements.namedItem('event_date').value=TODAY;
 async function api(url,method='GET',payload=null){const o={method};if(payload!==null){o.headers={'Content-Type':'application/json'};o.body=JSON.stringify(payload)}let r=await fetch(url,o),j=await r.json();if(!r.ok)throw Error(j.error||'Aktion fehlgeschlagen');return j}
 function message(text,error=false){const n=$('notice');n.hidden=false;n.textContent=text;n.classList.toggle('error',error);n.scrollIntoView({block:'nearest',behavior:'smooth'});}
@@ -130,6 +132,73 @@ function drawdownMilestone(d){
   d.status==='Abgelehnt'?'abgelehnt':d.status==='Zurückgenommen'?'zurückgenommen':'erstellt';
  return value?' · '+label+' '+esc(value.slice(0,10)):'';
 }
+function openCreditActivity(loanId=null){
+ $('creditActivityLoan').innerHTML=state.loans.map(loan=>option(loan.id,loan.name)).join('');
+ if(loanId)$('creditActivityLoan').value=String(loanId);
+ renderCreditChoices();creditActivityFlow.open();
+}
+function renderCreditChoices(){
+ const loan=state.loans.find(loan=>loan.id===Number($('creditActivityLoan').value));
+ $('newUsage').disabled=!loan||Number(loan.balance.unallocated_drawn)<=0.004;
+ $('newDrawdown').disabled=!loan||Number(loan.balance.undrawn)<=0.004;
+ $('creditActivityAvailable').textContent=loan?'Ausgezahlt und noch verfügbar: '+euro(loan.balance.unallocated_drawn):'Bitte zuerst einen Kredit anlegen.';
+}
+$('newCreditActivity').onclick=()=>openCreditActivity();
+$('creditActivityLoan').onchange=renderCreditChoices;
+$('creditActivityManual').onclick=()=>{
+ const loanId=$('creditActivityLoan').value;creditActivityFlow.finish();
+ const section=$('eventForm').closest('details');section.open=true;
+ $('eventKind').value='loan_drawdown';fillOptions();$('eventSource').value=loanId;
+ $('eventForm').scrollIntoView({block:'center',behavior:'smooth'});$('eventForm').elements.amount.focus({preventScroll:true});
+};
+$('creditHistoryLoanFilter').onchange=()=>renderCreditHistory();
+window.PHBUI?.decorateSelect($('creditHistoryLoanFilter'),'filter');
+function applicationList(applications){
+ const grouped=new Map();
+ for(const application of applications){const key=application.receipt_id+':'+application.kind;
+  const previous=grouped.get(key);if(previous)previous.amount+=Number(application.amount);else grouped.set(key,{...application,amount:Number(application.amount)});
+ }
+ return [...grouped.values()].map(item=>`<li><div><a href="/belege?receipt_id=${item.receipt_id}">${esc(item.receipt_name)}${item.invoice_number?' · '+esc(item.invoice_number):''}</a><small>${item.kind==='receipt_payment'?'Rechnung bezahlt':'Eigenkapital / Vorfinanzierung erstattet'}</small></div><b>${euro(item.amount)}</b></li>`).join('');
+}
+function creditHistoryRow(row){
+ const data=row.data,loan=state.loans.find(loan=>loan.id===row.loan_id),loanName=loan?.name||'Kredit';
+ let title='',status='',details='',actions='',nested='';
+ if(row.type==='drawdown'){
+  const payout={own_account:'Eigenes Konto',direct:'Direktzahlung',reimbursement:'Eigenkapitalerstattung'};
+  title='Mittelabruf · '+euro(data.requested_amount);status=data.status;
+  details=(payout[data.payout_type]||'Eigenes Konto')+' · '+data.receipt_count+' Belege'+(data.rejection_reason?' · '+data.rejection_reason:'');
+  actions=drawdownActions(data);
+  if(row.applications.length)nested=`<details class="credit-linked-usages"><summary>Verwendungen zu diesem Abruf</summary><ul>${applicationList(row.applications)}</ul></details>`;
+ }else if(row.type==='payout'){
+  title='Auszahlung nachgetragen · '+euro(data.amount);status='Ausgezahlt';details=data.notes||'Manuell erfasster Abruf';
+  if(data.document)details+=` · Nachweis`;
+  actions=`${data.document?`<a class="button-link" href="${esc(fileView(data.document.download_url,data.document.filename))}" target="_blank" rel="noopener">Nachweis öffnen</a>`:''}<button type="button" class="danger" data-delete-event="${data.id}">Auszahlung zurücknehmen</button>`;
+ }else if(row.type==='usage'){
+  const labels={manual:'Sonstige Verwendung',receipt_payment:'Rechnung bezahlt',reimbursement:'Eigenkapital erstattet'};
+  title=(labels[data.kind]||'Verwendung')+' · '+euro(data.amount);status=data.status==='Aktiv'?'Verwendet':data.status;
+  details=[data.purpose,data.notes].filter(Boolean).join(' · ');
+  actions=`${data.document?`<a class="button-link" href="${esc(fileView(data.document.download_url,data.document.filename))}" target="_blank" rel="noopener">Nachweis öffnen</a>`:''}${data.receipt_id?`<a class="button-link" href="/belege?receipt_id=${data.receipt_id}">Rechnung öffnen</a>`:''}${data.status==='Aktiv'?`<button type="button" class="danger" data-reverse-usage="${data.id}">Verwendung zurücknehmen</button>`:''}`;
+ }else{
+  title='Rechnung bezahlt · '+euro(data.amount);status='Verwendet';details=[data.receipt_name,data.notes].filter(Boolean).join(' · ');
+  actions=`<a class="button-link" href="/belege?receipt_id=${data.receipt_id}">Rechnung öffnen</a><button type="button" class="danger" data-delete-payment="${data.id}">Zahlung zurücknehmen</button>`;
+ }
+ return `<article class="credit-history-row ${status==='Zurückgenommen'?'is-reversed':''}" data-credit-activity="${row.key}"><div class="credit-history-main"><div class="credit-history-title"><strong>${esc(title)}</strong><span class="drawdown-status-badge status-${esc(status.toLowerCase())}">${esc(status)}</span></div><small>${esc(loanName)} · ${esc(row.date||'Ohne Datum')}</small><p>${esc(details)}</p>${nested}</div><div class="credit-history-actions">${actions}</div></article>`;
+}
+function renderCreditHistory(){
+ const filter=$('creditHistoryLoanFilter'),previous=filter.value;
+ filter.innerHTML=option('','Alle Kredite')+state.loans.map(loan=>option(loan.id,loan.name)).join('');
+ if(state.loans.some(loan=>String(loan.id)===previous))filter.value=previous;
+ const rows=creditActivity.rows.filter(row=>!filter.value||String(row.loan_id)===filter.value);
+ $('creditHistory').innerHTML=rows.map(creditHistoryRow).join('')||'<p class="hint">Noch keine Kreditvorgänge vorhanden.</p>';
+ // Filtering replaces controls; bind their existing, validated operations again.
+ $('creditHistory').querySelectorAll('[data-delete-event]').forEach(el=>el.onclick=()=>erase('events',Number(el.dataset.deleteEvent)));
+ $('creditHistory').querySelectorAll('[data-delete-payment]').forEach(el=>el.onclick=()=>erase('payments',Number(el.dataset.deletePayment)));
+ $('creditHistory').querySelectorAll('[data-reverse-usage]').forEach(el=>el.onclick=()=>reverseUsage(Number(el.dataset.reverseUsage)));
+ $('creditHistory').querySelectorAll('[data-undo-drawdown]').forEach(el=>el.onclick=()=>undoDrawdown(Number(el.dataset.undoDrawdown)));
+ $('creditHistory').querySelectorAll('[data-edit-drawdown]').forEach(el=>el.onclick=()=>resumeDrawdown(Number(el.dataset.editDrawdown)));
+ $('creditHistory').querySelectorAll('[data-confirm-drawdown]').forEach(el=>el.onclick=()=>confirmDrawdown(Number(el.dataset.confirmDrawdown)));
+ $('creditHistory').querySelectorAll('[data-reject-drawdown]').forEach(el=>el.onclick=()=>rejectDrawdown(Number(el.dataset.rejectDrawdown)));
+}
 function render(){
  const s=state.summary;
  const cards=[['Offener Finanzbedarf',s.project_remaining],['Finanzierung verfügbar',s.total_available],['Finanzierungslücke',s.financing_gap]];
@@ -138,26 +207,24 @@ function render(){
   ?`<button type="button" class="warning finance-warning-action" id="openUnassignedReceipts"><span>⚠ ${esc(x)}</span><span class="finance-warning-link">Belege prüfen (${unassignedReceipts(state).size}) →</span></button>`
   :`<div class="warning">⚠ ${esc(x)}</div>`).join('');
  if($('openUnassignedReceipts'))$('openUnassignedReceipts').onclick=event=>openUnassignedReceipts(event.currentTarget);
- $('newUsage').disabled=!state.loans.some(loan=>loan.balance.unallocated_drawn>0.004);
+ creditActivity=PHBCreditActivity.build(state);
+ $('newCreditActivity').disabled=!state.loans.length;
  $('loanList').innerHTML=state.loans.map(l=>{
    const pending=(state.drawdowns||[]).filter(d=>d.loan_id===l.id&&d.status==='Eingereicht').reduce((sum,d)=>sum+Number(d.requested_amount),0);
-   const drawdownCount=(state.drawdowns||[]).filter(d=>d.loan_id===l.id&&['Eingereicht','Ausgezahlt','Bestätigt'].includes(d.status)).length;
+   const drawdownCount=creditActivity.counts.get(l.id)||0;
    const used=Number(l.balance.paid_for_project),available=Number(l.balance.unallocated_drawn),frame=Number(l.principal)||1;
-   return `<article class="smallcard loan-overview-card"><div class="loan-card-head"><div><h3>${esc(l.name)}</h3><p class="meta">${esc([l.bank,l.reference].filter(Boolean).join(' · ')||'Vertragsdaten ergänzen')}</p></div>${pending>0?`<span class="loan-pending">${euro(pending)} in Prüfung</span>`:''}</div><div class="loan-progress" aria-label="${euro(used)} verwendet, ${euro(available)} ausgezahlt und verfügbar"><span class="loan-progress-used" style="width:${Math.min(100,used/frame*100)}%"></span><span class="loan-progress-available" style="width:${Math.min(100,available/frame*100)}%"></span></div><div class="loan-key-values"><div><span>Rahmen</span><b>${euro(l.principal)}</b></div><div><span>Ausgezahlt</span><b>${euro(l.balance.drawn)}</b></div><div><span>Verwendet</span><b>${euro(used)}</b></div><div><span>Verfügbar</span><b>${euro(available)}</b></div></div><div class="inline-actions"><span class="loan-card-counts"><span class="loan-doc-count">${l.documents?.length||0} Dokumente</span><span class="loan-drawdown-count" title="Eingereichte und ausgezahlte Mittelabrufe">${drawdownCount} ${drawdownCount===1?'Abruf':'Abrufe'}</span></span>${available>0.004?`<button type="button" data-use-loan="${l.id}">Verwendung erfassen</button>`:''}<button type="button" data-loan="${l.id}">Kredit verwalten</button></div></article>`;
+   return `<article class="smallcard loan-overview-card"><div class="loan-card-head"><div><h3>${esc(l.name)}</h3><p class="meta">${esc([l.bank,l.reference].filter(Boolean).join(' · ')||'Vertragsdaten ergänzen')}</p></div>${pending>0?`<span class="loan-pending">${euro(pending)} in Prüfung</span>`:''}</div><div class="loan-progress" aria-label="${euro(used)} verwendet, ${euro(available)} ausgezahlt und verfügbar"><span class="loan-progress-used" style="width:${Math.min(100,used/frame*100)}%"></span><span class="loan-progress-available" style="width:${Math.min(100,available/frame*100)}%"></span></div><div class="loan-key-values"><div><span>Rahmen</span><b>${euro(l.principal)}</b></div><div><span>Ausgezahlt</span><b>${euro(l.balance.drawn)}</b></div><div><span>Verwendet</span><b>${euro(used)}</b></div><div><span>Verfügbar</span><b>${euro(available)}</b></div></div><div class="inline-actions"><span class="loan-card-counts"><span class="loan-doc-count">${l.documents?.length||0} Dokumente</span><span class="loan-drawdown-count" title="Eingereichte Abrufe und manuell nachgetragene Auszahlungen, jeweils einmal gezählt">${drawdownCount} ${drawdownCount===1?'Abruf':'Abrufe'}</span></span><button type="button" data-credit-loan="${l.id}">Kredit nutzen</button><button type="button" data-loan="${l.id}">Kredit verwalten</button></div></article>`;
  }).join('')||'<p>Noch kein Kredit erfasst.</p>';
  $('equityList').innerHTML=state.equity.map(l=>`<article class="smallcard equity-overview-card"><div><h3>${esc(l.name)}</h3><p class="meta">Verfügbar <strong>${euro(l.balance.available)}</strong>${Number(l.reserve)>0?' · Reserve '+euro(l.reserve):''}</p></div><button type="button" data-equity="${l.id}">Verwalten</button></article>`).join('')||'<p>Noch kein Eigenkapital erfasst.</p>';
  const kinds={loan_drawdown:'Kreditauszahlung',loan_repayment:'Tilgung',loan_interest:'Zinsen',loan_fee:'Gebühren',equity_deposit:'Eigenkapital-Zugang',equity_withdrawal:'Eigenkapital-Entnahme'};
- $('events').innerHTML=state.events.map(e=>`<div class="record"><div><strong>${esc(kinds[e.kind])}</strong> · ${euro(e.amount)}<br><span>${esc(e.event_date)} · ${esc(sourceTitle(e.loan_id?'loan':'equity',e.loan_id||e.equity_id))} ${e.notes?'· '+esc(e.notes):''}${e.document?` · <a href="${esc(fileView(e.document.download_url,e.document.filename))}" target="_blank" rel="noopener">${esc(e.document.filename)}</a>`:''}</span></div>${e.kind==='loan_drawdown'&&/^Mittelabruf #/.test(e.notes||'')?'':`<button type="button" data-delete-event="${e.id}" class="danger" title="Buchung stornieren">✕</button>`}</div>`).join('');
- const payout={own_account:'Eigenes Konto',direct:'Direkt an Firma',reimbursement:'Eigenkapitalerstattung'};
- $('drawdownHistory').innerHTML=(state.drawdowns||[]).map(d=>`<article class="drawdown-history-row"><div><div class="drawdown-history-title"><strong>${esc(d.loan_name)} · ${euro(d.requested_amount)}</strong><span class="drawdown-status-badge status-${esc(d.status.toLowerCase())}">${esc(d.status)}</span></div><span>${esc(payout[d.payout_type]||'Eigenes Konto')} · ${d.receipt_count} Beleg${d.receipt_count===1?'':'e'}${drawdownMilestone(d)}${d.ai_prefilled?' · Vorlage mit ChatGPT zugeordnet':''}${d.rejection_reason?' · '+esc(d.rejection_reason):''}</span></div><div>${drawdownActions(d)}</div></article>`).join('')||'<p class="hint">Noch keine Mittelabrufe erstellt.</p>';
- const usageKinds={manual:'Sonstige Verwendung',receipt_payment:'Rechnung bezahlt',reimbursement:'Eigenkapital erstattet'};
- $('usageHistory').innerHTML=(state.usages||[]).map(u=>`<article class="usage-history-row ${u.status==='Zurückgenommen'?'is-reversed':''}"><div><strong>${esc(usageKinds[u.kind]||'Kreditverwendung')} · ${euro(u.amount)}</strong><span>${esc(u.usage_date)} · ${esc(u.loan_name)} · ${esc(u.purpose)}${u.receipt_name?' · '+esc(u.receipt_name):''}${u.notes?' · '+esc(u.notes):''}${u.document?` · <a href="${esc(fileView(u.document.download_url,u.document.filename))}" target="_blank" rel="noopener">${esc(u.document.filename)}</a>`:''}</span></div><div><span class="drawdown-status-badge">${esc(u.status)}</span>${u.status==='Aktiv'?`<button type="button" class="danger" data-reverse-usage="${u.id}">Zurücknehmen</button>`:''}</div></article>`).join('')||'<p class="hint">Noch keine Kreditverwendung erfasst.</p>';
+ $('events').innerHTML=state.events.filter(e=>e.kind!=='loan_drawdown').map(e=>`<div class="record"><div><strong>${esc(kinds[e.kind])}</strong> · ${euro(e.amount)}<br><span>${esc(e.event_date)} · ${esc(sourceTitle(e.loan_id?'loan':'equity',e.loan_id||e.equity_id))} ${e.notes?'· '+esc(e.notes):''}${e.document?` · <a href="${esc(fileView(e.document.download_url,e.document.filename))}" target="_blank" rel="noopener">${esc(e.document.filename)}</a>`:''}</span></div>${e.kind==='loan_drawdown'&&/^Mittelabruf #/.test(e.notes||'')?'':`<button type="button" data-delete-event="${e.id}" class="danger" title="Buchung stornieren">✕</button>`}</div>`).join('');
+ renderCreditHistory();
 
  fillOptions();
  state.loans.forEach(account=>fundingReceiptButton('loan',account.id));
  state.equity.forEach(account=>fundingReceiptButton('equity',account.id));
  document.querySelectorAll('[data-loan]').forEach(el=>el.onclick=()=>openLoan(Number(el.dataset.loan)));
- document.querySelectorAll('[data-use-loan]').forEach(el=>el.onclick=()=>openUsage(Number(el.dataset.useLoan)));
+ document.querySelectorAll('[data-credit-loan]').forEach(el=>el.onclick=()=>openCreditActivity(Number(el.dataset.creditLoan)));
  document.querySelectorAll('[data-equity]').forEach(el=>el.onclick=()=>openEquity(Number(el.dataset.equity)));
  document.querySelectorAll('[data-delete-event]').forEach(el=>el.onclick=()=>erase('events',Number(el.dataset.deleteEvent)));
  document.querySelectorAll('[data-delete-payment]').forEach(el=>el.onclick=()=>erase('payments',Number(el.dataset.deletePayment)));
@@ -253,7 +320,7 @@ function openUsage(loanId=null){
  if(loanId&&available.some(loan=>loan.id===loanId))$('usageLoan').value=String(loanId);
  $('usageStatus').textContent='';renderUsageForm();usageFlow.open();
 }
-$('newUsage').onclick=()=>openUsage();
+$('newUsage').onclick=()=>{const loanId=Number($('creditActivityLoan').value);creditActivityFlow.finish();openUsage(loanId);};
 $('closeUsage').onclick=()=>usageFlow.finish();$('cancelUsage').onclick=()=>usageFlow.finish();
 $('usageLoan').onchange=renderUsageForm;$('usageReceipt').onchange=renderUsageForm;
 $('usageForm').querySelectorAll('input[name=action]').forEach(input=>input.onchange=renderUsageForm);
@@ -495,17 +562,18 @@ async function loadDrawdownOptions(){
  try{drawdownOptions=await api('/api/financing/drawdowns/options?loan_id='+loanId);applySavedDrawdownProfile(loanId);renderDrawdownOptions();}
  catch(error){drawdownOptions=null;$('drawdownStatus').textContent=error.message;renderDrawdownOptions();}
 }
-async function openDrawdown(){
+async function openDrawdown(loanId=null){
  $('drawdownForm').reset();drawdownOptions=null;currentDrawdown=null;
  $('drawdownSetupStage').hidden=false;$('drawdownPreviewStage').hidden=true;
  $('drawdownLoan').innerHTML=state.loans.map(loan=>option(loan.id,loan.name+' · noch abrufbar '+euro(loan.balance.undrawn))).join('');
+ if(loanId)$('drawdownLoan').value=String(loanId);
  $('drawdownForm').elements.namedItem('requested_date').value=TODAY;
  $('drawdownStatus').textContent='';
  drawdownFlow.open();
  if(!state.loans.length){$('drawdownStatus').textContent='Bitte zuerst einen Kredit anlegen.';renderDrawdownOptions();return;}
  await loadDrawdownOptions();drawdownFlow.snapshot();
 }
-$('newDrawdown').onclick=openDrawdown;
+$('newDrawdown').onclick=()=>{const loanId=Number($('creditActivityLoan').value);creditActivityFlow.finish();openDrawdown(loanId);};
 $('drawdownLoan').onchange=loadDrawdownOptions;
 $('drawdownPayoutType').onchange=renderDrawdownOptions;
 $('closeDrawdown').onclick=async()=>{if(drawdownBusy)return;$('drawdownDialog').close();if(currentDrawdown)await reload();};

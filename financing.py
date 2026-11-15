@@ -281,7 +281,6 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
     EVENT_DOCUMENT_ROOT = Path(root) / 'private' / 'financing-events'
     USAGE_DOCUMENT_ROOT = Path(root) / 'private' / 'loan-usages'
     LOAN_FILE_TYPES = {'.pdf', '.jpg', '.jpeg', '.png', '.webp'}
-    MAX_LOAN_FILE_BYTES = 15 * 1024 * 1024
 
     def file_payload():
         upload = request.files.get('file')
@@ -291,9 +290,9 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         ext = Path(filename).suffix.lower()
         if ext not in LOAN_FILE_TYPES:
             raise ValueError('Nur PDF, JPG, PNG oder WEBP unterstützt.')
-        data = upload.read(MAX_LOAN_FILE_BYTES+1)
-        if not data or len(data)>MAX_LOAN_FILE_BYTES:
-            raise ValueError('Die Datei darf maximal 15 MB groß sein.')
+        data = upload.read()
+        if not data:
+            raise ValueError('Die Datei ist leer.')
         if ext=='.pdf':
             if not data.startswith(b'%PDF-'):
                 raise ValueError('Keine gültige PDF-Datei.')
@@ -522,6 +521,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         loan=db.session.get(Loan,r.loan_id);receipt=db.session.get(Receipt,r.receipt_id) if r.receipt_id else None
         return {'id':r.id,'loan_id':r.loan_id,'loan_name':loan.name if loan else 'Kredit fehlt',
                 'receipt_id':r.receipt_id,'receipt_name':(receipt.supplier or receipt.original_name) if receipt else '',
+                'payment_ids':sorted(usage_payment_ids(r)),
                 'kind':r.kind,'amount':float(r.amount),'usage_date':r.usage_date,
                 'purpose':r.purpose,'notes':r.notes,'status':r.status,
                 'created_at':r.created_at.isoformat() if r.created_at else None,
@@ -673,8 +673,8 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
             if upload and upload.filename:
                 original=Path(upload.filename).name[:240];ext=Path(original).suffix.lower()
                 if ext not in LOAN_FILE_TYPES:raise ValueError('Nachweis muss PDF, JPG, PNG oder WEBP sein.')
-                raw=upload.read(MAX_LOAN_FILE_BYTES+1)
-                if not raw or len(raw)>MAX_LOAN_FILE_BYTES:raise ValueError('Nachweis ist leer oder größer als 15 MB.')
+                raw=upload.read()
+                if not raw:raise ValueError('Nachweis ist leer.')
                 USAGE_DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True);stored=uuid4().hex+ext;target=USAGE_DOCUMENT_ROOT/stored
                 with target.open('xb') as output:output.write(raw)
             row=LoanUsage(loan_id=loan_id,kind='manual',amount=amount,

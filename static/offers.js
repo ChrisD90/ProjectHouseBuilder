@@ -129,10 +129,11 @@
     finally{acceptanceBusy=false;$('offerAcceptanceSubmit').disabled=false;}
   };
   const editDialog=$('offerEditDialog');
-  let editingOfferId=null,offerEditBusy=false;
+  let editingOfferId=null,offerEditBusy=false,editMetadataBaseline='';
   const editFlow=PHBFlow.manage({
-    dialog:'offerEditDialog',forms:['offerEditForm'],
-    dismiss:['closeOfferEdit','cancelOfferEdit'],
+    routeParams:['offer_id'],
+    dialog:'offerEditDialog',forms:['offerEditForm','offerEditExtras'],
+    dismiss:['closeOfferEdit'],
     isBusy:()=>offerEditBusy,
     onClose:()=>{
       $('offerEditPdfFrame').removeAttribute('src');
@@ -154,7 +155,11 @@
     if(!offer)return;
     editingOfferId=id;
     $('offerEditTitle').textContent='Angebot '+(offer.number||'#'+offer.id)+' bearbeiten';
-    $('offerEditFields').innerHTML=fields(offer);
+    $('offerEditFields').innerHTML=editFields(offer);
+    PHBUI.currency.bind($('offerEditForm'));
+    updateDocumentsCount(offer);
+    renderEditorExtras(offer);
+    $('offerEditForm').dataset.offerAmountSource='gross';
     $('offerEditError').textContent='';
     $('reverseOfferAcceptance').hidden=!['Angenommen','Beauftragt'].includes(offer.status);
     const pane=$('offerEditPdfPane'),frame=$('offerEditPdfFrame');
@@ -164,6 +169,7 @@
       $('offerEditPdfDownload').href='/api/documents/'+offer.document_id+'/preview';
     }else frame.removeAttribute('src');
     editFlow.open();
+    editMetadataBaseline=PHBFlow.signature($('offerEditForm'));
   }
   $('reverseOfferAcceptance').onclick=async()=>{
     if(!editingOfferId||offerEditBusy)return;
@@ -182,20 +188,23 @@
     editingOfferId=null;
   };
   $('closeOfferEdit').onclick=closeEdit;
-  $('cancelOfferEdit').onclick=closeEdit;
   editDialog.addEventListener('cancel',e=>{if(offerEditBusy)e.preventDefault();});
   $('offerEditForm').onsubmit=async e=>{
     e.preventDefault();if(!editingOfferId||offerEditBusy)return;
-    const submit=e.currentTarget.querySelector('button[type=submit]');
+    const submit=editDialog.querySelector('button[form=offerEditForm]');
+    let payload;try{payload=readForm(e.currentTarget);}catch(error){$('offerEditError').textContent=error.message;return;}
+    const controls=[...editDialog.querySelectorAll('button,input,select,textarea')],disabled=controls.map(node=>node.disabled);
+    controls.forEach(node=>node.disabled=true);
     offerEditBusy=true;
     submit.disabled=true;
     $('closeOfferEdit').disabled=true;
-    $('cancelOfferEdit').disabled=true;
     try{
       // Only the reviewed metadata is updated; positions belong to PDF drafts/versions.
-      await update(editingOfferId,readForm(e.currentTarget));
+      const diy=$('offerEditExtras').querySelector('form[data-offer-diy]');
+      if(diy)payload.own_work_position_ids=[...diy.querySelectorAll('[data-diy-position]:checked')].map(input=>Number(input.value));
+      await update(editingOfferId,payload);
       await reload();
-      editDialog.close();
+      editFlow.finish();
       $('offerEditPdfFrame').removeAttribute('src');
       editingOfferId=null;
       await PHBUI.alert('Angebotsangaben gespeichert.');
@@ -203,9 +212,9 @@
       $('offerEditError').textContent=error.message;
     }finally{
       offerEditBusy=false;
+      controls.forEach((node,index)=>node.disabled=disabled[index]);
       submit.disabled=false;
       $('closeOfferEdit').disabled=false;
-      $('cancelOfferEdit').disabled=false;
     }
   };
     const workflow=$('offerWorkflowDialog');
@@ -273,20 +282,85 @@
   const stage = o => ({Entwurf:['Noch prüfen','stage-draft'],Angebot:['Zum Vergleich','stage-listed'],Angenommen:['Angenommen','stage-accepted'],Beauftragt:['Angenommen','stage-accepted'],Abgelehnt:['Abgelehnt','stage-rejected']}[o.status] || [o.status,'stage-listed']);
   const notice = o => (o.warnings||[]).length
     ? `<details class="offer-warnings"><summary>Hinweise zur Erkennung (${o.warnings.length})</summary><ul>${o.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>` : '';
-  const parsedPositions = o => (o.positions||[]).length ? `<details class="offer-details"><summary>Einzelpositionen (${o.positions.length}) – geprüft / ergänzt</summary><div class="tablewrap"><table><thead><tr><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td>${esc(p.number)}</td><td>${esc(p.description)}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div></details>` : '';
+  function diySummary(value) {
+    return `<div class="offer-diy-summary"><span>Preis mit Eigenleistungen (Restangebot): <strong>${value.complete?fmt(value.remaining_gross)+' brutto':'Noch nicht berechenbar'}</strong></span><span>${value.selected_count} ausgewählte Position(en) · Angebotsanteil: ${value.selected_gross==null?'Betrag offen':fmt(value.selected_gross)+' brutto'}</span>${value.reason?`<span>${esc(value.reason)}</span>`:''}<small>Planungsszenario: Material- und Werkzeugkosten für die Eigenleistung kommen gegebenenfalls hinzu. Brutto wird proportional zum Angebotsnetto geschätzt. Die verbindliche Auftragssumme bleibt unverändert.</small></div>`;
+  }
+  function diyPreview(o, positions) {
+    const selected=positions.filter(p=>p.own_work&&!p.optional),total=selected.reduce((sum,p)=>sum+(readMoney(p.net_amount)||0),0);
+    let reason='';
+    if(selected.some(p=>readMoney(p.net_amount)==null||!Number.isFinite(readMoney(p.net_amount))))reason='Bei ausgewählten Positionen fehlen Nettobeträge.';
+    else if(selected.length&&(o.net==null||Number(o.net)<=0||o.gross==null))reason='Für den Bruttopreis müssen Angebotsnetto und Angebotsbrutto bekannt sein.';
+    else if(selected.length&&total>Number(o.net)+.000001)reason='Die ausgewählten Positionen übersteigen die Angebotsnettosumme. Bitte Beträge prüfen.';
+    const deduction=reason?null:selected.length?Math.round((total*Number(o.gross)/Number(o.net)+Number.EPSILON)*100)/100:0;
+    return {selected_count:selected.length,selected_gross:deduction,remaining_gross:reason?null:Number(o.gross)-deduction,complete:!reason,reason};
+  }
+  const parsedPositions=o=>(o.positions||[]).length?`<details class="offer-diy-plan"><summary>Positionen & mögliche Eigenleistungen (${o.positions.length})</summary><div class="offer-position-body"><form data-offer-diy="${o.id}"><div class="tablewrap"><table><thead><tr><th>Eigenleistung</th><th>Pos.</th><th>Leistung</th><th>Menge</th><th>Netto</th></tr></thead><tbody>${o.positions.map(p=>`<tr><td><input type="checkbox" name="own_work" data-diy-position value="${p.id}" aria-label="Position ${esc(p.number)} als Eigenleistung planen" ${p.own_work?'checked':''} ${p.optional?'disabled title="Optionale Position – nicht in der Angebotssumme enthalten"':''}></td><td>${esc(p.number)}</td><td>${esc(p.description)}${p.optional?' · Optional':''}</td><td>${esc(p.quantity)} ${esc(p.unit)}</td><td>${fmt(p.net_amount)}</td></tr>`).join('')}</tbody></table></div><div data-diy-summary>${diySummary(o.diy_estimate||diyPreview(o,o.positions))}</div><div class="offer-form-actions"><button type="submit" class="primary mini">Auswahl speichern</button></div></form></div></details>`:'';
+  function attachmentSection(o){
+    return `<section class="offer-attachments"><div class="offer-attachment-body"><div class="offer-attachment-list">${(o.attachments||[]).map(d=>`<div class="offer-attachment-row"><span>${esc(d.filename)}</span><div class="offer-attachment-actions">${d.view_url?`<a class="mini" target="_blank" rel="noopener" href="${esc(d.view_url)}">Öffnen</a>`:''}<a class="mini" href="${esc(d.download_url)}">Herunterladen</a><button type="button" class="offer-tile-icon danger" data-attachment-delete="${o.id}:${d.id}" aria-label="Anhang ${esc(d.filename)} löschen" title="Anhang löschen">${icon('trash')}</button></div></div>`).join('')||'<p class="muted">Noch keine weiteren Anhänge.</p>'}</div><form data-offer-attachments="${o.id}" class="offer-attachment-upload"><label>Weitere Dateien (PDF, DOCX, TXT oder Bilder)<input type="file" name="files" multiple required accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"></label><button type="submit" class="primary mini">Anhänge hochladen</button></form><small>Die Anhänge werden auch unter Dokumente geführt. Das ursprüngliche Angebots-PDF bleibt erhalten.</small></div></section>`;
+  }
 
+
+  function offerTaxRate(o){
+    if(o.net>0&&o.gross!=null){
+      return [19,7,0].find(rate=>Math.abs(Math.round(Number(o.net)*100*(1+rate/100))-Math.round(Number(o.gross)*100))<=1)??'manual';
+    }
+    return o.gross!=null&&o.net==null&&o.vat!=null?'manual':19;
+  }
+  function taxField(o){
+    const rate=offerTaxRate(o);
+    return `<label>Umsatzsteuer<select data-offer-tax aria-label="Umsatzsteuersatz">${[19,7,0,'manual'].map(value=>`<option value="${value}" ${value===rate?'selected':''}>${value==='manual'?'Manuell / gemischt':value+' %'}</option>`).join('')}</select></label>`;
+  }
+  function calculateOfferAmounts(form, source){
+    const select=form.querySelector('[data-offer-tax]');if(!select||select.value==='manual')return;
+    const rate=Number(select.value),read=name=>PHBUI.currency.parse(form.elements.namedItem(name)?.value);
+    const base=read(source);if(base==null){for(const name of ['gross','net','vat'])if(name!==source)form.elements.namedItem(name).value='';return;}
+    if(!Number.isFinite(base)||base<0)return;
+    const cents=Math.round(base*100),factor=1+rate/100;
+    const gross=source==='net'?Math.round(cents*factor):cents,net=source==='net'?cents:Math.round(cents/factor);
+    for(const [name,value] of [['gross',gross],['net',net],['vat',gross-net]]){
+      const input=form.elements.namedItem(name);if(input&&name!==source)input.value=PHBUI.currency.format(value/100);
+    }
+    form.dataset.offerAmountSource=source;
+  }
+  document.addEventListener('input',event=>{
+    const form=event.target.form;if(!form?.querySelector('[data-offer-tax]'))return;
+    if(['gross','net'].includes(event.target.name))calculateOfferAmounts(form,event.target.name);
+    else if(event.target.name==='vat')form.querySelector('[data-offer-tax]').value='manual';
+  });
+  document.addEventListener('change',event=>{
+    if(!event.target.matches('[data-offer-tax]'))return;
+    const form=event.target.form,source=form.dataset.offerAmountSource||(form.elements.gross.value?'gross':'net');
+    calculateOfferAmounts(form,source);if(form.matches('[data-review],[data-version-review]'))checkPositions(form);
+  });
+  function editFields(o){
+    const recognized=o.vendor==='Firma nicht erkannt'?'':o.vendor;
+    const taxOptions=[19,7,0,'manual'].map(value=>`<option value="${value}" ${value===offerTaxRate(o)?'selected':''}>${value==='manual'?'Manuell / gemischt':value+' %'}</option>`).join('');
+    return `<div class="offer-field-row offer-field-row-two">
+      <label>Anbieter / Firma<select name="contractor_id" data-offer-company data-recognized-name="${esc(recognized)}" required>${companyOptions(o.contractor_id,recognized)}</select></label>
+      <label>Kategorie / Gewerk<select name="category" required>${categoryOptions(o.category)}</select></label>
+    </div><div class="offer-field-row offer-field-row-three">
+      <label>Angebotsnummer<input name="number" value="${esc(o.number)}" maxlength="100"></label>
+      <label>Datum<input name="issued" value="${esc(o.issued)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
+      <label>Gültig bis<input name="expires" value="${esc(o.expires)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
+    </div><div class="offer-field-row offer-field-row-three offer-amount-row">
+      <label>Brutto (€)<input name="gross" inputmode="decimal" value="${o.gross==null?'':esc(o.gross)}" required></label>
+      <div class="offer-tax-field"><label for="offerEditVat">MwSt. (€)</label><div class="offer-tax-input"><input id="offerEditVat" name="vat" aria-label="MwSt. (€)" inputmode="decimal" value="${o.vat==null?'':esc(o.vat)}"><select data-offer-tax aria-label="Umsatzsteuersatz">${taxOptions}</select></div></div>
+      <label>Netto (€)<input name="net" inputmode="decimal" value="${o.net==null?'':esc(o.net)}"></label>
+    </div><label>Notizen<textarea name="notes" rows="3" maxlength="2000">${esc(o.notes)}</textarea></label>`;
+  }
   function fields(o) {
     const recognized=o.vendor==='Firma nicht erkannt'?'':o.vendor;
     return `<label>Anbieter / Firma<select name="contractor_id" data-offer-company data-recognized-name="${esc(recognized)}" required>${companyOptions(o.contractor_id,recognized)}</select><small>${o.contractor_id?'Mit den Stammdaten verknüpft.':'Bitte eine vorhandene Firma wählen oder den erkannten Anbieter ausdrücklich neu anlegen.'}</small></label>
       <label>Bruttogesamtbetrag (€)<input name="gross" inputmode="decimal" value="${o.gross==null?'':esc(o.gross)}" required placeholder="z. B. 12.450,00"></label>
+      ${taxField(o)}
+      <label>Netto (€)<input name="net" inputmode="decimal" value="${o.net==null?'':esc(o.net)}"></label>
+      <label>MwSt. (€)<input name="vat" inputmode="decimal" value="${o.vat==null?'':esc(o.vat)}"></label>
       <label>Kategorie / Gewerk<select name="category" required>${categoryOptions(o.category)}</select></label>
       <label>Kostenplanposition <select name="budget_line_id">${budgetOptions(o.budget_line_id)}</select></label>
       <details class="offer-extra-fields offer-wide"><summary>Weitere Angaben (optional)</summary><div class="offer-extra-grid">
         <label>Angebotsnummer<input name="number" value="${esc(o.number)}" maxlength="100"></label>
         <label>Datum<input name="issued" value="${esc(o.issued)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
         <label>Gültig bis<input name="expires" value="${esc(o.expires)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
-        <label>Netto (€)<input name="net" inputmode="decimal" value="${o.net==null?'':esc(o.net)}"></label>
-        <label>MwSt. (€)<input name="vat" inputmode="decimal" value="${o.vat==null?'':esc(o.vat)}"></label>
         <label class="offer-wide">Notiz<textarea name="notes" rows="2" maxlength="2000">${esc(o.notes)}</textarea></label>
       </div></details>`;
   }
@@ -308,6 +382,7 @@
         <label>Optionaler Positionsbetrag (€)<input data-position-field="optional_amount" data-euro="true" inputmode="decimal" value="${moneyInput(p.optional_amount)}" placeholder="Nur bei optionaler Position"></label>
         <label>PDF-Seite (optional)<input data-position-field="page" type="number" min="1" max="9999" step="1" value="${moneyInput(p.page)}" placeholder="Seite"></label>
         <label class="offer-position-optional"><input type="checkbox" data-position-field="optional" ${p.optional?'checked':''}> Optionale / nicht beauftragte Position</label>
+        <label class="offer-position-optional"><input type="checkbox" data-position-field="own_work" ${p.own_work?'checked':''}> Als mögliche Eigenleistung planen</label>
         <div class="offer-position-tools"><button type="button" class="mini" data-position-calculate>Aus Menge × Einzelpreis berechnen</button><button type="button" class="offer-text-danger" data-position-remove>Position entfernen</button></div>
       </div>
     </details>`;
@@ -332,7 +407,7 @@
         section:field('section').value,quantity:field('quantity').value,
         unit:field('unit').value,unit_price:field('unit_price').value,
         net_amount:field('net_amount').value,optional_amount:field('optional_amount').value,
-        page:field('page').value,optional:field('optional').checked};
+        page:field('page').value,optional:field('optional').checked,own_work:field('own_work')?.checked||false};
     });
     for(const item of data.positions){
       for(const field of ['unit_price','net_amount','optional_amount']){
@@ -372,6 +447,7 @@
       +(different?`<span>Abweichung zur Angebotsnettosumme: ${fmt(subtotal-target)}. Bitte Preise und Gesamtbetrag prüfen.</span>`:'')
       +(matching?'<span>✓ Positionssumme und Angebotsnetto stimmen überein.</span>':'')
       +(!matching&&!different&&target==null?'<span>Für den Nettovergleich bitte auch Angebot netto oder MwSt. prüfen.</span>':'');
+    if(positions.some(p=>p.own_work))summary.innerHTML+=diySummary(diyPreview({gross:formGross,net:formNet},positions));
     form.querySelector('[data-position-empty]').hidden=positions.length>0;
     for (const row of form.querySelectorAll('[data-position-row]')) {
       const label=row.querySelector('[data-position-label]');
@@ -455,6 +531,15 @@
     </section>`;
   }
 
+  function paymentIndicator(o){
+    if(!['Angenommen','Beauftragt'].includes(o.status)||!o.billing)return '';
+    const agreed=Number(o.billing.agreed),paid=Number(o.billing.paid)||0;
+    if(!Number.isFinite(agreed)||agreed<=0)return '';
+    const percentage=Math.max(0,paid/agreed*100),width=Math.min(100,percentage);
+    const label=new Intl.NumberFormat('de-DE',{maximumFractionDigits:0}).format(percentage)+' % bezahlt';
+    const description=fmt(paid)+' von '+fmt(agreed)+' bezahlt';
+    return `<span class="offer-tile-paid" title="${esc(description)}"><span class="offer-tile-paid-track" role="progressbar" aria-label="Bezahlter Anteil des Auftrags" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${width}" aria-valuetext="${esc(description)}"><span style="width:${width}%"></span></span><small>${esc(label)}</small></span>`;
+  }
   function renderListed(o) {
     const [label,color]=stage(o);
     const accepted=['Angenommen','Beauftragt'].includes(o.status);
@@ -462,18 +547,18 @@
     const invoiceCount=o.billing?.linked_invoices?.length??o.billing?.invoices?.length??0;
     const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
     const actions=accepted
-      ? `<a class="mini" href="/?firmenvorschlaege=1" title="Arbeitspaket im Bauzeitenplan zuordnen">Arbeitspaket zuordnen</a><a class="mini" href="/energieplanung?offer_id=${o.id}">Förderung prüfen</a>`
-      : `<button class="primary" type="button" data-offer-accept="${o.id}">Annehmen</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
+      ? `<a class="mini" href="/?firmenvorschlaege=1" title="Arbeitspaket im Bauzeitenplan zuordnen" aria-label="Arbeitspaket zuordnen">Arbeitspaket<span class="offer-action-detail"> zuordnen</span></a><a class="mini" href="/energieplanung?offer_id=${o.id}" title="Förderung prüfen" aria-label="Förderung prüfen">Förderung<span class="offer-action-detail"> prüfen</span></a>`
+      : `<button class="primary mini" type="button" data-offer-accept="${o.id}">Annehmen</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
     const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${accepted?`<button class="offer-tile-icon" type="button" data-offer-invoices="${o.id}" aria-label="Zugeordnete Rechnungen anzeigen: ${invoiceCount}" title="Zugeordnete Rechnungen anzeigen">${icon('receipt')}<span class="offer-icon-badge">${invoiceCount}</span></button>`:''}${PHBWorkUI.button('offer',o.id,'offer-tile-icon')}${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
-    return `<article class="offer-card offer-list-card offer-tile" data-offer-card="${o.id}">
-      ${corner}
+    return `<article class="offer-card offer-list-card offer-tile ${accepted?'offer-tile-with-payment':''}" data-offer-card="${o.id}">
+      <div class="offer-tile-header"><span class="offer-stage ${color}">${label}</span>${corner}</div>
       <button type="button" class="offer-tile-open" data-offer-details="${o.id}"
-        aria-haspopup="dialog" aria-controls="offerDetailsDialog"
+        aria-haspopup="dialog" aria-controls="offerEditDialog"
         aria-label="Details zu ${esc(o.vendor)} öffnen">
-        <span class="offer-stage ${color}">${label}</span>
         <strong class="offer-tile-vendor">${esc(o.vendor)}</strong>
         <span class="offer-tile-meta">${meta}${o.number?` · Nr. ${esc(o.number)}`:''}</span>
         <strong class="offer-tile-price">${fmt(accepted?o.agreed_gross:o.gross)}</strong>
+        ${paymentIndicator(o)}
         <span class="offer-tile-chevron" aria-hidden="true">→</span>
       </button>
       <div class="offer-actions offer-tile-actions">${actions}</div>
@@ -487,31 +572,54 @@
     const invoices=billing.linked_invoices||billing.invoices||[];
     $('offerInvoicesTitle').textContent='Rechnungen · '+o.vendor;
     $('offerInvoicesMeta').textContent=(o.number?'Angebot '+o.number+' · ':'')+invoices.length+' zugeordnete Belege';
-    const rows=invoices.map(r=>`<tr><td><strong>${esc(r.number||r.filename||'Rechnung #'+r.id)}</strong><small>${esc(r.supplier||o.vendor)} · ${esc(r.date||'Ohne Datum')}</small></td><td><span class="offer-invoice-status">${esc(r.status||'Gebucht')}</span><small>${esc(r.billing_type||r.kind||'Rechnung')}</small></td><td>${fmt(r.gross)}</td><td>${fmt(r.counted)}</td><td>${fmt(r.paid)}</td><td><a class="mini" href="/api/receipts/${r.id}/preview" target="_blank" rel="noopener">Original ansehen</a><a class="mini" href="/belege?receipt_id=${r.id}">Bearbeiten</a></td></tr>`).join('');
+    const rows=invoices.map(r=>`<tr><td><strong>${esc(r.number||r.filename||'Rechnung #'+r.id)}</strong><small>${esc(r.supplier||o.vendor)} · ${esc(r.date||'Ohne Datum')}</small></td><td><span class="offer-invoice-status">${esc(r.status||'Gebucht')}</span><small>${esc(r.billing_type||r.kind||'Rechnung')}</small></td><td>${fmt(r.gross)}</td><td>${fmt(r.counted)}</td><td>${fmt(r.paid)}</td><td><div class="offer-invoice-row-actions"><a class="mini" href="/api/receipts/${r.id}/preview" target="_blank" rel="noopener">Original ansehen</a><a class="mini" href="/belege?receipt_id=${r.id}">Bearbeiten</a></div></td></tr>`).join('');
     $('offerInvoicesContent').innerHTML=`<section class="offer-invoice-summary"><span>Auftragswert <b>${fmt(billing.agreed??o.agreed_gross)}</b></span><span>Gebucht <b>${fmt(billing.billed)}</b></span><span>Bezahlt <b>${fmt(billing.paid)}</b></span><span>Rest <b>${fmt(billing.remaining)}</b></span></section>${rows?`<div class="tablewrap"><table><thead><tr><th>Beleg</th><th>Status / Art</th><th>Brutto</th><th>Angerechnet</th><th>Bezahlt</th><th>Aktionen</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="offer-empty">Diesem Angebot sind noch keine Rechnungen zugeordnet.</p>'}<div class="offer-invoices-actions"><a class="primary" href="/belege?offer_id=${o.id}">Neue Rechnung zuordnen</a></div>`;
     invoicesFlow.open();
   }
 
-  function openOfferDetails(id){
-    const o=offers.find(item=>Number(item.id)===Number(id));
-    if(!o)return;
-    const accepted=['Angenommen','Beauftragt'].includes(o.status);
-    $('offerDetailsTitle').textContent=o.vendor+' · '+fmt(accepted?o.agreed_gross:o.gross);
-    $('offerDetailsMeta').textContent=[o.category,o.issued||'Ohne Datum',o.number?'Nr. '+o.number:''].filter(Boolean).join(' · ');
-    $('offerDetailsContent').innerHTML=`
-      <section class="offer-detail-summary">
-        <p class="offer-mapping">${esc(budgetLabel(o))}${!o.budget_line_id?' · Bei Annahme zusätzliche Kosten':''}</p>
-        ${o.notes?`<p class="offer-notes">${esc(o.notes)}</p>`:''}
-        ${accepted&&o.acceptance?`<p class="offer-mapping"><strong>Ursprüngliches Angebot:</strong> ${fmt(o.gross)} · <strong>Verbindlicher Auftrag:</strong> ${fmt(o.agreed_gross)} · ${o.acceptance.document_id?`<a href="/api/documents/${o.acceptance.document_id}/preview" target="_blank" rel="noopener">Auftragsbestätigung (PDF)</a>`:'Angebot 1:1 übernommen'}</p>`:''}
-        ${o.document_id?`<p><a class="mini" href="/api/documents/${o.document_id}/preview" target="_blank" rel="noopener">Angebots-PDF öffnen</a></p>`:''}
-        ${o.deletion_reason?`<p class="offer-mapping">${esc(o.deletion_reason)}</p>`:''}${notice(o)}
-      </section>
-      ${(o.acceptance_reversals||[]).length?`<details class="offer-details"><summary>Zurückgenommene Annahmen (${o.acceptance_reversals.length})</summary>${o.acceptance_reversals.map(r=>`<p>${esc(r.reversed_at.slice(0,10))} · ${fmt(r.agreed_gross)}${r.document_id?` · <a href="/api/documents/${r.document_id}/preview" target="_blank" rel="noopener">Frühere Auftragsbestätigung ansehen</a>`:''}</p>`).join('')}</details>`:''}
-      ${accepted?billingBlock(o):''}
-      ${parsedPositions(o)}
-      ${versionUpload(o)}${versionHistory(o)}`;
-    detailsFlow.open();
+  function renderEditorExtras(o){
+    $('offerEditExtras').innerHTML=`${parsedPositions(o)}${notice(o)}`;
   }
+  function updateDocumentsCount(o){
+    const count=(o.attachments||[]).length;
+    $('offerDocumentsCount').textContent=String(count);$('offerDocumentsCount').hidden=!count;
+    $('openOfferDocuments').setAttribute('aria-label',count?'Weitere Dokumente: '+count:'Weitere Dokumente');
+  }
+  const documentsFlow=PHBFlow.manage({dialog:'offerDocumentsDialog',forms:['offerDocumentsContent'],dismiss:['closeOfferDocuments'],isBusy:()=>offerEditBusy});
+  $('openOfferDocuments').onclick=()=>{
+    if(offerEditBusy||!editingOfferId)return;
+    const offer=offers.find(o=>o.id===editingOfferId);
+    $('offerDocumentsContent').innerHTML=attachmentSection(offer);documentsFlow.open();
+  };
+  function refreshEditorSection(id,selector){
+    const offer=offers.find(o=>o.id===id),container=selector==='.offer-attachments'?$('offerDocumentsContent'):$('offerEditExtras'),current=container.querySelector(selector);
+    updateDocumentsCount(offer);
+    const template=document.createElement('template');template.innerHTML=selector==='.offer-diy-plan'?parsedPositions(offer):attachmentSection(offer);
+    const next=template.content.firstElementChild;
+    if(current instanceof HTMLDetailsElement&&next instanceof HTMLDetailsElement)next.open=current.open;
+    if(current&&next)current.replaceWith(next);
+    if(selector==='.offer-attachments')documentsFlow.snapshot();
+  }
+  function openOfferDetails(id){openOfferEdit(id);}
+  const versionUploadFlow=PHBFlow.manage({dialog:'offerVersionUploadDialog',forms:['offerVersionUploadContent'],dismiss:['closeOfferVersionUpload']});
+  const versionHistoryFlow=PHBFlow.manage({dialog:'offerVersionHistoryDialog',dismiss:['closeOfferVersionHistory'],track:false});
+  $('openOfferVersionUpload').onclick=async()=>{
+    if(offerEditBusy||!editingOfferId)return;
+    if(editFlow.dirty()){await PHBUI.alert('Bitte deine Änderungen zuerst speichern, bevor du eine neue Version hochlädst.');return;}
+    const o=offers.find(o=>o.id===editingOfferId);
+    $('offerVersionUploadContent').innerHTML=versionUpload(o);
+    $('offerVersionUploadContent').querySelector('details').open=true;
+    versionUploadFlow.open();
+  };
+  $('openOfferVersionHistory').onclick=async()=>{
+    if(!editingOfferId||offerEditBusy)return;
+    const id=editingOfferId;
+    $('offerVersionHistoryContent').textContent='Versionshistorie wird geladen …';versionHistoryFlow.open();
+    await versionHistoryFlow.run(async()=>{
+      const history=await request(offerUrl(id)+'/versions');
+      $('offerVersionHistoryContent').innerHTML=renderHistory(history.versions);
+    });
+  };
 
   function refreshUI() {
     const drafts=offers.filter(o=>o.status==='Entwurf');
@@ -755,6 +863,8 @@
         model,fields:{offer_id:String(id)}
       });
       form.reset();
+      versionUploadFlow.finish();
+      if(editDialog.open)editFlow.finish();
       status.textContent=result.background?'Analyse läuft in der Warteschlange.':'PDF analysiert.';
       if(result.background){
         if(workflow.open)workflowFlow.finish();
@@ -764,6 +874,44 @@
       else window.PHBImports.review(result.jobs);
     }catch(err){status.textContent='Fehler: '+err.message;}
     finally{window.PHBImports.release(button);}
+  });
+  async function detailsAction(button, callback){
+    if(offerEditBusy)return;
+    const metadataDirty=PHBFlow.signature($('offerEditForm'))!==editMetadataBaseline;
+    const inDocuments=Boolean(button.closest('#offerDocumentsDialog'));
+    const path=offerUrl(editingOfferId),previous=window.PHBRequests?.version(button.closest('form'),path)||window.PHBRequests?.version(button.closest('dialog'),path);
+    const controls=[...editDialog.querySelectorAll('input,select,textarea,button'),...$('offerDocumentsDialog').querySelectorAll('input,select,textarea,button')],disabled=controls.map(node=>node.disabled);
+    offerEditBusy=true;editFlow.setBusy(true);documentsFlow.setBusy(true);controls.forEach(node=>node.disabled=true);
+    try{await callback();
+      for(const node of [editDialog,$('offerEditForm'),...$('offerEditExtras').querySelectorAll('form')])window.PHBRequests?.acknowledge(node,path,previous);
+      if(!metadataDirty&&!inDocuments)editFlow.snapshot();
+    }
+    catch(error){await PHBUI.alert(error.message);}
+    finally{offerEditBusy=false;editFlow.setBusy(false);documentsFlow.setBusy(false);controls.forEach((node,index)=>node.disabled=disabled[index]);}
+  }
+  document.addEventListener('change',event=>{
+    const form=event.target.closest('form[data-offer-diy]');if(!form)return;
+    const offer=offers.find(o=>o.id===Number(form.dataset.offerDiy));
+    const checked=new Set([...form.querySelectorAll('[data-diy-position]:checked')].map(input=>Number(input.value)));
+    form.querySelector('[data-diy-summary]').innerHTML=diySummary(diyPreview(offer,offer.positions.map(p=>({...p,own_work:checked.has(p.id)}))));
+  });
+  document.addEventListener('submit',async event=>{
+    const form=event.target;if(!form.matches('form[data-offer-diy],form[data-offer-attachments]'))return;
+    event.preventDefault();if(offerEditBusy)return;
+    const id=Number(form.dataset.offerDiy||form.dataset.offerAttachments),button=form.querySelector('button[type=submit]');
+    const selected=[...form.querySelectorAll('[data-diy-position]:checked')].map(input=>Number(input.value));
+    const files=[...(form.querySelector('input[type=file]')?.files||[])];
+    await detailsAction(button,async()=>{
+      if(form.dataset.offerDiy)await request(offerUrl(id)+'/diy',{method:'PATCH',data:{position_ids:selected}});
+      else for(const file of files){const payload=new FormData();payload.set('file',file);await request(offerUrl(id)+'/attachments',{method:'POST',formData:payload});}
+      await reload();refreshEditorSection(id,form.dataset.offerDiy?'.offer-diy-plan':'.offer-attachments');
+    });
+  });
+  document.addEventListener('click',async event=>{
+    const button=event.target.closest('[data-attachment-delete]');if(!button||offerEditBusy)return;
+    if(!await PHBUI.confirm('Diesen zusätzlichen Anhang endgültig löschen?'))return;
+    const [id,documentId]=button.dataset.attachmentDelete.split(':').map(Number);
+    await detailsAction(button,async()=>{await request(offerUrl(id)+'/attachments/'+documentId,{method:'DELETE'});await reload();refreshEditorSection(id,'.offer-attachments');});
   });
   document.addEventListener('toggle',async e=>{
     const details=e.target;
@@ -795,8 +943,10 @@
       }else{
         if(!await PHBUI.confirm('Versionsentwurf verwerfen? Das PDF bleibt als historischer Nachweis gespeichert.'))return;
         await request(offerUrl(id)+'/versions/'+v+'/discard',{method:'POST'});
+        if(button.closest('#offerDrafts'))workflowFlow.finish();
       }
       await reload();
+      await window.PHBImports?.refresh();
     }catch(err){await PHBUI.alert(err.message)}
   });
   document.addEventListener('click',event=>{
@@ -825,7 +975,7 @@
         const checked=checkPositions(form);
         if(checked.warning && !await PHBUI.confirm('Einige Positionsbeträge fehlen oder die Positionssumme weicht von der Angebotssumme ab. Trotzdem als geprüft in die Liste übernehmen?'))return;
         await update(id,collectDraft(form));await changeStatus(id,'Angebot');
-        workflow.close();
+        workflowFlow.finish();
       }
       if(key==='offerAccept'){
         openOfferAcceptance(Number(id));
@@ -843,6 +993,7 @@
           await request(offerUrl(id),{method:'DELETE'});
           if(deletingDraft)workflowFlow.finish();
           await reload();
+          await window.PHBImports?.refresh();
         }finally{button.disabled=false;}
       }
     } catch(err) {await PHBUI.alert(err.message)}

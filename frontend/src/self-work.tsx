@@ -469,124 +469,132 @@ export function SelfWorkPage() {
           )}
         </Paper>
       ) : (
-        <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }}>
-          {records.map((row) => {
-            const done = row.steps.filter((step) => step.done).length;
-            return (
-              <Paper
-                key={row.id}
-                withBorder
-                p="lg"
-                className="self-work-card"
-                onClick={(event) => {
-                  if (
-                    (event.target as HTMLElement).closest(
-                      'button,a,input,select,textarea,[role="button"]',
+        <Paper withBorder p="sm" className="self-work-card-container">
+          <div className="self-work-card-grid">
+            {records.map((row) => {
+              const done = row.steps.filter((step) => step.done).length;
+              return (
+                <Paper
+                  key={row.id}
+                  withBorder
+                  p="sm"
+                  className="self-work-card"
+                  onClick={(event) => {
+                    if (
+                      (event.target as HTMLElement).closest(
+                        'button,a,input,select,textarea,[role="button"]',
+                      )
                     )
-                  )
-                    return;
-                  edit(row);
-                }}
-              >
-                <Group justify="space-between" wrap="nowrap">
-                  <StatusPill
-                    className="self-work-status"
-                    color={
-                      row.status === 'Erledigt'
-                        ? 'green'
-                        : row.status === 'In Arbeit'
-                          ? 'blue'
-                          : 'gray'
-                    }
-                  >
-                    {row.status}
-                  </StatusPill>
-                  <Group gap={8} wrap="nowrap" className="self-work-corner-actions">
-                    <Tooltip label="Eigenleistung bearbeiten">
-                      <ActionIcon
-                        variant="default"
-                        className="self-work-corner-icon"
-                        aria-label={'Eigenleistung bearbeiten: ' + row.title}
-                        onClick={() => edit(row)}
-                      >
-                        <IconPencil size={18} />
-                      </ActionIcon>
-                    </Tooltip>
-                    <Tooltip label={'Rechnungen & Kassenzettel: ' + row.receipt_ids.length}>
-                      <ActionIcon
-                        variant="default"
-                        className="self-work-corner-icon"
-                        onClick={() => setInvoicePlanID(row.id)}
-                        aria-label={'Rechnungen zu ' + row.title + ': ' + row.receipt_ids.length}
-                      >
-                        <IconReceipt size={17} />
-                        <span className="self-work-action-count">{row.receipt_ids.length}</span>
-                      </ActionIcon>
-                    </Tooltip>
-                    <SourceWork type="self_work" id={row.id} compact />
-                  </Group>
-                </Group>
-                <UnstyledButton className="phb-primary-link" onClick={() => edit(row)}>
-                  <Title order={3} lineClamp={2}>
-                    {row.title}
-                  </Title>
-                </UnstyledButton>
-                {row.location && (
-                  <Text size="sm" c="dimmed">
-                    {row.location}
-                  </Text>
-                )}
-                <Text size="sm" lineClamp={2}>
-                  {row.description || 'Beschreibung noch offen.'}
-                </Text>
-                {row.task_label && (
-                  <Badge
-                    component={Link}
-                    to={'/?task_id=' + row.task_id}
-                    variant="light"
-                    className="self-work-task-label"
-                    aria-label={'Arbeitspaket öffnen: ' + row.task_label}
-                  >
-                    {row.task_label}
-                  </Badge>
-                )}
-                {row.steps.length > 0 && (
-                  <div>
-                    <Group justify="space-between">
-                      <Text size="xs" c="dimmed">
-                        Arbeitsschritte
-                      </Text>
-                      <Text size="xs">
-                        {done} / {row.steps.length}
-                      </Text>
+                      return;
+                    edit(row);
+                  }}
+                >
+                  <Group justify="space-between" wrap="nowrap">
+                    <StatusPill
+                      className="self-work-status"
+                      color={
+                        row.status === 'Erledigt'
+                          ? 'green'
+                          : row.status === 'In Arbeit'
+                            ? 'blue'
+                            : 'gray'
+                      }
+                    >
+                      {row.status}
+                    </StatusPill>
+                    <Group gap={8} wrap="nowrap" className="self-work-corner-actions">
+                      <Tooltip label="Eigenleistung bearbeiten">
+                        <ActionIcon
+                          variant="default"
+                          className="self-work-corner-icon"
+                          aria-label={'Eigenleistung bearbeiten: ' + row.title}
+                          onClick={() => edit(row)}
+                        >
+                          <IconPencil size={18} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Tooltip label={'Rechnungen & Kassenzettel: ' + row.receipt_ids.length}>
+                        <ActionIcon
+                          variant="default"
+                          className="self-work-corner-icon"
+                          onClick={() => setInvoicePlanID(row.id)}
+                          aria-label={'Rechnungen zu ' + row.title + ': ' + row.receipt_ids.length}
+                        >
+                          <IconReceipt size={17} />
+                          <span className="self-work-action-count">{row.receipt_ids.length}</span>
+                        </ActionIcon>
+                      </Tooltip>
+                      <SourceWork type="self_work" id={row.id} compact />
                     </Group>
-                    <Progress value={(done / row.steps.length) * 100} size="xs" mt={6} />
-                  </div>
-                )}
-                <Text size="sm" c="dimmed" mt="auto">
-                  {row.costs_complete
-                    ? 'Plan: '
-                    : row.estimated_cost
-                      ? 'Plan (unvollständig): '
-                      : 'Kosten noch offen'}
-                  {(row.costs_complete || !!row.estimated_cost) && money(row.estimated_cost)}
-                </Text>
-                <Group justify="space-between">
-                  <Text size="sm">Ist: {money(row.actual_cost)}</Text>
-                </Group>
-                <Text size="xs" c="dimmed">
-                  Material bestellt / vorhanden: {money(row.procured_material_cost)}
-                </Text>
-              </Paper>
-            );
-          })}
-        </SimpleGrid>
+                  </Group>
+                  <UnstyledButton className="phb-primary-link" onClick={() => edit(row)}>
+                    <Title order={3} lineClamp={2}>
+                      {row.title}
+                    </Title>
+                  </UnstyledButton>
+                  {row.location && (
+                    <Text size="sm" c="dimmed">
+                      {row.location}
+                    </Text>
+                  )}
+                  <Text size="sm" lineClamp={2}>
+                    {row.description || 'Beschreibung noch offen.'}
+                  </Text>
+                  {row.task_label && (
+                    <Badge
+                      component={Link}
+                      to={'/?task_id=' + row.task_id}
+                      variant="light"
+                      className="self-work-task-label"
+                      aria-label={'Arbeitspaket öffnen: ' + row.task_label}
+                    >
+                      {row.task_label}
+                    </Badge>
+                  )}
+                  {row.steps.length > 0 && (
+                    <div>
+                      <Group justify="space-between">
+                        <Text size="xs" c="dimmed">
+                          Arbeitsschritte
+                        </Text>
+                        <Text size="xs">
+                          {done} / {row.steps.length}
+                        </Text>
+                      </Group>
+                      <Progress value={(done / row.steps.length) * 100} size="xs" mt={6} />
+                    </div>
+                  )}
+                  <Group
+                    className="self-work-card-costs"
+                    justify="space-between"
+                    gap="xs"
+                    mt="auto"
+                  >
+                    <Text size="xs" c="dimmed">
+                      {row.costs_complete
+                        ? 'Plan: '
+                        : row.estimated_cost
+                          ? 'Plan (unvollständig): '
+                          : 'Kosten noch offen'}
+                      {(row.costs_complete || !!row.estimated_cost) && money(row.estimated_cost)}
+                    </Text>
+                    <Text size="xs">Ist: {money(row.actual_cost)}</Text>
+                  </Group>
+                  <Text size="xs" c="dimmed">
+                    Material bestellt / vorhanden: {money(row.procured_material_cost)}
+                  </Text>
+                </Paper>
+              );
+            })}
+          </div>
+        </Paper>
       )}
       <Text size="xs" c="dimmed" mt="lg">
         Plan-Kosten aus Material und Werkzeugen fließen in die Projektprognose ein. Ist-Kosten
         entstehen durch gebuchte Belege. Der Beschaffungsstatus löst keine Zahlung aus.
       </Text>
       <Editor
+        className="self-work-editor"
         opened={opened}
         title={id ? 'Eigenleistung bearbeiten' : 'Neue Eigenleistung'}
         dirty={form.isDirty()}
@@ -598,12 +606,13 @@ export function SelfWorkPage() {
         onClose={() => setOpened(false)}
       >
         <form
+          className="self-work-editor-form"
           onSubmit={(event) => {
             event.preventDefault();
             void save();
           }}
         >
-          <Stack>
+          <Stack className="self-work-editor-layout">
             <Tabs
               value={tab}
               onChange={(value) => {
@@ -620,67 +629,71 @@ export function SelfWorkPage() {
                 <Tabs.Tab value="tools">Werkzeuge ({form.values.tools.length})</Tabs.Tab>
               </Tabs.List>
               <Tabs.Panel value="overview" pt="md">
-                <Stack>
-                  <TextInput
-                    label="Bezeichnung"
-                    placeholder="Zum Beispiel Wohnzimmer verputzen"
-                    required
-                    maxLength={200}
-                    {...form.getInputProps('title')}
-                  />
-                  <Textarea
-                    label="Was möchtest du machen?"
-                    description="Ergebnis, Maße und Untergrund helfen dir bei der Vorbereitung."
-                    autosize
-                    minRows={3}
-                    maxRows={8}
-                    maxLength={6000}
-                    {...form.getInputProps('description')}
-                  />
-                  <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                    <TextInput
-                      label="Ort / Raum"
-                      maxLength={200}
-                      {...form.getInputProps('location')}
-                    />
-                    <Select
-                      label="Deine Erfahrung"
-                      data={['Einsteiger', 'Etwas Erfahrung', 'Erfahren']}
-                      {...form.getInputProps('experience')}
-                    />
-                  </SimpleGrid>
-                  <Select
-                    label="Arbeitspaket verknüpfen (optional)"
-                    description="Eine Verknüpfung zur Orientierung; das Arbeitspaket wird nicht verändert."
-                    searchable
-                    clearable
-                    data={taskOptions}
-                    value={form.values.task_id ? String(form.values.task_id) : null}
-                    onChange={(value) =>
-                      form.setFieldValue('task_id', value ? Number(value) : null)
-                    }
-                  />
-                  {form.values.task_id && !linkedTask && (
-                    <Alert color="yellow">
-                      Das verknüpfte Arbeitspaket ist nicht mehr verfügbar. Du kannst die
-                      Verknüpfung entfernen oder ein anderes auswählen. Deine Eigenleistung bleibt
-                      erhalten.
-                    </Alert>
-                  )}
-                  <Select
-                    label="Status dieser Eigenleistung"
-                    data={['Geplant', 'In Arbeit', 'Erledigt']}
-                    {...form.getInputProps('status')}
-                  />
-                  <Textarea
-                    label="Notizen und Planungshinweise"
-                    autosize
-                    minRows={3}
-                    maxRows={8}
-                    maxLength={6000}
-                    {...form.getInputProps('notes')}
-                  />
-                </Stack>
+                <div className="self-work-list-frame self-work-overview-frame">
+                  <div className="self-work-list-content">
+                    <Stack>
+                      <TextInput
+                        label="Bezeichnung"
+                        placeholder="Zum Beispiel Wohnzimmer verputzen"
+                        required
+                        maxLength={200}
+                        {...form.getInputProps('title')}
+                      />
+                      <Textarea
+                        label="Was möchtest du machen?"
+                        description="Ergebnis, Maße und Untergrund helfen dir bei der Vorbereitung."
+                        autosize
+                        minRows={3}
+                        maxRows={8}
+                        maxLength={6000}
+                        {...form.getInputProps('description')}
+                      />
+                      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                        <TextInput
+                          label="Ort / Raum"
+                          maxLength={200}
+                          {...form.getInputProps('location')}
+                        />
+                        <Select
+                          label="Deine Erfahrung"
+                          data={['Einsteiger', 'Etwas Erfahrung', 'Erfahren']}
+                          {...form.getInputProps('experience')}
+                        />
+                      </SimpleGrid>
+                      <Select
+                        label="Arbeitspaket verknüpfen (optional)"
+                        description="Eine Verknüpfung zur Orientierung; das Arbeitspaket wird nicht verändert."
+                        searchable
+                        clearable
+                        data={taskOptions}
+                        value={form.values.task_id ? String(form.values.task_id) : null}
+                        onChange={(value) =>
+                          form.setFieldValue('task_id', value ? Number(value) : null)
+                        }
+                      />
+                      {form.values.task_id && !linkedTask && (
+                        <Alert color="yellow">
+                          Das verknüpfte Arbeitspaket ist nicht mehr verfügbar. Du kannst die
+                          Verknüpfung entfernen oder ein anderes auswählen. Deine Eigenleistung
+                          bleibt erhalten.
+                        </Alert>
+                      )}
+                      <Select
+                        label="Status dieser Eigenleistung"
+                        data={['Geplant', 'In Arbeit', 'Erledigt']}
+                        {...form.getInputProps('status')}
+                      />
+                      <Textarea
+                        label="Notizen und Planungshinweise"
+                        autosize
+                        minRows={3}
+                        maxRows={8}
+                        maxLength={6000}
+                        {...form.getInputProps('notes')}
+                      />
+                    </Stack>
+                  </div>
+                </div>
               </Tabs.Panel>
               <Tabs.Panel value="steps" pt="md">
                 <ListFrame

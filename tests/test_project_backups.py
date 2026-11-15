@@ -90,6 +90,50 @@ class ProjectBackupTest(unittest.TestCase):
         with zipfile.ZipFile(path,'w',zipfile.ZIP_DEFLATED) as z:
             for name,value in files.items():z.writestr(name,value)
 
+    def test_hours_round_trip_and_old_archive_defaults_are_project_scoped(self):
+        ids={}
+        for owner in (1,self.other):
+            headers=self.headers(owner)
+            person=self.client.post('/api/time-people',headers=headers,json={'name':'Helfer '+str(owner)}).json['person']
+            entry=self.client.post('/api/time-entries',headers=headers,json={'person_id':person['id'],'minutes':95,'worked_on':'2026-11-11'}).json['entry']
+            ids[owner]=(person['id'],entry['id'])
+        path=self.create();other=self.snapshot(self.other)
+        self.client.patch('/api/time-entries/'+str(ids[1][1]),json={'minutes':180})
+        result=self.start_restore(path);self.assertEqual(result['state'],'done',result)
+        b.db.session.remove()
+        self.assertEqual(self.client.get('/api/time-tracking').json['people'][0]['total_minutes'],95)
+        self.assertEqual(self.snapshot(self.other),other)
+        self.rewrite(path,lambda data:[data['tables'].pop(name) for name in ('time_person','time_entry')])
+        _,rows=backups.load_rows(path,b.db,1)
+        self.assertEqual(rows['time_person'],[]);self.assertEqual(rows['time_entry'],[])
+        with b.project_context(1):
+            backups.clear_rows(b.db.session.connection(),b.db,1);b.db.session.commit()
+        self.assertEqual(self.client.get('/api/time-tracking').json['people'],[])
+        self.assertEqual(self.snapshot(self.other),other)
+
+    def test_document_inbox_metadata_is_project_scoped_and_external_files_stay_external(self):
+        incoming=Path(self.temp.name)/'incoming';incoming.mkdir()
+        original=incoming/'offen.txt';original.write_text('Noch zu prüfen')
+        import os,time
+        os.utime(original,(time.time()-60,time.time()-60))
+        for owner in (1,self.other):
+            response=self.client.post('/api/document-inbox/configure',headers=self.headers(owner),json={'folder':str(incoming),'interval_minutes':10})
+            self.assertEqual(response.status_code,200,response.json)
+        path=self.create();other=self.snapshot(self.other)
+        with zipfile.ZipFile(path) as archive:
+            data=json.loads(archive.read('project-data.json'))
+            self.assertEqual(len(data['tables']['document_inbox_item']),1)
+            self.assertFalse(any('offen.txt' in name for name in archive.namelist()))
+        result=self.start_restore(path);self.assertEqual(result['state'],'done',result)
+        b.db.session.remove();self.assertEqual(self.snapshot(self.other),other)
+        self.assertEqual(self.client.get('/api/document-inbox').json['count'],1)
+        self.rewrite(path,lambda data:[data['tables'].pop(name) for name in ('document_inbox_config','document_inbox_item')])
+        _,rows=backups.load_rows(path,b.db,1);self.assertEqual(rows['document_inbox_item'],[])
+        with b.project_context(1):
+            backups.clear_rows(b.db.session.connection(),b.db,1);b.db.session.commit()
+        self.assertEqual(self.client.get('/api/document-inbox').json['count'],0)
+        self.assertTrue(original.exists());self.assertEqual(self.snapshot(self.other),other)
+
     def test_pre_0031_archive_adds_only_known_job_lease_defaults(self):
         job=b.ImportJob(batch_id='a'*32,kind='documents',filename='Alt.pdf',stored_name='already-processed.pdf',status='Fertig',analysis_mode='local')
         b.db.session.add(job);b.db.session.commit();ident=job.id

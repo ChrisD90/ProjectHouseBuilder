@@ -275,7 +275,7 @@
 
   // Action controls share a stable class, including asynchronously created dialogs.
   // Cards, navigation and notification toggles retain their purpose-specific geometry.
-  const structuralButtons='.phb-nav-link,.phb-icon-button,.phb-ai-topbar,.schedule-chat-fab,.phb-import-toggle,.entry,.offer-tile-open,.offer-method,.linked-work-button';
+  const structuralButtons='.phb-nav-link,.phb-icon-button,.phb-ai-topbar,.schedule-chat-fab,.phb-import-toggle,.entry,.offer-tile-open,.offer-method,.linked-work-button,.schedule-calendar-event,.schedule-calendar-phase,.schedule-day-heading';
   function prepareButtons(root){
     const nodes=[];
     if(root.matches?.('button,a.mini,a.subtle,a.primary,.docs-item-actions a'))nodes.push(root);

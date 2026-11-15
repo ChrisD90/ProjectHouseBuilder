@@ -1,0 +1,41 @@
+.header-inbox-button {
+  position: relative;
+  flex-shrink: 0;
+  overflow: visible;
+}
+.header-inbox-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  background: var(--brand-accent);
+  color: var(--brand-bg);
+  font-size: 10px;
+  font-weight: 750;
+  border: 1px solid var(--brand-surface);
+  line-height: 1;
+}
+.document-inbox-entry {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.document-inbox-entry:disabled {
+  cursor: default;
+  color: inherit;
+  opacity: 1;
+}
+.document-inbox-entry:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  border-radius: 3px;
+}
+.document-inbox-folder {
+  min-width: 0;
+  flex: 1 1 220px;
+}

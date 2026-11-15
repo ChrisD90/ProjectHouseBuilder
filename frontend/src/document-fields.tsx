@@ -5,7 +5,6 @@ export const emptyDocument: Row = {
   title: '',
   category: 'Bauplan',
   area: 'Allgemein',
-  status: 'Aktuell',
   tags: '',
   description: '',
 };
@@ -33,7 +32,6 @@ export function DocumentFields({
           data={options.areas || []}
           {...form.getInputProps('area')}
         />
-        <Select label="Status" data={options.statuses || []} {...form.getInputProps('status')} />
         <TextInput label="Schlagworte" maxLength={400} {...form.getInputProps('tags')} />
       </SimpleGrid>
       <Textarea

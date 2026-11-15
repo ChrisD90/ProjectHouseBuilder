@@ -37,15 +37,33 @@ input {
 .app-sidebar[data-collapsed='true'] .mantine-NavLink-body {
   display: none;
 }
-.sidebar-footer {
-  flex-shrink: 0;
-}
 .app-header-left {
   flex: 1;
   min-width: 0;
 }
 .app-header-actions {
   flex-shrink: 0;
+}
+.header-unpaid-button {
+  position: relative;
+  overflow: visible;
+  flex-shrink: 0;
+}
+.header-unpaid-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 2px solid var(--mantine-color-body);
+  border-radius: 999px;
+  background: var(--mantine-color-red-light);
+  color: var(--mantine-color-red-light-color);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
 }
 .app-header-actions :is(.mantine-Button-root, .mantine-Select-input) {
   height: 38px;
@@ -63,6 +81,7 @@ input {
   margin-inline-end: 0;
 }
 .header-project-identity {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 20px;
@@ -146,6 +165,18 @@ input {
   border-radius: 14px;
   padding: 20px;
   background: var(--mantine-color-body);
+}
+.collection-toolbar,
+.collection-content {
+  min-width: 0;
+}
+.collection-scroll {
+  max-height: min(680px, 70dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  min-width: 0;
+  padding: 2px;
 }
 .actions {
   display: flex;
@@ -255,14 +286,21 @@ input {
     align-items: flex-start;
     gap: 2px;
   }
+  .app-header-brand {
+    max-width: 100%;
+  }
   .app-header-brand .brand-logo {
     width: clamp(128px, 40vw, 176px);
+    max-width: 100%;
     height: 28px;
+    object-fit: contain;
+    object-position: left center;
   }
   .header-project-info {
     border: 0;
     padding: 0;
-    max-width: clamp(128px, 40vw, 176px);
+    max-width: 100%;
+    width: 100%;
     gap: 5px;
   }
   .header-project-title {

@@ -175,9 +175,9 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     assert.equal(accepted.status(), 201, await accepted.text());
     await page.goto(base + "/p/" + owner + "/angebote?offer_id=" + oid);
     const frame = page.frameLocator('iframe[title="Angebote"]:not([hidden])');
-    await expect(frame.locator("#offerDetailsDialog")).toBeVisible();
+    await expect(frame.locator("#offerEditDialog")).toBeVisible();
     await expect(
-      frame.locator("#offerDetailsContent [data-work-open]"),
+      frame.locator("#offerEditExtras [data-work-open]"),
     ).toHaveCount(0);
     await expect(
       frame.locator(
@@ -190,32 +190,15 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
         localStorage.setItem("mantine-color-scheme-value", theme);
       }, theme);
       await page.reload();
-      await expect(frame.locator("#offerDetailsDialog")).toBeVisible();
-      for (const stage of ["normal", "warning", "overrun", "fully_billed"]) {
-        const colors = await frame.locator(".offer-billing").evaluate(
-          (element, { stage, theme }) => {
-            element.className = "offer-billing offer-billing-" + stage;
-            const body = document.body;
-            if (document.documentElement.dataset.phbTheme !== theme)
-              throw Error("Embedded theme was not propagated");
-            const sample = document.createElement("span");
-            sample.style.color = "var(--ui-ink)";
-            body.append(sample);
-            const ink = getComputedStyle(sample).color;
-            sample.remove();
-            return {
-              foreground: getComputedStyle(element.querySelector("b")).color,
-              ink,
-              background: getComputedStyle(element).backgroundColor,
-              theme:
-                document.documentElement.dataset.theme || body.dataset.theme,
-            };
-          },
-          { stage, theme },
-        );
-        assert.equal(colors.foreground, colors.ink, JSON.stringify(colors));
-        assert.notEqual(colors.background, "rgba(0, 0, 0, 0)");
-      }
+      await expect(frame.locator("#offerEditDialog")).toBeVisible();
+      await expect(frame.locator('#offerEditDialog .offer-billing')).toHaveCount(0);
+      const colors=await frame.locator('#offerEditDialog').evaluate(element=>({
+        theme:document.documentElement.dataset.phbTheme,
+        foreground:getComputedStyle(element).color,
+        background:getComputedStyle(element).backgroundColor
+      }));
+      assert.equal(colors.theme,theme);assert.notEqual(colors.foreground,colors.background);
+      await expect(frame.locator('.offer-tile-paid')).toContainText('0 % bezahlt');
       await page.screenshot({
         path: "/tmp/phb-offer-detail-" + theme + ".png",
         fullPage: true,

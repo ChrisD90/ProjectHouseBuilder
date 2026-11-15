@@ -111,6 +111,7 @@ def define_models(db):
     class ProjectDocument(db.Model):
         __tablename__='project_document'
         id=db.Column(db.Integer,primary_key=True)
+        current_version=db.Column(db.Integer,nullable=False,default=1,server_default='1')
         title=db.Column(db.String(200),nullable=False)
         original_name=db.Column(db.String(220),nullable=False)
         stored_name=db.Column(db.String(80),unique=True,nullable=False)
@@ -125,6 +126,18 @@ def define_models(db):
         extracted_text=db.Column(db.Text,nullable=False,default='',server_default='')
         extraction_note=db.Column(db.String(260),nullable=False,default='',server_default='')
         uploaded_at=db.Column(db.DateTime,nullable=False,server_default=db.func.current_timestamp())
+
+
+    class ProjectDocumentVersion(db.Model):
+        __tablename__='project_document_version'
+        __table_args__=(db.UniqueConstraint('document_id','version',name='uq_project_document_version'),)
+        id=db.Column(db.Integer,primary_key=True)
+        document_id=db.Column(db.Integer,db.ForeignKey('project_document.id'),nullable=False,index=True)
+        version=db.Column(db.Integer,nullable=False)
+        state=db.Column(db.String(24),nullable=False)
+        stored_name=db.Column(db.String(80),nullable=False,unique=True)
+        snapshot_json=db.Column(db.Text,nullable=False)
+        created_at=db.Column(db.DateTime,nullable=False,default=datetime.utcnow)
 
 
     class Trade(db.Model):
@@ -200,6 +213,7 @@ def define_models(db):
         original_name = db.Column(db.String(260), nullable=False)
         stored_name = db.Column(db.String(80), unique=True, nullable=False)
         kind = db.Column(db.String(40), default='Angebot')
+        offer_id = db.Column(db.Integer, db.ForeignKey('offer.id'), nullable=True, index=True)
         contractor_id = db.Column(db.Integer, db.ForeignKey('contractor.id'), nullable=True)
         budget_line_id = db.Column(db.Integer, db.ForeignKey('budget_line.id'), nullable=True)
         cost_item_id = db.Column(db.Integer, db.ForeignKey('cost_item.id'), nullable=True)
@@ -319,6 +333,7 @@ def define_models(db):
         net_amount=db.Column(Money())
         optional_amount=db.Column(Money())
         optional=db.Column(db.Boolean,nullable=False,default=False)
+        own_work=db.Column(db.Boolean,nullable=False,default=False,server_default='0')
         page=db.Column(db.Integer)
 
-    return {'Project':Project, 'Setting':Setting, 'Category':Category, 'BuildPhase':BuildPhase, 'Task':Task, 'Dependency':Dependency, 'ScheduleHistory':ScheduleHistory, 'ImportJob':ImportJob, 'ProjectDocument':ProjectDocument, 'Trade':Trade, 'Contractor':Contractor, 'CostItem':CostItem, 'BudgetLine':BudgetLine, 'Funding':Funding, 'Document':Document, 'Receipt':Receipt, 'Offer':Offer, 'OrderAcceptance':OrderAcceptance, 'OfferVersion':OfferVersion, 'OfferSection':OfferSection, 'OfferPosition':OfferPosition}
+    return {'Project':Project, 'Setting':Setting, 'Category':Category, 'BuildPhase':BuildPhase, 'Task':Task, 'Dependency':Dependency, 'ScheduleHistory':ScheduleHistory, 'ImportJob':ImportJob, 'ProjectDocument':ProjectDocument, 'ProjectDocumentVersion':ProjectDocumentVersion, 'Trade':Trade, 'Contractor':Contractor, 'CostItem':CostItem, 'BudgetLine':BudgetLine, 'Funding':Funding, 'Document':Document, 'Receipt':Receipt, 'Offer':Offer, 'OrderAcceptance':OrderAcceptance, 'OfferVersion':OfferVersion, 'OfferSection':OfferSection, 'OfferPosition':OfferPosition}

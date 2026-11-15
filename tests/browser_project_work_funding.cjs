@@ -71,18 +71,18 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
     assert.equal(accepted.status(), 201, await accepted.text());
     await page.goto(base + "/angebote?offer_id=" + oid);
     let frame = page.frameLocator('iframe[title="Angebote"]:not([hidden])');
-    await frame.locator("#offerDetailsDialog").waitFor();
+    await frame.locator("#offerEditDialog").waitFor();
     assert.equal(
       await frame.locator("#offerList [data-offer-unaccept]").count(),
       0,
     );
     assert.equal(
       await frame
-        .locator('#offerDetailsContent [data-work-open="offer"]')
+        .locator('#offerEditExtras [data-work-open="offer"]')
         .count(),
       0,
     );
-    await frame.locator("#closeOfferDetails").click();
+    await frame.locator("#closeOfferEdit").click();
     await frame
       .locator(
         '#offerList [data-work-open="offer"][data-work-id="' + oid + '"]',
@@ -162,14 +162,14 @@ if (!base) throw Error("PHB_TEST_URL must point to a disposable project.");
       })
       .click();
     frame = page.frameLocator('iframe[title="Angebote"]:not([hidden])');
-    await frame.locator("#offerDetailsDialog").waitFor();
+    await frame.locator("#offerEditDialog").waitFor();
     assert.equal(
       await frame
-        .locator('#offerDetailsContent [data-work-open="offer"]')
+        .locator('#offerEditExtras [data-work-open="offer"]')
         .count(),
       0,
     );
-    await frame.locator("#closeOfferDetails").click();
+    await frame.locator("#closeOfferEdit").click();
     await frame
       .locator(
         '#offerList [data-work-open="offer"][data-work-id="' + oid + '"]',

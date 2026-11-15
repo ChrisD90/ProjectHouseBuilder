@@ -42,7 +42,7 @@ class SidebarUITest(unittest.TestCase):
                 if name == 'stammdaten':
                     self.assertIn('/static/stammdaten.js', content)
                     self.assertIn('/static/stammdaten.css', content)
-                self.assertIn('<form method="post" action="/logout"', content)
+                self.assertNotIn('/logout', content)
                 self.assertEqual(content.count('aria-current="page"'), 1)
                 self.assertNotIn('← Zum Gantt-Plan', content)
 
@@ -202,7 +202,7 @@ class SidebarUITest(unittest.TestCase):
 
     def test_project_document_ui_and_gantt_context_are_separate(self):
         html=self.render('dokumente')
-        for marker in ('id="projectDocumentUpload"','id="docFilterStatus"',
+        for marker in ('id="projectDocumentUpload"','id="docVersionHistory"',
                        'id="docEditDialog"','/static/dokumente.js'):
             self.assertIn(marker,html)
         schedule=self.render('index')
@@ -382,7 +382,7 @@ class SidebarUITest(unittest.TestCase):
         for page,button in (('angebote','openOfferWorkflow'),
                             ('belege','openReceiptWorkflow'),
                             ('dokumente','openDocUpload'),
-                            ('finanzierung','newDrawdown')):
+                            ('finanzierung','newCreditActivity')):
             html=self.render(page)
             header=html.index('phb-action-header')
             button_index=html.index('id="'+button+'"')
@@ -419,7 +419,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('id="offerInvoicesContent"',page)
         self.assertIn('#offerList .offer-tile',css)
         self.assertIn('grid-template-columns:repeat(3',css)
-        self.assertIn('max-height:610px',css)
+        self.assertRegex(css,r'#offerList\s*\{[^}]*max-height:\d+px')
         self.assertIn('overflow-y:auto',css)
         self.assertIn('.offer-tile-corner-actions',css)
         self.assertIn('.offer-drafts-icon',css)
@@ -433,7 +433,7 @@ class SidebarUITest(unittest.TestCase):
         script=(STATIC/'receipts.js').read_text()
         styles=(STATIC/'receipts.css').read_text()
         self.assertIn('id="receiptSearch"',page)
-        self.assertIn('id="receiptSearchResult"',page)
+        self.assertNotIn('id="receiptSearchResult"',page)
         self.assertIn('id="receiptLaborFilter"',page)
         self.assertIn('id="receiptYearFilter"',page)
         self.assertIn('id="receiptLaborExport"',page)
@@ -489,7 +489,7 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn('title="Kredit hinzufügen"',finance)
         self.assertIn('title="Eigenkapital hinzufügen"',finance)
         self.assertIn('loan-drawdown-count',finance_js)
-        self.assertIn("['Eingereicht','Ausgezahlt','Bestätigt']",finance_js)
+        self.assertIn('PHBCreditActivity.build(state)',finance_js)
         self.assertNotIn('id="paymentForm"',finance)
         self.assertNotIn('Liquiditätsvorschau',finance)
         self.assertNotIn('id="editBudget"',costs)
@@ -552,9 +552,6 @@ class SidebarUITest(unittest.TestCase):
         self.assertIn("updateLaborHint(x.labor_source,x.labor_amount)",js)
         self.assertIn("x.labor_amount!==null",js)
         self.assertIn("Manuell eingetragen",js)
-
-    def test_login_does_not_show_application_sidebar(self):
-        self.assertNotIn('phbSidebar', self.render('login'))
 
     def test_pwa_cache_includes_offline_shell_and_never_api_or_html(self):
         worker = (STATIC / 'sw.js').read_text()

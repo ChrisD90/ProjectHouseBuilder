@@ -16,11 +16,56 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
    const response=await page.request.post(base+'/api/offers/manual',{headers,data:{vendor,gross:100,category:'Elektro'}});
    assert(response.ok(),await response.text());
   }
+  const acceptedResponse=await page.request.post(base+'/api/offers/manual',{headers,data:{vendor:'Fachbetrieb für energetische Gebäudesanierung und moderne Haustechnik GmbH',gross:25000,category:'Elektro'}});
+  assert(acceptedResponse.ok(),await acceptedResponse.text());const accepted=(await acceptedResponse.json()).id;
+  const acceptance=await page.request.patch(base+'/api/offers/'+accepted,{headers,data:{status:'Angenommen'}});assert(acceptance.ok(),await acceptance.text());
+  const costs=(await(await page.request.get(base+'/api/costs',{headers})).json()).items;
+  const cost=costs.find(item=>item.offer_id===accepted).id;
+  for(const number of ['R-100','Rechnung-mit-einem-sehr-langen-Bezeichner-und-vielen-Details-200']){
+   const upload=await page.request.post(base+'/api/receipts',{headers,multipart:{analysis_mode:'none',file:{name:number+'.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\n'+number)}}});
+   assert(upload.ok(),await upload.text());const rid=(await upload.json()).id;
+   const saved=await page.request.patch(base+'/api/receipts/'+rid,{headers,data:{invoice_number:number,supplier:'Fachbetrieb',document_date:'2026-11-04',gross_amount:100,cost_item_id:cost}});
+   assert(saved.ok(),await saved.text());
+  }
+  for(let i=0;i<6;i++){
+   const response=await page.request.post(base+'/api/offers/manual',{headers,data:{vendor:'Weiterer Betrieb '+i,gross:100,category:'Elektro'}});assert(response.ok(),await response.text());
+  }
   await page.goto(base+'/p/'+owner+'/angebote');
   const frame=page.frameLocator('iframe[title="Angebote"]:not([hidden])');
   await expect(frame.locator('.offers-heading')).toContainText('Erst wenn du');
   await expect(frame.locator('.offers-how,.offers-clarity')).toHaveCount(0);
-  await expect(frame.locator('#angebotsliste [data-offer-card]')).toHaveCount(2);
+  await expect(frame.locator('#angebotsliste [data-offer-card]')).toHaveCount(9);
+  for(const theme of ['light','dark']){
+   await frame.locator('body').evaluate((_,theme)=>window.PHBUI.setTheme(theme),theme);
+   for(const width of [1600,1280,1040,820,390]){
+    await page.setViewportSize({width,height:1000});
+    await expect.poll(()=>frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    if(width===1600)await expect.poll(()=>frame.locator('#offerList').evaluate(node=>getComputedStyle(node).gridTemplateColumns.split(' ').length)).toBe(4);
+    const tile=frame.locator('#offerList [data-offer-card="'+accepted+'"]');
+    const layout=await tile.evaluate(node=>{
+     const rect=node.getBoundingClientRect(),header=node.querySelector('.offer-tile-header').getBoundingClientRect(),vendor=node.querySelector('.offer-tile-vendor').getBoundingClientRect(),price=node.querySelector('.offer-tile-price').getBoundingClientRect(),actions=node.querySelector('.offer-tile-actions').getBoundingClientRect();
+     const list=node.parentElement;
+     return {height:rect.height,headerBottom:header.bottom,vendorTop:vendor.top,vendorHeight:vendor.height,priceBottom:price.bottom,actionsTop:actions.top,actionsBottom:actions.bottom,bottom:rect.bottom,scrolls:list.scrollHeight>list.clientHeight,overflow:document.documentElement.scrollWidth>innerWidth};
+    });
+    assert(layout.height<=212,'Kachel soll deutlich kompakter als 280px sein.');
+    assert(layout.vendorTop>=layout.headerBottom&&layout.vendorHeight<=40,'Langer Firmenname darf die Kopfaktionen nicht überdecken.');
+    assert(layout.actionsBottom<=layout.bottom+1,'Aktionen dürfen nicht abgeschnitten werden.');
+    assert(layout.priceBottom<=layout.actionsTop,'Preis darf die Aktionen nicht überdecken.');
+    assert(layout.scrolls,'Nach zwei beziehungsweise maximal sechs Zeilen soll die Liste scrollen.');assert(!layout.overflow,'Kein horizontaler Seitenüberlauf.');
+    await tile.locator('[data-offer-invoices]').click();
+    const dialog=frame.locator('#offerInvoicesDialog');await expect(dialog).toBeVisible();
+    await expect(dialog.locator('tbody tr')).toHaveCount(2);
+    const aligned=await dialog.locator('tbody tr').evaluateAll(rows=>rows.every(row=>{
+     const cell=row.lastElementChild,buttons=[...cell.querySelectorAll('a')].map(link=>link.getBoundingClientRect());
+     const title=row.querySelector('td strong').getBoundingClientRect(),status=row.children[1].getBoundingClientRect();
+     return title.right<=status.left&&getComputedStyle(cell).display==='table-cell'&&Math.abs(buttons[0].top-buttons[1].top)<1&&Math.abs(buttons[0].height-buttons[1].height)<1&&buttons[0].right<=buttons[1].left;
+    }));assert(aligned,'Rechnungsaktionen sollen nebeneinander und gleich hoch ausgerichtet sein.');
+    if(width===1280)await dialog.screenshot({path:'/tmp/phb-offer-invoices-'+theme+'.png'});
+    await dialog.locator('#closeOfferInvoices').click();
+   }
+   await page.setViewportSize({width:1600,height:1000});
+   await frame.locator('#offerList').screenshot({path:'/tmp/phb-offer-tiles-'+theme+'.png'});
+  }
   const panel=frame.locator('#ki-angebotsvergleich'),summary=panel.locator(':scope > summary');
   await expect(panel).not.toHaveAttribute('open');
   await summary.click();await expect(panel).toHaveAttribute('open','');
@@ -48,6 +93,6 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   const fits=await summary.evaluate(node=>node.getBoundingClientRect().right<=innerWidth+1);assert(fits);
   await panel.screenshot({path:'/tmp/phb-offer-comparison.png'});
   assert.deepEqual(errors,[]);
-  console.log('PASS compact offer introduction, collapsed comparison, keyboard disclosure arrows, live connection guard and mobile panels.');
+  console.log('PASS four-column offer tiles, responsive scrolling, long vendor names, aligned invoice actions in light/dark and mobile, collapsed comparison and live connection guard.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

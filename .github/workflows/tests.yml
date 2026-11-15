@@ -50,6 +50,7 @@ jobs:
           node --check static/dokumente.js
           node --check static/offers.js
           node --check static/receipts.js
+          node --check static/receipt_hints.js
           node --check static/ui.js
           node --check static/stammdaten.js
           node --check static/schedule_chat.js

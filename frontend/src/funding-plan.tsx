@@ -659,7 +659,7 @@ export function FundingPlanDialog({
                 clearable
                 data={(source.documents || []).map((d: Row) => ({
                   value: String(d.id),
-                  label: d.title + ' · ' + d.category + (d.status ? ' · ' + d.status : ''),
+                  label: d.title + ' · ' + d.category,
                 }))}
                 value={(form.values.document_ids || []).map(String)}
                 onChange={(values) => form.setFieldValue('document_ids', values.map(Number))}

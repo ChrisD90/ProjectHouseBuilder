@@ -121,7 +121,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
 
     def drawdown_json(row,detail=False):
         loan=db.session.get(Loan,row.loan_id);items=items_for(row.id);data=load_json(row.data_json,{})
-        result={'id':row.id,'loan_id':row.loan_id,'loan_name':loan.name if loan else 'Gelöschter Kredit',
+        result={'id':row.id,'event_id':row.event_id,'loan_id':row.loan_id,'loan_name':loan.name if loan else 'Gelöschter Kredit',
                 'requested_amount':float(row.requested_amount),'requested_date':row.requested_date,
                 'status':'Ausgezahlt' if row.status=='Bestätigt' else row.status,
                 'payout_type':row.payout_type or 'own_account','ai_prefilled':bool(row.ai_prefilled),
@@ -133,6 +133,35 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
                 'receipt_ids':[item.receipt_id for item in items],
                 'preview_url':f'/api/financing/drawdowns/{row.id}/preview' if row.preview_name else None,
                 'download_url':f'/api/financing/drawdowns/{row.id}/download' if (PACKAGE_ROOT/row.stored_name).is_file() else None}
+        # Exact operations recorded on confirmation, not a guess from receipt/date.
+        applications=[]
+        if row.status in ('Ausgezahlt','Bestätigt'):
+            for item in items:
+                snapshot=load_json(item.snapshot_json,{})
+                receipt=snapshot.get('receipt',{})
+                if snapshot.get('version')!=2:
+                    # Older confirmations recorded transitions and one created payment.
+                    ids=[operation.get('payment_id') for operation in snapshot.get('transitions',[])]
+                    ids.append(snapshot.get('created_payment_id'))
+                    for ident in set(ids)-{None}:
+                        payment=db.session.get(Payment,ident)
+                        if not payment or payment.source!='loan' or payment.loan_id!=row.loan_id or payment.receipt_id!=item.receipt_id:continue
+                        applications.append({'receipt_id':item.receipt_id,'payment_ids':[ident],
+                            'receipt_name':receipt.get('supplier') or receipt.get('filename') or 'Rechnung',
+                            'invoice_number':receipt.get('invoice_number',''),'amount':float(payment.amount),
+                            'kind':'reimbursement'})
+                    continue
+                for key in ('full','splits','created'):
+                    for operation in snapshot.get(key,[]):
+                        amount=operation.get('used') if key=='splits' else operation.get('amount')
+                        ident=operation.get('created_payment_id') if key=='splits' else operation.get('payment_id')
+                        if not amount or not ident:continue
+                        applications.append({'receipt_id':item.receipt_id,'payment_ids':[ident],
+                            'receipt_name':receipt.get('supplier') or receipt.get('filename') or 'Rechnung',
+                            'invoice_number':receipt.get('invoice_number',''),
+                            'amount':float(dec(amount)),
+                            'kind':'receipt_payment' if operation.get('increased_paid') else 'reimbursement'})
+        result['applications']=applications
         if detail:
             result.update(data=data,positions=data.get('positions',[]),mapping=load_json(row.mapping_json,{}),
                 notes=row.notes,borrower_names=row.borrower_names,property_address=row.property_address,

@@ -315,6 +315,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
 
     await visit("Bauzeitenplan");
     const plan = page.frameLocator('iframe[title="Bauzeitenplan"]');
+    await plan.locator('[data-schedule-view="gantt"]').click();
     await plan.locator("#newTask").click();
     await plan.locator("#taskForm [name=name]").fill("Browser-Arbeitspaket");
     await plan.locator("#taskForm button[type=submit]").click();
@@ -364,7 +365,8 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
       'iframe[title="Rechnungen & Belege"]:not([hidden])',
     );
     await invoices.locator("#review").waitFor();
-    await invoices.locator("#review [name=supplier]").fill("UI-Testlieferant");
+    await invoices.locator("#receiptAssignmentType").selectOption("Betrieb");
+    await invoices.locator("#receiptSupplierCompany").selectOption({ label: name });
     await invoices.locator("#review [name=document_date]").fill("2026-10-31");
     await invoices.locator("#review [name=gross_amount]").fill("120,00");
     await invoices.locator("#book").click();
@@ -375,7 +377,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
     await invoices
       .locator("#receiptReviewState")
       .filter({ hasText: "Gebucht" })
-      .waitFor();
+      .waitFor({ state: "attached" });
     await invoices.locator("#closeReceiptWorkflow").click();
     await invoices
       .locator("#receiptWorkflowDialog")

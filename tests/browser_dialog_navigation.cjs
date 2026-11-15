@@ -22,7 +22,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   const receipts=page.frameLocator('iframe[title="Rechnungen & Belege"]:not([hidden])');
   await receipts.locator('.entry[data-id="'+rid+'"]').click();
   await expect(page).toHaveURL(path('/belege?receipt_id='+rid));
-  await receipts.locator('#review [name=supplier]').fill('Gespeicherte Firma');
+  await receipts.locator('#review [name=notes]').fill('Gespeicherte Firma');
   await receipts.locator('#saveReceiptDraft').click();
   await expect(receipts.locator('#receiptSaveStatus')).toContainText('Entwurf gespeichert.');
   await receipts.locator('#review').evaluate(()=>{window.navigationSentinel='preserve-frame';});
@@ -57,12 +57,12 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await receipts.locator('#closeReceiptWorkflow').click();await expect(page).toHaveURL(path('/belege'));
   // Declining the dirty guard must retain the URL and editor.
   await receipts.locator('.entry[data-id="'+rid+'"]').click();
-  await receipts.locator('#review [name=supplier]').fill('Ungespeichert');
+  await receipts.locator('#review [name=notes]').fill('Ungespeichert');
   await receipts.locator('#closeReceiptWorkflow').click();
   const confirm=receipts.locator('dialog.phb-messagebox');
   await confirm.getByRole('button',{name:'Abbrechen',exact:true}).click();
   await expect(page).toHaveURL(path('/belege?receipt_id='+rid));
-  await expect(receipts.locator('#review [name=supplier]')).toHaveValue('Ungespeichert');
+  await expect(receipts.locator('#review [name=notes]')).toHaveValue('Ungespeichert');
   await receipts.locator('#closeReceiptWorkflow').click();await confirm.getByRole('button',{name:'Bestätigen',exact:true}).click();
   await expect(page).toHaveURL(path('/belege'));
   await receipts.locator('.entry[data-id="'+rid+'"]').click();
@@ -72,7 +72,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await expect(receipts.locator('#receiptWorkflowDialog')).not.toBeVisible();
   await expect(page).toHaveURL(path('/belege'));
   for(const [route,title,dialog,close,key,id] of [
-   ['/angebote','Angebote','#offerDetailsDialog','#closeOfferDetails','offer_id',offer.id],
+   ['/angebote','Angebote','#offerEditDialog','#closeOfferEdit','offer_id',offer.id],
    ['/finanzierung','Kredite & Eigenkapital','#loanDialog','#closeLoan','loan_id',loan],
    ['/','Bauzeitenplan','#overlay','#closeTask','task_id',task],
    ['/','Bauzeitenplan','#phaseDialog','#closePhaseDialog','phase_id',phase],
@@ -98,6 +98,9 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await company.getByRole('button',{name:'Speichern',exact:true}).click();
   await expect(receipts.locator('#receiptWorkflowDialog')).toBeVisible();
   await expect(page).toHaveURL(new RegExp('/belege\\?receipt_id='+rid));
+  await expect(receipts.locator('#receiptAssignmentType')).toHaveValue('Betrieb');
+  await receipts.locator('#saveReceiptDraft').click();
+  await expect(receipts.locator('#receiptSaveStatus')).toContainText('Entwurf gespeichert.');
   await receipts.locator('#closeReceiptWorkflow').click();
   await expect(page).toHaveURL(path('/belege'));
   assert.deepEqual(errors,[]);

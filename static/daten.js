@@ -1,6 +1,10 @@
 'use strict';
 (() => {
   const get=id=>document.getElementById(id);
+  get('documentInboxSettings')?.addEventListener('click',()=>{
+    const bridge=window.parent?.PHBReactBridge;
+    if(bridge?.inbox)bridge.inbox.settings();
+  });
   const phrase='ALLE DATEN LÖSCHEN';
   const restorePhrase='BACKUP WIEDERHERSTELLEN';
   let config=null, pendingBackup=false, verifiedRef=null, restoring=false;

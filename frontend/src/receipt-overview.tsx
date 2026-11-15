@@ -102,7 +102,10 @@ export function ReceiptOverview({
                         {r.status}
                       </Badge>
                       <Text size="xs" c="dimmed">
-                        {r.billing_type || r.kind}
+                        {r.kind || 'Rechnung'}
+                        {r.kind !== 'Kassenzettel' && r.billing_type && r.billing_type !== 'Normal'
+                          ? ' · ' + r.billing_type
+                          : ''}
                       </Text>
                     </Table.Td>
                     <Table.Td>{money(r.gross)}</Table.Td>

@@ -1,0 +1,53 @@
+.time-card-container {
+  max-height: 65dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+.time-person-card {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+  transition:
+    border-color 0.15s,
+    background-color 0.15s;
+}
+.time-person-card:hover {
+  border-color: var(--brand-accent);
+  background: var(--brand-soft);
+}
+.time-person-card:focus-visible {
+  outline: 3px solid var(--brand-ring);
+  outline-offset: 1px;
+}
+.time-person-card svg {
+  flex-shrink: 0;
+  color: var(--brand-muted);
+}
+.time-card-total {
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-accent);
+}
+.time-entry-list {
+  display: grid;
+  gap: 8px;
+  max-height: 50dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1px;
+}
+@media (max-width: 500px) {
+  .time-tracking-page > .mantine-Paper-root > .mantine-Group-root {
+    flex-wrap: wrap;
+  }
+  .time-tracking-page > .mantine-Paper-root > .mantine-Group-root > * {
+    width: 100% !important;
+    flex-basis: 100% !important;
+  }
+}

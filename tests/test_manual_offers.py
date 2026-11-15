@@ -26,9 +26,13 @@ class ManualOfferTests(unittest.TestCase):
         return self.client.post('/api/offers/manual',json=data)
 
     @staticmethod
-    def pdf():
+    def pdf(padding=0):
         from pypdf import PdfWriter
         writer=PdfWriter();writer.add_blank_page(width=595,height=842)
+        if padding:
+            from pypdf.generic import DecodedStreamObject,NameObject
+            stream=DecodedStreamObject();stream.set_data(b'%'+b'x'*padding+b'\n')
+            writer.pages[0][NameObject('/Contents')]=writer._add_object(stream)
         output=io.BytesIO();writer.write(output);return output.getvalue()
 
     def test_manual_pdf_is_attached_without_ocr_or_changing_entered_amounts(self):
@@ -45,7 +49,7 @@ class ManualOfferTests(unittest.TestCase):
 
     def test_invalid_or_duplicate_manual_pdf_is_atomic(self):
         with tempfile.TemporaryDirectory() as tmp,patch('app.DOCUMENT_ROOT',Path(tmp)):
-            for name,data in [('wrong.txt',b'%PDF-1.4'),('broken.pdf',b'%PDF-broken'),('oversized.pdf',b'%PDF-'+b'x'*(15*1024*1024))]:
+            for name,data in [('wrong.txt',b'%PDF-1.4'),('broken.pdf',b'%PDF-broken')]:
                 result=self.client.post('/api/offers/manual',data={'vendor':'Bad','gross':500,'category':'Elektro','file':(io.BytesIO(data),name)})
                 self.assertEqual(result.status_code,400,result.json)
                 self.assertEqual(db.session.query(Offer).count(),0)
@@ -56,6 +60,15 @@ class ManualOfferTests(unittest.TestCase):
                 self.assertEqual(result.status_code,expected,result.json)
             self.assertEqual(db.session.query(Offer).count(),1)
             self.assertEqual(len(list(Path(tmp).iterdir())),1)
+
+    def test_manual_pdf_larger_than_fifteen_mb_keeps_order_amount(self):
+        with tempfile.TemporaryDirectory() as tmp,patch('app.DOCUMENT_ROOT',Path(tmp)):
+            content=self.pdf(padding=16*1024*1024)
+            result=self.client.post('/api/offers/manual',data={'vendor':'Großes Angebot','gross':500,'category':'Elektro','file':(io.BytesIO(content),'large.pdf')})
+            self.assertEqual(result.status_code,201,result.json)
+            self.assertEqual(result.json['offer']['gross'],500)
+            document=db.session.get(Document,result.json['offer']['document_id'])
+            self.assertEqual((Path(tmp)/document.stored_name).stat().st_size,len(content))
 
     def test_attachment_is_removed_when_offer_transaction_fails(self):
         with tempfile.TemporaryDirectory() as tmp,patch('app.DOCUMENT_ROOT',Path(tmp)),patch.object(db.session,'commit',side_effect=RuntimeError('DB unavailable')):

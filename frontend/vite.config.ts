@@ -8,11 +8,10 @@ export default defineConfig(({ command }) => ({
     proxy: {
       '/api': 'http://127.0.0.1:5055',
       '/auth': 'http://127.0.0.1:5055',
-      '/logout': 'http://127.0.0.1:5055',
       '/static': 'http://127.0.0.1:5055',
       '^/p/': { target: 'http://127.0.0.1:5055', bypass: () => '/index.html' },
       '/projekte': { target: 'http://127.0.0.1:5055', bypass: () => '/index.html' },
-      '^/(?:$|\\?|kosten(?:\\?|$)|angebote(?:\\?|$)|belege(?:\\?|$)|finanzierung(?:\\?|$)|energieplanung(?:\\?|$)|stammdaten(?:\\?|$)|dokumente(?:\\?|$)|aufgaben(?:\\?|$)|eigenleistungen(?:\\?|$)|daten(?:\\?|$))':
+      '^/(?:$|\\?|kosten(?:\\?|$)|angebote(?:\\?|$)|belege(?:\\?|$)|finanzierung(?:\\?|$)|energieplanung(?:\\?|$)|stammdaten(?:\\?|$)|projektunterlagen(?:\\?|$)|dokumente(?:\\?|$)|aufgaben(?:\\?|$)|eigenleistungen(?:\\?|$)|stunden(?:\\?|$)|daten(?:\\?|$))':
         {
           target: 'http://127.0.0.1:5055',
           // Only retained workflow documents go to Flask. React navigation stays in Vite.

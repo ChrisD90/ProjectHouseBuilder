@@ -2,7 +2,7 @@
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
 }
 .self-work-page .self-work-status {
@@ -139,8 +139,82 @@
   }
 }
 .self-work-page .self-work-card h3 {
-  font-size: 19px;
+  font-size: 16px;
+  line-height: 1.35;
   overflow-wrap: anywhere;
+}
+.self-work-card-container {
+  min-width: 0;
+  background: var(--mantine-color-body);
+}
+.self-work-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 12px;
+  max-height: min(680px, 70dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 2px;
+  align-items: stretch;
+}
+.self-work-page .self-work-card > .mantine-Text-root {
+  font-size: 12px;
+  line-height: 1.45;
+}
+.self-work-card-costs {
+  border-top: 1px solid var(--mantine-color-default-border);
+  padding-top: 8px;
+}
+
+/* All tabs share a bounded body; only their content scrolls. */
+.self-work-editor {
+  display: flex;
+  flex-direction: column;
+  height: min(820px, calc(100dvh - 48px));
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+}
+.self-work-editor .mantine-Modal-header {
+  flex-shrink: 0;
+}
+.self-work-editor .mantine-Modal-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.self-work-editor .mantine-Modal-body > fieldset,
+.self-work-editor-form,
+.self-work-editor-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.self-work-editor .self-work-tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.self-work-editor .mantine-Tabs-list {
+  flex-shrink: 0;
+}
+.self-work-editor .mantine-Tabs-panel {
+  flex: 1;
+  min-height: 0;
+}
+.self-work-editor .self-work-list-frame {
+  height: 100%;
+  min-height: 0;
+}
+.self-work-editor .self-work-list-content {
+  flex: 1;
+}
+.self-work-editor-layout > .phb-action-bar {
+  flex-shrink: 0;
 }
 .self-work-corner-actions {
   flex-shrink: 0;

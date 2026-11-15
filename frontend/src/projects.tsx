@@ -21,7 +21,6 @@ import { useForm } from '@mantine/form';
 import {
   IconArchive,
   IconArchiveOff,
-  IconLogout,
   IconMoon,
   IconPencil,
   IconPlus,
@@ -271,19 +270,6 @@ export function ProjectDashboard() {
                 {colorScheme === 'dark' ? <IconSun size={19} /> : <IconMoon size={19} />}
               </ActionIcon>
             </Tooltip>
-            <form action="/logout" method="post">
-              <Tooltip label="Abmelden">
-                <ActionIcon
-                  type="submit"
-                  variant="default"
-                  size="lg"
-                  aria-label="Abmelden"
-                  disabled={busy}
-                >
-                  <IconLogout size={19} />
-                </ActionIcon>
-              </Tooltip>
-            </form>
           </Group>
         </Group>
         <Group className="page-header" justify="space-between">

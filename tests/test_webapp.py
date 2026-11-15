@@ -87,19 +87,21 @@ Gesamtsumme: € 100,00'''],'dummy.pdf')
         self.assertEqual(c.get('/api/costs').get_json()['summary']['committed'],0)
 
 
-class LanAuthenticationTest(unittest.TestCase):
-    def test_password_protects_data_and_allows_login(self):
+class DirectAccessTest(unittest.TestCase):
+    def test_app_opens_directly_even_with_legacy_password_configuration(self):
         from unittest.mock import patch
         with patch.dict(os.environ, {'APP_PASSWORD':'local-test-only'}):
             client=app.test_client()
-            self.assertEqual(client.get('/api/project').status_code,401)
-            self.assertEqual(client.get('/').status_code,302)
-            self.assertEqual(client.get('/static/style.css').status_code,200)
-            self.assertEqual(client.post('/login',data={'password':'wrong'}).status_code,401)
-            self.assertEqual(client.post('/login',data={'password':'local-test-only'}).status_code,302)
             self.assertEqual(client.get('/api/project').status_code,200)
-            self.assertEqual(client.post('/logout').status_code,302)
-            self.assertEqual(client.get('/api/project').status_code,401)
+            self.assertEqual(client.get('/').status_code,200)
+            self.assertEqual(client.get('/static/style.css').status_code,200)
+            self.assertEqual(client.get('/login').status_code,404)
+            self.assertEqual(client.post('/logout').status_code,404)
+    def test_foreign_origin_mutations_are_still_rejected(self):
+        client=app.test_client()
+        response=client.post('/api/projects',json={'title':'Fremder Ursprung'},headers={'Origin':'https://example.org'})
+        self.assertEqual(response.status_code,403)
+        self.assertEqual(response.json['error'],'Ungültiger Anfrage-Ursprung')
     def test_pwa_manifest_and_worker(self):
         client=app.test_client()
         self.assertEqual(client.get('/manifest.webmanifest').status_code,200)

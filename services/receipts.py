@@ -202,9 +202,9 @@ def register(runtime: ModuleType):
         ext = runtime.Path(name).suffix.lower()
         if ext not in runtime.RECEIPT_EXTENSIONS:
             return (runtime.jsonify(error='Nur PDF, JPG, PNG und WEBP erlaubt.'), 400)
-        data = file.read(15 * 1024 * 1024 + 1)
-        if not data or len(data) > 15 * 1024 * 1024:
-            return (runtime.jsonify(error='Belege dürfen maximal 15 MB groß sein.'), 400)
+        data = file.read()
+        if not data:
+            return (runtime.jsonify(error='Der Beleg ist leer.'), 400)
         if ext == '.pdf' and (not data.startswith(b'%PDF-')):
             return (runtime.jsonify(error='Keine gültige PDF-Datei.'), 400)
         if ext != '.pdf':
@@ -222,9 +222,15 @@ def register(runtime: ModuleType):
         if original:
             return (runtime.jsonify(error='Dieser Beleg wurde bereits hochgeladen.', existing_id=original.id), 409)
         mode = runtime.request.form.get('analysis_mode', 'local')
-        if mode not in ('local', 'ai'):
+        if mode not in ('local', 'ai', 'none'):
             return (runtime.jsonify(error='Unbekannte Analyseart.'), 400)
-        if mode == 'ai':
+        if mode == 'none':
+            content = ''
+            source = 'Ohne Analyse'
+            guessed = {'supplier': '', 'invoice_number': '', 'document_date': '',
+                       'gross_amount': None, 'net_amount': None, 'vat_amount': None,
+                       'labor_amount': None, 'category': 'Sonstiges', 'warnings': []}
+        elif mode == 'ai':
             guessed = runtime._ai_receipt_guess(data, name, ext)
             content = ''
             source = 'ChatGPT'
@@ -236,6 +242,7 @@ def register(runtime: ModuleType):
                 content = ''
                 source = 'Nicht ausgelesen'
                 guessed = {'supplier': '', 'invoice_number': '', 'document_date': '', 'gross_amount': None, 'net_amount': None, 'vat_amount': None, 'labor_amount': None, 'category': 'Sonstiges', 'warnings': ['Lokale Erkennung fehlgeschlagen: ' + str(err)[:180]]}
+        till = till or guessed.get('kind') == 'Kassenzettel'
         if till and guessed.get('kind')=='Gutschrift':
             return runtime.jsonify(error='Der Beleg wurde als Gutschrift erkannt. Bitte über den Rechnungsupload als Korrektur prüfen; keine automatische Zahlung für Kassenzettel.'),400
         runtime.RECEIPT_ROOT.mkdir(parents=True, exist_ok=True)
@@ -285,6 +292,19 @@ def register(runtime: ModuleType):
         if not raw_year.isdigit() or len(raw_year) != 4 or (not 2000 <= int(raw_year) <= 2100):
             return (runtime.jsonify(error='Bitte ein gültiges Jahr zwischen 2000 und 2100 auswählen.'), 400)
         rows = runtime.db.session.scalars(runtime.select(runtime.Receipt).where(runtime.Receipt.status == 'Gebucht', runtime.Receipt.labor_amount.is_not(None), runtime.Receipt.labor_amount > 0, runtime.Receipt.document_date.like(raw_year + '-%')).order_by(runtime.Receipt.document_date, runtime.Receipt.id)).all()
+        kind = runtime.request.args.get('kind', '')
+        if kind not in ('', 'Rechnung', 'Kassenzettel', 'Gutschrift'):
+            return runtime.jsonify(error='Unbekannte Belegart.'),400
+        if kind:
+            rows = [row for row in rows if (row.kind or 'Rechnung') == kind]
+        payment = runtime.request.args.get('payment', '')
+        if payment not in ('', 'paid', 'unpaid'):
+            return runtime.jsonify(error='Unbekannter Zahlungsstatus.'),400
+        if payment:
+            def settled(row):
+                amount = runtime._receipt_increment(row)
+                return amount > 0 and Decimal(row.paid_amount or 0) >= amount
+            rows = [row for row in rows if settled(row) == (payment == 'paid')]
         if not rows:
             return (runtime.jsonify(error='Für dieses Jahr sind keine gebuchten Belege mit Lohnkosten vorhanden.'), 404)
 
@@ -664,6 +684,7 @@ def register(runtime: ModuleType):
         path = runtime.RECEIPT_ROOT / r.stored_name
         for link in runtime.db.session.scalars(runtime.select(runtime.SelfWorkReceipt).where(runtime.SelfWorkReceipt.receipt_id == rid)):
             runtime.db.session.delete(link)
+        runtime._forget_import_result('receipts', rid)
         runtime.db.session.flush()
         runtime.db.session.delete(r)
         runtime.db.session.commit()

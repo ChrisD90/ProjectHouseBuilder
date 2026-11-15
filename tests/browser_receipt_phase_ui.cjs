@@ -65,11 +65,9 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     const cardBox = await row.boundingBox();
     assert(statusBox && toolBox && cardBox);
     assert(toolBox.x >= statusBox.x + statusBox.width);
-    assert(
-      Math.abs(
-        statusBox.y + statusBox.height / 2 - (toolBox.y + toolBox.height / 2),
-      ) < 2,
-    );
+    const dateBox=await row.locator('.receipt-card-date').boundingBox();
+    assert(Math.abs(statusBox.y+statusBox.height/2-toolBox.y-toolBox.height/2)<2);
+    assert(dateBox.y>=statusBox.y+statusBox.height);
     assert(toolBox.x + toolBox.width <= cardBox.x + cardBox.width);
     assert(Math.abs(statusBox.x - cardBox.x - 13) < 2);
     assert(Math.abs(cardBox.x + cardBox.width - toolBox.x - toolBox.width - 13) < 2);
@@ -117,6 +115,7 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     const pid = (await phase.json()).phase.id;
     await page.goto(base + "/p/" + owner + "/");
     const gantt = page.frameLocator('iframe[title="Bauzeitenplan"]');
+    await gantt.locator('[data-schedule-view="gantt"]').click();
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       const button = gantt.locator('.phase-edit[data-phase-id="' + pid + '"]');

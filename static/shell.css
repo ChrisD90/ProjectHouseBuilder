@@ -41,8 +41,6 @@ body.phb-app .phb-privacy .phb-icon{color:#50c9b2;}
 body.phb-app .phb-privacy .phb-nav-text{display:flex;flex-direction:column;gap:2px;}
 body.phb-app .phb-privacy strong{font-size:12px;color:#e4f5f1;font-weight:700;}
 body.phb-app .phb-privacy small{font-size:10.5px;color:#86acae;}
-body.phb-app .phb-logout-form{margin:0;}
-body.phb-app .phb-logout-form .phb-nav-link{cursor:pointer;}
 body.phb-app .phb-workspace{min-width:0;max-width:100%;display:flex;flex-direction:column;}
 body.phb-app .phb-topbar{z-index:20;position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;flex-wrap:nowrap;gap:14px;width:100%;min-height:68px;padding:12px clamp(18px,2.5vw,42px);background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border:0;border-bottom:1px solid #e6ebed;box-shadow:0 1px 5px rgba(30,48,59,.025);}
 body.phb-app .phb-topbar__left{display:flex;align-items:center;gap:14px;min-width:0;}

@@ -1,4 +1,5 @@
 import { Alert, Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
+import { createPortal } from 'react-dom';
 import { notifications } from '@mantine/notifications';
 import React, { createContext, useContext, useRef, useState } from 'react';
 import { projectID } from './project-context';
@@ -24,10 +25,6 @@ export async function api<T = Row>(
       headers,
       body: body === undefined ? undefined : form ? body : JSON.stringify(body),
     });
-    if (r.status === 401) {
-      location.assign('/login');
-      throw Error('Bitte erneut anmelden.');
-    }
     let data;
     try {
       data = await r.json();
@@ -149,6 +146,9 @@ export function Editor({
   original,
   closeOnEscape = true,
   size = 'lg',
+  className,
+  headerActions,
+  snapshotRevision,
 }: {
   opened: boolean;
   title: string;
@@ -162,17 +162,35 @@ export function Editor({
   original?: Record<string, unknown>;
   closeOnEscape?: boolean;
   size?: string | number;
+  className?: string;
+  headerActions?: React.ReactNode;
+  snapshotRevision?: number;
 }) {
   const ask = useConfirm(),
     confirming = useModalLayer().blocked,
     covered = useContext(EditorCoveredContext) || suspended;
-  const fieldset = useRef<HTMLFieldSetElement>(null);
+  const fieldset = useRef<HTMLFieldSetElement | null>(null);
+  const [header, setHeader] = useState<HTMLElement | null>(null);
+  const bindFieldset = React.useCallback(
+    (node: HTMLFieldSetElement | null) => {
+      fieldset.current = node;
+      setHeader(
+        node && headerActions
+          ? node.closest('[role=dialog]')?.querySelector<HTMLElement>('.mantine-Modal-header') ||
+              null
+          : null,
+      );
+    },
+    [!!headerActions],
+  );
   React.useEffect(() => {
     if (opened && !dirty)
       (window as any).PHBRequests?.snapshot(fieldset.current?.closest('[role=dialog]'), original);
-  }, [opened, JSON.stringify(original)]);
+  }, [opened, JSON.stringify(original), snapshotRevision, header]);
   return (
     <Modal
+      classNames={{ content: className }}
+      styles={headerActions ? { title: { flex: 1 }, close: { order: 2 } } : undefined}
       trapFocus={!confirming && !covered}
       zIndex={zIndex}
       opened={opened}
@@ -187,9 +205,17 @@ export function Editor({
       size={size}
       centered
     >
+      {header &&
+        headerActions &&
+        createPortal(
+          <Group gap={6} style={{ order: 1, marginLeft: 'auto', marginRight: 8 }}>
+            {headerActions}
+          </Group>,
+          header,
+        )}
       {dirty && changes && original && <ChangePreview original={original} changes={changes} />}
       <fieldset
-        ref={fieldset}
+        ref={bindFieldset}
         disabled={busy}
         style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
       >

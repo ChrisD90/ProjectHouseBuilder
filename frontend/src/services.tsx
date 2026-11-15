@@ -31,7 +31,9 @@ export function useServices(navigate: (url: string) => void) {
         return null;
       }
     }),
-    [wait, setWait] = useState('');
+    [wait, setWait] = useState(''),
+    [canBackground, setCanBackground] = useState(false);
+  const foregroundRun = useRef<Row | null>(null);
   useEffect(() => {
     setExternal(aiOpen || queueOpen || !!wait);
     return () => setExternal(false);
@@ -83,10 +85,12 @@ export function useServices(navigate: (url: string) => void) {
     const {
       kind,
       files,
+      inboxItemId,
       analysisMode = 'local',
       model = '',
       fields = {},
       processingMode = 'foreground',
+      handoff,
     } = options;
     if (
       running.current.has(kind) ||
@@ -96,12 +100,13 @@ export function useServices(navigate: (url: string) => void) {
     )
       throw Error('Diese Verarbeitung läuft bereits. Bitte Ergebnis oder Fehler abwarten.');
     const selected = Array.from(files || []) as File[];
-    if (!selected.length || selected.length > 8)
+    if (!inboxItemId && (!selected.length || selected.length > 8))
       throw Error('Bitte eine bis acht Dateien auswählen.');
     running.current.add(kind);
     try {
       if (
         processingMode === 'background' &&
+        analysisMode !== 'none' &&
         'Notification' in window &&
         Notification.permission === 'default'
       )
@@ -115,19 +120,38 @@ export function useServices(navigate: (url: string) => void) {
       }
       selected.forEach((file) => data.append('files', file, file.name));
       Object.entries(fields).forEach(([key, value]) => data.set(key, String(value ?? '')));
-      const result = await api('/api/import-jobs', 'POST', data, analysisMode === 'ai');
+      const result = inboxItemId
+        ? await api(
+            '/api/document-inbox/items/' + inboxItemId + '/import',
+            'POST',
+            { kind, analysis_mode: analysisMode, model, plan_only: analysisMode === 'ai', fields },
+            analysisMode === 'ai',
+          )
+        : await api('/api/import-jobs', 'POST', data, analysisMode === 'ai');
       if (!seenJobs.current) seenJobs.current = new Map();
       result.jobs.forEach((job: Row) => seenJobs.current!.set(job.id, job.status));
-      await refreshJobs();
-      if (processingMode === 'background') {
-        success('Die Dateien werden im Hintergrund verarbeitet.');
+      handoff?.queued();
+      await (handoff ? Promise.race([refreshJobs(), handoff.signal]) : refreshJobs());
+      if (processingMode === 'background' || handoff?.background) {
+        success(
+          analysisMode === 'none'
+            ? 'Die Dateien werden ohne Analyse als Entwürfe gespeichert.'
+            : 'Die Dateien werden im Hintergrund verarbeitet.',
+        );
         return result.jobs;
       }
       let attempts = 0;
       while (true) {
         let batch: Row;
         try {
-          batch = await api('/api/import-jobs/batches/' + result.batch_id);
+          if (handoff?.background) return result.jobs;
+          batch = await (handoff
+            ? Promise.race([
+                api('/api/import-jobs/batches/' + result.batch_id),
+                handoff.signal.then(() => null),
+              ])
+            : api('/api/import-jobs/batches/' + result.batch_id));
+          if (!batch) return result.jobs;
           attempts = 0;
         } catch (e) {
           if (++attempts >= 3) throw e;
@@ -143,11 +167,15 @@ export function useServices(navigate: (url: string) => void) {
           if (failed.length) throw Error(failed.map((j: Row) => j.error || j.stage).join(' · '));
           return batch.jobs;
         }
-        await new Promise((r) => setTimeout(r, 1000));
+        await Promise.race([
+          new Promise((r) => setTimeout(r, 1000)),
+          ...(handoff ? [handoff.signal] : []),
+        ]);
       }
     } finally {
       running.current.delete(kind);
-      await refreshJobs();
+      if (handoff?.background) void refreshJobs().catch(() => {});
+      else await refreshJobs();
     }
   }
   const methods = useRef<Row>({});
@@ -173,14 +201,31 @@ export function useServices(navigate: (url: string) => void) {
       async run({ form, processingMode, ...options }: Row) {
         const mode =
           processingMode || form?.querySelector('[name=processing_mode]')?.value || 'foreground';
+        if (!['foreground', 'background'].includes(mode))
+          throw Error('Unbekannte Verarbeitungsart.');
+        let release!: () => void;
+        const handoff = {
+          background: false,
+          signal: new Promise<void>((resolve) => {
+            release = resolve;
+          }),
+          queued: () => {
+            if (mode === 'foreground') setCanBackground(true);
+          },
+          release: () => release(),
+        };
+        foregroundRun.current = handoff;
+        setCanBackground(false);
         setWait('Dateien werden hochgeladen …');
         try {
           return {
-            jobs: await enqueue({ ...options, processingMode: mode }),
-            background: mode === 'background',
+            jobs: await enqueue({ ...options, processingMode: mode, handoff }),
+            background: mode === 'background' || handoff.background,
           };
         } finally {
           setWait('');
+          setCanBackground(false);
+          foregroundRun.current = null;
         }
       },
       review(jobs: Row[]) {
@@ -216,6 +261,7 @@ export function useServices(navigate: (url: string) => void) {
       refresh: () => methods.current.imports.refresh(),
       open: () => methods.current.imports.open(),
     },
+    inbox: { settings: () => window.dispatchEvent(new Event('phb-inbox-settings')) },
     navigate: (url: string) => navigate(url),
     jobs: () => state.current.jobs,
     changed: () => cache.invalidateQueries(),
@@ -562,6 +608,20 @@ export function useServices(navigate: (url: string) => void) {
           <Text size="sm" c="dimmed" ta="center">
             {wait}
           </Text>
+          <Button
+            variant="light"
+            disabled={!canBackground}
+            onClick={() => {
+              const run = foregroundRun.current;
+              if (run) {
+                run.background = true;
+                run.release();
+                setCanBackground(false);
+              }
+            }}
+          >
+            Im Hintergrund fortsetzen
+          </Button>
         </Stack>
       </Modal>
     </>

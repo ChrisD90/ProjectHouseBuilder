@@ -22,6 +22,7 @@ import {
   IconBuildingBank,
   IconHome,
   IconCalendar,
+  IconClock,
   IconChartBar,
   IconChevronLeft,
   IconChevronRight,
@@ -29,7 +30,6 @@ import {
   IconFiles,
   IconLeaf,
   IconListCheck,
-  IconLogout,
   IconReceipt,
   IconSparkles,
   IconUsers,
@@ -44,11 +44,16 @@ import { Costs, Documents, Energy, MasterData } from './pages';
 import { fundingDocumentOnly, projectID, workspaceURL } from './project-context';
 import { useServices } from './services';
 import { WorkPage, WorkProvider } from './work';
+import { TimeTracking } from './time-tracking';
 import { SelfWorkPage } from './self-work';
+import { DocumentInbox } from './document-inbox';
+import { UnpaidReceipts } from './unpaid-receipts';
 const items = [
+  ['/projektunterlagen', 'Projektunterlagen', IconFiles],
   ['/', 'Bauzeitenplan', IconCalendar],
   ['/aufgaben', 'To-dos & Notizen', IconListCheck],
   ['/eigenleistungen', 'Eigenleistungen', IconTool],
+  ['/stunden', 'Stundenerfassung', IconClock],
   ['/kosten', 'Kosten & Budget', IconChartBar],
   ['/angebote', 'Angebote', IconFiles],
   ['/belege', 'Rechnungen & Belege', IconReceipt],
@@ -59,7 +64,10 @@ const items = [
   ['/daten', 'Daten & Sicherung', IconDatabase],
 ] as const;
 const navigationGroups = [
-  { label: 'Projekt', paths: ['/', '/aufgaben', '/eigenleistungen'] },
+  {
+    label: 'Projekt',
+    paths: ['/projektunterlagen', '/', '/aufgaben', '/eigenleistungen', '/stunden'],
+  },
   {
     label: 'Finanzen',
     paths: ['/kosten', '/angebote', '/belege', '/finanzierung', '/energieplanung'],
@@ -67,12 +75,14 @@ const navigationGroups = [
   { label: 'Verwaltung', paths: ['/dokumente', '/stammdaten', '/daten'] },
 ];
 const native = new Set([
+  '/projektunterlagen',
   '/aufgaben',
   '/kosten',
   '/stammdaten',
   '/energieplanung',
   '/dokumente',
   '/eigenleistungen',
+  '/stunden',
 ]);
 const GuardContext = createContext<(guard: () => boolean) => () => void>(() => () => {});
 export function useDirtyGuard(dirty: boolean) {
@@ -405,21 +415,6 @@ export function App() {
                 </section>
               ))}
             </Stack>
-            <Group justify={mini ? 'center' : 'flex-end'} mt="md" className="sidebar-footer">
-              <form action="/logout" method="post">
-                <Tooltip label="Abmelden">
-                  <ActionIcon
-                    type="submit"
-                    variant="subtle"
-                    className="sidebar-icon-button"
-                    size={32}
-                    aria-label="Abmelden"
-                  >
-                    <IconLogout size={19} />
-                  </ActionIcon>
-                </Tooltip>
-              </form>
-            </Group>
           </AppShell.Navbar>
           <AppShell.Header px={{ base: 15, sm: 26 }}>
             <Group h="100%" justify="space-between" wrap="nowrap">
@@ -469,6 +464,8 @@ export function App() {
                     { value: 'dark', label: 'Dunkel' },
                   ]}
                 />
+                <DocumentInbox bridge={services.bridge} />
+                <UnpaidReceipts />
                 <Tooltip label="Verarbeitung & Prüfung">
                   <Button
                     size="xs"
@@ -555,14 +552,18 @@ export function App() {
                 <WorkPage />
               ) : location.pathname === '/eigenleistungen' ? (
                 <SelfWorkPage />
+              ) : location.pathname === '/stunden' ? (
+                <TimeTracking />
               ) : location.pathname === '/stammdaten' ? (
                 <MasterData />
               ) : location.pathname === '/kosten' ? (
                 <Costs />
               ) : location.pathname === '/energieplanung' ? (
                 <Energy />
+              ) : location.pathname === '/projektunterlagen' ? (
+                <Documents key="project-documents" projectOnly />
               ) : location.pathname === '/dokumente' ? (
-                <Documents />
+                <Documents key="document-library" />
               ) : null}
             </div>
             {!native.has(location.pathname) && !route && (
@@ -637,9 +638,7 @@ export function App() {
                         if (refs.current[path] !== node) return;
                         try {
                           if (node.contentWindow?.location.href === 'about:blank') return;
-                          if (node.contentWindow?.location.pathname === '/login')
-                            window.location.assign('/login');
-                          else if (!(node.contentWindow as any)?.PHBEmbed) setFailed(path);
+                          if (!(node.contentWindow as any)?.PHBEmbed) setFailed(path);
                         } catch {
                           setFailed(path);
                         }

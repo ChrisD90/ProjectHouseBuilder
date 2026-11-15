@@ -24,7 +24,6 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://sanierung:${POSTGRES_PASSWORD:?missing}@db:5432/sanierung
-      APP_PASSWORD: ${APP_PASSWORD:?missing}
       APP_SECRET_KEY: ${APP_SECRET_KEY:?missing}
       SECURE_COOKIES: "1"
     volumes:

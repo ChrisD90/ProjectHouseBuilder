@@ -18,13 +18,13 @@ def sqlite_write_lock(connection):
 
 def content_status(db, owner, categories, trades):
     connection=db.session.connection();details=[]
-    labels={'task':'Arbeitspakete','build_phase':'Bauphasen','contractor':'Firmen','category':'eigene Kategorien',
+    labels={'document_inbox_item':'Eingangsdokumente','time_person':'Personen der Stundenerfassung','time_entry':'Stundeneinträge','task':'Arbeitspakete','build_phase':'Bauphasen','contractor':'Firmen','category':'eigene Kategorien',
         'trade':'eigene Gewerke','setting':'Projekteinstellungen','project_work':'To-dos oder Notizen',
         'offer':'Angebote','receipt':'Rechnungen oder Belege','import_job':'Importdaten','schedule_history':'Planungshistorien',
         'project_document':'Dokumente','document':'Angebotsdokumente','funding':'Förderungen',
         'funding_plan':'Förderplanungen','planning_browser_state':'KI-Planungsentwürfe','self_work_plan':'Eigenleistungen'}
     for table in db.metadata.tables.values():
-        if 'project_id' not in table.c:continue
+        if 'project_id' not in table.c or table.name in ('document_inbox_config','document_inbox_item'):continue
         query=select(table).where(table.c.project_id==owner)
         if table.name=='category' and not set(table.c.keys())-{'id','project_id','name','sort_order'}:
             defaults={name:index for index,name in enumerate(categories)}

@@ -1239,7 +1239,7 @@ def register(runtime: ModuleType):
                 if fields:
                     changes.append({'action': 'update' if row['id'] == task_id else 'shift', 'code': row['code'], 'name': row['name'], 'changes': fields})
             if changes:
-                runtime._schedule_audit('Manuell', 'Arbeitspaket ' + prior['code'] + ' im Gantt verschoben.', changes)
+                runtime._schedule_audit('Manuell', 'Arbeitspaket ' + prior['code'] + ' im Bauzeitenplan verschoben.', changes)
             runtime.db.session.commit()
             return runtime.jsonify(ok=True, start=moved['start'], end=moved['end'])
         except (ValueError, TypeError) as exc:

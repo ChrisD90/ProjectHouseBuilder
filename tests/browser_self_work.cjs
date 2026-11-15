@@ -422,7 +422,7 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
       .click();
     await expect(edit).toHaveCount(0);
     assert.equal((await read()).plans.length, 0);
-    const longPlan=await page.request.post(base+'/api/self-work',{headers,data:{title:'Lange Listen',
+    const longPlan=await page.request.post(base+'/api/self-work',{headers,data:{title:'Lange Listen',description:'Ausführliche Planung. '.repeat(150),notes:'Weitere Hinweise. '.repeat(150),
       steps:Array.from({length:25},(_,i)=>({title:'Schritt '+(i+1),done:false})),
       materials:Array.from({length:25},(_,i)=>({title:'Material '+(i+1),quantity:2,unit:'Stück',unit_price:5})),
       tools:Array.from({length:25},(_,i)=>({title:'Werkzeug '+(i+1),source:'Kaufen',cost:10}))}});
@@ -431,11 +431,22 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     await page.setViewportSize({width:390,height:844});
     await page.reload();
     await page.getByRole('button',{name:'Eigenleistung bearbeiten: Lange Listen',exact:true}).click();
+    await edit.evaluate(node=>Promise.all(node.getAnimations({subtree:true}).map(animation=>animation.finished.catch(()=>{}))));
+    const overview=edit.locator('.self-work-overview-frame .self-work-list-content');
+    const tabsBefore=await edit.getByRole('tablist').boundingBox();
+    const footerBefore=await edit.getByRole('button',{name:'Speichern',exact:true}).boundingBox();
+    assert(await overview.evaluate(n=>n.scrollHeight>n.clientHeight));
+    await overview.evaluate(n=>n.scrollTop=n.scrollHeight);
+    assert(Math.abs((await edit.getByRole('tablist').boundingBox()).y-tabsBefore.y)<1,JSON.stringify({tabsBefore,tabsAfter:await edit.getByRole('tablist').boundingBox()}));
+    await expect(edit.getByRole('button',{name:'Speichern',exact:true})).toBeInViewport();
+    assert(Math.abs((await edit.getByRole('button',{name:'Speichern',exact:true}).boundingBox()).y-footerBefore.y)<1);
+    await edit.screenshot({path:'/tmp/phb-self-work-overview-scroll.png'});
     for(const [tabName,itemName,backName,addName] of [
       ['Schritte (25)','Schritt 25','Zurück zur Schrittliste','Arbeitsschritt hinzufügen'],
       ['Material (25)','Material 25','Zurück zur Materialliste','Material hinzufügen'],
       ['Werkzeuge (25)','Werkzeug 25','Zurück zur Werkzeugliste','Werkzeug hinzufügen']]) {
       await edit.getByRole('tab',{name:tabName,exact:true}).click();
+      assert(Math.abs((await edit.getByRole('button',{name:'Speichern',exact:true}).boundingBox()).y-footerBefore.y)<1,'Footer bleibt beim Reiterwechsel stehen.');
       if(tabName.startsWith('Schritte')) {
         const first=await edit.getByRole('button',{name:'Arbeitsschritt 1 verschieben',exact:true}).boundingBox();
         const third=await edit.getByRole('button',{name:'Arbeitsschritt 3 verschieben',exact:true}).boundingBox();
@@ -479,6 +490,19 @@ if (!base) throw Error("Use dev/ui_browser_smoke.py.");
     assert.equal((await read()).plans[0].steps[24].done,true);
     assert.deepEqual((await read()).plans[0].steps.slice(0,3).map(x=>x.title),['Schritt 2','Schritt 1','Schritt 3']);
     await page.request.delete(base+'/api/self-work/'+longID,{headers});
+    for(let i=0;i<16;i++){
+      const result=await page.request.post(base+'/api/self-work',{headers,data:{title:'Eigenleistung '+(i+1),description:'Vorbereitung und Ausführung planen.',status:i%2?'Geplant':'Erledigt'}});
+      assert.equal(result.status(),201);
+    }
+    await page.setViewportSize({width:1440,height:1000});await page.reload();
+    const grid=page.locator('.self-work-card-grid');
+    await expect(grid.locator('.self-work-card')).toHaveCount(16);
+    assert(await grid.evaluate(n=>n.scrollHeight>n.clientHeight),'Eigenleistungen scrollen im eigenen Container.');
+    for(const mode of ['Hell','Dunkel']){
+      await page.getByRole('textbox',{name:'Darstellung',exact:true}).click();
+      await page.getByRole('option',{name:mode,exact:true}).click();
+      await grid.screenshot({path:'/tmp/phb-self-work-cards-'+mode+'.png'});
+    }
     assert.deepEqual(errors, []);
     console.log("PASS archive/reopen/delete and responsive light/dark DIY UI.");
   } finally {

@@ -24,6 +24,7 @@ MAX_ROWS = 500000
 FILE_TABLES = {
     'document': ('documents', True), 'receipt': ('receipts', True),
     'project_document': ('project-documents', True),
+    'project_document_version': ('project-documents', True),
     'finance_loan_document': ('loans', True),
     'finance_event_document': ('financing-events', True),
     'finance_loan_usage': ('loan-usages', True),
@@ -231,6 +232,13 @@ def load_rows(path, db, owner):
     expected = set(tables) - EPHEMERAL
     # Backups from revision 0028 predate both plan tables; they legitimately contain no plans.
     missing=expected-set(payload['tables'])
+    for name in ('time_person','time_entry','document_inbox_config','document_inbox_item'):
+        if name in missing:
+            payload['tables'][name]=[]
+            missing.remove(name)
+    if 'project_document_version' in missing:
+        payload['tables']['project_document_version']=[]
+        missing.remove('project_document_version')
     # New project-owned DIY data defaults to empty in older archives.
     if 'self_work_receipt' in missing:
         payload['tables']['self_work_receipt']=[]
@@ -247,6 +255,12 @@ def load_rows(path, db, owner):
         total += len(rows)
         if total > MAX_ROWS: raise ValueError('Zu viele Datensätze im Backup.')
         for row in rows:
+            if name=='project_document' and 'current_version' not in row:
+                row={**row,'current_version':1}
+            if name=='document' and 'offer_id' not in row:
+                row={**row,'offer_id':None}
+            if name=='offer_position' and 'own_work' not in row:
+                row={**row,'own_work':False}
             if name=='import_job' and set(table.c.keys())-set(row)<= {'lease_owner','lease_until'}:
                 row={**{'lease_owner':'','lease_until':None},**row}
             if set(row) != set(table.c.keys()): raise ValueError('Backup-Felder passen nicht zu ' + name)
