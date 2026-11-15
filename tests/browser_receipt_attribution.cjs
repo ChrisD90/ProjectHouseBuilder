@@ -80,7 +80,7 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   await expect(frame.locator('#receiptSaveStatus')).toContainText('Entwurf gespeichert.');
   await page.setViewportSize({width:390,height:844});
   await expect(frame.locator('#receiptWorkflowDialog')).toBeVisible();
-  assert(await frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  await expect.poll(()=>frame.locator('body').evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
   await expect(frame.locator('[name=document_date]')).toBeVisible();
   await expect(frame.locator('[name=due_date]')).toBeVisible();
   assert.deepEqual(errors,[]);
