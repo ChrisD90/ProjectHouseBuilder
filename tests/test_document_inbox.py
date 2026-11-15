@@ -108,6 +108,28 @@ class DocumentInboxTest(unittest.TestCase):
         old=b.db.session.scalars(b.select(b.DocumentInboxItem).order_by(b.DocumentInboxItem.id)).all()
         self.assertEqual(len(old),2);self.assertFalse(old[0].present);self.assertTrue(old[1].present)
 
+    def test_folder_dialog_is_read_only_and_lists_directories_with_navigation(self):
+        child=self.folder/'Unterordner';child.mkdir()
+        (self.folder/'.versteckt').mkdir();self.file('Datei.txt',b'Text')
+        (self.folder/'Verknuepfung').symlink_to(child,target_is_directory=True)
+        private=b.ROOT/'private';private.mkdir(parents=True,exist_ok=True)
+        (self.folder/'Interne Daten').symlink_to(private,target_is_directory=True)
+        response=self.client.get('/api/document-inbox/folders',query_string={'folder':str(self.folder)})
+        self.assertEqual(response.status_code,200,response.json)
+        self.assertEqual(response.json['current'],str(self.folder))
+        self.assertEqual(response.json['parent'],str(self.folder.parent))
+        self.assertEqual([row['name'] for row in response.json['directories']],['Unterordner','Verknuepfung'])
+        self.assertEqual(b.db.session.query(b.DocumentInboxConfig).count(),0)
+        self.assertEqual(b.db.session.query(b.ImportJob).count(),0)
+        self.configure()
+        default=self.client.get('/api/document-inbox/folders').json
+        self.assertEqual(default['current'],str(self.folder))
+        self.assertTrue(default['roots'])
+        self.assertEqual(self.client.get('/api/document-inbox/folders',query_string={'folder':str(child)}).json['parent'],str(self.folder))
+        for bad in ('relative',str(self.folder/'Datei.txt'),str(self.folder/'missing'),str(private)):
+            self.assertEqual(self.client.get('/api/document-inbox/folders',query_string={'folder':bad}).status_code,400)
+        self.assertEqual(self.status()['config']['folder'],str(self.folder))
+
     def test_api_config_validation_and_ai_requires_explicit_connection(self):
         for changes in ({'folder':'relative'},{'interval_minutes':0},{'interval_minutes':True},{'enabled':'yes'}):
             result=self.client.post('/api/document-inbox/configure',json={'folder':str(self.folder),**changes});self.assertEqual(result.status_code,400,result.json)

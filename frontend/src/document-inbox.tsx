@@ -26,6 +26,10 @@ import {
   IconX,
   IconRestore,
   IconFile,
+  IconFolder,
+  IconFolderOpen,
+  IconArrowUp,
+  IconChevronRight,
 } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -83,6 +87,22 @@ export function DocumentInbox({ bridge }: { bridge: Row }) {
     refetchInterval: 15000,
   });
   const config = query.data?.config;
+  const [folderOpen, setFolderOpen] = useState(false),
+    [browseFolder, setBrowseFolder] = useState('');
+  const folders = useQuery({
+    queryKey: ['document-inbox-folders', browseFolder],
+    enabled: folderOpen,
+    queryFn: () =>
+      api<{
+        current: string;
+        parent: string | null;
+        roots: { name: string; path: string }[];
+        directories: { name: string; path: string }[];
+      }>(
+        '/api/document-inbox/folders' +
+          (browseFolder ? '?folder=' + encodeURIComponent(browseFolder) : ''),
+      ),
+  });
   const form = useForm({
     initialValues: {
       type: '',
@@ -414,19 +434,34 @@ export function DocumentInbox({ bridge }: { bridge: Row }) {
         onClose={() => setSettings(false)}
         title="Dokumenteneingang einstellen"
         dirty={configForm.isDirty()}
+        suspended={folderOpen}
         busy={busy}
         zIndex={220}
       >
         <form onSubmit={configForm.onSubmit(() => void saveSettings())}>
           <Stack gap="sm">
             <ErrorBox value={failure} />
-            <TextInput
-              label="Eingangsordner"
-              required
-              maxLength={2048}
-              placeholder="Vollständiger Ordnerpfad"
-              {...configForm.getInputProps('folder')}
-            />
+            <Group align="end" wrap="nowrap" gap="xs">
+              <TextInput
+                label="Eingangsordner"
+                required
+                maxLength={2048}
+                placeholder="Ordner auswählen"
+                style={{ flex: 1, minWidth: 0 }}
+                {...configForm.getInputProps('folder')}
+              />
+              <Button
+                variant="default"
+                leftSection={<IconFolderOpen size={16} />}
+                style={{ flexShrink: 0 }}
+                onClick={() => {
+                  setBrowseFolder(configForm.values.folder.trim());
+                  setFolderOpen(true);
+                }}
+              >
+                Ordner auswählen
+              </Button>
+            </Group>
             <Text size="xs" c="dimmed">
               Der Ordner muss auf dem Rechner erreichbar sein, auf dem der App-Server läuft.
               NAS-Ordner vorher einbinden. Es werden PDF, JPG, PNG, WEBP, DOCX und TXT direkt in
@@ -455,6 +490,101 @@ export function DocumentInbox({ bridge }: { bridge: Row }) {
             </Group>
           </Stack>
         </form>
+      </Editor>
+      <Editor
+        opened={folderOpen}
+        onClose={() => setFolderOpen(false)}
+        title="Eingangsordner auswählen"
+        zIndex={240}
+        size="lg"
+      >
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
+            Ordner auf dem App-Server auswählen. Übernommen wird er erst mit „Speichern“ in den
+            Einstellungen.
+          </Text>
+          <Group wrap="nowrap" gap="xs">
+            <Tooltip label="Übergeordneten Ordner öffnen">
+              <ActionIcon
+                variant="default"
+                size={36}
+                aria-label="Übergeordneten Ordner öffnen"
+                disabled={!folders.data?.parent || folders.isFetching}
+                onClick={() => setBrowseFolder(folders.data!.parent!)}
+              >
+                <IconArrowUp size={17} />
+              </ActionIcon>
+            </Tooltip>
+            <Select
+              aria-label="Ordner-Schnellzugriff"
+              placeholder="Schnellzugriff"
+              style={{ flex: 1, minWidth: 0 }}
+              value={null}
+              data={(folders.data?.roots || []).map((row) => ({
+                value: row.path,
+                label: row.name,
+              }))}
+              onChange={(value) => {
+                if (value) setBrowseFolder(value);
+              }}
+            />
+            <Button variant="subtle" size="xs" onClick={() => setBrowseFolder('')}>
+              Startordner
+            </Button>
+          </Group>
+          <Text
+            size="sm"
+            fw={600}
+            style={{ overflowWrap: 'anywhere' }}
+            data-testid="inbox-folder-current"
+          >
+            {folders.data?.current || 'Ordner wird geöffnet …'}
+          </Text>
+          <ErrorBox value={folders.error} />
+          {folders.isFetching ? (
+            <Group justify="center" py="lg">
+              <Loader size="sm" />
+            </Group>
+          ) : (
+            !folders.error && (
+              <ScrollArea.Autosize mah="45dvh">
+                <Stack gap={4}>
+                  {folders.data?.directories.map((row) => (
+                    <UnstyledButton
+                      key={row.name}
+                      className="document-inbox-folder-option"
+                      aria-label={'Ordner öffnen: ' + row.name}
+                      onClick={() => setBrowseFolder(row.path)}
+                    >
+                      <IconFolder size={18} />
+                      <Text size="sm" truncate style={{ flex: 1 }}>
+                        {row.name}
+                      </Text>
+                      <IconChevronRight size={15} />
+                    </UnstyledButton>
+                  ))}
+                  {!folders.data?.directories.length && (
+                    <Text size="sm" c="dimmed" py="lg" ta="center">
+                      Keine Unterordner vorhanden.
+                    </Text>
+                  )}
+                </Stack>
+              </ScrollArea.Autosize>
+            )
+          )}
+          <Group justify="flex-end" mt="sm">
+            <Button
+              disabled={!folders.data?.current || folders.isFetching || !!folders.error}
+              onClick={() => {
+                configForm.setFieldValue('folder', folders.data!.current);
+                configForm.clearFieldError('folder');
+                setFolderOpen(false);
+              }}
+            >
+              Diesen Ordner wählen
+            </Button>
+          </Group>
+        </Stack>
       </Editor>
       <Editor
         opened={!!selected}

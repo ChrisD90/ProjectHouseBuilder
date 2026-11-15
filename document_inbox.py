@@ -165,6 +165,39 @@ def register_document_inbox(runtime):
                               job={**runtime._import_json(job),'review_url':runtime._import_result(job)} if job else None,preview_url='/api/document-inbox/items/'+str(row.id)+'/preview'))
         return jsonify(config=config_json(cfg),items=items,count=count)
 
+    @app.get('/api/document-inbox/folders')
+    def browse_folders():
+        try:
+            requested=request.args.get('folder','').strip()
+            cfg=configuration()
+            if not requested:
+                try:target=root_path(cfg.folder) if cfg and cfg.folder else root_path(str(Path.home()))
+                except (OSError,ValueError):target=root_path(str(Path.home()))
+            else:target=root_path(requested)
+            directories=[]
+            with os.scandir(target) as entries:
+                for entry in entries:
+                    if entry.name.startswith('.'):continue
+                    try:
+                        if not entry.is_dir():continue
+                        resolved=Path(entry.path).resolve(strict=True)
+                        if resolved.is_relative_to((runtime.ROOT/'private').resolve()):continue
+                        directories.append(dict(name=entry.name,path=str(resolved)))
+                    except OSError:continue
+            roots=[]
+            candidates=[('Benutzerordner',Path.home()),('Dateisystem',Path(target.anchor))]
+            if cfg and cfg.folder:candidates.append(('Eingestellter Eingangsordner',Path(cfg.folder)))
+            candidates.extend((name,Path(value)) for name,value in [('Volumes','/Volumes'),('Eingebundene Laufwerke','/mnt'),('Medien','/media')])
+            if os.name=='nt':candidates.extend((letter+':',Path(letter+':/')) for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+            for label,path in candidates:
+                try:
+                    resolved=root_path(str(path))
+                    if str(resolved) not in {row['path'] for row in roots}:roots.append(dict(name=label,path=str(resolved)))
+                except (OSError,ValueError):continue
+            parent=str(target.parent) if target.parent!=target else None
+            return jsonify(current=str(target),parent=parent,roots=roots,directories=sorted(directories,key=lambda row:row['name'].casefold()))
+        except (OSError,ValueError) as exc:return jsonify(error='Ordner kann nicht geöffnet werden: '+str(exc)),400
+
     @app.post('/api/document-inbox/configure')
     def configure():
         lock=project_lock()
