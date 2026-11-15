@@ -71,13 +71,13 @@ for (const theme of ["light", "dark"])
       });
       await expect(card.locator("[data-work-open]")).toBeVisible();
       const status = await card.locator(".status").boundingBox();
-      const assigned = await card
-        .locator(".receipt-payment-badge")
-        .boundingBox();
+      await expect(card.locator(".receipt-payment-badge, .receipt-unassigned-tag")).toHaveCount(0);
       const todo = await card.locator("[data-work-open]").boundingBox();
       const bounds = await card.boundingBox();
-      expect(assigned.x).toBeGreaterThan(status.x + status.width);
-      expect(todo.x).toBeGreaterThan(assigned.x + assigned.width);
+      expect(todo.x).toBeGreaterThan(status.x + status.width);
+      const date = await card.locator(".receipt-card-date").boundingBox();
+      expect(date.y).toBeGreaterThan(status.y + status.height);
+      await expect(card.locator(".receipt-card-date")).toHaveText("15.01.2026");
       expect(
         Math.abs(bounds.x + bounds.width - todo.x - todo.width - 13),
       ).toBeLessThan(2);
