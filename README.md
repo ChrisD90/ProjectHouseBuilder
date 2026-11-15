@@ -290,6 +290,14 @@ Unter **Backup, Export & Daten** (`/daten`) liegen sämtliche Download-Optionen 
 Vor Datenbankmigration `0010` legt der lokale Starter wie bisher zwingend ein geprüftes Backup an. Die Anwendung darf dafür nicht parallel laufen.
 
 
+## Dokumenteneingang (Migration 0037)
+
+Neben der Theme-Auswahl öffnet der Eingangsbutton die noch zu bearbeitenden Dateien dieses Projekts. Den Ordner und das Intervall (standardmäßig zehn Minuten) stellst du dort über das Zahnrad oder unter **Daten & Sicherung → Dokumenteneingang** ein. Der Pfad muss für den App-Server erreichbar sein; bei einer NAS-Installation den Ordner als Volume einbinden. Unterstützt werden PDF, JPG, PNG, WEBP, DOCX und TXT direkt im Ordner, ohne Unterordner. Die regelmäßige Prüfung läuft bei gestartetem App-Server im Hintergrund.
+
+Der Scan analysiert nichts automatisch. Nach dem Anklicken wählst du Angebot, neue Angebotsversion, Rechnung, Kassenzettel, Projektunterlage, neue Dokumentversion, Förder- oder Kreditunterlage. Versionen erfordern eine bestehende Zielunterlage. Anschließend läuft derselbe Import mit Prüfung und Warteschlange wie beim manuellen Upload. ChatGPT bleibt optional und setzt die bestehende Verbindung/Freigabe voraus; Kreditunterlagen benötigen diese Verbindung. Für Rechnungen und Kassenzettel ist auch die Ablage als Entwurf ohne Analyse verfügbar.
+
+Originale werden nie verschoben oder gelöscht. Gleiche Inhalte werden auch bei Umbenennung nicht erneut angeboten. Neue Inhalte derselben Datei werden erneut erkannt. Eingangseinträge können ohne Löschen des Originals ausgeblendet und wiederhergestellt werden. Ordnerkonfiguration und Erkennungsstand sind projektbezogen und werden beim Projekt-Reset gelöscht; die externen Originaldateien bleiben bestehen. Projektbackups enthalten die Eingangsmetadaten, jedoch externe Originale erst nach deren Übernahme in den Standardprozess. Ältere Projektbackups erhalten einen leeren Eingang.
+
 ## Stundenerfassung (Migration 0036)
 
 Unter **Projekt → Stundenerfassung** (`/stunden`) werden eigene Arbeit, Helfer, Architekten und andere Personen als kompakte Kacheln mit ihrer geleisteten Gesamtzeit angezeigt. Personen können optional einer Firma aus den projektbezogenen Stammdaten zugeordnet werden. Alternativ lässt sich direkt ein Firmenkonto aus den Stammdaten anlegen.

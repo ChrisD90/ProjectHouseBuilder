@@ -232,7 +232,7 @@ def load_rows(path, db, owner):
     expected = set(tables) - EPHEMERAL
     # Backups from revision 0028 predate both plan tables; they legitimately contain no plans.
     missing=expected-set(payload['tables'])
-    for name in ('time_person','time_entry'):
+    for name in ('time_person','time_entry','document_inbox_config','document_inbox_item'):
         if name in missing:
             payload['tables'][name]=[]
             missing.remove(name)

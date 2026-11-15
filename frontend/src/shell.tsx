@@ -46,6 +46,7 @@ import { useServices } from './services';
 import { WorkPage, WorkProvider } from './work';
 import { TimeTracking } from './time-tracking';
 import { SelfWorkPage } from './self-work';
+import { DocumentInbox } from './document-inbox';
 import { UnpaidReceipts } from './unpaid-receipts';
 const items = [
   ['/projektunterlagen', 'Projektunterlagen', IconFiles],
@@ -463,6 +464,7 @@ export function App() {
                     { value: 'dark', label: 'Dunkel' },
                   ]}
                 />
+                <DocumentInbox bridge={services.bridge} />
                 <UnpaidReceipts />
                 <Tooltip label="Verarbeitung & Prüfung">
                   <Button

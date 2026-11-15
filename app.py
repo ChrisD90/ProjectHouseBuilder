@@ -208,6 +208,7 @@ def initialize():
             seed_project_defaults()
             db.session.flush()
     db.session.commit()
+    start_document_inbox_worker()
 
 
 def seed_project_defaults(start='2027-03-01'):
@@ -635,6 +636,9 @@ work_sources['self_work']=(SelfWorkPlan,lambda x:'Eigenleistung · '+x.title,lam
 
 from time_tracking import register_time_tracking
 TimePerson, TimeEntry = register_time_tracking(app, db, Contractor)
+
+from document_inbox import register_document_inbox
+DocumentInboxConfig, DocumentInboxItem = register_document_inbox(__import__('sys').modules[__name__])
 
 # Backup settings belong to the server; a browser can only select reachable/mounted paths.
 PlanningBrowserState, planning_get, planning_put, planning_pop = register_planning_state(db)

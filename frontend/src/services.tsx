@@ -85,6 +85,7 @@ export function useServices(navigate: (url: string) => void) {
     const {
       kind,
       files,
+      inboxItemId,
       analysisMode = 'local',
       model = '',
       fields = {},
@@ -99,7 +100,7 @@ export function useServices(navigate: (url: string) => void) {
     )
       throw Error('Diese Verarbeitung läuft bereits. Bitte Ergebnis oder Fehler abwarten.');
     const selected = Array.from(files || []) as File[];
-    if (!selected.length || selected.length > 8)
+    if (!inboxItemId && (!selected.length || selected.length > 8))
       throw Error('Bitte eine bis acht Dateien auswählen.');
     running.current.add(kind);
     try {
@@ -119,7 +120,14 @@ export function useServices(navigate: (url: string) => void) {
       }
       selected.forEach((file) => data.append('files', file, file.name));
       Object.entries(fields).forEach(([key, value]) => data.set(key, String(value ?? '')));
-      const result = await api('/api/import-jobs', 'POST', data, analysisMode === 'ai');
+      const result = inboxItemId
+        ? await api(
+            '/api/document-inbox/items/' + inboxItemId + '/import',
+            'POST',
+            { kind, analysis_mode: analysisMode, model, plan_only: analysisMode === 'ai', fields },
+            analysisMode === 'ai',
+          )
+        : await api('/api/import-jobs', 'POST', data, analysisMode === 'ai');
       if (!seenJobs.current) seenJobs.current = new Map();
       result.jobs.forEach((job: Row) => seenJobs.current!.set(job.id, job.status));
       handoff?.queued();
@@ -253,6 +261,7 @@ export function useServices(navigate: (url: string) => void) {
       refresh: () => methods.current.imports.refresh(),
       open: () => methods.current.imports.open(),
     },
+    inbox: { settings: () => window.dispatchEvent(new Event('phb-inbox-settings')) },
     navigate: (url: string) => navigate(url),
     jobs: () => state.current.jobs,
     changed: () => cache.invalidateQueries(),

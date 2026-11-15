@@ -288,7 +288,7 @@ def register(runtime: ModuleType):
     runtime._start_import_worker = _start_import_worker
 
     @runtime.app.post('/api/import-jobs')
-    def enqueue_import_jobs():
+    def enqueue_import_jobs(inbox_item=None):
         runtime._ensure_import_recovery()
         kind = runtime.request.form.get('kind', '')
         if kind not in runtime._ALLOWED_IMPORTS:
@@ -389,6 +389,11 @@ def register(runtime: ModuleType):
                 job = runtime.ImportJob(lease_owner='queued', batch_id=batch, kind=kind, filename=filename, stored_name=stored, analysis_mode=mode, model=model if mode == 'ai' else '', extra_json=runtime.json.dumps(meta, ensure_ascii=False), stage='Wartet auf die sequenzielle Verarbeitung')
                 runtime.db.session.add(job)
                 jobs.append(job)
+            if inbox_item is not None:
+                if len(jobs)!=1:raise ValueError('Bitte genau eine Eingangsdatei auswählen.')
+                runtime.db.session.flush()
+                inbox_item.job_id=jobs[0].id
+                inbox_item.state='queued'
             runtime.db.session.commit()
             result = [runtime._import_json(job) for job in jobs]
         except (ValueError, OSError) as exc:
