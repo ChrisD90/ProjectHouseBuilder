@@ -7,6 +7,7 @@ import {
   MultiSelect,
   Paper,
   SegmentedControl,
+  Select,
   Stack,
   Text,
   Textarea,
@@ -35,8 +36,13 @@ type CalendarEvent = {
   notes: string;
   trade_ids: number[];
   trades: { id: number; name: string }[];
+  contractor_id: number | null;
+  company_name: string;
 };
-type EventForm = Omit<CalendarEvent, 'id' | 'trades' | 'trade_ids'> & { trade_ids: string[] };
+type EventForm = Omit<
+  CalendarEvent,
+  'id' | 'trades' | 'trade_ids' | 'contractor_id' | 'company_name'
+> & { trade_ids: string[]; contractor_id: string | null; assignment: string };
 const empty = (day: string): EventForm => ({
   title: '',
   start_date: day,
@@ -46,6 +52,8 @@ const empty = (day: string): EventForm => ({
   end_time: '09:00',
   notes: '',
   trade_ids: [],
+  contractor_id: null,
+  assignment: 'trade',
 });
 const dateLabel = (day: string, options?: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat('de-DE', options || { day: 'numeric', month: 'long' }).format(
@@ -68,7 +76,9 @@ export function ProjectCalendar() {
   const events = useQuery({
     queryKey: ['calendar-events', days[0], days.at(-1)],
     queryFn: () =>
-      api<{ events: CalendarEvent[] }>(`/api/calendar-events?from=${days[0]}&to=${days.at(-1)}`),
+      api<{ events: CalendarEvent[]; companies: { id: number; name: string }[] }>(
+        `/api/calendar-events?from=${days[0]}&to=${days.at(-1)}`,
+      ),
   });
   const trades = useQuery({
     queryKey: ['calendar-trades'],
@@ -77,6 +87,8 @@ export function ProjectCalendar() {
   const form = useForm<EventForm>({
     initialValues: empty(today),
     validate: {
+      contractor_id: (value, values) =>
+        values.assignment === 'company' && !value ? 'Bitte eine Firma auswählen.' : null,
       title: (value) => (!value.trim() ? 'Bitte einen Titel eingeben.' : null),
       start_date: (value) => (!value ? 'Bitte einen Beginn auswählen.' : null),
       end_date: (value, values) =>
@@ -98,6 +110,8 @@ export function ProjectCalendar() {
       ? {
           ...event,
           trade_ids: event.trade_ids.map(String),
+          contractor_id: event.contractor_id ? String(event.contractor_id) : null,
+          assignment: event.contractor_id ? 'company' : 'trade',
           start_time: event.start_time || '08:00',
           end_time: event.end_time || '09:00',
         }
@@ -112,8 +126,18 @@ export function ProjectCalendar() {
     setBusy(true);
     setFailure(null);
     try {
-      const { title, start_date, end_date, all_day, start_time, end_time, notes, trade_ids } =
-        values;
+      const {
+        title,
+        start_date,
+        end_date,
+        all_day,
+        start_time,
+        end_time,
+        notes,
+        trade_ids,
+        contractor_id,
+        assignment,
+      } = values;
       await api(
         '/api/calendar-events' + (selected ? '/' + selected : ''),
         selected ? 'PATCH' : 'POST',
@@ -125,12 +149,17 @@ export function ProjectCalendar() {
           start_time,
           end_time,
           notes,
-          trade_ids: trade_ids.map(Number),
+          trade_ids: assignment === 'trade' ? trade_ids.map(Number) : [],
+          contractor_id: assignment === 'company' && contractor_id ? Number(contractor_id) : null,
         },
       );
       form.resetDirty();
       setOpened(false);
-      await cache.invalidateQueries({ queryKey: ['calendar-events'] });
+      await Promise.all(
+        ['calendar-events', 'time-tracking', 'time-person'].map((key) =>
+          cache.invalidateQueries({ queryKey: [key] }),
+        ),
+      );
       success('Termin gespeichert.');
     } catch (e) {
       setFailure(e);
@@ -155,7 +184,11 @@ export function ProjectCalendar() {
       await api('/api/calendar-events/' + selected, 'DELETE');
       form.resetDirty();
       setOpened(false);
-      await cache.invalidateQueries({ queryKey: ['calendar-events'] });
+      await Promise.all(
+        ['calendar-events', 'time-tracking', 'time-person'].map((key) =>
+          cache.invalidateQueries({ queryKey: [key] }),
+        ),
+      );
       success('Termin gelöscht.');
     } catch (e) {
       setFailure(e);
@@ -166,7 +199,7 @@ export function ProjectCalendar() {
   const visible = (events.data?.events || []).filter(
     (event) =>
       (!trade || event.trade_ids.includes(Number(trade))) &&
-      `${event.title} ${event.trades.map((t) => t.name).join(' ')}`
+      `${event.title} ${event.company_name || ''} ${event.trades.map((t) => t.name).join(' ')}`
         .toLocaleLowerCase('de')
         .includes(search.trim().toLocaleLowerCase('de')),
   );
@@ -178,7 +211,7 @@ export function ProjectCalendar() {
     <div className="page project-calendar-page">
       <PageHeader
         title="Projektkalender"
-        description="Termine planen und die passenden Gewerke verknüpfen."
+        description="Termine planen und Gewerke oder Firmen verknüpfen."
       >
         <Button leftSection={<IconPlus size={17} />} onClick={() => open(today)}>
           Termin erstellen
@@ -299,9 +332,9 @@ export function ProjectCalendar() {
                             : `${day === event.start_date ? event.start_time : '↳'} – ${day === event.end_date ? event.end_time : '…'}`}
                         </span>
                         <strong>{event.title}</strong>
-                        {event.trades.length > 0 && (
+                        {(event.company_name || event.trades.length > 0) && (
                           <span className="project-calendar-event-trades">
-                            {event.trades.map((t) => t.name).join(' · ')}
+                            {event.company_name || event.trades.map((t) => t.name).join(' · ')}
                           </span>
                         )}
                       </button>
@@ -369,17 +402,51 @@ export function ProjectCalendar() {
                 </>
               )}
             </div>
-            <MultiSelect
-              label="Gewerke"
-              placeholder="Optional aus den Stammdaten auswählen"
-              searchable
-              clearable
-              data={(trades.data?.trades || []).map((t) => ({
-                value: String(t.id),
-                label: t.name,
-              }))}
-              {...form.getInputProps('trade_ids')}
+            <Select
+              label="Verknüpfen mit"
+              allowDeselect={false}
+              data={[
+                { value: 'trade', label: 'Gewerk' },
+                { value: 'company', label: 'Firma aus Stammdaten' },
+              ]}
+              {...form.getInputProps('assignment')}
             />
+            {form.values.assignment === 'company' ? (
+              <>
+                <Select
+                  label="Firma"
+                  placeholder="Firma aus den Stammdaten auswählen"
+                  searchable
+                  required
+                  nothingFoundMessage="Keine Firma gefunden"
+                  data={(events.data?.companies || []).map((company) => ({
+                    value: String(company.id),
+                    label: company.name,
+                  }))}
+                  {...form.getInputProps('contractor_id')}
+                />
+                <Text size="xs" c="dimmed">
+                  Die Terminzeiten werden automatisch in die Stundenerfassung dieser Firma
+                  übernommen.{' '}
+                  {form.values.all_day
+                    ? 'Ganztägige Termine werden je Kalendertag mit 8 Std. pauschal gekennzeichnet.'
+                    : 'Mehrtägige Termine werden an Mitternacht auf die einzelnen Tage aufgeteilt.'}{' '}
+                  Änderungen und Löschungen werden dort ebenfalls übernommen.
+                </Text>
+              </>
+            ) : (
+              <MultiSelect
+                label="Gewerke"
+                placeholder="Optional aus den Stammdaten auswählen"
+                searchable
+                clearable
+                data={(trades.data?.trades || []).map((t) => ({
+                  value: String(t.id),
+                  label: t.name,
+                }))}
+                {...form.getInputProps('trade_ids')}
+              />
+            )}
             <Textarea
               label="Notizen"
               placeholder="Was wird gemacht? Was ist vorzubereiten?"

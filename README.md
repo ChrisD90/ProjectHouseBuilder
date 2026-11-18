@@ -6,6 +6,10 @@ Auf `feature/projektkalender` öffnet ein Projekt einen normalen Termin-Kalender
 
 Termine sind eigenständige, projektbezogene Daten und Bestandteil der Projektbackups. Die additive Migration **0038** lässt bestehende Bauphasen und Arbeitspakete unverändert; diese werden nicht automatisch als Termine übernommen. Bestehende Detailverknüpfungen bleiben nutzbar. Ältere Backups enthalten zunächst keine Kalendertermine. Nach dem Wechsel auf diesen Branch die Anwendung neu starten.
 
+Über **Verknüpfen mit** kann alternativ eine Firma aus den Stammdaten ausgewählt werden. Ihre Terminzeiten erscheinen automatisch auf ihrer Firmenkachel in der Stundenerfassung; eine vorhandene Firmenkachel wird wiederverwendet. Ganztägige Termine zählen mit **8 Stunden je Kalendertag** und tragen dort die Kennzeichnung **Ganztägig · 8 Std. pauschal**. Termine mit Uhrzeit werden bei mehrtägiger Dauer an Mitternacht aufgeteilt. Auch zukünftige Firmentermine werden unmittelbar übernommen; die Gesamtzeit bezeichnet deshalb erfasste Zeit, nicht ausschließlich bereits geleistete Stunden.
+
+Kalenderzeiten werden am Termin geändert. Verschiebungen, Firmenwechsel, Entfernen der Zuordnung und Löschen aktualisieren ausschließlich die automatisch erzeugten Stundeneinträge; manuelle Einträge bleiben erhalten. Die additive Migration **0039** und Projektbackups enthalten die Verknüpfungen. Die App nach dem Update neu starten.
+
 Die aktuelle Refactoring-Umsetzung (R01–R12), Migration 0031 und wiederholbaren Browserprüfungen sind [hier dokumentiert](docs/REFACTORING_IMPLEMENTATION_2026-11-02.md).
 
 **Aktueller UI-Branch:** `feature/react-mantine-ui` (eine Codebasis, lokal auf dem Mac oder optional auf der NAS). Die empfohlene Betriebsart ist **SQLite lokal auf dem Mac**, ohne dauerhaften Server.

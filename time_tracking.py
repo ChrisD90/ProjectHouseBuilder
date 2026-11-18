@@ -26,6 +26,7 @@ def register_time_tracking(app, db, Contractor):
         minutes = db.Column(db.Integer, nullable=False)
         description = db.Column(db.String(2000), nullable=False, default='')
         created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+        calendar_source = db.relationship('CalendarCompanyTime', back_populates='entry', uselist=False, lazy='selectin')
 
     def text(value, label, limit, required=False):
         if not isinstance(value, str) or len(value.strip()) > limit or (required and not value.strip()):
@@ -51,11 +52,14 @@ def register_time_tracking(app, db, Contractor):
         return dict(id=person.id, kind=person.kind, name=company.name if person.kind == 'company' and company else person.name,
                     role=person.role, notes=person.notes, contractor_id=person.contractor_id,
                     company_name=company.name if company else '', total_minutes=totals[0], entry_count=totals[1],
-                    last_date=totals[2].isoformat() if totals[2] else '')
+                    last_date=totals[2].isoformat() if totals[2] else '',
+                    has_calendar_entries=db.session.scalar(select(TimeEntry.id).where(TimeEntry.person_id == person.id, TimeEntry.calendar_source.has()).limit(1)) is not None)
 
     def entry_dict(entry):
         return dict(id=entry.id, person_id=entry.person_id, worked_on=entry.worked_on.isoformat(),
-                    minutes=entry.minutes, description=entry.description)
+                    minutes=entry.minutes, description=entry.description,
+                    calendar_event_id=entry.calendar_source.event_id if entry.calendar_source else None,
+                    calendar_flat_rate=entry.calendar_source.flat_rate if entry.calendar_source else False)
 
     @app.get('/api/time-tracking')
     def list_people():
@@ -81,7 +85,11 @@ def register_time_tracking(app, db, Contractor):
         person = db.session.get(TimePerson, person_id) if person_id else TimePerson(kind='person', name='', role='', notes='')
         if person is None:
             return jsonify(error='Person oder Firma nicht gefunden.'), 404
+        linked = person_id and db.session.scalar(select(TimeEntry.id).where(TimeEntry.person_id == person_id, TimeEntry.calendar_source.has()).limit(1)) is not None
+        previous = (person.kind, person.contractor_id)
         if request.method == 'DELETE':
+            if linked:
+                return jsonify(error='Diese Firma hat verknüpfte Kalenderzeiten. Bitte zuerst die zugehörigen Termine ändern oder löschen.'), 409
             db.session.delete(person); db.session.commit()
             return jsonify(ok=True)
         try:
@@ -100,6 +108,8 @@ def register_time_tracking(app, db, Contractor):
                 if company is None:
                     raise ValueError('Bitte eine Firma aus den Stammdaten auswählen.')
                 person.name = company.name[:160]
+            if linked and (person.kind, person.contractor_id) != previous:
+                raise ValueError('Die Firmenzuordnung ist durch Kalendertermine verknüpft. Bitte zuerst die Termine ändern.')
             person.name = text(person.name, 'Name', 160, required=True)
             db.session.add(person); db.session.commit()
             return jsonify(person=person_dict(person)), 200 if person_id else 201
@@ -113,6 +123,8 @@ def register_time_tracking(app, db, Contractor):
         entry = db.session.get(TimeEntry, entry_id) if entry_id else TimeEntry(description='')
         if entry is None:
             return jsonify(error='Stundeneintrag nicht gefunden.'), 404
+        if entry_id and entry.calendar_source:
+            return jsonify(error='Dieser Stundeneintrag wird automatisch aus einem Kalendertermin übernommen. Bitte den Termin im Projektkalender bearbeiten.'), 409
         if request.method == 'DELETE':
             db.session.delete(entry); db.session.commit()
             return jsonify(ok=True)

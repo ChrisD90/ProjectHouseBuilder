@@ -44,6 +44,7 @@ type Person = {
   total_minutes: number;
   entry_count: number;
   last_date: string;
+  has_calendar_entries: boolean;
 };
 type Entry = {
   id: number;
@@ -51,6 +52,8 @@ type Entry = {
   worked_on: string;
   minutes: number;
   description: string;
+  calendar_event_id: number | null;
+  calendar_flat_rate: boolean;
 };
 type PersonForm = {
   kind: string;
@@ -390,7 +393,7 @@ export function TimeTracking() {
                   color="red"
                   aria-label="Person oder Firma löschen"
                   onClick={() => void removePerson()}
-                  disabled={busy}
+                  disabled={busy || person.has_calendar_entries}
                 >
                   <IconTrash size={17} />
                 </ActionIcon>
@@ -414,7 +417,7 @@ export function TimeTracking() {
                     </Text>
                   </Group>
                   <Text size="xs" c="dimmed">
-                    Geleistete Gesamtzeit · {person.entry_count}{' '}
+                    Erfasste Gesamtzeit · {person.entry_count}{' '}
                     {person.entry_count === 1 ? 'Eintrag' : 'Einträge'}
                   </Text>
                 </div>
@@ -447,30 +450,52 @@ export function TimeTracking() {
                           </Text>
                           <Badge variant="light">{duration(entry.minutes)}</Badge>
                         </Group>
-                        <Group gap={4} wrap="nowrap">
-                          <Tooltip label="Stundeneintrag bearbeiten">
-                            <ActionIcon
-                              variant="subtle"
-                              aria-label={'Stundeneintrag bearbeiten: ' + dayLabel(entry.worked_on)}
-                              onClick={() => openEntry(entry)}
-                              disabled={busy}
-                            >
-                              <IconPencil size={16} />
-                            </ActionIcon>
-                          </Tooltip>
-                          <Tooltip label="Stundeneintrag löschen">
-                            <ActionIcon
-                              variant="subtle"
-                              color="red"
-                              aria-label={'Stundeneintrag löschen: ' + dayLabel(entry.worked_on)}
-                              onClick={() => void removeEntry(entry)}
-                              disabled={busy}
-                            >
-                              <IconTrash size={16} />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Group>
+                        {!entry.calendar_event_id && (
+                          <Group gap={4} wrap="nowrap">
+                            <Tooltip label="Stundeneintrag bearbeiten">
+                              <ActionIcon
+                                variant="subtle"
+                                aria-label={
+                                  'Stundeneintrag bearbeiten: ' + dayLabel(entry.worked_on)
+                                }
+                                onClick={() => openEntry(entry)}
+                                disabled={busy}
+                              >
+                                <IconPencil size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                            <Tooltip label="Stundeneintrag löschen">
+                              <ActionIcon
+                                variant="subtle"
+                                color="red"
+                                aria-label={'Stundeneintrag löschen: ' + dayLabel(entry.worked_on)}
+                                onClick={() => void removeEntry(entry)}
+                                disabled={busy}
+                              >
+                                <IconTrash size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Group>
+                        )}
                       </Group>
+                      {entry.calendar_event_id && (
+                        <Tooltip
+                          multiline
+                          w={260}
+                          label="Automatisch aus dem verknüpften Kalendertermin übernommen. Bitte Änderungen im Projektkalender vornehmen."
+                        >
+                          <Badge
+                            mt={6}
+                            size="sm"
+                            variant="light"
+                            color={entry.calendar_flat_rate ? 'orange' : 'teal'}
+                          >
+                            {entry.calendar_flat_rate
+                              ? 'Ganztägig · 8 Std. pauschal'
+                              : 'Aus Kalendertermin'}
+                          </Badge>
+                        </Tooltip>
+                      )}
                       {entry.description && (
                         <Text
                           mt={4}
@@ -511,6 +536,7 @@ export function TimeTracking() {
                 { value: 'person', label: 'Person' },
                 { value: 'company', label: 'Firma aus Stammdaten' },
               ]}
+              disabled={!!person?.has_calendar_entries && editingPerson === person.id}
               {...personForm.getInputProps('kind')}
             />
             {personForm.values.kind === 'person' && (
@@ -541,6 +567,7 @@ export function TimeTracking() {
               clearable
               data={companies}
               nothingFoundMessage="Keine Firma gefunden"
+              disabled={!!person?.has_calendar_entries && editingPerson === person.id}
               {...personForm.getInputProps('contractor_id')}
             />
             <Textarea

@@ -315,3 +315,26 @@ class ProjectBackupTest(unittest.TestCase):
         self.assertEqual(self.start_restore(path)['state'], 'done')
         self.assertEqual(self.client.get('/api/calendar-events').json['events'], [])
         self.assertEqual(self.snapshot(self.other), before_other)
+
+    def test_calendar_company_hours_round_trip_without_touching_other_projects(self):
+        ids = {}
+        for owner in (1, self.other):
+            company = self.client.get('/api/costs', headers=self.headers(owner)).json['contractors'][0]['id']
+            response = self.client.post('/api/calendar-events', headers=self.headers(owner), json={
+                'title': 'Firmentermin '+str(owner), 'start_date': '2026-11-20', 'end_date': '2026-11-21',
+                'all_day': True, 'contractor_id': company})
+            self.assertEqual(response.status_code, 201, response.json)
+            ids[owner] = response.json['event']['id']
+        other = self.snapshot(self.other); path = self.create()
+        self.client.delete('/api/calendar-events/'+str(ids[1]))
+        self.assertEqual(self.start_restore(path)['state'], 'done')
+        person = self.client.get('/api/time-tracking').json['people'][0]
+        self.assertEqual(person['total_minutes'], 960)
+        entries = self.client.get('/api/time-people/'+str(person['id'])).json['entries']
+        self.assertEqual(len(entries), 2)
+        self.assertTrue(all(e['calendar_flat_rate'] and e['calendar_event_id'] == ids[1] for e in entries))
+        self.assertEqual(self.snapshot(self.other), other)
+        # The restored links remain live and remove only their derived time entries.
+        self.client.delete('/api/calendar-events/'+str(ids[1]))
+        self.assertEqual(self.client.get('/api/time-people/'+str(person['id'])).json['entries'], [])
+        self.assertEqual(self.snapshot(self.other), other)
