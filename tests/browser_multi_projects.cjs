@@ -56,7 +56,8 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     await page
       .getByRole("link", { name: "Alle Projekte", exact: true })
       .waitFor();
-    const frame = page.frameLocator('iframe[title="Bauzeitenplan"]');
+    await page.goto(base + '/p/' + project.id + '/?legacy_schedule=1');
+    const frame = page.frameLocator('iframe[title="Projektkalender"]');
     await frame.locator('[data-schedule-view="gantt"]').click();
     await frame.locator("#count").filter({ hasText: "0" }).waitFor();
     await frame.locator("#managePhases").click();
@@ -143,8 +144,8 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     const other = (await result.json()).project;
     const second = await context.newPage();
     second.on("pageerror", (e) => errors.push(e.message));
-    await second.goto(base + "/p/" + other.id + "/");
-    const otherFrame = second.frameLocator('iframe[title="Bauzeitenplan"]');
+    await second.goto(base + "/p/" + other.id + "/?legacy_schedule=1");
+    const otherFrame = second.frameLocator('iframe[title="Projektkalender"]');
     await otherFrame.locator("#count").filter({ hasText: "0" }).waitFor();
     await otherFrame.locator("#newTask").click();
     await otherFrame

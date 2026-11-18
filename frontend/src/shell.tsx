@@ -44,13 +44,14 @@ import { Costs, Documents, Energy, MasterData } from './pages';
 import { fundingDocumentOnly, projectID, workspaceURL } from './project-context';
 import { useServices } from './services';
 import { WorkPage, WorkProvider } from './work';
+import { ProjectCalendar } from './project-calendar';
 import { TimeTracking } from './time-tracking';
 import { SelfWorkPage } from './self-work';
 import { DocumentInbox } from './document-inbox';
 import { UnpaidReceipts } from './unpaid-receipts';
 const items = [
   ['/projektunterlagen', 'Projektunterlagen', IconFiles],
-  ['/', 'Bauzeitenplan', IconCalendar],
+  ['/', 'Projektkalender', IconCalendar],
   ['/aufgaben', 'To-dos & Notizen', IconListCheck],
   ['/eigenleistungen', 'Eigenleistungen', IconTool],
   ['/stunden', 'Stundenerfassung', IconClock],
@@ -75,6 +76,7 @@ const navigationGroups = [
   { label: 'Verwaltung', paths: ['/dokumente', '/stammdaten', '/daten'] },
 ];
 const native = new Set([
+  '/',
   '/projektunterlagen',
   '/aufgaben',
   '/kosten',
@@ -121,6 +123,13 @@ export function App() {
   const logoTheme = useComputedColorScheme('light');
   const route = items.find((i) => i[0] === location.pathname),
     url = location.pathname + location.search + location.hash;
+  // Preserve existing deep links into stored legacy work packages/phases.
+  const legacyPlan =
+    location.pathname === '/' &&
+    ['legacy_schedule', 'task_id', 'phase_id', 'schedule_job', 'firmenvorschlaege'].some((key) =>
+      new URLSearchParams(location.search).has(key),
+    );
+  const nativePage = native.has(location.pathname) && !legacyPlan;
   const syncing = useRef<string | null>(null);
   const syncedRoute = useRef<string | null>(null);
   const currentURL = useRef(url);
@@ -207,7 +216,7 @@ export function App() {
     const routeWasSynced = syncedRoute.current === url;
     syncedRoute.current = null;
     document.title = (route?.[1] || 'Projekt') + ' · ProjectHouseBuilder';
-    if (native.has(location.pathname)) {
+    if (nativePage) {
       setDisplay(null);
       return;
     }
@@ -308,7 +317,7 @@ export function App() {
     };
   }, [services.bridge, colorScheme]);
   const pending =
-    !native.has(location.pathname) &&
+    !nativePage &&
     !!route &&
     (!frames[location.pathname]?.ready ||
       display !== location.pathname ||
@@ -545,10 +554,12 @@ export function App() {
             )}
             <div
               style={{
-                display: native.has(location.pathname) ? 'block' : 'none',
+                display: nativePage ? 'block' : 'none',
               }}
             >
-              {location.pathname === '/aufgaben' ? (
+              {location.pathname === '/' && !legacyPlan ? (
+                <ProjectCalendar />
+              ) : location.pathname === '/aufgaben' ? (
                 <WorkPage />
               ) : location.pathname === '/eigenleistungen' ? (
                 <SelfWorkPage />
@@ -566,11 +577,11 @@ export function App() {
                 <Documents key="document-library" />
               ) : null}
             </div>
-            {!native.has(location.pathname) && !route && (
+            {!nativePage && !route && (
               <div className="page">
                 <Text>Diese Ansicht wurde nicht gefunden.</Text>
                 <Button mt="md" onClick={() => navigate('/')}>
-                  Zum Bauzeitenplan
+                  Zum Projektkalender
                 </Button>
               </div>
             )}
@@ -606,7 +617,7 @@ export function App() {
               className="frame-zone"
               inert={pending}
               style={{
-                display: native.has(location.pathname) ? 'none' : undefined,
+                display: nativePage ? 'none' : undefined,
               }}
             >
               {pending && failed !== location.pathname && (

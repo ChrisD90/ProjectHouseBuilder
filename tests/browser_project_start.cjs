@@ -17,8 +17,8 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   }
   const read=async()=>await(await page.request.get(base+'/api/project',{headers})).json();
   const before=await read();
-  await page.goto(base+'/p/'+owner+'/');
-  const frame=page.frameLocator('iframe[title="Bauzeitenplan"]'),input=frame.locator('#projectStart'),popup=frame.locator('dialog.phb-messagebox');
+  await page.goto(base+'/p/'+owner+'/?legacy_schedule=1');
+  const frame=page.frameLocator('iframe[title="Projektkalender"]'),input=frame.locator('#projectStart'),popup=frame.locator('dialog.phb-messagebox');
   await expect(input).toHaveValue('2028-02-25');
   await input.fill('2028-03-08');
   await expect(popup).toHaveCount(0);

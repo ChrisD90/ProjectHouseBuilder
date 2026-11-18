@@ -637,6 +637,9 @@ work_sources['self_work']=(SelfWorkPlan,lambda x:'Eigenleistung · '+x.title,lam
 from time_tracking import register_time_tracking
 TimePerson, TimeEntry = register_time_tracking(app, db, Contractor)
 
+from project_calendar import register_project_calendar
+CalendarEvent, CalendarEventTrade = register_project_calendar(app, db, Trade)
+
 from document_inbox import register_document_inbox
 DocumentInboxConfig, DocumentInboxItem = register_document_inbox(__import__('sys').modules[__name__])
 

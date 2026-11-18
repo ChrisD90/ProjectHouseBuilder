@@ -3,7 +3,7 @@
 No database files, auth profiles, backup settings or other projects enter this format.
 Record IDs stay stable; foreign-project ID/file collisions fail before any deletion.
 """
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from pathlib import Path, PurePosixPath
 import hashlib
@@ -39,7 +39,7 @@ def owned_tables(db):
 
 
 def _json(value):
-    if isinstance(value, (date, datetime, Decimal)): return str(value)
+    if isinstance(value, (date, datetime, time, Decimal)): return str(value)
     raise ValueError('Unbekannter Datentyp im Projektbackup.')
 
 
@@ -215,6 +215,7 @@ def _value(column, value):
         if type(value) is not int: raise ValueError('Ungültige ID oder Zahl.')
     elif isinstance(kind, sa.DateTime): value = datetime.fromisoformat(value)
     elif isinstance(kind, sa.Date): value = date.fromisoformat(value)
+    elif isinstance(kind, sa.Time): value = time.fromisoformat(value)
     elif isinstance(kind, sa.Numeric):
         value = Decimal(str(value))
         if not value.is_finite(): raise ValueError('Ungültiger Betrag.')
@@ -232,7 +233,7 @@ def load_rows(path, db, owner):
     expected = set(tables) - EPHEMERAL
     # Backups from revision 0028 predate both plan tables; they legitimately contain no plans.
     missing=expected-set(payload['tables'])
-    for name in ('time_person','time_entry','document_inbox_config','document_inbox_item'):
+    for name in ('time_person','time_entry','document_inbox_config','document_inbox_item','calendar_event','calendar_event_trade'):
         if name in missing:
             payload['tables'][name]=[]
             missing.remove(name)

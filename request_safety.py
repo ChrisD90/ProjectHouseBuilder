@@ -35,16 +35,16 @@ def invalidate_operations(connection,owner):
 
 def register(app,db,Project,models):
     specs={path:models[name] for path,name in {
-        'projects':'Project','tasks':'Task','phases':'BuildPhase','contractors':'Contractor',
+        'calendar-events':'CalendarEvent','projects':'Project','tasks':'Task','phases':'BuildPhase','contractors':'Contractor',
         'categories':'Category','trades':'Trade','receipts':'Receipt','offers':'Offer',
         'project-documents':'ProjectDocument','project-work':'ProjectWork','funding':'Funding',
         'costs':'CostItem','budget/lines':'BudgetLine','financing/loans':'Loan',
         'financing/equity':'EquityAccount','self-work':'SelfWorkPlan','time-people':'TimePerson','time-entries':'TimeEntry'}.items() if name in models}
-    fields={'people':'time-people','person':'time-people','entry':'time-entries','project':'projects','projects':'projects','tasks':'tasks','phases':'phases',
+    fields={'events':'calendar-events','event':'calendar-events','people':'time-people','person':'time-people','entry':'time-entries','project':'projects','projects':'projects','tasks':'tasks','phases':'phases',
         'contractors':'contractors','categories':'categories','trades':'trades','receipts':'receipts',
         'offers':'offers','documents':'project-documents','funding':'funding','loans':'financing/loans',
         'equity_accounts':'financing/equity','accounts':'financing/equity','budget_lines':'budget/lines'}
-    children={'time_person':{'time_entry'},'project_document':{'project_document_version'},'offer':{'offer_position','offer_section','order_acceptance','document'},
+    children={'calendar_event':{'calendar_event_trade'},'time_person':{'time_entry'},'project_document':{'project_document_version'},'offer':{'offer_position','offer_section','order_acceptance','document'},
               'self_work_plan':{'self_work_receipt'},
               'receipt':{'finance_receipt_payment','receipt_cancellation','receipt_cancellation_reversal','self_work_receipt'},
               'funding':{'funding_plan','funding_plan_offer','funding_document','funding_assessment'}}

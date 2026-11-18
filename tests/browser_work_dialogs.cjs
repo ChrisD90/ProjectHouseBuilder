@@ -207,9 +207,10 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     );
 
     await page
-      .getByRole("link", { name: "Bauzeitenplan", exact: true })
+      .getByRole("link", { name: "Projektkalender", exact: true })
       .click();
-    const gantt = page.frameLocator('iframe[title="Bauzeitenplan"]');
+    await page.goto(base + new URL(page.url()).pathname + '?legacy_schedule=1');
+    const gantt = page.frameLocator('iframe[title="Projektkalender"]');
     await gantt.locator('[data-schedule-view="gantt"]').click();
     for (const [type, id, name] of [
       ["task", task.id, "Arbeitspaket-To-do"],

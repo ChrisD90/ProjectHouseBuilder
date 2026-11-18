@@ -25,10 +25,10 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
         method: r.method(),
       }),
     );
-    await page.goto(base + "/p/1/");
+    await page.goto(base + "/p/1/?legacy_schedule=1");
     await page.waitForFunction(() => !!window.PHBReactBridge);
     await page
-      .frameLocator('iframe[title="Bauzeitenplan"]')
+      .frameLocator('iframe[title="Projektkalender"]')
       .locator("#count")
       .waitFor();
     await page.evaluate(() => {
@@ -53,7 +53,7 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
         "Kredite & Eigenkapital",
         "Dokumente",
         "Daten & Sicherung",
-        "Bauzeitenplan",
+        "Projektkalender",
       ]) {
         await visit(name);
         assert(
@@ -313,8 +313,9 @@ if (!base) throw Error("Set PHB_TEST_URL to a disposable local app instance.");
     await page.getByRole("dialog").waitFor({ state: "hidden" });
     console.log("background document review passed");
 
-    await visit("Bauzeitenplan");
-    const plan = page.frameLocator('iframe[title="Bauzeitenplan"]');
+    await visit("Projektkalender");
+    await page.goto(base + "/p/1/?legacy_schedule=1");
+    const plan = page.frameLocator('iframe[title="Projektkalender"]');
     await plan.locator('[data-schedule-view="gantt"]').click();
     await plan.locator("#newTask").click();
     await plan.locator("#taskForm [name=name]").fill("Browser-Arbeitspaket");

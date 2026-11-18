@@ -528,13 +528,16 @@ def register(runtime: ModuleType):
 
     runtime.trades_rename = trades_rename
 
+    def calendar_trade_used(tid):
+        return runtime.db.session.scalar(runtime.select(runtime.CalendarEventTrade.id).where(runtime.CalendarEventTrade.trade_id == tid).limit(1)) is not None
+
     @runtime.app.delete('/api/trades/<int:tid>')
     def trades_delete(tid):
         item = runtime.db.session.get(runtime.Trade, tid)
         if not item:
             return (runtime.jsonify(error='Gewerk nicht gefunden.'), 404)
-        if runtime.db.session.scalar(runtime.select(runtime.Contractor.id).where(runtime.Contractor.trade == item.name).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Task.id).where(runtime.Task.trade == item.name).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Receipt.id).where(runtime.Receipt.trade == item.name).limit(1)):
-            return (runtime.jsonify(error='Gewerk wird von Firmen oder Arbeitspaketen verwendet; bitte zunächst umbenennen oder neu zuordnen.'), 409)
+        if calendar_trade_used(tid) or runtime.db.session.scalar(runtime.select(runtime.Contractor.id).where(runtime.Contractor.trade == item.name).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Task.id).where(runtime.Task.trade == item.name).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Receipt.id).where(runtime.Receipt.trade == item.name).limit(1)):
+            return (runtime.jsonify(error='Gewerk wird von Terminen, Firmen, Belegen oder Arbeitspaketen verwendet; bitte zunächst umbenennen oder neu zuordnen.'), 409)
         runtime.db.session.delete(item)
         runtime.db.session.commit()
         return runtime.jsonify(ok=True)
@@ -564,7 +567,7 @@ def register(runtime: ModuleType):
             if record.name.casefold() in {n.casefold() for n in default_names}:
                 continue
             if is_trade:
-                used = bool(runtime.db.session.scalar(runtime.select(runtime.Contractor.id).where(runtime.Contractor.trade == record.name).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Task.id).where(runtime.Task.trade == record.name).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Receipt.id).where(runtime.Receipt.trade == record.name).limit(1)))
+                used = calendar_trade_used(record.id) or bool(runtime.db.session.scalar(runtime.select(runtime.Contractor.id).where(runtime.Contractor.trade == record.name).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Task.id).where(runtime.Task.trade == record.name).limit(1)) or runtime.db.session.scalar(runtime.select(runtime.Receipt.id).where(runtime.Receipt.trade == record.name).limit(1)))
             else:
                 used = any((runtime.db.session.scalar(runtime.select(m.id).where(m.category == record.name).limit(1)) is not None for m in (runtime.Receipt, runtime.CostItem, runtime.BudgetLine, runtime.Offer)))
             if used:

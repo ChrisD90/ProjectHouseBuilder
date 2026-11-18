@@ -113,8 +113,8 @@ if (!base) throw Error("Use a disposable PHB_TEST_URL.");
     });
     assert.equal(phase.status(), 201, await phase.text());
     const pid = (await phase.json()).phase.id;
-    await page.goto(base + "/p/" + owner + "/");
-    const gantt = page.frameLocator('iframe[title="Bauzeitenplan"]');
+    await page.goto(base + "/p/" + owner + "/?legacy_schedule=1");
+    const gantt = page.frameLocator('iframe[title="Projektkalender"]');
     await gantt.locator('[data-schedule-view="gantt"]').click();
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });

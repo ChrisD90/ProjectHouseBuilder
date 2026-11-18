@@ -1,5 +1,11 @@
 # ProjectHouseBuilder – Sanierungsprojekt
 
+## Projektkalender (erste Version)
+
+Auf `feature/projektkalender` öffnet ein Projekt einen normalen Termin-Kalender mit Wochen- und Monatsansicht. Termine haben einen Titel, einen Zeitraum (ganztägig oder mit lokalen Uhrzeiten), optionale Notizen und optional mehrere Gewerke aus den projektbezogenen Stammdaten. Über einen Tag oder **Termin erstellen** wird ein Termin angelegt; ein Klick auf einen vorhandenen Termin öffnet die Bearbeitung einschließlich Löschen. Suche und Gewerkfilter grenzen die Ansicht ein.
+
+Termine sind eigenständige, projektbezogene Daten und Bestandteil der Projektbackups. Die additive Migration **0038** lässt bestehende Bauphasen und Arbeitspakete unverändert; diese werden nicht automatisch als Termine übernommen. Bestehende Detailverknüpfungen bleiben nutzbar. Ältere Backups enthalten zunächst keine Kalendertermine. Nach dem Wechsel auf diesen Branch die Anwendung neu starten.
+
 Die aktuelle Refactoring-Umsetzung (R01–R12), Migration 0031 und wiederholbaren Browserprüfungen sind [hier dokumentiert](docs/REFACTORING_IMPLEMENTATION_2026-11-02.md).
 
 **Aktueller UI-Branch:** `feature/react-mantine-ui` (eine Codebasis, lokal auf dem Mac oder optional auf der NAS). Die empfohlene Betriebsart ist **SQLite lokal auf dem Mac**, ohne dauerhaften Server.

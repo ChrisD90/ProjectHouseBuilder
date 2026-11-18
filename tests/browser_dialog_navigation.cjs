@@ -74,8 +74,8 @@ if(!base)throw Error('Use dev/ui_browser_smoke.py.');
   for(const [route,title,dialog,close,key,id] of [
    ['/angebote','Angebote','#offerEditDialog','#closeOfferEdit','offer_id',offer.id],
    ['/finanzierung','Kredite & Eigenkapital','#loanDialog','#closeLoan','loan_id',loan],
-   ['/','Bauzeitenplan','#overlay','#closeTask','task_id',task],
-   ['/','Bauzeitenplan','#phaseDialog','#closePhaseDialog','phase_id',phase],
+   ['/','Projektkalender','#overlay','#closeTask','task_id',task],
+   ['/','Projektkalender','#phaseDialog','#closePhaseDialog','phase_id',phase],
   ]){
    await page.goto(path(route+'?'+key+'='+id));
    const frame=page.frameLocator('iframe[title="'+title+'"]:not([hidden])');

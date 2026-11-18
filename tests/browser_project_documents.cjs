@@ -14,7 +14,7 @@ const base=process.env.PHB_TEST_URL;
   const receipt=await page.request.post(base+'/api/receipts',{headers,multipart:{analysis_mode:'none',file:{name:'Globaler-Beleg.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4\nGlobaler Beleg')}}});assert(receipt.ok(),await receipt.text());
   const before=await docs();await page.goto(workspace+'/projektunterlagen');
   await expect(page.getByRole('heading',{name:'Projektunterlagen',exact:true})).toBeVisible();
-  const navigation=await page.locator('#app-navigation').getByRole('link').allTextContents();assert(navigation.findIndex(name=>name==='Projektunterlagen')<navigation.findIndex(name=>name==='Bauzeitenplan'));
+  const navigation=await page.locator('#app-navigation').getByRole('link').allTextContents();assert(navigation.findIndex(name=>name==='Projektunterlagen')<navigation.findIndex(name=>name==='Projektkalender'));
   const cards=page.locator('.project-document-card');await expect(cards).toHaveCount(7);
   assert.deepEqual(await docs(),before,'New view must use the same records without moving or duplicating documents');
   assert(await cards.evaluateAll(cards=>cards.every(card=>card.getBoundingClientRect().height===190&&card.scrollHeight<=card.clientHeight)));

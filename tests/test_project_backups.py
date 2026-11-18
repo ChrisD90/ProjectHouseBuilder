@@ -293,3 +293,25 @@ class ProjectBackupTest(unittest.TestCase):
         response=self.client.post('/api/backup/inspect',json={'filename':path.name})
         self.assertEqual(response.status_code,400)
         self.assertIn('Systemsicherungen',response.json['error'])
+
+    def test_calendar_restore_is_scoped_and_older_backup_has_no_events(self):
+        for owner in (1, self.other):
+            trade = self.client.get('/api/trades', headers=self.headers(owner)).json['trades'][0]
+            response = self.client.post('/api/calendar-events', headers=self.headers(owner), json={
+                'title': 'Termin '+str(owner), 'start_date': '2026-11-20', 'end_date': '2026-11-21',
+                'all_day': False, 'start_time': '09:00', 'end_time': '16:00', 'trade_ids': [trade['id']]})
+            self.assertEqual(response.status_code, 201, response.json)
+        before_other = self.snapshot(self.other)
+        path = self.create()
+        ident = self.client.get('/api/calendar-events').json['events'][0]['id']
+        self.client.delete('/api/calendar-events/'+str(ident))
+        self.assertEqual(self.start_restore(path)['state'], 'done')
+        restored = self.client.get('/api/calendar-events').json['events'][0]
+        self.assertEqual(restored['title'], 'Termin 1')
+        self.assertEqual(restored['start_time'], '09:00')
+        self.assertEqual(len(restored['trades']), 1)
+        self.assertEqual(self.snapshot(self.other), before_other)
+        self.rewrite(path, lambda data: [data['tables'].pop(name) for name in ('calendar_event', 'calendar_event_trade')])
+        self.assertEqual(self.start_restore(path)['state'], 'done')
+        self.assertEqual(self.client.get('/api/calendar-events').json['events'], [])
+        self.assertEqual(self.snapshot(self.other), before_other)
