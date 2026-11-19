@@ -250,10 +250,10 @@ body.phb-app.phb-page-angebote .offer-drafts-icon{display:grid;place-items:cente
 
 
 /* Gemeinsame PDF-Vorschau direkt neben der Formularprüfung */
-.phb-inline-pdf{min-width:0;border:1px solid #dce8ed;background:#f5f9fa;border-radius:12px;padding:10px;position:sticky;top:8px;align-self:start;}
+.phb-inline-pdf{min-width:0;border:1px solid var(--ui-line,#dce8ed);background:var(--ui-soft,#f5f9fa);color:var(--ui-ink,#162d36);border-radius:12px;padding:10px;position:sticky;top:8px;align-self:start;}
 .phb-inline-pdf[hidden]{display:none!important;}
-.phb-inline-pdf header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px 9px;font-size:12px;}
-.phb-inline-pdf iframe,.phb-inline-pdf img{border:1px solid #d9e5e9;background:#fff;border-radius:8px;width:100%;height:min(68vh,880px);object-fit:contain;}
+.phb-inline-pdf header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px 9px;font-size:12px;background:transparent;color:inherit;border-bottom:0;}
+.phb-inline-pdf iframe,.phb-inline-pdf img{border:1px solid var(--ui-line,#d9e5e9);background:var(--ui-surface,#fff);border-radius:8px;width:100%;height:min(68vh,880px);object-fit:contain;}
 .phb-inline-pdf iframe[hidden],.phb-inline-pdf img[hidden]{display:none;}
 
 
@@ -281,7 +281,7 @@ body.phb-app .phb-offer-workflow .phb-inline-pdf{
 body.phb-app .phb-offer-edit-dialog .phb-inline-pdf[hidden],
 body.phb-app .phb-offer-workflow .phb-inline-pdf[hidden]{display:none!important}
 body.phb-app .phb-offer-edit-dialog iframe,
-body.phb-app .phb-offer-workflow .phb-inline-pdf iframe{width:100%;height:min(72dvh,900px);min-height:460px;border:1px solid var(--ui-line,#d3e2e5);background:white;}
+body.phb-app .phb-offer-workflow .phb-inline-pdf iframe{width:100%;height:min(72dvh,900px);min-height:460px;border:1px solid var(--ui-line,#d3e2e5);background:var(--ui-surface,#fff);}
 body.phb-app .phb-offer-workflow .offer-review-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(340px,.9fr);}
 body.phb-app .phb-offer-workflow .offer-review-layout>.offer-cards{padding:0;margin:0;}
 @media(max-width:800px){
