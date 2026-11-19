@@ -364,7 +364,12 @@ class ProjectBackupTest(unittest.TestCase):
         settings['contour']=[{'x':0,'y':0},{'x':4000,'y':0},{'x':4000,'y':1500},{'x':2000,'y':1500},{'x':2000,'y':3000},{'x':0,'y':3000}]
         geometry={key:settings[key] for key in ('width','height','contour')}
         room=self.client.post('/api/companion/records',json={'kind':'room','title':'Bad','data':{'geometry':geometry}}).json['record']
-        tile=self.client.post('/api/companion/records',json={'kind':'tile_plan','title':'Fliesen Bad','data':{'settings':settings,'room_id':room['id']}}).json['record']
+        from PIL import Image
+        buffer=io.BytesIO();Image.new('RGB',(2,2),'green').save(buffer,format='PNG');raw_image=buffer.getvalue()
+        uploaded=self.client.post('/api/project-documents',data={'title':'Fliesenmuster','file':(io.BytesIO(raw_image),'tile.png')},content_type='multipart/form-data')
+        self.assertEqual(uploaded.status_code,201,uploaded.json);image_id=uploaded.json['document']['id']
+        product={'id':'tile-one','name':'Feinsteinzeug','url':'https://example.org/tile','price':4.25,'image_document_id':image_id}
+        tile=self.client.post('/api/companion/records',json={'kind':'tile_plan','title':'Fliesen Bad','data':{'settings':settings,'room_id':room['id'],'tile_products':[product]}}).json['record']
         company=self.client.get('/api/costs').json['contractors'][0]['id']
         event=self.client.post('/api/calendar-events',json={'title':'Geplante Montage','start_date':'2026-11-20','end_date':'2026-11-20','contractor_id':company,'performed':False}).json['event']
         terms='/api/receipts/'+str(self.ids[1]['receipt'])+'/terms'
@@ -377,6 +382,10 @@ class ProjectBackupTest(unittest.TestCase):
         restored={x['id']:x for x in self.client.get('/api/companion').json['records']}
         self.assertEqual(restored[row['id']]['body'],'Vorher')
         self.assertEqual(restored[tile['id']]['data']['settings'],settings)
+        self.assertEqual(restored[tile['id']]['data']['tile_products'],[product])
+        self.assertIn(image_id,restored[tile['id']]['data']['document_ids'])
+        preview=self.client.get('/api/project-documents/'+str(image_id)+'/preview')
+        self.assertEqual(preview.status_code,200);self.assertEqual(preview.data,raw_image);preview.close()
         self.assertEqual(restored[tile['id']]['data']['room_id'],room['id'])
         self.assertEqual(restored[room['id']]['data']['geometry'],geometry)
         self.assertEqual(self.client.get(terms).json['percent'],2)

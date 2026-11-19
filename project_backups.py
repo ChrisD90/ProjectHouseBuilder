@@ -284,6 +284,7 @@ def load_rows(path, db, owner):
                     raise ValueError('Ungültige Verknüpfung in ' + name + '.' + fk.parent.name)
     # New metadata must never introduce cross-project file or financial references.
     room_ids={row['id'] for row in result.get('companion_record',[]) if row['kind']=='room'}
+    image_documents={row['id']:row for row in result.get('project_document',[])}
     for row in result.get('companion_record',[]):
         data=_loads(row['data_json'])
         if not isinstance(data,dict):raise ValueError('Ungültige Projektdokumentation im Backup.')
@@ -294,6 +295,10 @@ def load_rows(path, db, owner):
             validate_room_geometry(data.get('geometry'))
         if row['kind']=='tile_plan' and data.get('room_id') is not None and (type(data['room_id'])is not int or data['room_id']not in room_ids):
             raise ValueError('Projektfremder oder fehlender Raum im Verlegeplan.')
+        if row['kind']=='tile_plan':
+            from tile_plans import validate_tile_products
+            _,images=validate_tile_products(data.get('tile_products',[]),image_documents.get)
+            if not set(images)<=set(ids):raise ValueError('Fliesenbilder sind nicht mit den Projektunterlagen verknüpft.')
     receipts={row['id']:row for row in result.get('receipt',[])}
     for row in result.get('receipt_terms',[]):
         receipt=receipts[row['receipt_id']]

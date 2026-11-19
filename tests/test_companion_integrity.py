@@ -8,6 +8,28 @@ import app as b
 
 
 class CompanionIntegrityTest(unittest.TestCase):
+    def test_tile_comparison_images_and_prices_are_project_local_and_atomic(self):
+        from multi_projects import project_context
+        documents=[]
+        for owner in (1,self.other):
+            with project_context(owner):
+                image=b.ProjectDocument(title='Fliese',original_name='tile.png',stored_name='tile-'+str(owner)+'.png',extension='.png',digest=str(owner)*64,size_bytes=1,category='Sonstiges',area='Allgemein')
+                b.db.session.add(image);b.db.session.commit();documents.append(image.id)
+        settings=dict(width=4000,height=3000,tileWidth=600,tileHeight=300,joint=3,edge=5,reserve=10,rotated=False,pattern='straight',start='center',offsetX=0,offsetY=0)
+        product=dict(id='one',name='Feinsteinzeug',url='https://example.org/fliese',price=12.50,image_document_id=documents[0])
+        row=self.record(kind='tile_plan',data={'settings':settings,'tile_products':[product]})
+        path='/api/companion/records/'+str(row['id']);before=self.c.get('/api/costs').json['summary']
+        self.assertEqual(row['data']['document_ids'],[documents[0]])
+        self.assertEqual(self.c.delete('/api/project-documents/'+str(documents[0])).status_code,409)
+        for changes in ({'image_document_id':documents[1]},{'url':'javascript:alert(1)'},{'price':-1},{'price':True},{'price':1.234}):
+            response=self.c.patch(path,json={'title':'Nicht übernehmen','data':{'settings':settings,'tile_products':[{**product,**changes}]}})
+            self.assertEqual(response.status_code,400,response.json)
+        saved=next(x for x in self.c.get('/api/companion').json['records'] if x['id']==row['id'])
+        self.assertEqual(saved['title'],row['title']);self.assertEqual(saved['data']['tile_products'],[product])
+        self.assertEqual(self.c.patch(path,headers=self.foreign,json={'data':{'settings':settings,'tile_products':[]}}).status_code,404)
+        self.assertEqual(self.c.patch(path,json={'data':{'settings':settings,'tile_products':[],'document_ids':[]}}).status_code,200)
+        self.assertEqual(self.c.get('/api/costs').json['summary'],before)
+
     def setUp(self):
         self.ctx=b.app.app_context();self.ctx.push();b.db.session.remove();b.db.drop_all();b.initialize();self.c=b.app.test_client()
         self.other=self.c.post('/api/projects',json={'title':'Fremdes Projekt'}).json['project']['id']

@@ -1,5 +1,44 @@
 """Validate user supplied room contours before storing project-local tile plans."""
 import math
+from decimal import Decimal, InvalidOperation
+from urllib.parse import urlsplit
+
+
+def validate_tile_products(rows, document_for_id):
+    if not isinstance(rows,list) or len(rows)>30:
+        raise ValueError('Es können maximal 30 Fliesen verglichen werden.')
+    result=[];seen=set();images=[]
+    for row in rows:
+        if not isinstance(row,dict) or set(row)-{'id','name','url','price','image_document_id'}:
+            raise ValueError('Ungültiger Flieseneintrag.')
+        ident=row.get('id')
+        if not isinstance(ident,str) or not ident or len(ident)>64 or ident in seen:
+            raise ValueError('Flieseneinträge benötigen eine eindeutige Kennung.')
+        seen.add(ident)
+        name=row.get('name','');url=row.get('url','')
+        if not isinstance(name,str) or len(name)>200 or not isinstance(url,str) or len(url)>2000:
+            raise ValueError('Bezeichnung oder URL der Fliese ist zu lang.')
+        url=url.strip()
+        if url:
+            parsed=urlsplit(url)
+            if parsed.scheme not in ('http','https') or not parsed.hostname or parsed.username or parsed.password:
+                raise ValueError('Bitte eine gültige HTTP- oder HTTPS-Produktadresse eingeben.')
+        price=row.get('price')
+        if price is not None:
+            try: amount=Decimal(str(price))
+            except InvalidOperation: raise ValueError('Ungültiger Fliesenpreis.') from None
+            if isinstance(price,bool) or not amount.is_finite() or not 0<=amount<=999999999 or amount!=amount.quantize(Decimal('.01')):
+                raise ValueError('Der Stückpreis muss positiv oder null sein und darf maximal zwei Nachkommastellen haben.')
+            price=float(amount)
+        image_id=row.get('image_document_id')
+        if image_id is not None:
+            document=document_for_id(image_id) if type(image_id)is int and image_id>0 else None
+            extension=document.get('extension') if isinstance(document,dict) else getattr(document,'extension',None)
+            if document is None or extension not in ('.jpg','.jpeg','.png','.webp'):
+                raise ValueError('Das Fliesenbild muss eine Bilddatei aus diesem Projekt sein.')
+            images.append(image_id)
+        result.append({'id':ident,'name':name.strip(),'url':url,'price':price,'image_document_id':image_id})
+    return result,images
 
 
 def validate_room_geometry(geometry):

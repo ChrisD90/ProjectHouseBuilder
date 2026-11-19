@@ -16,7 +16,7 @@ from flask import jsonify, request, send_file
 from sqlalchemy import select, event
 from money_values import Money
 from multi_projects import current_project_id, ProjectSession
-from tile_plans import validate_contour, validate_room_geometry
+from tile_plans import validate_contour, validate_room_geometry, validate_tile_products
 
 KINDS = {'journal','defect','house','dossier','addendum','terms','glossary','tool_return','reminder','template','tile_plan','room'}
 STATUSES = {'Offen','In Arbeit','Erledigt','Archiviert','Entwurf','Freigegeben','Abgelehnt'}
@@ -171,6 +171,8 @@ def register_companion(r):
             if not isinstance(data,dict) or len(json.dumps(data,allow_nan=False))>20000:raise ValueError('Ungültige Zusatzangaben.')
             if row.kind=='room':validate_room_geometry(data.get('geometry'))
             if row.kind=='tile_plan':
+                data['tile_products'],images=validate_tile_products(data.get('tile_products',[]),lambda ident:db.session.get(r.ProjectDocument,ident))
+                data['document_ids']=list(dict.fromkeys(document_ids(data)+images))
                 settings=data.get('settings')
                 limits={'width':(100,100000),'height':(100,100000),'tileWidth':(10,5000),'tileHeight':(10,5000),
                         'joint':(0,30),'edge':(0,100),'reserve':(0,100),'offsetX':(0,10000),'offsetY':(0,10000)}

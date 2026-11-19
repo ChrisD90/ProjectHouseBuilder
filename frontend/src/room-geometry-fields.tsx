@@ -53,12 +53,14 @@ export function RoomGeometryFields({
   busy = false,
   showPoints,
   setShowPoints,
+  hideHints = false,
 }: {
   value: RoomGeometry;
   onChange: (value: RoomGeometry) => void;
   busy?: boolean;
   showPoints: boolean;
   setShowPoints: (value: boolean) => void;
+  hideHints?: boolean;
 }) {
   function chooseShape(shape: NonNullable<TileSettings['roomShape']>) {
     const w = s.width,
@@ -149,10 +151,12 @@ export function RoomGeometryFields({
       </SimpleGrid>
       {s.contour && (
         <>
-          <Text size="xs" c="dimmed">
-            Außenmaße skalieren die Kontur. Eckpunkte der Reihe nach um den Raum herum eingeben; X
-            nach rechts, Y nach unten. Der letzte Punkt wird automatisch mit dem ersten verbunden.
-          </Text>
+          {!hideHints && (
+            <Text size="xs" c="dimmed">
+              Außenmaße skalieren die Kontur. Eckpunkte der Reihe nach um den Raum herum eingeben; X
+              nach rechts, Y nach unten. Der letzte Punkt wird automatisch mit dem ersten verbunden.
+            </Text>
+          )}
           <Button variant="subtle" size="compact-sm" onClick={() => setShowPoints(!showPoints)}>
             {showPoints ? 'Eckpunkte ausblenden' : 'Eckpunkte bearbeiten'} ({s.contour.length})
           </Button>

@@ -17,6 +17,7 @@ import {
 import { IconDownload, IconPlus, IconPrinter, IconTrash } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useElementSize } from '@mantine/hooks';
 import { useSearchParams } from 'react-router-dom';
 import { api, error, ErrorBox, Row, success, useConfirm } from './core';
 import { useDirtyGuard } from './shell';
@@ -24,6 +25,8 @@ import { defaultTiles, tileLayout, TileSettings, TilePiece } from './tile-layout
 import { svgPath, labelPoint, roomEdgeLabels } from './tile-geometry';
 import './tile-planner.css';
 import { Measurement, RoomGeometryFields, roomGeometryOnly } from './room-geometry-fields';
+import { TileHeading, TileInfo } from './tile-info';
+import { TileProducts, TileProduct } from './tile-products';
 
 const number = (n: number, digits = 1) =>
   n.toLocaleString('de-DE', { maximumFractionDigits: digits });
@@ -37,6 +40,8 @@ const initial = () => ({
   settings: { ...defaultTiles },
   roomId: null as number | null,
   roomTitle: '',
+  products: [] as TileProduct[],
+  documentIds: [] as number[],
 });
 
 export function TilePlanner() {
@@ -49,6 +54,9 @@ export function TilePlanner() {
   const [active, setActive] = useState('');
   const [highlightedEdge, setHighlightedEdge] = useState('');
   const [showPoints, setShowPoints] = useState(false);
+  const [cutsOpen, setCutsOpen] = useState(false),
+    [productsOpen, setProductsOpen] = useState(false);
+  const { ref: settingsRef, height: settingsHeight } = useElementSize<HTMLFieldSetElement>();
   const [roomChoice, setRoomChoice] = useState('');
   const importedRoom = useRef('');
   const [params, setParams] = useSearchParams();
@@ -84,6 +92,13 @@ export function TilePlanner() {
           settings: { ...defaultTiles, ...row.data.settings } as TileSettings,
           roomId: row.data.room_id || null,
           roomTitle: row.data.room_title || '',
+          products: row.data.tile_products || [],
+          documentIds: (row.data.document_ids || []).filter(
+            (ident: number) =>
+              !(row.data.tile_products || []).some(
+                (product: TileProduct) => product.image_document_id === ident,
+              ),
+          ),
         }
       : initial();
     form.setValues(values);
@@ -187,7 +202,15 @@ export function TilePlanner() {
           status: 'Offen',
           data: {
             settings: s,
-            document_ids: [],
+            document_ids: [
+              ...new Set([
+                ...form.values.documentIds,
+                ...form.values.products.flatMap((product) =>
+                  product.image_document_id ? [product.image_document_id] : [],
+                ),
+              ]),
+            ],
+            tile_products: form.values.products,
             room_id: form.values.roomId,
             room_title: form.values.roomTitle,
           },
@@ -201,6 +224,27 @@ export function TilePlanner() {
       route(result.record.id);
       await cache.invalidateQueries({ queryKey: ['companion'] });
       success('Fliesenplan gespeichert.');
+    } catch (e) {
+      error(e);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function uploadProductImage(ident: string, file: File) {
+    setBusy(true);
+    try {
+      const data = new FormData();
+      data.set('file', file);
+      data.set('title', file.name);
+      data.set('category', 'Sonstiges');
+      const result = await api('/api/project-documents', 'POST', data);
+      form.setFieldValue(
+        'products',
+        form.values.products.map((product) =>
+          product.id === ident ? { ...product, image_document_id: result.document.id } : product,
+        ),
+      );
+      await cache.invalidateQueries({ queryKey: ['companion-documents'] });
     } catch (e) {
       error(e);
     } finally {
@@ -387,12 +431,11 @@ export function TilePlanner() {
   return (
     <Stack className="tile-planner">
       <Group justify="space-between" align="end">
-        <div>
-          <Title order={3}>Fliesen-Verlegeplan</Title>
-          <Text size="sm" c="dimmed">
-            Raum aufnehmen, Raster ausrichten und Zuschnitte prüfen.
-          </Text>
-        </div>
+        <TileHeading
+          large
+          title="Fliesen-Verlegeplan"
+          info="Raum aufnehmen, Raster ausrichten und Zuschnitte prüfen. Konturzuschnitte zeigen Außenmaße; den Schnittverlauf siehst du im Plan. Rundungen werden durch 48 Kanten angenähert, innere Aussparungen sind noch nicht enthalten. Maße vor Ort prüfen; Bewegungsfugen, Untergrund und zulässigen Verband nach Herstellerangaben gesondert planen."
+        />
         <Group gap="xs">
           <Select
             aria-label="Gespeicherten Fliesenplan öffnen"
@@ -416,15 +459,23 @@ export function TilePlanner() {
         </Group>
       </Group>
       <ErrorBox value={query.error} />
-      <div className="tile-planner-grid">
-        <fieldset disabled={busy} className="tile-settings">
+      <div
+        className="tile-planner-grid tile-planner-bounded"
+        style={
+          {
+            '--tile-panel-height': settingsHeight ? `${settingsHeight}px` : undefined,
+          } as React.CSSProperties
+        }
+      >
+        <fieldset ref={settingsRef} disabled={busy} className="tile-settings">
           <Stack gap="sm">
             <TextInput label="Plan / Raum" maxLength={200} {...form.getInputProps('title')} />
             <Paper withBorder p="sm">
               <Stack gap="xs">
-                <Text fw={600} size="sm">
-                  1. Raum
-                </Text>
+                <TileHeading
+                  title="1. Raum"
+                  info="Gespeicherte Grundrisse werden als Kopie übernommen. Spätere Änderungen am Raum verändern diesen Verlegeplan erst, wenn du den Grundriss erneut übernimmst. Außenmaße skalieren die Kontur. Eckpunkte der Reihe nach um den Raum herum eingeben: X nach rechts, Y nach unten. Der letzte Punkt wird automatisch mit dem ersten verbunden. Der Randabstand wird an jeder Wand abgezogen."
+                />
                 <Select
                   label="Gespeicherten Raum verwenden"
                   placeholder="Raum auswählen"
@@ -461,25 +512,23 @@ export function TilePlanner() {
                     Übernommen aus: {form.values.roomTitle}
                   </Text>
                 )}
-                <Text size="xs" c="dimmed">
-                  Übernahme als Kopie. Spätere Änderungen am Raum verändern diesen Verlegeplan erst,
-                  wenn du den Grundriss erneut übernimmst.
-                </Text>
                 <RoomGeometryFields
                   value={s}
                   onChange={(geometry) => form.setFieldValue('settings', { ...s, ...geometry })}
                   busy={busy}
                   showPoints={showPoints}
                   setShowPoints={setShowPoints}
+                  hideHints
                 />
                 {dimension('edge', 'Randabstand je Wand (mm)', 1, 100)}
               </Stack>
             </Paper>
             <Paper withBorder p="sm">
               <Stack gap="xs">
-                <Text fw={600} size="sm">
-                  2. Fliesen & Fugen
-                </Text>
+                <TileHeading
+                  title="2. Fliesen & Fugen"
+                  info="Fliesenmaße in Zentimetern, Fugen und Randabstand in Millimetern eingeben. Die Einkaufsmenge zählt eine neue Fliese je belegtem Rasterfeld plus Reserve. Reststücke werden nicht automatisch wiederverwendet. Die Variantenpreise beziehen sich auf diese Einkaufsmenge."
+                />
                 <SimpleGrid cols={2}>
                   {dimension('tileWidth', 'Fliesenbreite (cm)', 10, 500)}
                   {dimension('tileHeight', 'Fliesenlänge (cm)', 10, 500)}
@@ -496,9 +545,11 @@ export function TilePlanner() {
             </Paper>
             <Paper withBorder p="sm">
               <Stack gap="xs">
-                <Text fw={600} size="sm">
-                  3. Verlegung
-                </Text>
+                <TileHeading
+                  title="3. Verlegung"
+                  warning={!!plan?.narrow}
+                  info={`Links oben am umschließenden Rechteck der belegbaren Fläche ist der Rasterbezug. Positiver Versatz verschiebt das ganze Raster; an der Wand entstehen dabei Zuschnitte.${plan?.narrow ? '\n\n' + plan.narrow + ' schmale Randstücke unter einem Drittel des Fliesenmaßes. Prüfe Drehung oder Rasterversatz.' : ''}`}
+                />
                 <Select
                   label="Muster"
                   data={[
@@ -532,11 +583,6 @@ export function TilePlanner() {
                     {dimension('offsetY', 'Versatz nach unten (mm)')}
                   </SimpleGrid>
                 )}
-                <Text size="xs" c="dimmed">
-                  Links oben am umschließenden Rechteck der belegbaren Fläche ist der Rasterbezug.
-                  Positiver Versatz verschiebt das ganze Raster; an der Wand entstehen dabei
-                  Zuschnitte.
-                </Text>
               </Stack>
             </Paper>
           </Stack>
@@ -549,10 +595,11 @@ export function TilePlanner() {
             walls && (
               <>
                 <Paper withBorder p="sm" className="tile-preview">
-                  <Group justify="space-between">
-                    <Text size="sm" fw={600}>
-                      Verlegeplan · Draufsicht
-                    </Text>
+                  <TileHeading
+                    title="Verlegeplan · Draufsicht"
+                    info="Ein Feld anklicken, um dessen Zuschnittmaße zu sehen. Alle Planmaße sind in Millimetern. Grün steht für ganze Fliesen; Schraffur markiert Zuschnitte. Bei Konturzuschnitten sind die Maße Außenmaße; Schnittpunkte beziehen sich auf die linke obere Zuschnittkante."
+                  />
+                  <Group justify="flex-end" gap="xs">
                     <Group gap="xs">
                       <Badge color="green" variant="light">
                         Ganze Fliese
@@ -688,13 +735,10 @@ export function TilePlanner() {
                       </g>
                     ))}
                   </svg>
-                  <Text size="sm" fw={600}>
-                    Raumkanten
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    Längen vor Abzug des Randabstands. Eine Kante in der Legende anklicken, um sie
-                    im Plan hervorzuheben.
-                  </Text>
+                  <TileHeading
+                    title="Raumkanten"
+                    info="Längen vor Abzug des Randabstands. Eine Kante in der Legende anklicken, um sie im Plan hervorzuheben. Bei Rundungen entspricht jede Kante einem geraden Teilstück der angenäherten Kontur."
+                  />
                   <div className="tile-edge-legend" role="group" aria-label="Raumkanten und Längen">
                     {walls.edges.map((edge) => (
                       <button
@@ -712,16 +756,10 @@ export function TilePlanner() {
                       </button>
                     ))}
                   </div>
-                  {s.roomShape === 'round' && (
-                    <Text size="xs" c="dimmed">
-                      Bei Rundungen entspricht jede Kante einem geraden Teilstück der angenäherten
-                      Kontur.
-                    </Text>
-                  )}
                   <Text size="xs" c="dimmed" className="tile-selection" aria-live="polite">
                     {selected
                       ? `Reihe ${selected.row} · Feld ${selected.column}: ${mm(selected.width)} × ${mm(selected.height)}${selected.shaped ? ' · Konturzuschnitt (Außenmaße)' : selected.cut ? ' · Zuschnitt' : ' · Ganze Fliese'}`
-                      : 'Ein Feld anklicken, um dessen Zuschnittmaße zu sehen. Alle Planmaße in mm.'}
+                      : ''}
                   </Text>
                   {selected?.shaped && (
                     <Text size="xs" c="dimmed">
@@ -752,54 +790,62 @@ export function TilePlanner() {
                     <Text fw={600}>ca. {plan.purchase} Fliesen</Text>
                   </Paper>
                 </SimpleGrid>
-                {!!plan.narrow && (
-                  <Alert color="orange" variant="light">
-                    {plan.narrow} schmale Randstücke unter einem Drittel des Fliesenmaßes. Prüfe
-                    Drehung oder Rasterversatz.
-                  </Alert>
-                )}
-                <details className="tile-cut-list">
-                  <summary>Zuschnittliste ({plan.cut} Stück)</summary>
-                  {plan.cut ? (
-                    <Table>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>Breite × Höhe (mm)</Table.Th>
-                          <Table.Th>Stück</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {plan.cuts.map((c, i) => (
-                          <Table.Tr key={i}>
-                            <Table.Td>
-                              {number(c.width, 3)} × {number(c.height, 3)}
-                              {c.shaped && (
-                                <Text size="xs" c="dimmed">
-                                  Kontur · Außenmaße · Felder {c.fields.join(', ')}
-                                </Text>
-                              )}
-                            </Table.Td>
-                            <Table.Td>{c.count}</Table.Td>
+                <div className="tile-plan-lists" data-expanded={cutsOpen || productsOpen}>
+                  <details
+                    className="tile-cut-list"
+                    open={cutsOpen}
+                    onToggle={(event) => setCutsOpen(event.currentTarget.open)}
+                  >
+                    <summary className="tile-section-heading tile-list-heading">
+                      Zuschnittliste ({plan.cut} Stück)
+                      <TileInfo
+                        title="Zuschnittliste"
+                        text="Breite und Höhe sind die Außenmaße des Zuschnitts. Bei Konturzuschnitten zeigt der Plan den tatsächlichen Schnittverlauf. Die Feldnummern ordnen die Zuschnitte dem Raster zu."
+                      />
+                    </summary>
+                    {plan.cut ? (
+                      <Table>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>Breite × Höhe (mm)</Table.Th>
+                            <Table.Th>Stück</Table.Th>
                           </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
-                  ) : (
-                    <Text size="sm">Keine Zuschnitte erforderlich.</Text>
-                  )}
-                </details>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {plan.cuts.map((c, i) => (
+                            <Table.Tr key={i}>
+                              <Table.Td>
+                                {number(c.width, 3)} × {number(c.height, 3)}
+                                {c.shaped && (
+                                  <Text size="xs" c="dimmed">
+                                    Kontur · Außenmaße · Felder {c.fields.join(', ')}
+                                  </Text>
+                                )}
+                              </Table.Td>
+                              <Table.Td>{c.count}</Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    ) : (
+                      <Text size="sm">Keine Zuschnitte erforderlich.</Text>
+                    )}
+                  </details>
+                  <TileProducts
+                    products={form.values.products}
+                    quantity={plan.purchase}
+                    busy={busy}
+                    open={productsOpen}
+                    onToggle={setProductsOpen}
+                    onChange={(products) => form.setFieldValue('products', products)}
+                    onUpload={(ident, file) => void uploadProductImage(ident, file)}
+                  />
+                </div>
               </>
             )
           )}
         </Stack>
       </div>
-      <Text size="xs" c="dimmed">
-        Konturzuschnitte zeigen Außenmaße, den Schnittverlauf siehst du im Plan. Rundungen werden
-        durch 48 Kanten angenähert; innere Aussparungen sind noch nicht enthalten. Die
-        Bestellschätzung rechnet mit einer neuen Fliese je Feld, ohne Wiederverwendung von
-        Reststücken. Maße vor Ort prüfen; Bewegungsfugen, Untergrund und zulässigen Verband nach
-        Herstellerangaben gesondert planen.
-      </Text>
       <Group justify="space-between" className="tile-footer">
         <Group gap="xs">
           <Button
