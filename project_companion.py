@@ -9,6 +9,7 @@ from uuid import uuid4
 import csv
 import html
 import json
+import math
 import re
 import zipfile
 from flask import jsonify, request, send_file
@@ -16,7 +17,7 @@ from sqlalchemy import select, event
 from money_values import Money
 from multi_projects import current_project_id, ProjectSession
 
-KINDS = {'journal','defect','house','dossier','addendum','terms','glossary','tool_return','reminder','template'}
+KINDS = {'journal','defect','house','dossier','addendum','terms','glossary','tool_return','reminder','template','tile_plan'}
 STATUSES = {'Offen','In Arbeit','Erledigt','Archiviert','Entwurf','Freigegeben','Abgelehnt'}
 GLOSSARY = [
  ('Aufmaß','Das Erfassen tatsächlicher Maße vor Ort. Grundlage für Mengen, Bestellung und häufig die Abrechnung.'),
@@ -165,6 +166,22 @@ def register_companion(r):
             row.amount=money(body.get('amount',row.amount))
             data=body.get('data',data_for(row))
             if not isinstance(data,dict) or len(json.dumps(data,allow_nan=False))>20000:raise ValueError('Ungültige Zusatzangaben.')
+            if row.kind=='tile_plan':
+                settings=data.get('settings')
+                limits={'width':(100,100000),'height':(100,100000),'tileWidth':(10,5000),'tileHeight':(10,5000),
+                        'joint':(0,30),'edge':(0,100),'reserve':(0,100),'offsetX':(0,10000),'offsetY':(0,10000)}
+                if not isinstance(settings,dict):raise ValueError('Die Maße für den Fliesenplan fehlen.')
+                for key,(low,high) in limits.items():
+                    value=settings.get(key)
+                    if type(value) not in (int,float) or not math.isfinite(value) or not low<=value<=high:
+                        raise ValueError('Ungültiges Fliesenmaß: '+key)
+                if type(settings.get('rotated'))is not bool or settings.get('pattern')not in ('straight','half') or settings.get('start')not in ('center','corner','offset'):
+                    raise ValueError('Ungültiges Verlegeraster.')
+                width=settings['width']-2*settings['edge'];height=settings['height']-2*settings['edge']
+                tw=settings['tileHeight']if settings['rotated']else settings['tileWidth']
+                th=settings['tileWidth']if settings['rotated']else settings['tileHeight']
+                if width<=0 or height<=0 or (math.ceil(width/(tw+settings['joint']))+2)*(math.ceil(height/(th+settings['joint']))+2)>5000:
+                    raise ValueError('Keine belegbare Fläche oder mehr als 5.000 Fliesenfelder.')
             if row.kind=='addendum' and row.source_type=='offer':
                 reference=source('offer',row.source_id)
                 data['reference_offer_version']=reference.current_version
@@ -219,6 +236,8 @@ def register_companion(r):
         for model,kind,label,url in specs:
             for item in db.session.scalars(select(model)):
                 output.append(dict(key=kind+str(item.id),kind=kind,title=label(item),url=url(item)))
+        for item in records('tile_plan'):
+            output.append(dict(key='Fliesenplan'+str(item.id),kind='Fliesenplan',title=item.title,url='/projektwerkstatt?tab=tiles&record='+str(item.id)))
         return output
 
     @app.get('/api/companion/search')

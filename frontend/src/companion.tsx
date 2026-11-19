@@ -48,6 +48,7 @@ import { useDirtyGuard } from './shell';
 import { SearchField } from './ui';
 import { useWorkActions } from './work';
 import './companion.css';
+import { TilePlanner } from './tile-planner';
 
 const labels: Record<string, string> = {
   journal: 'Bautagebuch',
@@ -1874,6 +1875,7 @@ const views = [
   { value: 'funding', label: 'Förderfristen & Nachweise' },
   { value: 'knowledge', label: 'Begriffe & Werkzeuge' },
   { value: 'tools', label: 'Mengenrechner' },
+  { value: 'tiles', label: 'Fliesen-Verlegeplan' },
   { value: 'templates', label: 'Projektvorlagen' },
 ];
 export function Workshop() {
@@ -1916,6 +1918,8 @@ export function Workshop() {
           <Knowledge />
         ) : view === 'tools' ? (
           <Calculator />
+        ) : view === 'tiles' ? (
+          <TilePlanner />
         ) : view === 'templates' ? (
           <Templates />
         ) : (

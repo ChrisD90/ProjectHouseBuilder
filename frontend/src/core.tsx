@@ -11,9 +11,10 @@ export async function api<T = Row>(
   method = 'GET',
   body?: unknown,
   ai = false,
+  extraHeaders: Record<string, string> = {},
 ): Promise<T> {
   const form = body instanceof FormData;
-  const headers: Record<string, string> = { 'X-PHB-Project': String(projectID) };
+  const headers: Record<string, string> = { 'X-PHB-Project': String(projectID), ...extraHeaders };
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
   if (ai) headers['X-PHB-AI'] = '1';
   const mutation = !['GET', 'HEAD'].includes(method);

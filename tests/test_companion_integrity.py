@@ -51,6 +51,24 @@ class CompanionIntegrityTest(unittest.TestCase):
         self.assertEqual(self.c.post('/api/companion/shopping/status',json={'status':'Bestellt','items':[{'plan_id':p['id'],'row_id':'a'}]}).status_code,200)
         self.assertEqual(self.c.get('/api/companion/shopping').json['materials'][0]['status'],'Bestellt')
 
+    def test_tile_plan_is_scoped_and_invalid_or_stale_updates_preserve_saved_plan(self):
+        settings=dict(width=4000,height=3000,tileWidth=600,tileHeight=300,joint=3,edge=5,reserve=10,
+                      rotated=False,pattern='half',start='center',offsetX=0,offsetY=0)
+        row=self.record(kind='tile_plan',title='Bad',data={'settings':settings})
+        path='/api/companion/records/'+str(row['id'])
+        snapshot=self.c.get('/api/companion').json
+        token=snapshot['_versions'][path]
+        self.assertEqual(self.c.patch(path,headers=self.foreign,json={'title':'Fremd'}).status_code,404)
+        invalid={**settings,'width':1}
+        self.assertEqual(self.c.patch(path,json={'title':'Ungültig','data':{'settings':invalid}}).status_code,400)
+        self.assertEqual(self.c.get('/api/companion').json['records'][0]['title'],'Bad')
+        self.assertEqual(self.c.patch(path,json={'title':'Bad neu'},headers={'If-Match':token}).status_code,200)
+        self.assertEqual(self.c.patch(path,json={'title':'Veraltet'},headers={'If-Match':token}).status_code,409)
+        self.assertEqual(self.c.delete(path,headers={'If-Match':token}).status_code,409)
+        own=self.c.get('/api/companion').json['records'][0]
+        self.assertEqual(own['title'],'Bad neu');self.assertEqual(own['data']['settings'],settings)
+        self.assertFalse(any(x['kind']=='tile_plan' for x in self.c.get('/api/companion',headers=self.foreign).json['records']))
+
     def test_planned_confirmed_hours_and_repeat_are_separate_and_no_duplicates(self):
         company=self.c.post('/api/contractors',json={'name':'Terminbetrieb'}).json['contractor']['id']
         response=self.c.post('/api/calendar-events',json={'title':'Arbeit','start_date':'2026-11-20','end_date':'2026-11-20','contractor_id':company,'performed':False})

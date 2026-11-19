@@ -20,6 +20,14 @@ In der Stundenerfassung sind **Monat und Person/Firma** für CSV sowie druckbare
 
 ## Einkauf und Dokumentation
 
+### Fliesen-Verlegeplan
+
+Unter **Projektwerkstatt → Fliesen-Verlegeplan** lassen sich mehrere Pläne je Projekt anlegen. Raum- und Fliesenmaße werden in Zentimetern eingegeben, Fugenbreite und Randabstand in Millimetern. Die Draufsicht zeigt alle Maße in Millimetern. Unterstützt werden rechteckige Räume, gerade Verlegung und Halbverband, eine 90°-Drehung sowie mittiger Start mit ausgeglichenen Randstücken, Start oben links oder ein eigener Rasterversatz. Beim mittigen Start werden zwei Rasterlagen verglichen, um schmale Randstücke möglichst zu vermeiden.
+
+Ganze Fliesen sind grün, Zuschnitte schraffiert. Ein Klick auf ein Feld zeigt dessen Reihe, Position und Zuschnittmaße. Schmale Stücke unter einem Drittel des jeweiligen Fliesenmaßes werden gemeldet. Eine zusammengefasste Zuschnittliste sowie **Drucken / PDF** und **SVG** ermöglichen die Nutzung außerhalb der App. Die Bestellschätzung zählt vorsichtig eine neue Fliese je Feld plus Reserve; Reststücke werden nicht automatisch wiederverwendet. Einheiten und tatsächliches Kaliber vor Ort prüfen. Aussparungen, schräge Wände, Bewegungsfugen und eine Zuschnittoptimierung sind in dieser ersten Version nicht enthalten.
+
+Gespeichert werden die Eingaben als projektbezogener `tile_plan` in der bestehenden Dokumentationstabelle. Projektbackup, Wiederherstellung und Zurücksetzen erfassen diese Pläne mit; eine weitere Datenbankmigration ist nicht nötig. Gleichzeitiges Überschreiben oder Löschen eines inzwischen geänderten Plans wird über den vorhandenen Versionsschutz abgefangen. Die Berechnung erfolgt lokal im Browser und benötigt keine ChatGPT-Verbindung. Bei mehr als 5.000 Rasterfeldern wird vor dem Berechnen abgebrochen.
+
 - **Einkauf** aggregiert Materialien aktiver Eigenleistungen nach Bezeichnung, Einheit, Status und Materialhinweisen. Mengen mit verschiedenen Einheiten oder abweichenden Hinweisen werden nicht blind zusammengezählt. Beschaffungsstatus lässt sich gesammelt aktualisieren; aktuelle Mengen/Preise werden dabei nicht überschrieben. Werkzeuge aus Eigenleistungen und eigene Rückgabefristen stehen daneben. Einkaufsliste ist druckbar.
 - **Mengenrechner** berechnet Fläche/Volumen, Verschnitt und Packungsbedarf. Das Ergebnis ist kopierbar und kann nach Auswahl eines Vorhabens als Material übernommen werden.
 - **Bautagebuch** speichert Datum, Ort, Text und Bilder/Unterlagen. Eine ausdrücklich angeforderte Vorlage aus Terminen und bestätigten Stunden kann ergänzt werden; Planungsstand bleibt als solcher benannt. Druck/PDF und Unterlagenpaket stehen bereit.

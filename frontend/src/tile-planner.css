@@ -1,0 +1,65 @@
+.tile-planner-grid {
+  display: grid;
+  grid-template-columns: 310px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.tile-settings {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.tile-preview-column {
+  min-width: 0;
+}
+.tile-preview {
+  overflow: hidden;
+}
+.tile-plan-svg {
+  display: block;
+  width: 100%;
+  height: 440px;
+  margin: 8px auto;
+  background: #f4f6f1;
+  border-radius: 8px;
+}
+.tile-plan-svg rect {
+  cursor: pointer;
+}
+.tile-selection {
+  min-height: 32px;
+}
+.tile-cut-list {
+  padding: 10px;
+  border: 1px solid var(--brand-line);
+  border-radius: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+.tile-cut-list summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.tile-footer {
+  border-top: 1px solid var(--brand-line);
+  padding-top: 12px;
+}
+@media (max-width: 60em) {
+  .tile-planner-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tile-plan-svg {
+    height: 360px;
+  }
+}
+@media print {
+  .tile-settings,
+  .tile-footer {
+    display: none;
+  }
+  .tile-planner-grid {
+    display: block;
+  }
+}

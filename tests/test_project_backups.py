@@ -344,15 +344,21 @@ class ProjectBackupTest(unittest.TestCase):
         project_doc=self.client.post('/api/project-documents',data={'title':'Plan','category':'Sonstiges','area':'Allgemein','file':(io.BytesIO(b'Lokale Dokumentation'),'Notiz.txt')},content_type='multipart/form-data')
         self.assertEqual(project_doc.status_code,201,project_doc.json);did=project_doc.json['document']['id']
         row=self.client.post('/api/companion/records',json={'kind':'journal','title':'Bautag','body':'Vorher','data':{'document_ids':[did]}}).json['record']
+        settings=dict(width=4000,height=3000,tileWidth=600,tileHeight=300,joint=3,edge=5,reserve=10,
+                      rotated=False,pattern='half',start='center',offsetX=0,offsetY=0)
+        tile=self.client.post('/api/companion/records',json={'kind':'tile_plan','title':'Fliesen Bad','data':{'settings':settings}}).json['record']
         company=self.client.get('/api/costs').json['contractors'][0]['id']
         event=self.client.post('/api/calendar-events',json={'title':'Geplante Montage','start_date':'2026-11-20','end_date':'2026-11-20','contractor_id':company,'performed':False}).json['event']
         terms='/api/receipts/'+str(self.ids[1]['receipt'])+'/terms'
         self.assertEqual(self.client.put(terms,json={'percent':2,'until':'2026-11-30'}).status_code,200)
         other=self.snapshot(self.other);path=self.create()
         self.client.patch('/api/companion/records/'+str(row['id']),json={'body':'Nachher'})
+        self.client.delete('/api/companion/records/'+str(tile['id']))
         self.client.patch('/api/calendar-events/'+str(event['id']),json={'performed':True})
         self.assertEqual(self.start_restore(path)['state'],'done')
-        self.assertEqual(self.client.get('/api/companion').json['records'][0]['body'],'Vorher')
+        restored={x['id']:x for x in self.client.get('/api/companion').json['records']}
+        self.assertEqual(restored[row['id']]['body'],'Vorher')
+        self.assertEqual(restored[tile['id']]['data']['settings'],settings)
         self.assertEqual(self.client.get(terms).json['percent'],2)
         person=self.client.get('/api/time-tracking').json['people'][0]
         self.assertEqual((person['total_minutes'],person['planned_minutes']),(0,480))
