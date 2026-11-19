@@ -452,6 +452,11 @@ export function ProjectCalendar() {
                 <div
                   key={day}
                   data-calendar-day={day}
+                  onClick={(event) => {
+                    if (event.target instanceof Element && !event.target.closest('button')) {
+                      open(day);
+                    }
+                  }}
                   className={
                     'project-calendar-day' +
                     (day === today ? ' is-today' : '') +
