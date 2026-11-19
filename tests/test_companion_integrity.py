@@ -94,6 +94,35 @@ class CompanionIntegrityTest(unittest.TestCase):
         own=self.c.get('/api/calendar.ics').data.decode();foreign=self.c.get('/api/calendar.ics',headers=self.foreign).data.decode()
         self.assertEqual(own.count('BEGIN:VEVENT'),3);self.assertNotIn('SUMMARY:Arbeit',foreign)
 
+    def test_reusable_rooms_are_scoped_and_tile_snapshots_survive_edits_and_deletion(self):
+        geometry=dict(width=4000,height=3000,roomShape='custom',contour=[{'x':0,'y':0},{'x':4000,'y':0},{'x':4000,'y':1500},{'x':2000,'y':1500},{'x':2000,'y':3000},{'x':0,'y':3000}])
+        room=self.record(kind='room',title='Küche',data={'geometry':geometry})
+        foreign=self.c.post('/api/companion/records',headers=self.foreign,json={'kind':'room','title':'Fremder Raum','data':{'geometry':geometry}})
+        self.assertEqual(foreign.status_code,201,foreign.json)
+        settings=dict(width=4000,height=3000,tileWidth=600,tileHeight=300,joint=3,edge=5,reserve=10,
+                      rotated=False,pattern='half',start='center',offsetX=0,offsetY=0,contour=geometry['contour'])
+        result=self.c.post('/api/companion/records',json={'kind':'tile_plan','title':'Fliesen','data':{'settings':settings,'room_id':foreign.json['record']['id']}})
+        self.assertEqual(result.status_code,400,result.json)
+        tile=self.record(kind='tile_plan',data={'settings':settings,'room_id':room['id']})
+        self.assertEqual(tile['data']['room_title'],'Küche')
+        path='/api/companion/records/'+str(room['id'])
+        self.assertEqual(self.c.delete(path,headers=self.foreign).status_code,404)
+        self.assertEqual(self.c.patch(path,json={'kind':'journal'}).status_code,400)
+        changed=dict(width=6000,height=3000,roomShape='rectangle')
+        self.assertEqual(self.c.patch(path,json={'title':'Küche neu','data':{'geometry':changed}}).status_code,200)
+        invalid={**changed,'contour':[{'x':0,'y':0},{'x':6000,'y':3000},{'x':0,'y':3000},{'x':6000,'y':0}]}
+        self.assertEqual(self.c.patch(path,json={'data':{'geometry':invalid}}).status_code,400)
+        saved={x['id']:x for x in self.c.get('/api/companion').json['records']}
+        self.assertEqual(saved[room['id']]['data']['geometry'],changed)
+        self.assertEqual(saved[tile['id']]['data']['settings'],settings)
+        self.assertEqual(self.c.delete(path).status_code,200)
+        saved={x['id']:x for x in self.c.get('/api/companion').json['records']}
+        self.assertIsNone(saved[tile['id']]['data']['room_id'])
+        self.assertEqual(saved[tile['id']]['data']['room_title'],'Küche neu')
+        self.assertEqual(saved[tile['id']]['data']['settings'],settings)
+        self.assertEqual(self.c.patch('/api/companion/records/'+str(tile['id']),json={'title':'Weiter nutzbar'}).status_code,200)
+        self.assertEqual(len(self.c.get('/api/companion',headers=self.foreign).json['records']),1)
+
     def test_addenda_change_one_order_without_double_counting(self):
         offer=self.c.post('/api/offers/manual',json={'vendor':'Testfirma','gross':1000,'category':'Sonstiges'}).json['offer']
         response=self.c.post('/api/offers/'+str(offer['id'])+'/accept',data={'mode':'offer','confirm':'true'})

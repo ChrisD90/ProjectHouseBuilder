@@ -63,6 +63,7 @@ import { SearchField } from './ui';
 import { useWorkActions } from './work';
 import './companion.css';
 import { TilePlanner } from './tile-planner';
+import { Rooms } from './rooms';
 
 const labels: Record<string, string> = {
   journal: 'Bautagebuch',
@@ -1879,6 +1880,12 @@ function FundingTools() {
 
 const views = [
   {
+    value: 'rooms',
+    label: 'Räume & Grundrisse',
+    icon: IconHome,
+    description: 'Raumkonturen erfassen und in Planungen wiederverwenden.',
+  },
+  {
     value: 'shopping',
     label: 'Einkauf & Werkzeuge',
     icon: IconShoppingCart,
@@ -2004,7 +2011,9 @@ export function Workshop() {
             </Text>
           </Group>
           <Paper withBorder p="md">
-            {view === 'shopping' ? (
+            {view === 'rooms' ? (
+              <Rooms />
+            ) : view === 'shopping' ? (
               <Shopping />
             ) : view === 'journal' ? (
               <CompanionPanel kind="journal" />

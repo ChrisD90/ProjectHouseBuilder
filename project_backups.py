@@ -281,11 +281,17 @@ def load_rows(path, db, owner):
                 elif value not in values.get((fk.column.table.name, fk.column.name), set()):
                     raise ValueError('Ungültige Verknüpfung in ' + name + '.' + fk.parent.name)
     # New metadata must never introduce cross-project file or financial references.
+    room_ids={row['id'] for row in result.get('companion_record',[]) if row['kind']=='room'}
     for row in result.get('companion_record',[]):
         data=_loads(row['data_json'])
         if not isinstance(data,dict):raise ValueError('Ungültige Projektdokumentation im Backup.')
         ids=data.get('document_ids',[])
         if not isinstance(ids,list) or any(type(i)is not int or i not in values.get(('project_document','id'),set()) for i in ids):raise ValueError('Projektfremde Unterlagen in der Dokumentation.')
+        if row['kind']=='room':
+            from tile_plans import validate_room_geometry
+            validate_room_geometry(data.get('geometry'))
+        if row['kind']=='tile_plan' and data.get('room_id') is not None and (type(data['room_id'])is not int or data['room_id']not in room_ids):
+            raise ValueError('Projektfremder oder fehlender Raum im Verlegeplan.')
     receipts={row['id']:row for row in result.get('receipt',[])}
     for row in result.get('receipt_terms',[]):
         receipt=receipts[row['receipt_id']]

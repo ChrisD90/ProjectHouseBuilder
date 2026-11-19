@@ -5,7 +5,7 @@ Branch: `feature/projektkalender`. Additive Migration **0040**. Die Anwendung na
 ## Einstiege
 
 - **Projektübersicht**: nächste Termine, offene To-dos, zu bezahlende Rechnungen, Fristen und Sicherungsstatus. Projektkacheln öffnen diese Übersicht; der Kalender bleibt direkt erreichbar.
-- **Projektwerkstatt**: kompakte Kachelübersicht mit Symbolen und Kurzbeschreibungen für Einkauf, Bautagebuch, Mängel/Abnahme, Hausakte, Firmenchronik, Nachträge/Versionsvergleich, Skonto, Liquidität, Förderfristen/Nachweise, Wissen, Mengenrechner, Fliesen-Verlegeplan und Vorlagen. Ein Klick öffnet den Bereich; **Alle Bereiche** führt zur Übersicht zurück. Bestehende Direktlinks bleiben nutzbar.
+- **Projektwerkstatt**: kompakte Kachelübersicht mit Symbolen und Kurzbeschreibungen für Räume/Grundrisse, Einkauf, Bautagebuch, Mängel/Abnahme, Hausakte, Firmenchronik, Nachträge/Versionsvergleich, Skonto, Liquidität, Förderfristen/Nachweise, Wissen, Mengenrechner, Fliesen-Verlegeplan und Vorlagen. Ein Klick öffnet den Bereich; **Alle Bereiche** führt zur Übersicht zurück. Bestehende Direktlinks bleiben nutzbar.
 - **Suche & Schnellerfassung** im Header, auch über **Strg/⌘ K**. Projektweite Suche in Terminen, Angeboten, Belegen, Unterlagen, Firmen, Eigenleistungen und To-dos/Notizen. Schnelle Erstellung von To-do, Notiz, Termin und Beleg; Mengenrechner und optionale Projektsicherung sind ebenfalls erreichbar. Favoriten und zuletzt geöffnete Treffer sind lokale Browserpräferenzen, getrennt nach Projekt.
 
 ## Kalender und Stunden
@@ -19,6 +19,14 @@ Unter **Termin wiederholen** können bis zu 52 weitere Termine im gewählten Tag
 In der Stundenerfassung sind **Monat und Person/Firma** für CSV sowie druckbare PDF-Vorlage auswählbar. Geplante Zeiten, bestätigte Zeiten und Pauschalen sind getrennt gekennzeichnet. Erinnerungen bei geschlossener Anwendung können über die importierten Kalendertermine erfolgen; die lokale Webanwendung betreibt keinen dauerhaften Benachrichtigungsdienst.
 
 ## Einkauf und Dokumentation
+
+### Räume & Grundrisse
+
+**Projektwerkstatt → Räume & Grundrisse** führt eine eigene, projektbezogene Raumliste als kompakte Kacheln. Räume speichern Name, Etage/Lage, Notizen und die Raumgeometrie unabhängig von Fliesen, Fugen oder Verlegeart. Rechteck, L-Form, schräge Wände, angenäherte runde/ovale Räume und freie Konturen verwenden dieselbe Konturbearbeitung wie der Fliesenplan. Eine Vorschau zeigt Fläche, Umfang und jede Raumkante mit Länge. Die Grundrisse lassen sich bearbeiten und nach Bestätigung löschen.
+
+Im **Fliesen-Verlegeplan** einen gespeicherten Raum auswählen und **Grundriss übernehmen** drücken. Raummaße und Kontur werden als Kopie übernommen; Fliesenformat, Fugen und Verlegung bleiben erhalten. Änderungen oder das Löschen des ursprünglichen Raums verändern die bereits übernommene Geometrie nicht. Erneutes Übernehmen lädt den aktuellen Stand. Aus den Raumdetails kann direkt ein neuer Fliesenplan vorbereitet werden. **Als Raum speichern** im Fliesenplan übernimmt auch bisher nur dort erfasste Konturen in die Raumliste.
+
+Räume verwenden den Datensatztyp `room` mit `data.geometry` (`width`, `height`, optional `contour` und `roomShape`, Maße in Millimetern) und sind damit auch für weitere Werkzeuge wiederverwendbar. Verlegepläne halten eine optionale, projektgeprüfte `data.room_id` samt Herkunftsname und eine unabhängige Kopie ihrer Geometrie. Bei Raumlöschung wird nur der Bezug gelöst. Projektbackup, Wiederherstellung und Zurücksetzen enthalten Räume automatisch; Backupreferenzen werden vor der Wiederherstellung gegen die enthaltene Raumliste geprüft. Es ist keine neue Datenbankmigration erforderlich.
 
 ### Fliesen-Verlegeplan
 

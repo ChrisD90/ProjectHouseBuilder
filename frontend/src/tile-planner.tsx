@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
-  ActionIcon,
   Badge,
   Button,
   Checkbox,
   Group,
-  NumberInput,
   Paper,
   Select,
   SimpleGrid,
@@ -25,6 +23,7 @@ import { useDirtyGuard } from './shell';
 import { defaultTiles, tileLayout, TileSettings, TilePiece } from './tile-layout';
 import { svgPath, labelPoint, roomEdgeLabels } from './tile-geometry';
 import './tile-planner.css';
+import { Measurement, RoomGeometryFields, roomGeometryOnly } from './room-geometry-fields';
 
 const number = (n: number, digits = 1) =>
   n.toLocaleString('de-DE', { maximumFractionDigits: digits });
@@ -33,45 +32,12 @@ const cutCoordinates = (p: TilePiece) =>
   p.paths
     .map((path) => path.map((q) => `${number(q.x - p.x, 3)}/${number(q.y - p.y, 3)}`).join(' → '))
     .join(' | ');
-const initial = () => ({ title: 'Fliesenplan', settings: { ...defaultTiles } });
-
-// Keep intermediate input such as "3," while converting cm to internal mm.
-function Measurement({
-  value,
-  scale,
-  label,
-  max,
-  disabled,
-  onChange,
-}: {
-  value: number;
-  scale: number;
-  label: string;
-  max: number;
-  disabled: boolean;
-  onChange: (value: number) => void;
-}) {
-  const [raw, setRaw] = useState<number | string>(Number.isFinite(value) ? value / scale : '');
-  useEffect(() => {
-    setRaw(Number.isFinite(value) ? value / scale : '');
-  }, [value, scale]);
-  return (
-    <NumberInput
-      label={label}
-      value={raw}
-      min={0}
-      max={max}
-      decimalScale={3}
-      decimalSeparator=","
-      hideControls
-      disabled={disabled}
-      onChange={(v) => {
-        setRaw(v);
-        onChange(v === '' ? NaN : Number(v) * scale);
-      }}
-    />
-  );
-}
+const initial = () => ({
+  title: 'Fliesenplan',
+  settings: { ...defaultTiles },
+  roomId: null as number | null,
+  roomTitle: '',
+});
 
 export function TilePlanner() {
   const query = useQuery({ queryKey: ['companion'], queryFn: () => api('/api/companion') });
@@ -83,12 +49,17 @@ export function TilePlanner() {
   const [active, setActive] = useState('');
   const [highlightedEdge, setHighlightedEdge] = useState('');
   const [showPoints, setShowPoints] = useState(false);
+  const [roomChoice, setRoomChoice] = useState('');
+  const importedRoom = useRef('');
   const [params, setParams] = useSearchParams();
   const opened = useRef('');
   const version = useRef('');
   const svg = useRef<SVGSVGElement>(null);
   useDirtyGuard(form.isDirty());
   const rows: Row[] = (query.data?.records || []).filter((x: Row) => x.kind === 'tile_plan');
+  const rooms: Row[] = (query.data?.records || [])
+    .filter((x: Row) => x.kind === 'room')
+    .sort((a: Row, b: Row) => a.title.localeCompare(b.title, 'de'));
   const s = form.values.settings;
   const { plan, failure } = useMemo(() => {
     try {
@@ -102,17 +73,24 @@ export function TilePlanner() {
     const next = new URLSearchParams(params);
     if (ident) next.set('record', String(ident));
     else next.delete('record');
+    next.delete('room');
     opened.current = ident ? String(ident) : '';
     setParams(next, { replace: true });
   }
   function load(row?: Row) {
     const values = row
-      ? { title: row.title, settings: { ...defaultTiles, ...row.data.settings } as TileSettings }
+      ? {
+          title: row.title,
+          settings: { ...defaultTiles, ...row.data.settings } as TileSettings,
+          roomId: row.data.room_id || null,
+          roomTitle: row.data.room_title || '',
+        }
       : initial();
     form.setValues(values);
     form.resetDirty(values);
     setId(row?.id || null);
     setActive('');
+    setRoomChoice(row?.data.room_id ? String(row.data.room_id) : '');
     version.current = row ? query.data?._versions?.['/api/companion/records/' + row.id] || '' : '';
   }
   useEffect(() => {
@@ -122,6 +100,73 @@ export function TilePlanner() {
     opened.current = target;
     if (row && !form.isDirty()) load(row);
   }, [params.get('record'), query.dataUpdatedAt]);
+  function takeRoom(room: Row, newPlan = false) {
+    form.setValues({
+      ...form.values,
+      ...(newPlan ? { title: (room.title + ' · Fliesen').slice(0, 200) } : {}),
+      settings: { ...form.values.settings, ...roomGeometryOnly(room.data.geometry) },
+      roomId: room.id,
+      roomTitle: room.title,
+    });
+    setRoomChoice(String(room.id));
+    setActive('');
+    setHighlightedEdge('');
+    setShowPoints(false);
+  }
+  useEffect(() => {
+    const target = params.get('room');
+    if (
+      !target ||
+      params.get('record') ||
+      importedRoom.current === target ||
+      !query.data ||
+      form.isDirty()
+    )
+      return;
+    const room = rooms.find((x) => String(x.id) === target);
+    if (room) {
+      importedRoom.current = target;
+      takeRoom(room, true);
+    }
+  }, [params.get('room'), query.dataUpdatedAt]);
+  async function importRoom() {
+    const room = rooms.find((x) => String(x.id) === roomChoice);
+    if (!room) return;
+    if (
+      form.isDirty() &&
+      !(await ask(
+        'Aktuelle Raumkontur durch den gespeicherten Grundriss ersetzen? Fliesenformat und Verlegung bleiben erhalten.',
+      ))
+    )
+      return;
+    takeRoom(room);
+  }
+  async function storeRoom() {
+    if (!plan) return;
+    const title = await ask({
+      title: 'Grundriss als Raum speichern',
+      message: 'Wie soll der Raum heißen?',
+      initial: form.values.roomTitle || form.values.title,
+      confirmLabel: 'Raum speichern',
+    });
+    if (typeof title !== 'string' || !title.trim()) return;
+    setBusy(true);
+    try {
+      const result = await api('/api/companion/records', 'POST', {
+        kind: 'room',
+        title: title.trim(),
+        data: { geometry: roomGeometryOnly(s), document_ids: [] },
+      });
+      form.setValues({ ...form.values, roomId: result.record.id, roomTitle: result.record.title });
+      setRoomChoice(String(result.record.id));
+      await cache.invalidateQueries({ queryKey: ['companion'] });
+      success('Grundriss als Raum gespeichert.');
+    } catch (e) {
+      error(e);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function choose(value: string | null) {
     if (form.isDirty() && !(await ask('Ungespeicherte Änderungen am Fliesenplan verwerfen?')))
       return;
@@ -140,7 +185,12 @@ export function TilePlanner() {
           kind: 'tile_plan',
           title: form.values.title.trim(),
           status: 'Offen',
-          data: { settings: s, document_ids: [] },
+          data: {
+            settings: s,
+            document_ids: [],
+            room_id: form.values.roomId,
+            room_title: form.values.roomTitle,
+          },
         },
         false,
         version.current ? { 'If-Match': version.current } : {},
@@ -304,59 +354,6 @@ export function TilePlanner() {
     );
     doc.close();
   }
-  function roomShape(shape: NonNullable<TileSettings['roomShape']>) {
-    const w = s.width,
-      h = s.height;
-    const rectangle = [
-      { x: 0, y: 0 },
-      { x: w, y: 0 },
-      { x: w, y: h },
-      { x: 0, y: h },
-    ];
-    const contour =
-      shape === 'rectangle'
-        ? undefined
-        : shape === 'l'
-          ? [
-              { x: 0, y: 0 },
-              { x: w, y: 0 },
-              { x: w, y: h * 0.5 },
-              { x: w * 0.5, y: h * 0.5 },
-              { x: w * 0.5, y: h },
-              { x: 0, y: h },
-            ]
-          : shape === 'trapezoid'
-            ? [
-                { x: w * 0.2, y: 0 },
-                { x: w * 0.8, y: 0 },
-                { x: w, y: h },
-                { x: 0, y: h },
-              ]
-            : shape === 'round'
-              ? Array.from({ length: 48 }, (_, i) => ({
-                  x: w / 2 + (Math.cos((i * Math.PI) / 24) * w) / 2,
-                  y: h / 2 + (Math.sin((i * Math.PI) / 24) * h) / 2,
-                }))
-              : s.contour || rectangle;
-    form.setFieldValue('settings', { ...s, roomShape: shape, contour });
-    setShowPoints(shape === 'custom');
-    setActive('');
-  }
-  function changeDimension(key: string, value: number) {
-    if ((key === 'width' || key === 'height') && s.contour && Number.isFinite(value) && value > 0) {
-      const axis = key === 'width' ? 'x' : 'y';
-      const previous =
-        Number.isFinite(s[key]) && s[key] > 0 ? s[key] : Math.max(...s.contour.map((p) => p[axis]));
-      form.setFieldValue('settings', {
-        ...s,
-        [key]: value,
-        contour: s.contour.map((p) => ({
-          ...p,
-          [axis]: Math.min(value, Math.max(0, (p[axis] * value) / previous)),
-        })),
-      });
-    } else form.setFieldValue(`settings.${key}`, value);
-  }
   function dimension(
     key: keyof Pick<
       TileSettings,
@@ -381,7 +378,7 @@ export function TilePlanner() {
         scale={scale}
         max={max}
         disabled={busy}
-        onChange={(v) => changeDimension(key, v)}
+        onChange={(v) => form.setFieldValue(`settings.${key}`, v)}
       />
     );
   }
@@ -429,123 +426,53 @@ export function TilePlanner() {
                   1. Raum
                 </Text>
                 <Select
-                  label="Raumform"
-                  value={s.roomShape || (s.contour ? 'custom' : 'rectangle')}
-                  allowDeselect={false}
-                  data={[
-                    { value: 'rectangle', label: 'Rechteck' },
-                    { value: 'l', label: 'L-Form' },
-                    { value: 'trapezoid', label: 'Schräge Wände' },
-                    { value: 'round', label: 'Rund / oval (angenähert)' },
-                    { value: 'custom', label: 'Freie Kontur' },
-                  ]}
-                  onChange={(v) => {
-                    if (v) roomShape(v as NonNullable<TileSettings['roomShape']>);
-                  }}
+                  label="Gespeicherten Raum verwenden"
+                  placeholder="Raum auswählen"
+                  searchable
+                  clearable
+                  value={roomChoice || null}
+                  data={rooms.map((room) => ({
+                    value: String(room.id),
+                    label: room.title + (room.location ? ' · ' + room.location : ''),
+                  }))}
+                  onChange={(v) => setRoomChoice(v || '')}
+                  disabled={busy || query.isPending}
                 />
-                <SimpleGrid cols={2}>
-                  {dimension('width', 'Breite (cm)', 10)}
-                  {dimension('height', 'Tiefe (cm)', 10)}
-                </SimpleGrid>
-                {dimension('edge', 'Randabstand je Wand (mm)', 1, 100)}
-                {s.contour && (
-                  <>
-                    <Text size="xs" c="dimmed">
-                      Außenmaße skalieren die Kontur. Eckpunkte der Reihe nach um den Raum herum
-                      eingeben; X nach rechts, Y nach unten. Der letzte Punkt wird automatisch mit
-                      dem ersten verbunden.
-                    </Text>
-                    <Button
-                      variant="subtle"
-                      size="compact-sm"
-                      onClick={() => setShowPoints(!showPoints)}
-                    >
-                      {showPoints ? 'Eckpunkte ausblenden' : 'Eckpunkte bearbeiten'} (
-                      {s.contour.length})
-                    </Button>
-                    {showPoints && (
-                      <div className="tile-point-list">
-                        {s.contour.map((p, i) => (
-                          <div className="tile-point-row" key={i}>
-                            <Text size="xs" fw={600}>
-                              {i + 1}
-                            </Text>
-                            {(['x', 'y'] as const).map((axis) => (
-                              <Measurement
-                                key={axis}
-                                label={`${axis.toUpperCase()} (cm)`}
-                                value={p[axis]}
-                                scale={10}
-                                max={10000}
-                                disabled={busy}
-                                onChange={(v) =>
-                                  form.setFieldValue('settings', {
-                                    ...s,
-                                    roomShape: 'custom',
-                                    contour: s.contour!.map((q, j) =>
-                                      i === j ? { ...q, [axis]: v } : q,
-                                    ),
-                                  })
-                                }
-                              />
-                            ))}
-                            <ActionIcon
-                              variant="subtle"
-                              color="red"
-                              aria-label={`Eckpunkt ${i + 1} löschen`}
-                              disabled={s.contour!.length <= 3 || busy}
-                              onClick={() =>
-                                form.setFieldValue('settings', {
-                                  ...s,
-                                  roomShape: 'custom',
-                                  contour: s.contour!.filter((_, j) => i !== j),
-                                })
-                              }
-                            >
-                              <IconTrash size={14} />
-                            </ActionIcon>
-                            <ActionIcon
-                              variant="subtle"
-                              aria-label={`Eckpunkt nach Punkt ${i + 1} einfügen`}
-                              disabled={s.contour!.length >= 64 || busy}
-                              onClick={() => {
-                                const next = s.contour![(i + 1) % s.contour!.length];
-                                const points = [...s.contour!];
-                                points.splice(i + 1, 0, {
-                                  x: (p.x + next.x) / 2,
-                                  y: (p.y + next.y) / 2,
-                                });
-                                form.setFieldValue('settings', {
-                                  ...s,
-                                  roomShape: 'custom',
-                                  contour: points,
-                                });
-                              }}
-                            >
-                              <IconPlus size={14} />
-                            </ActionIcon>
-                          </div>
-                        ))}
-                        <Button
-                          variant="default"
-                          size="xs"
-                          disabled={s.contour.length >= 64 || busy}
-                          onClick={() => {
-                            const a = s.contour!.at(-1)!,
-                              b = s.contour![0];
-                            form.setFieldValue('settings', {
-                              ...s,
-                              roomShape: 'custom',
-                              contour: [...s.contour!, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }],
-                            });
-                          }}
-                        >
-                          Eckpunkt hinzufügen
-                        </Button>
-                      </div>
-                    )}
-                  </>
+                <Group gap="xs">
+                  <Button
+                    size="xs"
+                    variant="default"
+                    disabled={!roomChoice || busy}
+                    onClick={() => void importRoom()}
+                  >
+                    Grundriss übernehmen
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    disabled={!plan || busy}
+                    onClick={() => void storeRoom()}
+                  >
+                    Als Raum speichern
+                  </Button>
+                </Group>
+                {form.values.roomTitle && (
+                  <Text size="xs" c="dimmed">
+                    Übernommen aus: {form.values.roomTitle}
+                  </Text>
                 )}
+                <Text size="xs" c="dimmed">
+                  Übernahme als Kopie. Spätere Änderungen am Raum verändern diesen Verlegeplan erst,
+                  wenn du den Grundriss erneut übernimmst.
+                </Text>
+                <RoomGeometryFields
+                  value={s}
+                  onChange={(geometry) => form.setFieldValue('settings', { ...s, ...geometry })}
+                  busy={busy}
+                  showPoints={showPoints}
+                  setShowPoints={setShowPoints}
+                />
+                {dimension('edge', 'Randabstand je Wand (mm)', 1, 100)}
               </Stack>
             </Paper>
             <Paper withBorder p="sm">

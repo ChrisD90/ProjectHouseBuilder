@@ -2,6 +2,18 @@
 import math
 
 
+def validate_room_geometry(geometry):
+    if not isinstance(geometry, dict) or set(geometry)-{'width', 'height', 'contour', 'roomShape'}:
+        raise ValueError('Ungültige Grundrissdaten.')
+    for key in ('width', 'height'):
+        value = geometry.get(key)
+        if type(value) not in (int, float) or not math.isfinite(value) or not 100 <= value <= 100000:
+            raise ValueError('Raumbreite und -tiefe müssen zwischen 10 und 10.000 cm liegen.')
+    if geometry.get('roomShape') not in (None, 'rectangle', 'l', 'trapezoid', 'round', 'custom'):
+        raise ValueError('Unbekannte Raumform.')
+    validate_contour(geometry.get('contour'), geometry['width'], geometry['height'])
+
+
 def validate_contour(points, width, height):
     if points is None:
         return

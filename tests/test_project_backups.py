@@ -347,7 +347,9 @@ class ProjectBackupTest(unittest.TestCase):
         settings=dict(width=4000,height=3000,tileWidth=600,tileHeight=300,joint=3,edge=5,reserve=10,
                       rotated=False,pattern='half',start='center',offsetX=0,offsetY=0)
         settings['contour']=[{'x':0,'y':0},{'x':4000,'y':0},{'x':4000,'y':1500},{'x':2000,'y':1500},{'x':2000,'y':3000},{'x':0,'y':3000}]
-        tile=self.client.post('/api/companion/records',json={'kind':'tile_plan','title':'Fliesen Bad','data':{'settings':settings}}).json['record']
+        geometry={key:settings[key] for key in ('width','height','contour')}
+        room=self.client.post('/api/companion/records',json={'kind':'room','title':'Bad','data':{'geometry':geometry}}).json['record']
+        tile=self.client.post('/api/companion/records',json={'kind':'tile_plan','title':'Fliesen Bad','data':{'settings':settings,'room_id':room['id']}}).json['record']
         company=self.client.get('/api/costs').json['contractors'][0]['id']
         event=self.client.post('/api/calendar-events',json={'title':'Geplante Montage','start_date':'2026-11-20','end_date':'2026-11-20','contractor_id':company,'performed':False}).json['event']
         terms='/api/receipts/'+str(self.ids[1]['receipt'])+'/terms'
@@ -360,6 +362,8 @@ class ProjectBackupTest(unittest.TestCase):
         restored={x['id']:x for x in self.client.get('/api/companion').json['records']}
         self.assertEqual(restored[row['id']]['body'],'Vorher')
         self.assertEqual(restored[tile['id']]['data']['settings'],settings)
+        self.assertEqual(restored[tile['id']]['data']['room_id'],room['id'])
+        self.assertEqual(restored[room['id']]['data']['geometry'],geometry)
         self.assertEqual(self.client.get(terms).json['percent'],2)
         person=self.client.get('/api/time-tracking').json['people'][0]
         self.assertEqual((person['total_minutes'],person['planned_minutes']),(0,480))
@@ -370,3 +374,12 @@ class ProjectBackupTest(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(package.data)) as archive:
             self.assertIn('Inhalt.html',archive.namelist());self.assertEqual(len(archive.namelist()),2)
         package.close()
+        # Reject a forged room reference before deleting or replacing any project data.
+        before=self.snapshot(1);other_before=self.snapshot(self.other)
+        def foreign_room(data):
+            target=next(x for x in data['tables']['companion_record'] if x['id']==tile['id'])
+            metadata=json.loads(target['data_json']);metadata['room_id']=999999
+            target['data_json']=json.dumps(metadata)
+        self.rewrite(path,foreign_room)
+        self.assertEqual(self.start_restore(path)['state'],'failed')
+        self.assertEqual(self.snapshot(1),before);self.assertEqual(self.snapshot(self.other),other_before)

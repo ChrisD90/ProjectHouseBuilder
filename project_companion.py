@@ -16,9 +16,9 @@ from flask import jsonify, request, send_file
 from sqlalchemy import select, event
 from money_values import Money
 from multi_projects import current_project_id, ProjectSession
-from tile_plans import validate_contour
+from tile_plans import validate_contour, validate_room_geometry
 
-KINDS = {'journal','defect','house','dossier','addendum','terms','glossary','tool_return','reminder','template','tile_plan'}
+KINDS = {'journal','defect','house','dossier','addendum','terms','glossary','tool_return','reminder','template','tile_plan','room'}
 STATUSES = {'Offen','In Arbeit','Erledigt','Archiviert','Entwurf','Freigegeben','Abgelehnt'}
 GLOSSARY = [
  ('Aufmaß','Das Erfassen tatsächlicher Maße vor Ort. Grundlage für Mengen, Bestellung und häufig die Abrechnung.'),
@@ -154,6 +154,8 @@ def register_companion(r):
             allowed={'kind','title','body','status','day','until','location','source_type','source_id','amount','data'}
             if not isinstance(body,dict) or set(body)-allowed:raise ValueError('Ungültige Eingaben.')
             if row.kind=='addendum' and row.status=='Freigegeben':raise ValueError('Freigegebenen Nachtrag zuerst zurücknehmen; sein Nachweis bleibt erhalten.')
+            if ident and row.kind in ('room','tile_plan') and body.get('kind',row.kind)!=row.kind:
+                raise ValueError('Räume und Verlegepläne können nicht in einen anderen Bereich verschoben werden.')
             row.kind=body.get('kind',row.kind)
             if row.kind not in KINDS:raise ValueError('Unbekannter Bereich.')
             row.title=text(body.get('title',row.title),'Titel',200,True)
@@ -167,6 +169,7 @@ def register_companion(r):
             row.amount=money(body.get('amount',row.amount))
             data=body.get('data',data_for(row))
             if not isinstance(data,dict) or len(json.dumps(data,allow_nan=False))>20000:raise ValueError('Ungültige Zusatzangaben.')
+            if row.kind=='room':validate_room_geometry(data.get('geometry'))
             if row.kind=='tile_plan':
                 settings=data.get('settings')
                 limits={'width':(100,100000),'height':(100,100000),'tileWidth':(10,5000),'tileHeight':(10,5000),
@@ -184,6 +187,13 @@ def register_companion(r):
                 th=settings['tileWidth']if settings['rotated']else settings['tileHeight']
                 if width<=0 or height<=0 or (math.ceil(width/(tw+settings['joint']))+2)*(math.ceil(height/(th+settings['joint']))+2)>5000:
                     raise ValueError('Keine belegbare Fläche oder mehr als 5.000 Fliesenfelder.')
+                room_id=data.get('room_id')
+                if room_id is not None:
+                    room=db.session.get(CompanionRecord,room_id) if type(room_id)is int and room_id>0 else None
+                    if room is None or room.kind!='room':raise ValueError('Der ausgewählte Raum gehört nicht zu diesem Projekt oder wurde gelöscht.')
+                    data['room_title']=room.title
+                elif data.get('room_title') is not None:
+                    data['room_title']=text(data['room_title'],'Raumname',200)
             if row.kind=='addendum' and row.source_type=='offer':
                 reference=source('offer',row.source_id)
                 data['reference_offer_version']=reference.current_version
@@ -240,6 +250,8 @@ def register_companion(r):
                 output.append(dict(key=kind+str(item.id),kind=kind,title=label(item),url=url(item)))
         for item in records('tile_plan'):
             output.append(dict(key='Fliesenplan'+str(item.id),kind='Fliesenplan',title=item.title,url='/projektwerkstatt?tab=tiles&record='+str(item.id)))
+        for item in records('room'):
+            output.append(dict(key='Raum'+str(item.id),kind='Raum',title=item.title,url='/projektwerkstatt?tab=rooms&record='+str(item.id)))
         return output
 
     @app.get('/api/companion/search')
@@ -646,6 +658,14 @@ def register_companion(r):
         # Detach only when the parent is actually deleted in this transaction.
         # A rejected delete must not change any documentation.
         for deleted in list(session.deleted):
+            if isinstance(deleted,CompanionRecord) and deleted.kind=='room' and getattr(deleted,'project_id',None)==current_project_id():
+                # Plans keep their own geometric snapshot when the room is removed.
+                for plan in session.scalars(select(CompanionRecord).where(CompanionRecord.kind=='tile_plan')):
+                    data=data_for(plan)
+                    if data.get('room_id')==deleted.id:
+                        data['room_id']=None;data['room_title']=deleted.title
+                        plan.data_json=json.dumps(data,ensure_ascii=False);plan.updated_at=datetime.now(timezone.utc)
+                continue
             kind=next((key for key,model in sources.items() if isinstance(deleted,model)),None)
             if not kind:continue
             if getattr(deleted,'project_id',None)!=current_project_id():continue

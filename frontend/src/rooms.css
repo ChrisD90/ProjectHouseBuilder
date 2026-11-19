@@ -1,0 +1,12 @@
+.room-card {
+  height: 175px;
+  gap: 4px;
+}
+.room-thumbnail {
+  display: block;
+  width: 100%;
+  height: 90px;
+}
+.room-card > .mantine-Stack-root {
+  min-height: 0;
+}
