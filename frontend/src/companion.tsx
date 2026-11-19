@@ -27,28 +27,11 @@ import {
 import {
   IconArrowLeft,
   IconArrowRight,
-  IconBook,
-  IconBuildingStore,
-  IconCalculator,
-  IconChartBar,
-  IconClipboardCheck,
-  IconFileDiff,
-  IconHome,
-  IconLayoutGrid,
-  IconLeaf,
-  IconNotebook,
-  IconReceipt,
-  IconShoppingCart,
-  IconTemplate,
-  IconBookmark,
-  IconCheck,
-  IconClipboard,
   IconDownload,
   IconPlus,
   IconSearch,
   IconStar,
   IconTrash,
-  IconX,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -64,6 +47,9 @@ import { useWorkActions } from './work';
 import './companion.css';
 import { TilePlanner } from './tile-planner';
 import { Rooms } from './rooms';
+import { allWorkshopViews, workshopViews as views } from './workshop-catalog';
+import { Calculator } from './quantity-calculator';
+import { useWorkshopFavorites } from './workshop-quick-access';
 
 const labels: Record<string, string> = {
   journal: 'Bautagebuch',
@@ -1609,134 +1595,6 @@ function Knowledge() {
   );
 }
 
-function Calculator() {
-  const q = useCompanion(),
-    cache = useQueryClient(),
-    [length, setLength] = useState<number | string>(1),
-    [width, setWidth] = useState<number | string>(1),
-    [height, setHeight] = useState<number | string>(1),
-    [waste, setWaste] = useState<number | string>(10),
-    [pack, setPack] = useState<number | string>(1),
-    [mode, setMode] = useState<string | null>('area'),
-    [plan, setPlan] = useState<string | null>(null),
-    [title, setTitle] = useState('Materialbedarf'),
-    [busy, setBusy] = useState(false);
-  const amount =
-      Number(length) *
-      Number(width) *
-      (mode === 'volume' ? Number(height) : 1) *
-      (1 + Number(waste) / 100),
-    packs = Number(pack) > 0 ? Math.ceil(amount / Number(pack)) : 0;
-  async function transfer() {
-    if (!plan || !Number.isFinite(amount) || amount <= 0 || amount > 10000000) return;
-    setBusy(true);
-    try {
-      const result = await api('/api/self-work/' + plan);
-      const materials = [
-        ...result.plan.materials,
-        {
-          id: crypto.randomUUID(),
-          title,
-          quantity: Number(amount.toFixed(3)),
-          unit: mode === 'volume' ? 'm³' : 'm²',
-          unit_price: null,
-          status: 'Benötigt',
-          notes: `Berechnet mit ${waste} % Verschnitt; ${packs} Packungen à ${pack}.`,
-        },
-      ];
-      await api('/api/self-work/' + plan, 'PATCH', { materials });
-      await cache.invalidateQueries({ queryKey: ['self-work'] });
-      await cache.invalidateQueries({ queryKey: ['companion-shopping'] });
-      success('In Materialliste übernommen.');
-    } catch (e) {
-      error(e);
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <Stack>
-      <Select
-        label="Berechnung"
-        value={mode}
-        onChange={setMode}
-        data={[
-          { value: 'area', label: 'Fläche' },
-          { value: 'volume', label: 'Volumen' },
-        ]}
-      />
-      <SimpleGrid cols={{ base: 2, sm: 3 }}>
-        <NumberInput label="Länge (m)" min={0} value={length} onChange={setLength} />
-        <NumberInput label="Breite (m)" min={0} value={width} onChange={setWidth} />
-        {mode === 'volume' && (
-          <NumberInput label="Höhe / Stärke (m)" min={0} value={height} onChange={setHeight} />
-        )}
-        <NumberInput label="Verschnitt (%)" min={0} max={100} value={waste} onChange={setWaste} />
-        <NumberInput
-          decimalSeparator=","
-          thousandSeparator="."
-          label={'Inhalt je Packung (' + (mode === 'volume' ? 'm³' : 'm²') + ')'}
-          min={0.001}
-          value={pack}
-          onChange={setPack}
-        />
-      </SimpleGrid>
-      <Paper withBorder p="md">
-        <Text fw={650}>
-          {amount.toLocaleString('de-DE', { maximumFractionDigits: 3 })}{' '}
-          {mode === 'volume' ? 'm³' : 'm²'} · {packs} Packungen
-        </Text>
-      </Paper>
-      <Button
-        variant="subtle"
-        leftSection={<IconClipboard size={15} />}
-        onClick={async () => {
-          try {
-            await navigator.clipboard.writeText(
-              `${amount.toLocaleString('de-DE', { maximumFractionDigits: 3 })} ${mode === 'volume' ? 'm³' : 'm²'} · ${packs} Packungen`,
-            );
-            success('In Zwischenablage kopiert.');
-          } catch (e) {
-            error(e);
-          }
-        }}
-      >
-        Ergebnis kopieren
-      </Button>
-      <TextInput
-        label="Materialbezeichnung"
-        value={title}
-        onChange={(e) => setTitle(e.currentTarget.value)}
-      />
-      <Select
-        label="In Eigenleistung übernehmen"
-        searchable
-        clearable
-        value={plan}
-        onChange={setPlan}
-        data={(q.data?.references.self_work || []).map((x: Row) => ({
-          value: String(x.id),
-          label: x.title,
-        }))}
-      />
-      <Button
-        disabled={
-          !plan ||
-          !Number.isFinite(amount) ||
-          amount <= 0 ||
-          amount > 10000000 ||
-          Number(pack) <= 0 ||
-          !title.trim()
-        }
-        loading={busy}
-        onClick={() => void transfer()}
-      >
-        In Materialliste übernehmen
-      </Button>
-    </Stack>
-  );
-}
-
 function Templates() {
   const q = useCompanion(),
     cache = useQueryClient(),
@@ -1878,96 +1736,11 @@ function FundingTools() {
   );
 }
 
-const views = [
-  {
-    value: 'rooms',
-    label: 'Räume & Grundrisse',
-    icon: IconHome,
-    description: 'Raumkonturen erfassen und in Planungen wiederverwenden.',
-  },
-  {
-    value: 'shopping',
-    label: 'Einkauf & Werkzeuge',
-    icon: IconShoppingCart,
-    description: 'Material, Beschaffung und Werkzeugrückgaben.',
-  },
-  {
-    value: 'journal',
-    label: 'Bautagebuch',
-    icon: IconNotebook,
-    description: 'Fortschritte und Fotos festhalten.',
-  },
-  {
-    value: 'defect',
-    label: 'Mängel & Abnahme',
-    icon: IconClipboardCheck,
-    description: 'Mängel dokumentieren und Abnahmen vorbereiten.',
-  },
-  {
-    value: 'house',
-    label: 'Hausakte & Übergabe',
-    icon: IconHome,
-    description: 'Unterlagen, Wartung und Garantie bündeln.',
-  },
-  {
-    value: 'companies',
-    label: 'Firmenchronik',
-    icon: IconBuildingStore,
-    description: 'Termine, Angebote und Belege je Firma.',
-  },
-  {
-    value: 'changes',
-    label: 'Nachträge & Versionsvergleich',
-    icon: IconFileDiff,
-    description: 'Änderungen prüfen und Nachträge verwalten.',
-  },
-  {
-    value: 'terms',
-    label: 'Skonto & Zahlungsfristen',
-    icon: IconReceipt,
-    description: 'Zahlungskonditionen und Skonto im Blick.',
-  },
-  {
-    value: 'liquidity',
-    label: 'Liquiditätsvorschau',
-    icon: IconChartBar,
-    description: 'Verfügbare Mittel und kommende Zahlungen.',
-  },
-  {
-    value: 'funding',
-    label: 'Förderfristen & Nachweise',
-    icon: IconLeaf,
-    description: 'Fristen planen und Nachweispakete erstellen.',
-  },
-  {
-    value: 'knowledge',
-    label: 'Begriffe & Werkzeuge',
-    icon: IconBook,
-    description: 'Begriffe nachschlagen und Wissen sammeln.',
-  },
-  {
-    value: 'tools',
-    label: 'Mengenrechner',
-    icon: IconCalculator,
-    description: 'Flächen, Volumen und Materialbedarf berechnen.',
-  },
-  {
-    value: 'tiles',
-    label: 'Fliesen-Verlegeplan',
-    icon: IconLayoutGrid,
-    description: 'Raumkonturen, Verlegemuster und Zuschnitte planen.',
-  },
-  {
-    value: 'templates',
-    label: 'Projektvorlagen',
-    icon: IconTemplate,
-    description: 'Mit vorbereiteten Aufgaben ins Projekt starten.',
-  },
-];
 export function Workshop() {
   const [params, setParams] = useSearchParams(),
     view = params.get('tab') || '';
-  const selected = views.find((item) => item.value === view);
+  const selected = allWorkshopViews.find((item) => item.value === view);
+  const favorites = useWorkshopFavorites();
   return (
     <div className="page">
       <PageHeader
@@ -1977,22 +1750,42 @@ export function Workshop() {
       {!selected ? (
         <nav className="companion-workshop-grid" aria-label="Bereiche der Projektwerkstatt">
           {views.map((item) => (
-            <UnstyledButton
-              key={item.value}
-              className="companion-workshop-card"
-              onClick={() => setParams({ tab: item.value })}
-            >
-              <div className="companion-workshop-card-heading">
-                <item.icon size={21} stroke={1.7} aria-hidden="true" />
-                <Text component="span" fw={600} size="sm" lineClamp={2}>
-                  {item.label}
+            <div key={item.value} className="companion-workshop-card companion-workshop-tile">
+              <UnstyledButton
+                className="companion-workshop-open"
+                onClick={() => setParams({ tab: item.value })}
+              >
+                <div className="companion-workshop-card-heading">
+                  <item.icon size={21} stroke={1.7} aria-hidden="true" />
+                  <Text component="span" fw={600} size="sm" lineClamp={2}>
+                    {item.label}
+                  </Text>
+                </div>
+                <Text component="span" size="xs" c="dimmed" lineClamp={2}>
+                  {item.description}
                 </Text>
-                <IconArrowRight size={15} aria-hidden="true" />
-              </div>
-              <Text component="span" size="xs" c="dimmed" lineClamp={2}>
-                {item.description}
-              </Text>
-            </UnstyledButton>
+              </UnstyledButton>
+              <Tooltip
+                label={
+                  favorites.values.includes(item.value)
+                    ? 'Aus Schnellzugriff entfernen'
+                    : 'Zum Schnellzugriff hinzufügen'
+                }
+              >
+                <ActionIcon
+                  className="companion-workshop-star"
+                  variant="subtle"
+                  aria-label={item.label + ' als Favorit'}
+                  aria-pressed={favorites.values.includes(item.value)}
+                  onClick={() => favorites.toggle(item.value)}
+                >
+                  <IconStar
+                    size={17}
+                    fill={favorites.values.includes(item.value) ? 'currentColor' : 'none'}
+                  />
+                </ActionIcon>
+              </Tooltip>
+            </div>
           ))}
         </nav>
       ) : (

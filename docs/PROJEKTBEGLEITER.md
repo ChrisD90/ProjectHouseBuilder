@@ -5,8 +5,16 @@ Branch: `feature/projektkalender`. Additive Migration **0040**. Die Anwendung na
 ## Einstiege
 
 - **Projektübersicht**: nächste Termine, offene To-dos, zu bezahlende Rechnungen, Fristen und Sicherungsstatus. Projektkacheln öffnen diese Übersicht; der Kalender bleibt direkt erreichbar.
-- **Projektwerkstatt**: kompakte Kachelübersicht mit Symbolen und Kurzbeschreibungen für Räume/Grundrisse, Einkauf, Bautagebuch, Mängel/Abnahme, Hausakte, Firmenchronik, Nachträge/Versionsvergleich, Skonto, Liquidität, Förderfristen/Nachweise, Wissen, Mengenrechner, Fliesen-Verlegeplan und Vorlagen. Ein Klick öffnet den Bereich; **Alle Bereiche** führt zur Übersicht zurück. Bestehende Direktlinks bleiben nutzbar.
+- **Projektwerkstatt**: kompakte Kachelübersicht mit Symbolen und Kurzbeschreibungen für Räume/Grundrisse, Einkauf, Bautagebuch, Mängel/Abnahme, Hausakte, Förderfristen/Nachweise, Wissen, Mengenrechner, Fliesen-Verlegeplan und Vorlagen. Ein Klick öffnet den Bereich; **Alle Bereiche** führt zur Übersicht zurück. Firmenchronik, Nachträge/Versionsvergleich, Skonto und Liquidität werden nicht mehr als Werkstattkacheln angeboten. Bestehende verknüpfte Detailaufrufe bleiben nutzbar; vorhandene Daten werden nicht gelöscht.
 - **Suche & Schnellerfassung** im Header, auch über **Strg/⌘ K**. Projektweite Suche in Terminen, Angeboten, Belegen, Unterlagen, Firmen, Eigenleistungen und To-dos/Notizen. Schnelle Erstellung von To-do, Notiz, Termin und Beleg; Mengenrechner und optionale Projektsicherung sind ebenfalls erreichbar. Favoriten und zuletzt geöffnete Treffer sind lokale Browserpräferenzen, getrennt nach Projekt.
+
+## Werkstattfavoriten und Schnellzugriff
+
+Jede sichtbare Werkstattkachel hat einen **Stern**. Markierte Bereiche erscheinen im neuen **Werkstatt-Schnellzugriff** im globalen Header. Die Auswahl wird als Browserpräferenz je Projekt gespeichert und sofort zwischen Kachelübersicht und Header synchronisiert. Sie ist kein Bestandteil der Projektbackups und wird nicht an andere Browser übertragen. Favoriten können auch direkt aus der Schnellzugriffsliste entfernt werden.
+
+Ein Favorit öffnet einen schwebenden Schnelldialog über dem aktuellen Bereich; URL und Bearbeitungsansicht bleiben bestehen. Räume zeigen auswählbare Grundrisse mit tatsächlicher Fläche, Umfang und Kantenlängen. Der Mengenrechner ist direkt bedienbar. Einkauf/Werkzeuge, Bautagebuch, Mängel, Hausakte, Förderfristen, Wissen, gespeicherte Verlegepläne und Vorlagen besitzen jeweils eine kompakte Informationsansicht. **Vollständige Ansicht öffnen** führt bei Bedarf zur regulären Werkstattansicht. Änderungen an Originaldaten erfolgen dort; eine Materialübernahme im Mengenrechner wird nur durch den ausdrücklichen Übernahmebutton ausgelöst.
+
+Der **Mengenrechner** verwendet ein kompaktes Raster; Ergebnis und Kopierbutton stehen zusammen. Die Materialübernahme ist zunächst eingeklappt. Optional lässt sich die tatsächliche Fläche eines gespeicherten Raums wählen, auch bei L-Formen oder schrägen Wänden. Für Volumen wird diese Fläche mit der eingegebenen Höhe/Stärke multipliziert; Verschnitt und Packungsberechnung bleiben verfügbar. Eine Materialübernahme lädt die aktuelle Eigenleistung und verwendet deren Versionskennung, damit zwischenzeitliche Änderungen nicht überschrieben werden.
 
 ## Kalender und Stunden
 

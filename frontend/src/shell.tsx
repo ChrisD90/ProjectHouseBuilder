@@ -46,6 +46,7 @@ import { useServices } from './services';
 import { WorkPage, WorkProvider } from './work';
 import { ProjectCalendar } from './project-calendar';
 import { Overview, Workshop, GlobalTools } from './companion';
+import { WorkshopQuickAccess } from './workshop-quick-access';
 import { TimeTracking } from './time-tracking';
 import { SelfWorkPage } from './self-work';
 import { DocumentInbox } from './document-inbox';
@@ -487,6 +488,7 @@ export function App() {
                   ]}
                 />
                 <GlobalTools />
+                <WorkshopQuickAccess />
                 <DocumentInbox bridge={services.bridge} />
                 <UnpaidReceipts />
                 <Tooltip label="Verarbeitung & Prüfung">

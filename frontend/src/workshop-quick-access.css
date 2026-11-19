@@ -1,0 +1,59 @@
+.companion-workshop-tile {
+  position: relative;
+  padding: 0;
+}
+.companion-workshop-open {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  border-radius: inherit;
+}
+.companion-workshop-open:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
+}
+.companion-workshop-tile .companion-workshop-card-heading {
+  grid-template-columns: 22px minmax(0, 1fr);
+  padding-right: 26px;
+}
+.companion-workshop-star {
+  position: absolute;
+  right: 7px;
+  top: 7px;
+}
+.workshop-favorite-link {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 15px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-radius: 5px;
+}
+.workshop-favorite-link:hover {
+  background: var(--brand-soft);
+}
+.workshop-quick-plan {
+  display: block;
+  width: 100%;
+  height: 190px;
+  background: #f4f6f1;
+  border-radius: 6px;
+  padding: 10px;
+}
+.workshop-calculator {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 640px;
+}
+.workshop-quick-dialog .mantine-Modal-header {
+  border-bottom: 1px solid var(--brand-line);
+}
