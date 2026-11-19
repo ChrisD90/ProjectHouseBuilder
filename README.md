@@ -2,7 +2,9 @@
 
 ## Projektkalender (erste Version)
 
-Auf `feature/projektkalender` öffnet ein Projekt einen normalen Termin-Kalender mit Wochen- und Monatsansicht. Termine haben einen Titel, einen Zeitraum (ganztägig oder mit lokalen Uhrzeiten), optionale Notizen und optional mehrere Gewerke aus den projektbezogenen Stammdaten. Über einen Tag oder **Termin erstellen** wird ein Termin angelegt; ein Klick auf einen vorhandenen Termin öffnet die Bearbeitung einschließlich Löschen. Suche und Gewerkfilter grenzen die Ansicht ein.
+Auf `feature/projektkalender` öffnet ein Projekt einen normalen Termin-Kalender mit Wochen- und Monatsansicht. Termine haben einen Titel, einen Zeitraum (ganztägig oder mit lokalen Uhrzeiten), optionale Notizen und optional mehrere Gewerke aus den projektbezogenen Stammdaten. Über einen Tag oder **Termin erstellen** wird ein Termin angelegt; ein Klick auf einen vorhandenen Termin öffnet die Bearbeitung einschließlich Löschen. Gewerk- und Firmenfilter grenzen die Ansicht ein.
+
+Die Suche zeigt unter dem Suchfeld eine schwebende Ergebnisliste über alle Termine des Projekts. Ein Treffer springt zu seinem Starttag und hebt den Kalendereintrag hervor; die Suche selbst blendet keine Kalendereinträge aus. Gewerk- und Firmenfilter gelten für Kalender und Trefferliste. Bei Firmenterminen berücksichtigt der Gewerkfilter das Gewerk aus den Firmenstammdaten. Die Treffer sind auch mit Pfeiltasten und Enter erreichbar; Escape schließt die Liste.
 
 Termine sind eigenständige, projektbezogene Daten und Bestandteil der Projektbackups. Die additive Migration **0038** lässt bestehende Bauphasen und Arbeitspakete unverändert; diese werden nicht automatisch als Termine übernommen. Bestehende Detailverknüpfungen bleiben nutzbar. Ältere Backups enthalten zunächst keine Kalendertermine. Nach dem Wechsel auf diesen Branch die Anwendung neu starten.
 

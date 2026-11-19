@@ -110,7 +110,8 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
                     start_time=event.start_time.strftime('%H:%M') if event.start_time else '',
                     end_time=event.end_time.strftime('%H:%M') if event.end_time else '',
                     notes=event.notes, contractor_id=event.company.contractor_id if event.company else None,
-                    company_name=event.company.contractor.name if event.company else '', trade_ids=[link.trade_id for link in event.trades],
+                    company_name=event.company.contractor.name if event.company else '',
+                    company_trade=event.company.contractor.trade if event.company else '', trade_ids=[link.trade_id for link in event.trades],
                     trades=[dict(id=link.trade_id, name=link.trade.name) for link in event.trades if link.trade])
 
     @app.get('/api/calendar-events')

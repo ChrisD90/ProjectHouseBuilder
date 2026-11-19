@@ -6,6 +6,8 @@ import {
   Loader,
   MultiSelect,
   Paper,
+  Popover,
+  ScrollArea,
   SegmentedControl,
   Select,
   Stack,
@@ -17,7 +19,7 @@ import {
 import { useForm } from '@mantine/form';
 import { IconChevronLeft, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Editor, ErrorBox, api, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { FilterSelect, SearchField, useViewState } from './ui';
@@ -38,10 +40,11 @@ type CalendarEvent = {
   trades: { id: number; name: string }[];
   contractor_id: number | null;
   company_name: string;
+  company_trade?: string;
 };
 type EventForm = Omit<
   CalendarEvent,
-  'id' | 'trades' | 'trade_ids' | 'contractor_id' | 'company_name'
+  'id' | 'trades' | 'trade_ids' | 'contractor_id' | 'company_name' | 'company_trade'
 > & { trade_ids: string[]; contractor_id: string | null; assignment: string };
 const empty = (day: string): EventForm => ({
   title: '',
@@ -67,7 +70,13 @@ export function ProjectCalendar() {
   const [view, setView] = useViewState('project-calendar-view', 'month');
   const [anchor, setAnchor] = useState(today),
     [search, setSearch] = useState(''),
-    [trade, setTrade] = useState<string | null>(null);
+    [trade, setTrade] = useState<string | null>(null),
+    [company, setCompany] = useState<string | null>(null);
+  const [searchFocused, setSearchFocused] = useState(false),
+    [activeResult, setActiveResult] = useState(0);
+  const [jump, setJump] = useState<{ id: number; day: string } | null>(null);
+  const calendar = useRef<HTMLDivElement>(null);
+  const resultListId = useId();
   const [opened, setOpened] = useState(false),
     [selected, setSelected] = useState<number | null>(null);
   const [busy, setBusy] = useState(false),
@@ -79,6 +88,11 @@ export function ProjectCalendar() {
       api<{ events: CalendarEvent[]; companies: { id: number; name: string }[] }>(
         `/api/calendar-events?from=${days[0]}&to=${days.at(-1)}`,
       ),
+  });
+  const searchEvents = useQuery({
+    queryKey: ['calendar-events', 'search'],
+    enabled: Boolean(search.trim()),
+    queryFn: () => api<{ events: CalendarEvent[] }>('/api/calendar-events'),
   });
   const trades = useQuery({
     queryKey: ['calendar-trades'],
@@ -196,13 +210,52 @@ export function ProjectCalendar() {
       setBusy(false);
     }
   }
-  const visible = (events.data?.events || []).filter(
+  const selectedTrade = trades.data?.trades.find((item) => String(item.id) === trade);
+  const matchesFilters = (event: CalendarEvent) =>
+    (!trade ||
+      event.trade_ids.includes(Number(trade)) ||
+      (!!selectedTrade &&
+        event.company_trade?.toLocaleLowerCase('de') ===
+          selectedTrade.name.toLocaleLowerCase('de'))) &&
+    (!company || event.contractor_id === Number(company));
+  // Searching navigates across the entire project; only the two filters restrict the calendar.
+  const visible = (events.data?.events || []).filter(matchesFilters);
+  const query = search.trim().toLocaleLowerCase('de');
+  const results = (searchEvents.data?.events || []).filter(
     (event) =>
-      (!trade || event.trade_ids.includes(Number(trade))) &&
+      matchesFilters(event) &&
       `${event.title} ${event.company_name || ''} ${event.trades.map((t) => t.name).join(' ')}`
         .toLocaleLowerCase('de')
-        .includes(search.trim().toLocaleLowerCase('de')),
+        .includes(query),
   );
+  const activeIndex = Math.min(activeResult, Math.max(0, results.length - 1));
+  useEffect(() => setActiveResult(0), [search, trade, company]);
+  useEffect(() => {
+    if (!jump) return;
+    const frame = requestAnimationFrame(() => {
+      const target = calendar.current?.querySelector<HTMLButtonElement>(
+        `[data-calendar-day="${jump.day}"] [data-calendar-event="${jump.id}"]`,
+      );
+      if (target) {
+        target.focus({ preventScroll: true });
+        target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [jump, events.data, view]);
+  function jumpTo(event: CalendarEvent) {
+    setSearchFocused(false);
+    setAnchor(event.start_date);
+    setJump({ id: event.id, day: event.start_date });
+  }
+  const resultDate = (event: CalendarEvent) => {
+    const format: Intl.DateTimeFormatOptions = {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    };
+    return `${dateLabel(event.start_date, format)}${event.start_date !== event.end_date ? ' – ' + dateLabel(event.end_date, format) : ''} · ${event.all_day ? 'Ganztägig' : event.start_time + ' – ' + event.end_time}`;
+  };
   const heading =
     view === 'month'
       ? dateLabel(anchor, { month: 'long', year: 'numeric' })
@@ -218,11 +271,110 @@ export function ProjectCalendar() {
         </Button>
       </PageHeader>
       <Paper withBorder p="sm" className="project-calendar-filters">
-        <SearchField
-          placeholder="Termine suchen"
-          value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
-        />
+        <div className="project-calendar-search">
+          <Popover
+            opened={searchFocused && Boolean(query)}
+            onDismiss={() => setSearchFocused(false)}
+            position="bottom-start"
+            width="target"
+            shadow="md"
+            offset={6}
+            returnFocus={false}
+          >
+            <Popover.Target>
+              <div>
+                <SearchField
+                  placeholder="Termine suchen"
+                  value={search}
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={searchFocused && Boolean(query)}
+                  aria-controls={resultListId}
+                  aria-activedescendant={
+                    searchFocused && Boolean(query) && results.length
+                      ? `${resultListId}-${activeIndex}`
+                      : undefined
+                  }
+                  onFocus={() => setSearchFocused(true)}
+                  onChange={(e) => {
+                    setSearch(e.currentTarget.value);
+                    setSearchFocused(true);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') {
+                      event.preventDefault();
+                      setSearchFocused(false);
+                    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                      event.preventDefault();
+                      setSearchFocused(true);
+                      const next = Math.max(
+                        0,
+                        Math.min(
+                          results.length - 1,
+                          activeIndex + (event.key === 'ArrowDown' ? 1 : -1),
+                        ),
+                      );
+                      setActiveResult(next);
+                      document
+                        .getElementById(`${resultListId}-${next}`)
+                        ?.scrollIntoView({ block: 'nearest' });
+                    } else if (
+                      event.key === 'Enter' &&
+                      Boolean(query) &&
+                      searchFocused &&
+                      results[activeIndex]
+                    ) {
+                      event.preventDefault();
+                      jumpTo(results[activeIndex]);
+                    }
+                  }}
+                />
+              </div>
+            </Popover.Target>
+            <Popover.Dropdown className="project-calendar-search-dropdown">
+              <Text size="xs" c="dimmed" px="sm" py={8} aria-live="polite">
+                {searchEvents.isFetching
+                  ? 'Termine werden gesucht …'
+                  : `${results.length} Treffer im Projekt`}
+              </Text>
+              {searchEvents.error ? (
+                <ErrorBox value={searchEvents.error} />
+              ) : (
+                <ScrollArea.Autosize mah={300}>
+                  <div role="listbox" id={resultListId} aria-label="Gefundene Termine">
+                    {results.map((event, index) => (
+                      <button
+                        key={event.id}
+                        type="button"
+                        role="option"
+                        aria-selected={index === activeIndex}
+                        id={`${resultListId}-${index}`}
+                        className="project-calendar-search-result"
+                        tabIndex={-1}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onMouseEnter={() => setActiveResult(index)}
+                        onClick={() => jumpTo(event)}
+                      >
+                        <strong>{event.title}</strong>
+                        <span>{resultDate(event)}</span>
+                        {(event.company_name || event.trades.length > 0) && (
+                          <span>
+                            {event.company_name || event.trades.map((t) => t.name).join(' · ')}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  {!searchEvents.isFetching && results.length === 0 && (
+                    <Text size="sm" px="sm" pb="sm" c="dimmed">
+                      Keine passenden Termine gefunden.
+                    </Text>
+                  )}
+                </ScrollArea.Autosize>
+              )}
+            </Popover.Dropdown>
+          </Popover>
+        </div>
         <FilterSelect
           aria-label="Gewerk filtern"
           placeholder="Alle Gewerke"
@@ -230,6 +382,18 @@ export function ProjectCalendar() {
           onChange={setTrade}
           data={(trades.data?.trades || []).map((t) => ({ value: String(t.id), label: t.name }))}
           clearable
+        />
+        <FilterSelect
+          aria-label="Firma filtern"
+          placeholder="Alle Firmen"
+          value={company}
+          onChange={setCompany}
+          searchable
+          clearable
+          data={(events.data?.companies || []).map((item) => ({
+            value: String(item.id),
+            label: item.name,
+          }))}
         />
       </Paper>
       <ErrorBox value={events.error || trades.error} />
@@ -275,7 +439,7 @@ export function ProjectCalendar() {
             />
           </Group>
         </div>
-        <div className="project-calendar-scroll" tabIndex={0} aria-label="Kalender">
+        <div ref={calendar} className="project-calendar-scroll" tabIndex={0} aria-label="Kalender">
           <div className={'project-calendar-grid ' + (view === 'week' ? 'is-week' : 'is-month')}>
             {days.slice(0, 7).map((day) => (
               <div className="project-calendar-weekday" key={day}>
@@ -315,7 +479,12 @@ export function ProjectCalendar() {
                       <button
                         type="button"
                         key={event.id}
-                        className={'project-calendar-event tone-' + ((event.trade_ids[0] || 0) % 4)}
+                        data-calendar-event={event.id}
+                        className={
+                          'project-calendar-event tone-' +
+                          ((event.trade_ids[0] || 0) % 4) +
+                          (jump?.id === event.id && jump.day === day ? ' is-search-target' : '')
+                        }
                         onClick={() => open(day, event)}
                         title={
                           event.title +
@@ -347,7 +516,7 @@ export function ProjectCalendar() {
         </div>
         {!events.isPending && !events.error && visible.length === 0 && (
           <Text className="project-calendar-empty" size="sm" c="dimmed">
-            {search || trade
+            {trade || company
               ? 'Keine Termine für diese Auswahl.'
               : 'Noch keine Termine in diesem Zeitraum. Wähle einen Tag oder erstelle deinen ersten Termin.'}
           </Text>
