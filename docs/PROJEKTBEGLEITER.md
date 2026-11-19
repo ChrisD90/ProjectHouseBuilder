@@ -5,7 +5,7 @@ Branch: `feature/projektkalender`. Additive Migration **0040**. Die Anwendung na
 ## Einstiege
 
 - **Projektübersicht**: nächste Termine, offene To-dos, zu bezahlende Rechnungen, Fristen und Sicherungsstatus. Projektkacheln öffnen diese Übersicht; der Kalender bleibt direkt erreichbar.
-- **Projektwerkstatt**: kompakte Bereichsauswahl für Einkauf, Bautagebuch, Mängel/Abnahme, Hausakte, Firmenchronik, Nachträge/Versionsvergleich, Skonto, Liquidität, Förderfristen/Nachweise, Wissen, Mengenrechner und Vorlagen.
+- **Projektwerkstatt**: kompakte Kachelübersicht mit Symbolen und Kurzbeschreibungen für Einkauf, Bautagebuch, Mängel/Abnahme, Hausakte, Firmenchronik, Nachträge/Versionsvergleich, Skonto, Liquidität, Förderfristen/Nachweise, Wissen, Mengenrechner, Fliesen-Verlegeplan und Vorlagen. Ein Klick öffnet den Bereich; **Alle Bereiche** führt zur Übersicht zurück. Bestehende Direktlinks bleiben nutzbar.
 - **Suche & Schnellerfassung** im Header, auch über **Strg/⌘ K**. Projektweite Suche in Terminen, Angeboten, Belegen, Unterlagen, Firmen, Eigenleistungen und To-dos/Notizen. Schnelle Erstellung von To-do, Notiz, Termin und Beleg; Mengenrechner und optionale Projektsicherung sind ebenfalls erreichbar. Favoriten und zuletzt geöffnete Treffer sind lokale Browserpräferenzen, getrennt nach Projekt.
 
 ## Kalender und Stunden

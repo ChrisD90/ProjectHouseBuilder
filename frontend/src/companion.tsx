@@ -25,7 +25,21 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import {
+  IconArrowLeft,
   IconArrowRight,
+  IconBook,
+  IconBuildingStore,
+  IconCalculator,
+  IconChartBar,
+  IconClipboardCheck,
+  IconFileDiff,
+  IconHome,
+  IconLayoutGrid,
+  IconLeaf,
+  IconNotebook,
+  IconReceipt,
+  IconShoppingCart,
+  IconTemplate,
   IconBookmark,
   IconCheck,
   IconClipboard,
@@ -1864,68 +1878,164 @@ function FundingTools() {
 }
 
 const views = [
-  { value: 'shopping', label: 'Einkauf & Werkzeuge' },
-  { value: 'journal', label: 'Bautagebuch' },
-  { value: 'defect', label: 'Mängel & Abnahme' },
-  { value: 'house', label: 'Hausakte & Übergabe' },
-  { value: 'companies', label: 'Firmenchronik' },
-  { value: 'changes', label: 'Nachträge & Versionsvergleich' },
-  { value: 'terms', label: 'Skonto & Zahlungsfristen' },
-  { value: 'liquidity', label: 'Liquiditätsvorschau' },
-  { value: 'funding', label: 'Förderfristen & Nachweise' },
-  { value: 'knowledge', label: 'Begriffe & Werkzeuge' },
-  { value: 'tools', label: 'Mengenrechner' },
-  { value: 'tiles', label: 'Fliesen-Verlegeplan' },
-  { value: 'templates', label: 'Projektvorlagen' },
+  {
+    value: 'shopping',
+    label: 'Einkauf & Werkzeuge',
+    icon: IconShoppingCart,
+    description: 'Material, Beschaffung und Werkzeugrückgaben.',
+  },
+  {
+    value: 'journal',
+    label: 'Bautagebuch',
+    icon: IconNotebook,
+    description: 'Fortschritte und Fotos festhalten.',
+  },
+  {
+    value: 'defect',
+    label: 'Mängel & Abnahme',
+    icon: IconClipboardCheck,
+    description: 'Mängel dokumentieren und Abnahmen vorbereiten.',
+  },
+  {
+    value: 'house',
+    label: 'Hausakte & Übergabe',
+    icon: IconHome,
+    description: 'Unterlagen, Wartung und Garantie bündeln.',
+  },
+  {
+    value: 'companies',
+    label: 'Firmenchronik',
+    icon: IconBuildingStore,
+    description: 'Termine, Angebote und Belege je Firma.',
+  },
+  {
+    value: 'changes',
+    label: 'Nachträge & Versionsvergleich',
+    icon: IconFileDiff,
+    description: 'Änderungen prüfen und Nachträge verwalten.',
+  },
+  {
+    value: 'terms',
+    label: 'Skonto & Zahlungsfristen',
+    icon: IconReceipt,
+    description: 'Zahlungskonditionen und Skonto im Blick.',
+  },
+  {
+    value: 'liquidity',
+    label: 'Liquiditätsvorschau',
+    icon: IconChartBar,
+    description: 'Verfügbare Mittel und kommende Zahlungen.',
+  },
+  {
+    value: 'funding',
+    label: 'Förderfristen & Nachweise',
+    icon: IconLeaf,
+    description: 'Fristen planen und Nachweispakete erstellen.',
+  },
+  {
+    value: 'knowledge',
+    label: 'Begriffe & Werkzeuge',
+    icon: IconBook,
+    description: 'Begriffe nachschlagen und Wissen sammeln.',
+  },
+  {
+    value: 'tools',
+    label: 'Mengenrechner',
+    icon: IconCalculator,
+    description: 'Flächen, Volumen und Materialbedarf berechnen.',
+  },
+  {
+    value: 'tiles',
+    label: 'Fliesen-Verlegeplan',
+    icon: IconLayoutGrid,
+    description: 'Raumkonturen, Verlegemuster und Zuschnitte planen.',
+  },
+  {
+    value: 'templates',
+    label: 'Projektvorlagen',
+    icon: IconTemplate,
+    description: 'Mit vorbereiteten Aufgaben ins Projekt starten.',
+  },
 ];
 export function Workshop() {
   const [params, setParams] = useSearchParams(),
-    view = params.get('tab') || 'shopping';
+    view = params.get('tab') || '';
+  const selected = views.find((item) => item.value === view);
   return (
     <div className="page">
       <PageHeader
         title="Projektwerkstatt"
         description="Praktische Helfer für Planung, Ausführung und Übergabe."
-      >
-        <Select
-          aria-label="Werkstattbereich"
-          w={290}
-          value={view}
-          onChange={(v) => setParams({ tab: v || 'shopping' })}
-          data={views}
-        />
-      </PageHeader>
-      <Paper withBorder p="md">
-        {view === 'shopping' ? (
-          <Shopping />
-        ) : view === 'journal' ? (
-          <CompanionPanel kind="journal" />
-        ) : view === 'defect' ? (
-          <CompanionPanel kind="defect" />
-        ) : view === 'house' ? (
-          <House />
-        ) : view === 'companies' ? (
-          <Companies />
-        ) : view === 'changes' ? (
-          <VersionCompare />
-        ) : view === 'terms' ? (
-          <PaymentTerms />
-        ) : view === 'liquidity' ? (
-          <Liquidity />
-        ) : view === 'funding' ? (
-          <FundingTools />
-        ) : view === 'knowledge' ? (
-          <Knowledge />
-        ) : view === 'tools' ? (
-          <Calculator />
-        ) : view === 'tiles' ? (
-          <TilePlanner />
-        ) : view === 'templates' ? (
-          <Templates />
-        ) : (
-          <Text>Bitte einen Bereich auswählen.</Text>
-        )}
-      </Paper>
+      />
+      {!selected ? (
+        <nav className="companion-workshop-grid" aria-label="Bereiche der Projektwerkstatt">
+          {views.map((item) => (
+            <UnstyledButton
+              key={item.value}
+              className="companion-workshop-card"
+              onClick={() => setParams({ tab: item.value })}
+            >
+              <div className="companion-workshop-card-heading">
+                <item.icon size={21} stroke={1.7} aria-hidden="true" />
+                <Text component="span" fw={600} size="sm" lineClamp={2}>
+                  {item.label}
+                </Text>
+                <IconArrowRight size={15} aria-hidden="true" />
+              </div>
+              <Text component="span" size="xs" c="dimmed" lineClamp={2}>
+                {item.description}
+              </Text>
+            </UnstyledButton>
+          ))}
+        </nav>
+      ) : (
+        <Stack gap="sm">
+          <Group gap="sm">
+            <Button
+              variant="subtle"
+              size="sm"
+              leftSection={<IconArrowLeft size={16} />}
+              onClick={() => setParams({})}
+            >
+              Alle Bereiche
+            </Button>
+            <Text fw={600} size="sm">
+              {selected.label}
+            </Text>
+          </Group>
+          <Paper withBorder p="md">
+            {view === 'shopping' ? (
+              <Shopping />
+            ) : view === 'journal' ? (
+              <CompanionPanel kind="journal" />
+            ) : view === 'defect' ? (
+              <CompanionPanel kind="defect" />
+            ) : view === 'house' ? (
+              <House />
+            ) : view === 'companies' ? (
+              <Companies />
+            ) : view === 'changes' ? (
+              <VersionCompare />
+            ) : view === 'terms' ? (
+              <PaymentTerms />
+            ) : view === 'liquidity' ? (
+              <Liquidity />
+            ) : view === 'funding' ? (
+              <FundingTools />
+            ) : view === 'knowledge' ? (
+              <Knowledge />
+            ) : view === 'tools' ? (
+              <Calculator />
+            ) : view === 'tiles' ? (
+              <TilePlanner />
+            ) : view === 'templates' ? (
+              <Templates />
+            ) : (
+              <Text>Bitte einen Bereich auswählen.</Text>
+            )}
+          </Paper>
+        </Stack>
+      )}
     </div>
   );
 }
