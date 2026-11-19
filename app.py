@@ -70,7 +70,7 @@ def validate_request_origin():
 
 # React owns the shared frame; the reviewed classic workflows remain available
 # as isolated same-origin documents while their native components are migrated.
-REACT_ROUTES={'/uebersicht','/projektwerkstatt','/projektunterlagen','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen','/stunden'}
+REACT_ROUTES={'/system','/uebersicht','/projektwerkstatt','/projektunterlagen','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen','/stunden'}
 
 @app.before_request
 def react_frontend():

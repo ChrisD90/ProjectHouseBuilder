@@ -21,19 +21,26 @@ import { useMediaQuery } from '@mantine/hooks';
 import {
   IconBuildingBank,
   IconHome,
-  IconCalendar,
+  IconCalendarEvent,
   IconClock,
   IconChartBar,
   IconChevronLeft,
   IconChevronRight,
-  IconDatabase,
+  IconDatabaseExport,
+  IconAddressBook,
+  IconChecklist,
+  IconFileDescription,
+  IconFolderOpen,
+  IconHammer,
+  IconLayoutDashboard,
+  IconSettings,
   IconFiles,
   IconLeaf,
   IconListCheck,
   IconReceipt,
   IconSparkles,
   IconUsers,
-  IconTool,
+  IconTools,
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
@@ -47,47 +54,47 @@ import { WorkPage, WorkProvider } from './work';
 import { ProjectCalendar } from './project-calendar';
 import { Overview, Workshop, GlobalTools } from './companion';
 import { WorkshopQuickAccess } from './workshop-quick-access';
+import { SystemSettings } from './system-settings';
 import { TimeTracking } from './time-tracking';
 import { SelfWorkPage } from './self-work';
 import { DocumentInbox } from './document-inbox';
 import { UnpaidReceipts } from './unpaid-receipts';
 const items = [
-  ['/uebersicht', 'Projektübersicht', IconHome],
-  ['/projektwerkstatt', 'Projektwerkstatt', IconTool],
-  ['/projektunterlagen', 'Projektunterlagen', IconFiles],
-  ['/', 'Projektkalender', IconCalendar],
-  ['/aufgaben', 'To-dos & Notizen', IconListCheck],
-  ['/eigenleistungen', 'Eigenleistungen', IconTool],
-  ['/stunden', 'Stundenerfassung', IconClock],
+  ['/uebersicht', 'Übersicht', IconLayoutDashboard],
+  ['/projektunterlagen', 'Unterlagen', IconFolderOpen],
+  ['/', 'Kalender', IconCalendarEvent],
+  ['/angebote', 'Angebote', IconFileDescription],
+  ['/energieplanung', 'Energetische Planung', IconLeaf],
+  ['/eigenleistungen', 'Eigenleistungen', IconHammer],
+  ['/aufgaben', 'To-Dos & Notizen', IconChecklist],
+  ['/stunden', 'Zeiterfassung', IconClock],
+  ['/projektwerkstatt', 'Projektwerkstatt', IconTools],
   ['/kosten', 'Kosten & Budget', IconChartBar],
-  ['/angebote', 'Angebote', IconFiles],
   ['/belege', 'Rechnungen & Belege', IconReceipt],
   ['/finanzierung', 'Kredite & Eigenkapital', IconBuildingBank],
-  ['/energieplanung', 'Energetische Planung', IconLeaf],
+  ['/system', 'System', IconSettings],
+  ['/stammdaten', 'Stammdaten', IconAddressBook],
   ['/dokumente', 'Dokumente', IconFiles],
-  ['/stammdaten', 'Stammdaten', IconUsers],
-  ['/daten', 'Daten & Sicherung', IconDatabase],
+  ['/daten', 'Daten & Backups', IconDatabaseExport],
 ] as const;
 const navigationGroups = [
   {
     label: 'Projekt',
-    paths: [
-      '/uebersicht',
-      '/projektwerkstatt',
-      '/projektunterlagen',
-      '/',
-      '/aufgaben',
-      '/eigenleistungen',
-      '/stunden',
-    ],
+    paths: ['/uebersicht', '/projektunterlagen', '/', '/angebote', '/energieplanung'],
+  },
+  {
+    label: 'Ausführung',
+    paths: ['/eigenleistungen', '/aufgaben', '/stunden', '/projektwerkstatt'],
   },
   {
     label: 'Finanzen',
-    paths: ['/kosten', '/angebote', '/belege', '/finanzierung', '/energieplanung'],
+    paths: ['/kosten', '/belege', '/finanzierung'],
   },
-  { label: 'Verwaltung', paths: ['/dokumente', '/stammdaten', '/daten'] },
+  { label: 'Einstellungen', paths: ['/system', '/stammdaten'] },
+  { label: 'Datenmanagement', paths: ['/dokumente', '/daten'] },
 ];
 const native = new Set([
+  '/system',
   '/uebersicht',
   '/projektwerkstatt',
   '/',
@@ -355,17 +362,30 @@ export function App() {
             p={mini ? 8 : 'md'}
           >
             <Group className="sidebar-top-actions" justify="space-between" gap={8} wrap="nowrap">
-              <Tooltip label="Zur Projektübersicht" position="right" disabled={small}>
-                <ActionIcon
-                  component="a"
-                  href="/"
-                  aria-label="Alle Projekte"
-                  variant="subtle"
-                  size={32}
-                  className="sidebar-icon-button"
-                >
-                  <IconHome size={20} />
-                </ActionIcon>
+              <Tooltip label="Home · Alle Projekte" position="right" disabled={small || !mini}>
+                {mini ? (
+                  <ActionIcon
+                    component="a"
+                    href="/"
+                    aria-label="Alle Projekte"
+                    variant="subtle"
+                    size={32}
+                    className="sidebar-icon-button"
+                  >
+                    <IconHome size={20} />
+                  </ActionIcon>
+                ) : (
+                  <Button
+                    component="a"
+                    href="/"
+                    aria-label="Home · Alle Projekte"
+                    variant="subtle"
+                    size="compact-sm"
+                    leftSection={<IconHome size={20} />}
+                  >
+                    Home
+                  </Button>
+                )}
               </Tooltip>
               <Tooltip
                 disabled={small}
@@ -585,6 +605,12 @@ export function App() {
                 <SelfWorkPage />
               ) : location.pathname === '/stunden' ? (
                 <TimeTracking />
+              ) : location.pathname === '/system' ? (
+                <SystemSettings
+                  onOpenAI={services.openAI}
+                  connected={!!services.ai.connected}
+                  sharing={!!services.ai.sharing}
+                />
               ) : location.pathname === '/stammdaten' ? (
                 <MasterData />
               ) : location.pathname === '/kosten' ? (
