@@ -41,6 +41,8 @@
   let comparingOffers = false;
   let offerUploading = false;
   let currentPreviewDocument=null;
+  const extraOfferTools=document.createElement('a');extraOfferTools.className='mini';extraOfferTools.textContent='Nachträge & Änderungen';extraOfferTools.id='offerExtraTools';$('offerEditDialog').querySelector('.offer-editor-actions')?.prepend(extraOfferTools);
+
   function showOfferPreview(docId){
     const pane=$('offerPdfPane'),frame=$('offerPdfFrame');
     if(!docId){pane.hidden=true;frame.removeAttribute('src');currentPreviewDocument=null;return;}
@@ -162,6 +164,7 @@
     $('offerEditForm').dataset.offerAmountSource='gross';
     $('offerEditError').textContent='';
     $('reverseOfferAcceptance').hidden=!['Angenommen','Beauftragt'].includes(offer.status);
+    extraOfferTools.href='/projektwerkstatt?tab=changes&offer='+offer.id;
     const pane=$('offerEditPdfPane'),frame=$('offerEditPdfFrame');
     pane.hidden=!offer.document_id;
     if(offer.document_id){

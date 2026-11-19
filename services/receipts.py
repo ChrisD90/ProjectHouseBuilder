@@ -496,7 +496,7 @@ def register(runtime: ModuleType):
                         previous_paid = Decimal(str(runtime.json.loads(cancellation.snapshot_json)['receipt'].get('paid_amount') or 0))
                     except (KeyError, TypeError, ValueError, runtime.json.JSONDecodeError, InvalidOperation):
                         raise ValueError('Der Stornonachweis ist beschädigt; Änderung wurde nicht gespeichert.') from None
-                    counted = Decimal(str(r.gross_amount or 0)) - Decimal(str(r.advance_deduction or 0))
+                    counted = runtime._receipt_increment(r)
                     if counted < previous_paid:
                         runtime.db.session.rollback()
                         return (runtime.jsonify(error='Der korrigierte Rechnungsbetrag darf nicht unter dem Zahlungsstand vor dem Storno liegen.'), 409)

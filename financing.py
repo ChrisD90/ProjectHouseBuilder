@@ -5,6 +5,7 @@ Only completed, booked receipt payments change their paid_amount once, using
 one aggregate independent of the number of financing sources.
 """
 from __future__ import annotations
+from receipt_amounts import payable
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -212,7 +213,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         for rid, amount in amounts.items():
             if amount > dec(receipts[rid].paid_amount):
                 raise ValueError('Zahlungszuordnungen übersteigen den bezahlten Betrag.')
-            if amount > dec(receipts[rid].gross_amount)-dec(receipts[rid].advance_deduction):
+            if amount > payable(receipts[rid]):
                 raise ValueError('Zahlungen übersteigen den Rechnungsbetrag.')
 
     def summary():
@@ -242,7 +243,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         overdue = ZERO
         no_date = ZERO
         for r in booked:
-            due = dec(r.gross_amount) - dec(r.advance_deduction) - dec(r.paid_amount)
+            due = payable(r) - dec(r.paid_amount)
             if due <= ZERO: continue
             if not r.due_date:
                 no_date += due
@@ -274,7 +275,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                 'unassigned_paid_receipts':float(old_unassigned),
                 'project_forecast':cost['planned'], 'project_paid':cost['paid'],
                 'project_remaining':cost['remaining'], 'financing_gap':float(max(ZERO,remaining-available)),
-                'unpaid_booked':float(sum((max(ZERO,dec(r.gross_amount)-dec(r.advance_deduction)-dec(r.paid_amount)) for r in booked),ZERO)),
+                'unpaid_booked':float(sum((max(ZERO,payable(r)-dec(r.paid_amount)) for r in booked),ZERO)),
                 'overdue':float(overdue),'no_due_date':float(no_date), 'months':month_view, 'warnings':warnings}
 
     LOAN_DOCUMENT_ROOT = Path(root) / 'private' / 'loans'
@@ -542,7 +543,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
                        usages=[usage_json(x) for x in reversed(all_rows(LoanUsage))],
                        receipts=[{'id':r.id,'name':r.supplier or r.original_name,'invoice_number':r.invoice_number,
                                   'gross':float(r.gross_amount or 0),'paid':float(r.paid_amount or 0),
-                                  'open':float(max(ZERO,dec(r.gross_amount)-dec(r.advance_deduction)-dec(r.paid_amount))),
+                                  'open':float(max(ZERO,payable(r)-dec(r.paid_amount))),
                                   'due_date':r.due_date,'category':r.category,
                                   'unassigned':float(max(ZERO,dec(r.paid_amount)-sum((dec(p.amount) for p in all_rows(ReceiptFinancingPayment) if p.receipt_id==r.id),ZERO)))}
                                  for r in db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht').order_by(Receipt.id.desc()))],
@@ -707,7 +708,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
             snapshot={'full':[],'splits':[],'created':[]}
             usage_date=iso_date(body.get('usage_date'))
             if action=='pay':
-                available=max(ZERO,dec(receipt.gross_amount)-dec(receipt.advance_deduction)-dec(receipt.paid_amount))
+                available=max(ZERO,payable(receipt)-dec(receipt.paid_amount))
                 if amount>available:raise ValueError('Der Betrag übersteigt den offenen Rechnungsbetrag.')
                 payment=ReceiptFinancingPayment(receipt_id=receipt.id,source='loan',loan_id=loan.id,
                     amount=amount,payment_date=usage_date,notes=note(body.get('notes')) or 'Über Kreditverwendung bezahlt')
@@ -900,7 +901,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
             if previous!=recorded and source!='unassigned':
                 raise ValueError('Bestehende nicht zugewiesene Zahlung zuerst über Nachträglich zuordnen einer Quelle zuweisen.')
             amount=money(d.get('amount'),positive=True)
-            if previous+amount>dec(receipt.gross_amount)-dec(receipt.advance_deduction):
+            if previous+amount>payable(receipt):
                 raise ValueError('Zahlung übersteigt den noch offenen Rechnungsbetrag.')
             p=ReceiptFinancingPayment(receipt_id=rid,source=source,
                        loan_id=ref if source=='loan' else None,
@@ -969,6 +970,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         lock_reason=usage_payment_lock_reason(pid) or services.get('payment_lock_reason',lambda _pid:'')(pid)
         if lock_reason:return jsonify(error=lock_reason),409
         receipt=db.session.get(Receipt,p.receipt_id)
+        if receipt.discount_terms and receipt.discount_terms.settled>0:return jsonify(error='Skontoverrechnung zuerst unter Zahlungsfristen zurücknehmen.'),409
         receipt.paid_amount=dec(receipt.paid_amount)-dec(p.amount)
         db.session.delete(p)
         db.session.flush();validate_ledger()

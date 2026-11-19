@@ -233,7 +233,7 @@ def load_rows(path, db, owner):
     expected = set(tables) - EPHEMERAL
     # Backups from revision 0028 predate both plan tables; they legitimately contain no plans.
     missing=expected-set(payload['tables'])
-    for name in ('time_person','time_entry','document_inbox_config','document_inbox_item','calendar_event','calendar_event_trade','calendar_event_company','calendar_company_time'):
+    for name in ('time_person','time_entry','document_inbox_config','document_inbox_item','calendar_event','calendar_event_trade','calendar_event_company','calendar_company_time','companion_record','calendar_preferences','work_recurrence','receipt_terms'):
         if name in missing:
             payload['tables'][name]=[]
             missing.remove(name)
@@ -280,6 +280,19 @@ def load_rows(path, db, owner):
                     if value != owner: raise ValueError('Projektfremde Verknüpfung.')
                 elif value not in values.get((fk.column.table.name, fk.column.name), set()):
                     raise ValueError('Ungültige Verknüpfung in ' + name + '.' + fk.parent.name)
+    # New metadata must never introduce cross-project file or financial references.
+    for row in result.get('companion_record',[]):
+        data=_loads(row['data_json'])
+        if not isinstance(data,dict):raise ValueError('Ungültige Projektdokumentation im Backup.')
+        ids=data.get('document_ids',[])
+        if not isinstance(ids,list) or any(type(i)is not int or i not in values.get(('project_document','id'),set()) for i in ids):raise ValueError('Projektfremde Unterlagen in der Dokumentation.')
+    receipts={row['id']:row for row in result.get('receipt',[])}
+    for row in result.get('receipt_terms',[]):
+        receipt=receipts[row['receipt_id']]
+        base=Decimal(receipt['gross_amount'] or 0)-Decimal(receipt['advance_deduction'] or 0)
+        if not 0<=row['percent']<=100 or row['settled']<0 or row['settled']>max(Decimal(0),base):raise ValueError('Ungültige Skontoverrechnung im Backup.')
+        for key in ('until','settled_on'):
+            if row[key] and date.fromisoformat(row[key]).isoformat()!=row[key]:raise ValueError('Ungültige Skontofrist im Backup.')
     if any(r['status'] in ('Wartend', 'Läuft') for r in result.get('import_job', [])): raise ValueError('Backup enthält laufende Uploads.')
     project = payload['project']
     for key in ('title', 'kind', 'description'):

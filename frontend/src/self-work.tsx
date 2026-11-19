@@ -408,6 +408,9 @@ export function SelfWorkPage() {
         <Button leftSection={<IconPlus size={17} />} onClick={() => edit()}>
           Eigenleistung planen
         </Button>
+        <Button variant="default" onClick={() => navigate('/projektwerkstatt?tab=shopping')}>
+          Einkauf & Werkzeuge
+        </Button>
       </PageHeader>
       <Paper withBorder p="md" mb="lg">
         <Group align="end">

@@ -26,6 +26,8 @@ function receiptDate(value){
 let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;
 let receiptSearchText='',receiptLaborFilter='all',receiptYearFilter='',receiptKindFilter='all',receiptPaymentFilter='all',receiptCancellationFilter='all';
 const receiptDialog=$('receiptWorkflowDialog');
+const discountTools=document.createElement('a');discountTools.className='mini';discountTools.textContent='Skonto & Zahlungsfristen';$('receiptPaymentsPanel')?.prepend(discountTools);
+
 let uploadReceiptKind='Rechnung';
 // Also support a still-rendered older template during an application update.
 if(!$('openTillReceiptWorkflow')){
@@ -567,6 +569,7 @@ async function open(id){
  updateInvoiceControls();
  applyTillMode(x.kind==='Kassenzettel');
  if(x.kind==='Kassenzettel'&&x.status==='Entwurf'&&!tillFinanceSelect.disabled)tillFinanceHelp();
+ discountTools.href='/projektwerkstatt?tab=terms&receipt='+id;
  const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();
  $('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.

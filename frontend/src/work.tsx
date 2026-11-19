@@ -5,6 +5,7 @@ import {
   Checkbox,
   Group,
   Modal,
+  NumberInput,
   Paper,
   Select,
   Stack,
@@ -15,6 +16,7 @@ import {
   Title,
   Tooltip,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
 import {
   IconArchive,
@@ -51,11 +53,13 @@ const initial: Row = {
   body: '',
   due_on: '',
   done: false,
+  repeat_days: 0,
   source_type: '',
   source_id: null,
 };
 const WorkContext = createContext<any>(null);
 const useWork = () => useContext(WorkContext);
+export const useWorkActions = useWork;
 const matches = (row: Row, source: Source) =>
   row.source_type === source.type && row.source_id === source.id;
 
@@ -130,7 +134,7 @@ export function WorkProvider({ children }: { children: React.ReactNode }) {
     try {
       if (operation === 'delete' && !(await ask('„' + row.title + '“ endgültig löschen?')))
         return false;
-      await api(
+      const result = await api(
         '/api/project-work/' + row.id,
         operation === 'delete' ? 'DELETE' : 'PATCH',
         operation === 'delete'
@@ -140,17 +144,36 @@ export function WorkProvider({ children }: { children: React.ReactNode }) {
             : { archived: !row.archived },
       );
       await changed();
-      success(
-        operation === 'delete'
-          ? 'Eintrag gelöscht.'
-          : operation === 'archive'
-            ? row.archived
-              ? 'Eintrag wiederhergestellt.'
-              : 'Eintrag archiviert.'
-            : row.done
-              ? 'To-do wieder geöffnet.'
-              : 'To-do erledigt.',
-      );
+      if (operation === 'delete') success('Eintrag gelöscht.');
+      if (operation !== 'delete' && result.item) {
+        const field = operation === 'done' ? 'done' : 'archived';
+        const toast = notifications.show({
+          autoClose: 10000,
+          message: (
+            <Group justify="space-between">
+              <Text size="sm">Änderung gespeichert.</Text>
+              <Button
+                size="compact-xs"
+                variant="subtle"
+                onClick={async () => {
+                  try {
+                    await api('/api/project-work/' + row.id + '/undo', 'POST', {
+                      expected: result.item,
+                      [field]: row[field],
+                    });
+                    notifications.hide(toast);
+                    await changed();
+                  } catch (e) {
+                    error(e);
+                  }
+                }}
+              >
+                Rückgängig
+              </Button>
+            </Group>
+          ),
+        });
+      }
       return true;
     } catch (e) {
       error(e);
@@ -325,6 +348,13 @@ export function WorkProvider({ children }: { children: React.ReactNode }) {
                   label="Fällig am (optional)"
                   type="date"
                   {...form.getInputProps('due_on')}
+                />
+                <NumberInput
+                  label="Alle … Tage wiederholen (0 = einmalig)"
+                  min={0}
+                  max={3650}
+                  value={form.values.repeat_days || 0}
+                  onChange={(v) => form.setFieldValue('repeat_days', Number(v) || 0)}
                 />
                 <Checkbox label="Erledigt" {...form.getInputProps('done', { type: 'checkbox' })} />
               </>
@@ -610,7 +640,7 @@ export function SourceWork({
   );
 }
 export function WorkPage() {
-  const { rows, query, sources, create, open, busy } = useWork();
+  const { rows, query, sources, create, open, edit, busy } = useWork();
   const [todoSort, setTodoSort] = useViewState('sort', 'default');
   const [noteSort, setNoteSort] = useViewState('note-sort', 'newest');
   const [search, setSearch] = useState(''),
@@ -626,11 +656,22 @@ export function WorkPage() {
   }, []);
   useEffect(() => {
     const token = params.toString();
-    if (!params.has('new') && !params.has('list')) {
+    if (!params.has('new') && !params.has('list') && !params.has('work_id')) {
       handled.current = '';
       return;
     }
     if (!sources.data || sources.isFetching || handled.current === token) return;
+    if (params.has('work_id')) {
+      if (query.isFetching) return;
+      handled.current = token;
+      const row = rows.find((x: Row) => x.id === Number(params.get('work_id')));
+      if (row) edit(row);
+      else error(Error('Eintrag nicht gefunden.'));
+      const next = new URLSearchParams(params);
+      next.delete('work_id');
+      setParams(next, { replace: true });
+      return;
+    }
     handled.current = token;
     const type = params.get('source_type') || '',
       id = Number(params.get('source_id')),
@@ -642,7 +683,7 @@ export function WorkPage() {
     const next = new URLSearchParams(params);
     ['new', 'list', 'source_type', 'source_id'].forEach((key) => next.delete(key));
     setParams(next, { replace: true });
-  }, [params, sources.data, sources.isFetching]);
+  }, [params, sources.data, sources.isFetching, query.isFetching]);
   return (
     <div className="page">
       <Group className="page-header" justify="space-between">

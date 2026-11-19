@@ -71,7 +71,8 @@ def register(runtime: ModuleType):
         counted toward contractor commitments, budget and remaining payables.
         """
         from decimal import Decimal
-        return Decimal(r.gross_amount or 0) - Decimal(r.advance_deduction or 0)
+        from receipt_amounts import payable
+        return payable(r)
 
     runtime._receipt_increment = _receipt_increment
 
@@ -93,6 +94,7 @@ def register(runtime: ModuleType):
         cannot expose linked booked invoices. Money is rounded only for JSON.
         """
         from decimal import Decimal
+        import json
         if offer.status not in ('Angenommen', 'Beauftragt'):
             return None
         items = runtime.db.session.scalars(runtime.select(runtime.CostItem).where(runtime.CostItem.offer_id == offer.id)).all()
@@ -101,7 +103,7 @@ def register(runtime: ModuleType):
         receipts = [r for r in linked_receipts if r.status == 'Gebucht']
         billed = sum((runtime._receipt_increment(r) for r in receipts), Decimal('0'))
         paid = sum((Decimal(r.paid_amount or 0) for r in receipts), Decimal('0'))
-        agreed = Decimal(str(runtime._contract_gross(offer)))
+        agreed = Decimal(str(runtime._contract_gross(offer))) + (runtime.addendum_total(offer.id) if hasattr(runtime,'addendum_total') else Decimal(0))
         remaining = agreed - billed
         ratio = float(billed / agreed * 100) if agreed > 0 else 0
         stage = 'overrun' if billed > agreed else 'fully_billed' if billed == agreed else 'warning' if ratio >= 80 else 'normal'

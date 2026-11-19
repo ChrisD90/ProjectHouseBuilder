@@ -25,6 +25,8 @@ def register_project_work(app, db, sources):
         source_type = db.Column(db.String(20), nullable=False, default='')
         source_id = db.Column(db.Integer, nullable=True)
         source_label = db.Column(db.String(300), nullable=False, default='')
+        recurrence = db.relationship('WorkRecurrence',foreign_keys='WorkRecurrence.work_id',cascade='all, delete-orphan',uselist=False)
+        recurrence_parents = db.relationship('WorkRecurrence',foreign_keys='WorkRecurrence.next_work_id')
         created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     def source_info(kind, ident):
@@ -36,7 +38,7 @@ def register_project_work(app, db, sources):
 
     def serialize(item):
         source = source_info(item.source_type, item.source_id)
-        return dict(id=item.id, kind=item.kind, title=item.title, body=item.body,
+        return dict(id=item.id, kind=item.kind, repeat_days=item.recurrence.interval_days if item.recurrence else 0, title=item.title, body=item.body,
                     due_on=item.due_on, done=bool(item.completed_at),
                     archived=bool(item.archived_at),
                     archived_at=item.archived_at.isoformat() if item.archived_at else '',
@@ -75,8 +77,9 @@ def register_project_work(app, db, sources):
             db.session.delete(item); db.session.commit()
             return jsonify(ok=True)
         data = request.get_json(silent=True)
+        was_done=bool(item.completed_at)
         try:
-            if not isinstance(data, dict) or set(data) - {'kind', 'title', 'body', 'due_on', 'done', 'archived', 'source_type', 'source_id'}:
+            if not isinstance(data, dict) or set(data) - {'kind', 'title', 'body', 'due_on', 'done', 'archived', 'source_type', 'source_id','repeat_days'}:
                 raise ValueError('Ungültige Eigenschaften.')
             for key, limit in [('title', 200), ('body', 10000), ('kind', 8), ('due_on', 10)]:
                 if key in data:
@@ -110,7 +113,12 @@ def register_project_work(app, db, sources):
                         raise ValueError('Verknüpfte Quelle ist nicht mehr vorhanden.')
                     item.source_type = kind; item.source_id = ident
                     if source: item.source_label = source['label']
-            db.session.add(item); db.session.commit()
+            db.session.add(item); db.session.flush()
+            if 'repeat_days' in data:
+                app.extensions['companion_set_recurrence'](item,data['repeat_days'] if item.kind=='todo' else 0)
+            callback=app.extensions.get('companion_work_completed')
+            if callback:callback(item,was_done)
+            db.session.commit()
             return jsonify(item=serialize(item)), 201 if work_id is None else 200
         except (ValueError, TypeError, OverflowError) as exc:
             db.session.rollback()

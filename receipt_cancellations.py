@@ -35,7 +35,9 @@ def register_cancellations(app, db, Receipt, Payment, *, receipt_offer,
         payments=db.session.scalars(select(Payment).where(Payment.receipt_id==receipt.id).order_by(Payment.id)).all()
         fields={column.name:str(getattr(receipt,column.name)) if getattr(receipt,column.name) is not None else None
                 for column in Receipt.__table__.columns}
-        return dict(receipt=fields,payments=[{column.name:str(getattr(p,column.name)) if getattr(p,column.name) is not None else None
+        terms=getattr(receipt,'discount_terms',None)
+        discount={key:str(getattr(terms,key)) for key in ('percent','until','settled','settled_on')} if terms else None
+        return dict(receipt=fields,discount_terms=discount,payments=[{column.name:str(getattr(p,column.name)) if getattr(p,column.name) is not None else None
                                              for column in Payment.__table__.columns} for p in payments])
 
     def check(receipt):
@@ -116,7 +118,7 @@ def register_cancellations(app, db, Receipt, Payment, *, receipt_offer,
         try:
             check(receipt);data=snapshot(receipt)
             response=jsonify(receipt_id=rid,supplier=receipt.supplier,number=receipt.invoice_number,
-                paid=float(receipt.paid_amount or 0),counted=float((receipt.gross_amount or 0)-(receipt.advance_deduction or 0)),
+                paid=float(receipt.paid_amount or 0),counted=float(__import__('receipt_amounts').payable(receipt)),
                 payment_count=len(data['payments']),allocation_count=sum(p['source'] in ('loan','equity') for p in data['payments']),plan_digest=digest(data))
             response.headers['Cache-Control']='no-store';return response
         except ValueError as exc:return jsonify(error=str(exc)),409

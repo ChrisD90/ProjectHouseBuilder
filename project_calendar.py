@@ -24,7 +24,8 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
         notes = db.Column(db.String(4000), nullable=False, default='')
         trades = db.relationship('CalendarEventTrade', cascade='all, delete-orphan', lazy='selectin')
         company = db.relationship('CalendarEventCompany', cascade='all, delete-orphan', uselist=False, lazy='selectin')
-        time_links = db.relationship('CalendarCompanyTime', cascade='all, delete-orphan', lazy='selectin')
+        time_links = db.relationship('CalendarCompanyTime', cascade='all, delete-orphan', lazy='selectin', back_populates='event')
+        preferences = db.relationship('CalendarPreferences', cascade='all, delete-orphan', uselist=False, lazy='selectin')
 
     class CalendarEventTrade(db.Model):
         __tablename__ = 'calendar_event_trade'
@@ -49,6 +50,7 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
         entry_id = db.Column(db.Integer, db.ForeignKey('time_entry.id'), nullable=False, unique=True)
         worked_on = db.Column(db.Date, nullable=False)
         flat_rate = db.Column(db.Boolean, nullable=False, default=False)
+        event = db.relationship(CalendarEvent, back_populates='time_links')
         entry = db.relationship(TimeEntry, back_populates='calendar_source', single_parent=True, cascade='all, delete-orphan')
 
     def sync_hours(event):
@@ -105,7 +107,7 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
         return time.fromisoformat(value)
 
     def serialize(event):
-        return dict(id=event.id, title=event.title, start_date=event.start_date.isoformat(),
+        return dict(id=event.id, title=event.title, performed=event.preferences.performed if event.preferences else True, series=event.preferences.series if event.preferences else '', start_date=event.start_date.isoformat(),
                     end_date=event.end_date.isoformat(), all_day=event.all_day,
                     start_time=event.start_time.strftime('%H:%M') if event.start_time else '',
                     end_time=event.end_time.strftime('%H:%M') if event.end_time else '',
@@ -149,7 +151,7 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
             return jsonify(ok=True)
         try:
             data = request.get_json(silent=True)
-            if not isinstance(data, dict) or set(data) - {'title','start_date','end_date','all_day','start_time','end_time','notes','trade_ids','contractor_id'}:
+            if not isinstance(data, dict) or set(data) - {'title','start_date','end_date','all_day','start_time','end_time','notes','trade_ids','contractor_id','performed'}:
                 raise ValueError('Ungültige Termineingaben.')
             event.title = text(data.get('title', event.title), 'Titel', 160, True)
             event.start_date = day(data.get('start_date', event.start_date.isoformat() if event.start_date else None))
@@ -189,6 +191,12 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
                     event.company = CalendarEventCompany(contractor_id=ident)
             if event.company and event.trades:
                 raise ValueError('Bitte entweder eine Firma oder Gewerke verknüpfen.')
+            if 'performed' in data:
+                if type(data['performed']) is not bool:raise ValueError('Durchführung ausdrücklich bestätigen oder als geplant markieren.')
+                if event.preferences:event.preferences.performed=data['performed']
+                else:
+                    model=db.Model.registry._class_registry['CalendarPreferences']
+                    event.preferences=model(performed=data['performed'])
             db.session.add(event)
             # Save the appointment and its derived daily entries in one transaction.
             with db.session.no_autoflush:
@@ -199,4 +207,4 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
             db.session.rollback()
             return jsonify(error=str(exc)), 400
 
-    return CalendarEvent, CalendarEventTrade, CalendarEventCompany, CalendarCompanyTime
+    return CalendarEvent, CalendarEventTrade, CalendarEventCompany, CalendarCompanyTime, serialize, sync_hours

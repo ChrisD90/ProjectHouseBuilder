@@ -1,0 +1,62 @@
+.companion-records {
+  display: grid;
+  gap: 10px;
+  max-height: 64dvh;
+  overflow: auto;
+  padding: 1px;
+}
+.companion-record-open {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.companion-action-row {
+  height: auto;
+  min-height: 34px;
+  text-align: left;
+}
+.companion-action-row .mantine-Button-label {
+  white-space: normal;
+  text-align: left;
+}
+.companion-command-results {
+  display: grid;
+  gap: 4px;
+  max-height: 50dvh;
+  overflow: auto;
+}
+.companion-command-item {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 7px;
+  text-align: left;
+}
+.companion-command-item:hover {
+  background: var(--brand-soft);
+}
+@media print {
+  .mantine-AppShell-navbar,
+  .mantine-AppShell-header,
+  .page-header button,
+  button {
+    display: none !important;
+  }
+  .mantine-AppShell-main {
+    padding: 0 !important;
+  }
+  .companion-records {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+.companion-thumbnail {
+  display: block;
+  width: 100px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--brand-line);
+  margin-bottom: 4px;
+}

@@ -45,11 +45,14 @@ import { fundingDocumentOnly, projectID, workspaceURL } from './project-context'
 import { useServices } from './services';
 import { WorkPage, WorkProvider } from './work';
 import { ProjectCalendar } from './project-calendar';
+import { Overview, Workshop, GlobalTools } from './companion';
 import { TimeTracking } from './time-tracking';
 import { SelfWorkPage } from './self-work';
 import { DocumentInbox } from './document-inbox';
 import { UnpaidReceipts } from './unpaid-receipts';
 const items = [
+  ['/uebersicht', 'Projektübersicht', IconHome],
+  ['/projektwerkstatt', 'Projektwerkstatt', IconTool],
   ['/projektunterlagen', 'Projektunterlagen', IconFiles],
   ['/', 'Projektkalender', IconCalendar],
   ['/aufgaben', 'To-dos & Notizen', IconListCheck],
@@ -67,7 +70,15 @@ const items = [
 const navigationGroups = [
   {
     label: 'Projekt',
-    paths: ['/projektunterlagen', '/', '/aufgaben', '/eigenleistungen', '/stunden'],
+    paths: [
+      '/uebersicht',
+      '/projektwerkstatt',
+      '/projektunterlagen',
+      '/',
+      '/aufgaben',
+      '/eigenleistungen',
+      '/stunden',
+    ],
   },
   {
     label: 'Finanzen',
@@ -76,6 +87,8 @@ const navigationGroups = [
   { label: 'Verwaltung', paths: ['/dokumente', '/stammdaten', '/daten'] },
 ];
 const native = new Set([
+  '/uebersicht',
+  '/projektwerkstatt',
   '/',
   '/projektunterlagen',
   '/aufgaben',
@@ -473,6 +486,7 @@ export function App() {
                     { value: 'dark', label: 'Dunkel' },
                   ]}
                 />
+                <GlobalTools />
                 <DocumentInbox bridge={services.bridge} />
                 <UnpaidReceipts />
                 <Tooltip label="Verarbeitung & Prüfung">
@@ -557,7 +571,11 @@ export function App() {
                 display: nativePage ? 'block' : 'none',
               }}
             >
-              {location.pathname === '/' && !legacyPlan ? (
+              {location.pathname === '/uebersicht' ? (
+                <Overview />
+              ) : location.pathname === '/projektwerkstatt' ? (
+                <Workshop />
+              ) : location.pathname === '/' && !legacyPlan ? (
                 <ProjectCalendar />
               ) : location.pathname === '/aufgaben' ? (
                 <WorkPage />

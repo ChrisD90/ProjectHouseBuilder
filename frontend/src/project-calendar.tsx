@@ -1,5 +1,7 @@
 import {
   ActionIcon,
+  Accordion,
+  NumberInput,
   Button,
   Checkbox,
   Group,
@@ -20,6 +22,10 @@ import { useForm } from '@mantine/form';
 import { IconChevronLeft, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { CompanionPanel } from './companion';
+import { SourceWork as WorkButton } from './work';
+import { projectURL } from './project-context';
 import { Editor, ErrorBox, api, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { FilterSelect, SearchField, useViewState } from './ui';
@@ -41,6 +47,8 @@ type CalendarEvent = {
   contractor_id: number | null;
   company_name: string;
   company_trade?: string;
+  performed: boolean;
+  series?: string;
 };
 type EventForm = Omit<
   CalendarEvent,
@@ -57,6 +65,7 @@ const empty = (day: string): EventForm => ({
   trade_ids: [],
   contractor_id: null,
   assignment: 'trade',
+  performed: false,
 });
 const dateLabel = (day: string, options?: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat('de-DE', options || { day: 'numeric', month: 'long' }).format(
@@ -77,6 +86,17 @@ export function ProjectCalendar() {
   const [jump, setJump] = useState<{ id: number; day: string } | null>(null);
   const calendar = useRef<HTMLDivElement>(null);
   const resultListId = useId();
+  const [params, setParams] = useSearchParams();
+  const processedRoute = useRef('');
+  const linkedId = Number(params.get('calendar_event')) || null;
+  const linked = useQuery({
+    queryKey: ['calendar-event-detail', linkedId],
+    enabled: !!linkedId,
+    queryFn: () => api<{ event: CalendarEvent }>('/api/calendar-events/' + linkedId),
+  });
+  const [dossierEditing, setDossierEditing] = useState(false),
+    [repeatCount, setRepeatCount] = useState<number | string>(4),
+    [repeatDays, setRepeatDays] = useState<number | string>(7);
   const [opened, setOpened] = useState(false),
     [selected, setSelected] = useState<number | null>(null);
   const [busy, setBusy] = useState(false),
@@ -135,6 +155,48 @@ export function ProjectCalendar() {
     form.clearErrors();
     setOpened(true);
   }
+  useEffect(() => {
+    const key = linkedId ? 'event:' + linkedId : params.has('new_event') ? 'new' : '';
+    if (!key || processedRoute.current === key) return;
+    if (linkedId && !linked.data) return;
+    processedRoute.current = key;
+    if (linked.data && linkedId) {
+      setAnchor(linked.data.event.start_date);
+      open(linked.data.event.start_date, linked.data.event);
+    } else open(today);
+  }, [linkedId, linked.dataUpdatedAt, params.get('new_event')]);
+  useEffect(() => {
+    if (opened || !processedRoute.current) return;
+    const next = new URLSearchParams(params);
+    next.delete('calendar_event');
+    next.delete('new_event');
+    processedRoute.current = '';
+    setParams(next, { replace: true });
+  }, [opened]);
+  async function repeat() {
+    if (
+      !selected ||
+      busy ||
+      !(await ask(
+        'Weitere Termine dieser Serie anlegen? Jeder Termin bleibt einzeln bearbeitbar und startet als geplant.',
+      ))
+    )
+      return;
+    setBusy(true);
+    try {
+      await api('/api/calendar-events/' + selected + '/repeat', 'POST', {
+        confirm: true,
+        count: Number(repeatCount),
+        interval_days: Number(repeatDays),
+      });
+      await cache.invalidateQueries({ queryKey: ['calendar-events'] });
+      success('Terminserie angelegt.');
+    } catch (e) {
+      setFailure(e);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function save(values: EventForm) {
     if (busy) return;
     setBusy(true);
@@ -151,6 +213,7 @@ export function ProjectCalendar() {
         trade_ids,
         contractor_id,
         assignment,
+        performed,
       } = values;
       await api(
         '/api/calendar-events' + (selected ? '/' + selected : ''),
@@ -163,6 +226,7 @@ export function ProjectCalendar() {
           start_time,
           end_time,
           notes,
+          performed,
           trade_ids: assignment === 'trade' ? trade_ids.map(Number) : [],
           contractor_id: assignment === 'company' && contractor_id ? Number(contractor_id) : null,
         },
@@ -268,6 +332,9 @@ export function ProjectCalendar() {
       >
         <Button leftSection={<IconPlus size={17} />} onClick={() => open(today)}>
           Termin erstellen
+        </Button>
+        <Button component="a" href={projectURL('/api/calendar.ics')} variant="default">
+          Kalender exportieren
         </Button>
       </PageHeader>
       <Paper withBorder p="sm" className="project-calendar-filters">
@@ -396,7 +463,7 @@ export function ProjectCalendar() {
           }))}
         />
       </Paper>
-      <ErrorBox value={events.error || trades.error} />
+      <ErrorBox value={events.error || trades.error || linked.error} />
       <Paper withBorder className="project-calendar-panel">
         <div className="project-calendar-toolbar">
           <Group gap={6} wrap="nowrap">
@@ -532,6 +599,7 @@ export function ProjectCalendar() {
         title={selected ? 'Termin bearbeiten' : 'Termin erstellen'}
         dirty={form.isDirty()}
         busy={busy}
+        suspended={dossierEditing}
         onClose={() => setOpened(false)}
       >
         <form onSubmit={form.onSubmit(save)}>
@@ -543,6 +611,10 @@ export function ProjectCalendar() {
               required
               maxLength={160}
               {...form.getInputProps('title')}
+            />
+            <Checkbox
+              label="Wie geplant durchgeführt – Stunden als geleistet bestätigen"
+              {...form.getInputProps('performed', { type: 'checkbox' })}
             />
             <Checkbox label="Ganztägig" {...form.getInputProps('all_day', { type: 'checkbox' })} />
             <div className="project-calendar-date-fields">
@@ -630,6 +702,46 @@ export function ProjectCalendar() {
               maxLength={4000}
               {...form.getInputProps('notes')}
             />
+            {selected && (
+              <>
+                <WorkButton type="event" id={selected} />
+                <CompanionPanel
+                  kind="dossier"
+                  source={{ type: 'event', id: selected }}
+                  onEditingChange={setDossierEditing}
+                />
+                <Accordion>
+                  <Accordion.Item value="series">
+                    <Accordion.Control>Termin wiederholen</Accordion.Control>
+                    <Accordion.Panel>
+                      <Group align="end">
+                        <NumberInput
+                          label="Weitere Termine"
+                          min={1}
+                          max={52}
+                          value={repeatCount}
+                          onChange={setRepeatCount}
+                        />
+                        <NumberInput
+                          label="Abstand (Tage)"
+                          min={1}
+                          max={365}
+                          value={repeatDays}
+                          onChange={setRepeatDays}
+                        />
+                        <Button
+                          variant="default"
+                          disabled={busy || !!form.values.series}
+                          onClick={() => void repeat()}
+                        >
+                          Serie anlegen
+                        </Button>
+                      </Group>
+                    </Accordion.Panel>
+                  </Accordion.Item>
+                </Accordion>
+              </>
+            )}
             <Group justify="space-between" mt="sm">
               <div>
                 {selected && (

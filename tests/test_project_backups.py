@@ -338,3 +338,28 @@ class ProjectBackupTest(unittest.TestCase):
         self.client.delete('/api/calendar-events/'+str(ids[1]))
         self.assertEqual(self.client.get('/api/time-people/'+str(person['id'])).json['entries'], [])
         self.assertEqual(self.snapshot(self.other), other)
+
+    def test_companion_round_trip_retains_documents_planning_and_terms_only_in_owner(self):
+        root_patch=patch.object(b,'PROJECT_DOCUMENT_ROOT',self.root/'private'/'project-documents');root_patch.start();self.addCleanup(root_patch.stop)
+        project_doc=self.client.post('/api/project-documents',data={'title':'Plan','category':'Sonstiges','area':'Allgemein','file':(io.BytesIO(b'Lokale Dokumentation'),'Notiz.txt')},content_type='multipart/form-data')
+        self.assertEqual(project_doc.status_code,201,project_doc.json);did=project_doc.json['document']['id']
+        row=self.client.post('/api/companion/records',json={'kind':'journal','title':'Bautag','body':'Vorher','data':{'document_ids':[did]}}).json['record']
+        company=self.client.get('/api/costs').json['contractors'][0]['id']
+        event=self.client.post('/api/calendar-events',json={'title':'Geplante Montage','start_date':'2026-11-20','end_date':'2026-11-20','contractor_id':company,'performed':False}).json['event']
+        terms='/api/receipts/'+str(self.ids[1]['receipt'])+'/terms'
+        self.assertEqual(self.client.put(terms,json={'percent':2,'until':'2026-11-30'}).status_code,200)
+        other=self.snapshot(self.other);path=self.create()
+        self.client.patch('/api/companion/records/'+str(row['id']),json={'body':'Nachher'})
+        self.client.patch('/api/calendar-events/'+str(event['id']),json={'performed':True})
+        self.assertEqual(self.start_restore(path)['state'],'done')
+        self.assertEqual(self.client.get('/api/companion').json['records'][0]['body'],'Vorher')
+        self.assertEqual(self.client.get(terms).json['percent'],2)
+        person=self.client.get('/api/time-tracking').json['people'][0]
+        self.assertEqual((person['total_minutes'],person['planned_minutes']),(0,480))
+        self.assertEqual(self.snapshot(self.other),other)
+        self.assertEqual(self.client.delete('/api/project-documents/'+str(did)).status_code,409)
+        package=self.client.post('/api/companion/package',json={'document_ids':[did],'title':'Terminmappe'})
+        self.assertEqual(package.status_code,200)
+        with zipfile.ZipFile(io.BytesIO(package.data)) as archive:
+            self.assertIn('Inhalt.html',archive.namelist());self.assertEqual(len(archive.namelist()),2)
+        package.close()

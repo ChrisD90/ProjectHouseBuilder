@@ -49,15 +49,20 @@ def register_time_tracking(app, db, Contractor):
         if totals is None:
             entries = db.session.scalars(select(TimeEntry).where(TimeEntry.person_id == person.id)).all()
             totals = (sum(x.minutes for x in entries), len(entries), max((x.worked_on for x in entries), default=None))
+        entries = db.session.scalars(select(TimeEntry).where(TimeEntry.person_id == person.id)).all()
+        planned = sum(x.minutes for x in entries if is_planned(x))
         return dict(id=person.id, kind=person.kind, name=company.name if person.kind == 'company' and company else person.name,
                     role=person.role, notes=person.notes, contractor_id=person.contractor_id,
-                    company_name=company.name if company else '', total_minutes=totals[0], entry_count=totals[1],
+                    company_name=company.name if company else '', total_minutes=totals[0]-planned, planned_minutes=planned, entry_count=totals[1],
                     last_date=totals[2].isoformat() if totals[2] else '',
                     has_calendar_entries=db.session.scalar(select(TimeEntry.id).where(TimeEntry.person_id == person.id, TimeEntry.calendar_source.has()).limit(1)) is not None)
 
+    def is_planned(entry):
+        return bool(entry.calendar_source and entry.calendar_source.event.preferences and not entry.calendar_source.event.preferences.performed)
+
     def entry_dict(entry):
         return dict(id=entry.id, person_id=entry.person_id, worked_on=entry.worked_on.isoformat(),
-                    minutes=entry.minutes, description=entry.description,
+                    minutes=entry.minutes, description=entry.description, planned=is_planned(entry),
                     calendar_event_id=entry.calendar_source.event_id if entry.calendar_source else None,
                     calendar_flat_rate=entry.calendar_source.flat_rate if entry.calendar_source else False)
 
@@ -153,4 +158,5 @@ def register_time_tracking(app, db, Contractor):
             db.session.rollback()
             return jsonify(error=str(exc)), 400
 
+    app.extensions['time_entry_json']=entry_dict
     return TimePerson, TimeEntry

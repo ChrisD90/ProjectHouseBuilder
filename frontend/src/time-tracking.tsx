@@ -15,6 +15,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from '@mantine/core';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from '@mantine/form';
 import {
   IconClock,
@@ -30,6 +31,7 @@ import { Editor, ErrorBox, api, error, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { FilterSelect, SearchField, useViewState } from './ui';
 import { SortSelect, compareText } from './list-sorting';
+import { projectURL } from './project-context';
 import { useDirtyGuard } from './shell';
 import './time-tracking.css';
 
@@ -42,6 +44,7 @@ type Person = {
   contractor_id: number | null;
   company_name: string;
   total_minutes: number;
+  planned_minutes: number;
   entry_count: number;
   last_date: string;
   has_calendar_entries: boolean;
@@ -52,6 +55,7 @@ type Entry = {
   worked_on: string;
   minutes: number;
   description: string;
+  planned: boolean;
   calendar_event_id: number | null;
   calendar_flat_rate: boolean;
 };
@@ -75,12 +79,19 @@ const dayLabel = (value: string) =>
   new Intl.DateTimeFormat(navigator.language || 'de-DE').format(new Date(value + 'T12:00:00'));
 
 export function TimeTracking() {
+  const navigate = useNavigate();
+  const [routeParams, setRouteParams] = useSearchParams();
   const cache = useQueryClient(),
     ask = useConfirm();
   const [sort, setSort] = useViewState('time-sort', 'az');
   const [search, setSearch] = useState(''),
     [kind, setKind] = useState<string | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [exportMonth, setExportMonth] = useState(
+    new Date().toLocaleDateString('sv-SE').slice(0, 7),
+  );
+  const [selected, setSelected] = useState<number | null>(
+    () => Number(routeParams.get('person_id')) || null,
+  );
   const [personEditor, setPersonEditor] = useState(false),
     [editingPerson, setEditingPerson] = useState<number | null>(null);
   const [entryEditor, setEntryEditor] = useState(false),
@@ -350,6 +361,11 @@ export function TimeTracking() {
                   <Text fw={700} className="time-card-total">
                     {duration(p.total_minutes)}
                   </Text>
+                  {p.planned_minutes > 0 && (
+                    <Text size="xs" c="dimmed">
+                      + {duration(p.planned_minutes)} geplant
+                    </Text>
+                  )}
                   <Text size="xs" c="dimmed">
                     {p.entry_count} {p.entry_count === 1 ? 'Eintrag' : 'Einträge'}
                   </Text>
@@ -368,7 +384,14 @@ export function TimeTracking() {
       )}
       <Editor
         opened={selected !== null}
-        onClose={() => setSelected(null)}
+        onClose={() => {
+          setSelected(null);
+          if (routeParams.has('person_id')) {
+            const next = new URLSearchParams(routeParams);
+            next.delete('person_id');
+            setRouteParams(next, { replace: true });
+          }
+        }}
         title={person?.name || 'Stundenübersicht'}
         size="lg"
         busy={busy}
@@ -417,7 +440,7 @@ export function TimeTracking() {
                     </Text>
                   </Group>
                   <Text size="xs" c="dimmed">
-                    Erfasste Gesamtzeit · {person.entry_count}{' '}
+                    Bestätigte Gesamtzeit · {person.entry_count}{' '}
                     {person.entry_count === 1 ? 'Eintrag' : 'Einträge'}
                   </Text>
                 </div>
@@ -427,6 +450,47 @@ export function TimeTracking() {
                   disabled={busy}
                 >
                   Stunden erfassen
+                </Button>
+              </Group>
+              {person.planned_minutes > 0 && (
+                <Text size="sm" c="dimmed">
+                  Zusätzlich geplant: {duration(person.planned_minutes)} – Bestätigung im jeweiligen
+                  Kalendertermin.
+                </Text>
+              )}
+              <Group align="end">
+                <TextInput
+                  type="month"
+                  label="Nachweis für"
+                  value={exportMonth}
+                  onChange={(e) => setExportMonth(e.currentTarget.value)}
+                />
+                <Button
+                  component="a"
+                  href={projectURL(
+                    '/api/companion/time-export?month=' +
+                      encodeURIComponent(exportMonth) +
+                      '&person_id=' +
+                      person.id,
+                  )}
+                  variant="default"
+                  size="xs"
+                >
+                  CSV
+                </Button>
+                <Button
+                  component="a"
+                  href={projectURL(
+                    '/api/companion/time-report?month=' +
+                      encodeURIComponent(exportMonth) +
+                      '&person_id=' +
+                      person.id,
+                  )}
+                  target="_blank"
+                  variant="default"
+                  size="xs"
+                >
+                  Drucken / PDF
                 </Button>
               </Group>
               {(person.role || person.company_name) && (
@@ -448,7 +512,10 @@ export function TimeTracking() {
                           <Text size="sm" fw={600}>
                             {dayLabel(entry.worked_on)}
                           </Text>
-                          <Badge variant="light">{duration(entry.minutes)}</Badge>
+                          <Badge variant="light" color={entry.planned ? 'gray' : 'teal'}>
+                            {duration(entry.minutes)}
+                            {entry.planned ? ' · Geplant' : ''}
+                          </Badge>
                         </Group>
                         {!entry.calendar_event_id && (
                           <Group gap={4} wrap="nowrap">
@@ -478,6 +545,15 @@ export function TimeTracking() {
                           </Group>
                         )}
                       </Group>
+                      {entry.calendar_event_id && (
+                        <Button
+                          size="compact-xs"
+                          variant="subtle"
+                          onClick={() => navigate('/?calendar_event=' + entry.calendar_event_id)}
+                        >
+                          Termin prüfen / bestätigen
+                        </Button>
+                      )}
                       {entry.calendar_event_id && (
                         <Tooltip
                           multiline

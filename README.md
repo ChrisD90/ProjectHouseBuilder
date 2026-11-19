@@ -1,5 +1,7 @@
 # ProjectHouseBuilder – Sanierungsprojekt
 
+Der neue **Projektbegleiter** ergänzt Übersicht, Projektwerkstatt, Terminmappe, Einkauf, Dokumentation und Finanzhelfer. Bedienung, Migration **0040** und Umfang stehen in [docs/PROJEKTBEGLEITER.md](docs/PROJEKTBEGLEITER.md).
+
 ## Projektkalender (erste Version)
 
 Auf `feature/projektkalender` öffnet ein Projekt einen normalen Termin-Kalender mit Wochen- und Monatsansicht. Termine haben einen Titel, einen Zeitraum (ganztägig oder mit lokalen Uhrzeiten), optionale Notizen und optional mehrere Gewerke aus den projektbezogenen Stammdaten. Über einen Tag oder **Termin erstellen** wird ein Termin angelegt; ein Klick auf einen vorhandenen Termin öffnet die Bearbeitung einschließlich Löschen. Gewerk- und Firmenfilter grenzen die Ansicht ein.

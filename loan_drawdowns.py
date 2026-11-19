@@ -1,5 +1,6 @@
 """Staged, auditable bank drawdown requests with editable PDF previews."""
 from __future__ import annotations
+from receipt_amounts import payable
 
 import base64
 from datetime import datetime
@@ -87,7 +88,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         recorded=sum((dec(row.amount) for row in payments),ZERO)
         legacy=max(ZERO,dec(receipt.paid_amount)-recorded)
         rebookable=legacy+sum((dec(row.amount) for row in payments if row.source in ('equity','unassigned')),ZERO)
-        invoice_amount=max(ZERO,dec(receipt.gross_amount)-dec(getattr(receipt,'advance_deduction',0)))
+        invoice_amount=max(ZERO,payable(receipt))
         unpaid=max(ZERO,invoice_amount-dec(receipt.paid_amount))
         submittable=rebookable+unpaid
         target=sum((dec(row.amount) for row in payments if row.source=='loan' and row.loan_id==loan_id),ZERO)
@@ -510,7 +511,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
                 payment_date=confirmed_date,notes='Bisher nicht zugewiesene Zahlung über Mittelabruf #'+str(row.id))
             db.session.add(new);db.session.flush();created.append({'payment_id':new.id,'amount':format(used,'.2f')})
             remaining-=used
-        open_amount=max(ZERO,dec(receipt.gross_amount)-dec(getattr(receipt,'advance_deduction',0))-dec(receipt.paid_amount))
+        open_amount=max(ZERO,payable(receipt)-dec(receipt.paid_amount))
         if remaining>open_amount:raise ValueError('Der offene oder vorfinanzierte Rechnungsanteil hat sich seit der Einreichung geändert.')
         if remaining>ZERO and row.payout_type=='direct':
             new=Payment(receipt_id=receipt.id,source='loan',loan_id=row.loan_id,amount=remaining,

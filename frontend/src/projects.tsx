@@ -36,6 +36,7 @@ const empty: Row = {
   title: '',
   kind: 'Sanierung',
   description: '',
+  template: '',
   start_date: new Date().toLocaleDateString('sv-SE'),
 };
 export function ProjectDashboard() {
@@ -87,7 +88,7 @@ export function ProjectDashboard() {
         title,
         kind,
         description,
-        ...(!id ? { start_date } : {}),
+        ...(!id ? { start_date, template: form.values.template || '' } : {}),
       });
       setOpened(false);
       await cache.invalidateQueries({ queryKey: ['projects'] });
@@ -200,7 +201,7 @@ export function ProjectDashboard() {
               </Group>
             </Group>
             <Anchor
-              href={'/p/' + project.id + '/'}
+              href={'/p/' + project.id + '/uebersicht'}
               underline="never"
               c="inherit"
               style={{ display: 'block', padding: 24 }}
@@ -432,9 +433,22 @@ export function ProjectDashboard() {
                   {...form.getInputProps('start_date')}
                 />
               )}
+              {!id && (
+                <Select
+                  label="Projektvorlage (optional)"
+                  clearable
+                  data={[
+                    { value: 'garten', label: 'Garten' },
+                    { value: 'dach', label: 'Dach' },
+                    { value: 'renovierung', label: 'Renovierung' },
+                  ]}
+                  {...form.getInputProps('template')}
+                />
+              )}
               <Text size="sm" c="dimmed">
                 Neue Projekte starten ohne Arbeitspakete, Angebote oder Buchungen. Standardgewerke
-                und Kategorien stehen bereit; Firmen legst du im Projekt an.
+                und Kategorien stehen bereit; eine gewählte Vorlage ergänzt nur To-dos und eine
+                Eigenleistungsplanung. Firmen legst du im Projekt an.
               </Text>
               <ErrorBox value={failure} />
               <div className="actions">

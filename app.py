@@ -70,7 +70,7 @@ def validate_request_origin():
 
 # React owns the shared frame; the reviewed classic workflows remain available
 # as isolated same-origin documents while their native components are migrated.
-REACT_ROUTES={'/projektunterlagen','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen','/stunden'}
+REACT_ROUTES={'/uebersicht','/projektwerkstatt','/projektunterlagen','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen','/stunden'}
 
 @app.before_request
 def react_frontend():
@@ -638,7 +638,13 @@ from time_tracking import register_time_tracking
 TimePerson, TimeEntry = register_time_tracking(app, db, Contractor)
 
 from project_calendar import register_project_calendar
-CalendarEvent, CalendarEventTrade, CalendarEventCompany, CalendarCompanyTime = register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
+CalendarEvent, CalendarEventTrade, CalendarEventCompany, CalendarCompanyTime, calendar_event_json, sync_calendar_hours = register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
+
+from project_companion import register_companion
+CompanionRecord, CalendarPreferences, WorkRecurrence, ReceiptTerms = register_companion(__import__('sys').modules[__name__])
+time_entry_json = app.extensions['time_entry_json']
+work_sources['company']=(Contractor,lambda x:'Firma · '+x.name,lambda x:'/projektwerkstatt?tab=companies&company='+str(x.id))
+work_sources['event']=(CalendarEvent,lambda x:'Termin · '+x.title,lambda x:'/?calendar_event='+str(x.id))
 
 from document_inbox import register_document_inbox
 DocumentInboxConfig, DocumentInboxItem = register_document_inbox(__import__('sys').modules[__name__])
@@ -708,6 +714,8 @@ register_imports(__import__('sys').modules[__name__])
 
 from request_safety import register as register_request_safety
 request_fingerprint=register_request_safety(app,db,Project,globals())
+# Reference guards run only after project selection and the shared write lock.
+app.before_request(app.extensions['companion_protect_references'])
 from job_leases import install_fence
 install_fence(db,Project,ImportJob)
 

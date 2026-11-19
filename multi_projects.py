@@ -223,6 +223,8 @@ def register_project_routes(app, db, Project, *, initialize, summary, Task, Cost
             if project_id is None:
                 with project_context(project.id):
                     initialize(start)
+                    if body.get('template'):
+                        app.extensions['companion_seed_template'](body['template'])
                     db.session.flush()
             db.session.commit()
             return jsonify(project=describe(project)),201 if project_id is None else 200

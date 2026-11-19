@@ -3,7 +3,8 @@
  'use strict';
  if(window.parent===window||!window.parent.PHBReactBridge)return;
  const bridge=window.parent.PHBReactBridge;
- const routes=new Set(['/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben']);
+ document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='k'){event.preventDefault();window.parent.dispatchEvent(new Event('phb-command-open'));}});
+ const routes=new Set(['/uebersicht','/projektwerkstatt','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben']);
  const forms=new Map(),changed=new Set(),locked=new WeakMap();let jobs=[],refreshing=null,navigating=false;
  const signature=form=>JSON.stringify([...form.querySelectorAll('input,select,textarea')].filter(f=>f.name&&f.dataset.phbIgnoreDirty!=='true').map(f=>[f.name,f.type==='file'?[...f.files].map(x=>[x.name,x.size,x.lastModified]):f.type==='checkbox'||f.type==='radio'?[f.value,f.checked]:f.multiple?[...f.selectedOptions].map(x=>x.value):f.value]));
  const guarded=form=>{const dialog=form.closest('dialog');return !!(dialog&&window.PHBFlow?.get(dialog));};

@@ -30,7 +30,7 @@ def register(runtime: ModuleType):
 
     runtime._offer_has_dependencies = _offer_has_dependencies
 
-    def _sync_offer_costs(offer):
+    def _sync_offer_costs(offer, *, allow_order_change=False):
         """A listed quotation has zero forecast impact; acceptance books exactly one total.
 
         Previously accepted multi-section legacy orders are retained if they have
@@ -43,7 +43,7 @@ def register(runtime: ModuleType):
                     raise ValueError('Das Angebot hat bereits Zahlungen oder verknüpfte Belege. Bitte zuerst prüfen.')
                 runtime.db.session.delete(item)
             return
-        amount = runtime._contract_gross(offer)
+        amount = runtime._contract_gross(offer) + float(runtime.addendum_total(offer.id) if hasattr(runtime,'addendum_total') else 0)
         if not runtime.math.isfinite(amount) or amount <= 0:
             raise ValueError('Vor Annahme muss eine positive Bruttogesamtsumme bestätigt sein.')
         line = None
@@ -61,7 +61,7 @@ def register(runtime: ModuleType):
             if runtime._offer_has_dependencies(duplicate):
                 raise ValueError('Eine frühere Leistungsgruppe hat Zahlungen oder Belege.')
             runtime.db.session.delete(duplicate)
-        if runtime._offer_has_dependencies(item) and (item.budget_line_id != offer.budget_line_id or abs(float(item.offer or 0) - amount) > 0.001):
+        if runtime._offer_has_dependencies(item) and (item.budget_line_id != offer.budget_line_id or (not allow_order_change and abs(float(item.offer or 0) - amount) > 0.001)):
             raise ValueError('Betrag oder Zuordnung eines bereits bezahlten Auftrags dürfen nicht still verändert werden.')
         item.offer_id = offer.id
         item.budget_line_id = offer.budget_line_id

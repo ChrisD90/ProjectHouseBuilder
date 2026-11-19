@@ -35,18 +35,18 @@ def invalidate_operations(connection,owner):
 
 def register(app,db,Project,models):
     specs={path:models[name] for path,name in {
-        'calendar-events':'CalendarEvent','projects':'Project','tasks':'Task','phases':'BuildPhase','contractors':'Contractor',
+        'companion/records':'CompanionRecord','calendar-events':'CalendarEvent','projects':'Project','tasks':'Task','phases':'BuildPhase','contractors':'Contractor',
         'categories':'Category','trades':'Trade','receipts':'Receipt','offers':'Offer',
         'project-documents':'ProjectDocument','project-work':'ProjectWork','funding':'Funding',
         'costs':'CostItem','budget/lines':'BudgetLine','financing/loans':'Loan',
         'financing/equity':'EquityAccount','self-work':'SelfWorkPlan','time-people':'TimePerson','time-entries':'TimeEntry'}.items() if name in models}
-    fields={'events':'calendar-events','event':'calendar-events','people':'time-people','person':'time-people','entry':'time-entries','project':'projects','projects':'projects','tasks':'tasks','phases':'phases',
+    fields={'records':'companion/records','record':'companion/records','events':'calendar-events','event':'calendar-events','people':'time-people','person':'time-people','entry':'time-entries','project':'projects','projects':'projects','tasks':'tasks','phases':'phases',
         'contractors':'contractors','categories':'categories','trades':'trades','receipts':'receipts',
         'offers':'offers','documents':'project-documents','funding':'funding','loans':'financing/loans',
         'equity_accounts':'financing/equity','accounts':'financing/equity','budget_lines':'budget/lines'}
-    children={'calendar_event':{'calendar_event_trade','calendar_event_company','calendar_company_time'},'time_person':{'time_entry'},'project_document':{'project_document_version'},'offer':{'offer_position','offer_section','order_acceptance','document'},
-              'self_work_plan':{'self_work_receipt'},
-              'receipt':{'finance_receipt_payment','receipt_cancellation','receipt_cancellation_reversal','self_work_receipt'},
+    children={'calendar_event':{'calendar_event_trade','calendar_event_company','calendar_company_time','calendar_preferences'},'time_person':{'time_entry'},'project_document':{'project_document_version'},'offer':{'offer_position','offer_section','order_acceptance','document'},
+              'self_work_plan':{'self_work_receipt','receipt_terms'},
+              'receipt':{'finance_receipt_payment','receipt_cancellation','receipt_cancellation_reversal','self_work_receipt','receipt_terms'},
               'funding':{'funding_plan','funding_plan_offer','funding_document','funding_assessment'}}
     for table in db.metadata.tables.values():
         for fk in table.foreign_keys:
