@@ -4,6 +4,7 @@ import { notifications } from '@mantine/notifications';
 import React, { createContext, useContext, useRef, useState } from 'react';
 import { projectID } from './project-context';
 import { ChangePreview } from './ui';
+import { displayMoney } from './presentation';
 export type Row = Record<string, any>;
 let writes = 0;
 export async function api<T = Row>(
@@ -45,8 +46,7 @@ export async function api<T = Row>(
   }
 }
 export const hasWrites = () => writes > 0;
-export const money = (n: unknown) =>
-  new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(Number(n) || 0);
+export const money = displayMoney;
 export const error = (e: unknown) =>
   notifications.show({
     color: 'red',

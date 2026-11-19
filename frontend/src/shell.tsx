@@ -10,7 +10,6 @@ import {
   LoadingOverlay,
   NavLink,
   Progress,
-  Select,
   Stack,
   Text,
   Tooltip,
@@ -56,6 +55,7 @@ import { ProjectCalendar } from './project-calendar';
 import { Overview, Workshop, GlobalTools } from './companion';
 import { WorkshopQuickAccess } from './workshop-quick-access';
 import { SystemSettings } from './system-settings';
+import { useDisplaySettings } from './presentation';
 import { TimeTracking } from './time-tracking';
 import { SelfWorkPage } from './self-work';
 import { DocumentInbox } from './document-inbox';
@@ -119,6 +119,7 @@ export function useDirtyGuard(dirty: boolean) {
   useEffect(() => register(() => ref.current), [register]);
 }
 export function App() {
+  useDisplaySettings();
   const projectInfo = useQuery({
     queryKey: ['current-project', projectID],
     queryFn: () => api('/api/projects/' + projectID),
@@ -160,7 +161,7 @@ export function App() {
     [failed, setFailed] = useState<string | null>(null);
   const refs = useRef<Record<string, HTMLIFrameElement | null>>({}),
     guards = useRef<Set<() => boolean>>(new Set());
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const { colorScheme } = useMantineColorScheme();
   const logoTheme = useComputedColorScheme('light');
   const route = items.find((i) => i[0] === location.pathname),
     url = location.pathname + location.search + location.hash;
@@ -533,19 +534,6 @@ export function App() {
                 </div>
               </Group>
               <Group gap="xs" wrap="nowrap" className="app-header-actions">
-                <Select
-                  aria-label="Darstellung"
-                  value={colorScheme}
-                  onChange={(v) => setColorScheme((v || 'auto') as any)}
-                  size="xs"
-                  w={96}
-                  visibleFrom="md"
-                  data={[
-                    { value: 'auto', label: 'System' },
-                    { value: 'light', label: 'Hell' },
-                    { value: 'dark', label: 'Dunkel' },
-                  ]}
-                />
                 <GlobalTools />
                 <WorkshopQuickAccess />
                 <DocumentInbox bridge={services.bridge} />

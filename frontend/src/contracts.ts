@@ -14,6 +14,7 @@ export interface ProjectRecord {
   open_todos: number;
 }
 export interface CompanyRecord {
+  favorite?: boolean;
   id: number;
   name: string;
   trade: string;

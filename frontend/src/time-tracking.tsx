@@ -1,3 +1,5 @@
+import { displayDate } from './presentation';
+import { companyChoices } from './presentation';
 import {
   ActionIcon,
   Badge,
@@ -75,8 +77,7 @@ const emptyPerson: PersonForm = {
 };
 const duration = (minutes: number) =>
   `${Math.floor(minutes / 60)} Std.${minutes % 60 ? ' ' + (minutes % 60) + ' Min.' : ''}`;
-const dayLabel = (value: string) =>
-  new Intl.DateTimeFormat(navigator.language || 'de-DE').format(new Date(value + 'T12:00:00'));
+const dayLabel = (value: string) => displayDate(value);
 
 export function TimeTracking() {
   const navigate = useNavigate();
@@ -282,10 +283,7 @@ export function TimeTracking() {
       );
     return compareText(a.name, b.name) * (sort === 'za' ? -1 : 1);
   });
-  const companies = (people.data?.companies || []).map((c) => ({
-    value: String(c.id),
-    label: c.name,
-  }));
+  const companies = companyChoices(people.data?.companies || []);
   return (
     <div className="page time-tracking-page">
       <PageHeader

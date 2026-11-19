@@ -1,3 +1,5 @@
+import { displayDate } from './presentation';
+import { companyChoices } from './presentation';
 import {
   ActionIcon,
   Accordion,
@@ -68,9 +70,7 @@ const empty = (day: string): EventForm => ({
   performed: false,
 });
 const dateLabel = (day: string, options?: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat('de-DE', options || { day: 'numeric', month: 'long' }).format(
-    localDay(day),
-  );
+  displayDate(day, options || { day: 'numeric', month: 'long' });
 
 export function ProjectCalendar() {
   const today = dayKey(new Date()),
@@ -457,10 +457,7 @@ export function ProjectCalendar() {
           onChange={setCompany}
           searchable
           clearable
-          data={(events.data?.companies || []).map((item) => ({
-            value: String(item.id),
-            label: item.name,
-          }))}
+          data={companyChoices(events.data?.companies || [])}
         />
       </Paper>
       <ErrorBox value={events.error || trades.error || linked.error} />
@@ -665,10 +662,7 @@ export function ProjectCalendar() {
                   searchable
                   required
                   nothingFoundMessage="Keine Firma gefunden"
-                  data={(events.data?.companies || []).map((company) => ({
-                    value: String(company.id),
-                    label: company.name,
-                  }))}
+                  data={companyChoices(events.data?.companies || [])}
                   {...form.getInputProps('contractor_id')}
                 />
                 <Text size="xs" c="dimmed">

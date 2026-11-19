@@ -266,7 +266,7 @@
     const indicator=$('aiCompareSelectionCount');
     if(indicator)indicator.textContent=count+' ausgewählt · 2 bis 8 erforderlich';
   }
-  const fmt = n => n == null ? 'Bitte Betrag prüfen' : new Intl.NumberFormat('de-DE', {style:'currency',currency:'EUR'}).format(Number(n));
+  const fmt = n => n == null ? 'Bitte Betrag prüfen' : ({format:value=>window.PHBDisplay.money(value)}).format(Number(n));
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const option = (value,label,selected) => `<option value="${esc(value)}" ${String(value)===String(selected??'')?'selected':''}>${esc(label)}</option>`;
   const categoryOptions = selected => categories.map(c => option(c,c,selected)).join('');

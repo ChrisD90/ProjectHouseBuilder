@@ -1,3 +1,4 @@
+import { displayDate } from './presentation';
 import {
   ActionIcon,
   Accordion,
@@ -30,8 +31,7 @@ import { tileLayout } from './tile-layout';
 import './workshop-quick-access.css';
 
 const format = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 2 });
-const date = (value: string) =>
-  value ? new Date(value + 'T12:00:00').toLocaleDateString('de-DE') : '';
+const date = (value: string) => (value ? displayDate(value) : '');
 const sanitize = (value: unknown) =>
   Array.isArray(value)
     ? [

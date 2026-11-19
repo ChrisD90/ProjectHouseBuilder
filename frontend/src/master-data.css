@@ -1,0 +1,35 @@
+.company-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
+  gap: 9px;
+}
+.company-card {
+  position: relative;
+  height: 90px;
+  border: 1px solid var(--brand-line);
+  border-radius: 9px;
+  background: var(--brand-surface);
+}
+.company-card:hover {
+  border-color: var(--brand-accent);
+  background: var(--brand-soft);
+}
+.company-card-open {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 10px 36px 10px 11px;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+.company-card-open:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 2px;
+}
+.company-card-favorite {
+  position: absolute;
+  right: 5px;
+  top: 6px;
+}

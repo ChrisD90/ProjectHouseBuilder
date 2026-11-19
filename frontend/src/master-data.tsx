@@ -1,5 +1,8 @@
+import { notifyCompanyFavorites } from './presentation';
+import './master-data.css';
 import {
   ActionIcon,
+  UnstyledButton,
   Anchor,
   Button,
   Group,
@@ -16,7 +19,14 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconPencil, IconPlus, IconRestore, IconSearch, IconTrash } from '@tabler/icons-react';
+import {
+  IconPencil,
+  IconPlus,
+  IconRestore,
+  IconSearch,
+  IconTrash,
+  IconStar,
+} from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -216,12 +226,23 @@ export function MasterData() {
   }
   const data = query.data || { companies: [], trades: [], categories: [] };
   const filtered = (data.companies as Row[]).filter((c) =>
-    Object.values(c).some((v) =>
+    [...companyFields.map(([key]) => c[key]), c.trade, c.notes].some((v) =>
       String(v || '')
         .toLocaleLowerCase('de')
         .includes(search.toLocaleLowerCase('de')),
     ),
   );
+  async function favorite(company: Row) {
+    try {
+      await api('/api/contractors/' + company.id + '/favorite', 'PATCH', {
+        favorite: !company.favorite,
+      });
+      await cache.invalidateQueries();
+      notifyCompanyFavorites();
+    } catch (e) {
+      error(e);
+    }
+  }
   return (
     <div className="page">
       <PageHeader
@@ -277,50 +298,41 @@ export function MasterData() {
               <Text size="xs" c="dimmed" mb="sm">
                 {filtered.length} von {data.companies.length} Firmen
               </Text>
-              <Table.ScrollContainer minWidth={650}>
-                <Table verticalSpacing="sm">
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>Firma</Table.Th>
-                      <Table.Th>Gewerk</Table.Th>
-                      <Table.Th>Kontakt</Table.Th>
-                      <Table.Th />
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {filtered.map((c) => (
-                      <Table.Tr key={c.id} className="table-button" onClick={() => open(c)}>
-                        <Table.Td>
-                          <RowAction onActivate={() => open(c)}>
-                            <Text fw={600} size="sm">
-                              {c.name}
-                            </Text>
-                            <Text size="xs" c="dimmed">
-                              {c.address}
-                            </Text>
-                          </RowAction>
-                        </Table.Td>
-                        <Table.Td>{c.trade || '–'}</Table.Td>
-                        <Table.Td>
-                          <Text size="sm">
-                            {[c.contact, c.contact_secondary].filter(Boolean).join(' · ') || '–'}
-                          </Text>
-                          <Text size="xs" c="dimmed">
-                            {[c.phone, c.mobile, c.email].filter(Boolean).join(' · ')}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Tooltip label="Firma bearbeiten">
-                            <ActionIcon variant="subtle" aria-label="Firma bearbeiten">
-                              <IconPencil size={17} />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
+              <div className="company-card-grid">
+                {[...filtered]
+                  .sort(
+                    (a, b) =>
+                      Number(!!b.favorite) - Number(!!a.favorite) ||
+                      a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }),
+                  )
+                  .map((c) => (
+                    <div className="company-card" key={c.id}>
+                      <UnstyledButton
+                        className="company-card-open"
+                        onClick={() => open(c)}
+                        aria-label={c.name + ' öffnen'}
+                      >
+                        <Text fw={600} size="sm" lineClamp={2}>
+                          {c.name}
+                        </Text>
+                        <Text size="xs" c="dimmed" lineClamp={1}>
+                          {c.trade || 'Kein Gewerk'}
+                        </Text>
+                      </UnstyledButton>
+                      <Tooltip label={c.favorite ? 'Favorit entfernen' : 'Als Favorit markieren'}>
+                        <ActionIcon
+                          variant="subtle"
+                          className="company-card-favorite"
+                          aria-label={c.name + ' als Favorit'}
+                          aria-pressed={!!c.favorite}
+                          onClick={() => void favorite(c)}
+                        >
+                          <IconStar size={16} fill={c.favorite ? 'currentColor' : 'none'} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </div>
+                  ))}
+              </div>
               {!filtered.length && !query.isPending && (
                 <Text c="dimmed" size="sm">
                   Keine passenden Firmen.

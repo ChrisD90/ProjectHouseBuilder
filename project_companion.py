@@ -134,7 +134,7 @@ def register_companion(r):
         return list(dict.fromkeys(ids))
 
     def refs():
-        return {kind:[dict(id=x.id,title=str(getattr(x,'title',None) or getattr(x,'name',None) or getattr(x,'vendor',None) or getattr(x,'supplier',None) or '#'+str(x.id))) for x in db.session.scalars(select(model).order_by(model.id.desc()))] for kind,model in sources.items()}
+        return {kind:[dict(id=x.id,**({'favorite':bool(x.favorite)} if kind=='company' else {}),title=str(getattr(x,'title',None) or getattr(x,'name',None) or getattr(x,'vendor',None) or getattr(x,'supplier',None) or '#'+str(x.id))) for x in db.session.scalars(select(model).order_by(model.id.desc()))] for kind,model in sources.items()}
 
     @app.get('/api/companion')
     def companion_index():
@@ -377,7 +377,7 @@ def register_companion(r):
         try:month,rows=time_rows()
         except ValueError as exc:return jsonify(error=str(exc)),400
         total=sum(x[2] for x in rows if x[5]=='Bestätigt');planned=sum(x[2] for x in rows if x[5]=='Geplant')
-        page='<!doctype html><meta charset="utf-8"><title>Stundennachweis</title><style>body{font:14px system-ui;margin:32px}table{border-collapse:collapse;width:100%}td,th{padding:8px;border-bottom:1px solid #ccc;text-align:left}@media print{button{display:none}}</style><button onclick="window.print()">Drucken / als PDF speichern</button><h1>Stundennachweis '+html.escape(month)+'</h1><p>Bestätigt: '+format(Decimal(total)/60,'.2f')+' Std. · Geplant: '+format(Decimal(planned)/60,'.2f')+' Std.</p><table><thead><tr>'+''.join('<th>'+x+'</th>' for x in ['Person / Firma','Datum','Minuten','Stunden','Tätigkeit','Status','Hinweis'])+'</tr></thead><tbody>'+''.join('<tr>'+''.join('<td>'+html.escape(str(x))+'</td>' for x in row)+'</tr>' for row in rows)+'</tbody></table>'
+        page='<!doctype html><script defer src="/static/presentation.js"></script><meta charset="utf-8"><title>Stundennachweis</title><style>body{font:14px system-ui;margin:32px}table{border-collapse:collapse;width:100%}td,th{padding:8px;border-bottom:1px solid #ccc;text-align:left}@media print{button{display:none}}</style><button onclick="window.print()">Drucken / als PDF speichern</button><h1>Stundennachweis '+html.escape(month)+'</h1><p>Bestätigt: '+format(Decimal(total)/60,'.2f')+' Std. · Geplant: '+format(Decimal(planned)/60,'.2f')+' Std.</p><table><thead><tr>'+''.join('<th>'+x+'</th>' for x in ['Person / Firma','Datum','Minuten','Stunden','Tätigkeit','Status','Hinweis'])+'</tr></thead><tbody>'+''.join('<tr>'+''.join('<td>'+html.escape(str(x))+'</td>' for x in row)+'</tr>' for row in rows)+'</tbody></table>'
         return app.response_class(page,mimetype='text/html')
 
     def seed_template(key):
@@ -610,7 +610,7 @@ def register_companion(r):
         kind=request.args.get('kind','journal');scope=request.args.get('source_type','');ident=request.args.get('source_id',type=int)
         if kind not in KINDS:return jsonify(error='Unbekannter Bericht.'),400
         rows=[x for x in records(kind) if not scope or (x.source_type==scope and x.source_id==ident)]
-        parts=['<!doctype html><html lang="de"><meta charset="utf-8"><title>Projektdokumentation</title><style>body{font:15px system-ui;max-width:900px;margin:35px auto;padding:0 20px;color:#172c24}article{break-inside:avoid;border-bottom:1px solid #ccc;padding:16px 0}img{max-width:100%;max-height:400px}pre{white-space:pre-wrap}@media print{button{display:none}}</style><button onclick="window.print()">Drucken / als PDF speichern</button><h1>Projektdokumentation</h1>']
+        parts=['<!doctype html><html lang="de"><script defer src="/static/presentation.js"></script><meta charset="utf-8"><title>Projektdokumentation</title><style>body{font:15px system-ui;max-width:900px;margin:35px auto;padding:0 20px;color:#172c24}article{break-inside:avoid;border-bottom:1px solid #ccc;padding:16px 0}img{max-width:100%;max-height:400px}pre{white-space:pre-wrap}@media print{button{display:none}}</style><button onclick="window.print()">Drucken / als PDF speichern</button><h1>Projektdokumentation</h1>']
         if scope=='event' and ident:
             event=db.session.get(r.CalendarEvent,ident)
             if event is None:return jsonify(error='Termin nicht gefunden.'),404

@@ -1,3 +1,4 @@
+import { displayMoney } from './presentation';
 import {
   ActionIcon,
   Badge,
@@ -14,12 +15,7 @@ import { IconInfoCircle } from '@tabler/icons-react';
 import { useState } from 'react';
 import { getOpenAIModelGuide } from './openai-model-catalog';
 
-const usd = new Intl.NumberFormat('de-DE', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+const usd = { format: (value: unknown) => displayMoney(value, 'USD') };
 
 export function ModelInfo({
   slug,

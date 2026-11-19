@@ -54,6 +54,21 @@ class ProjectBackupTest(unittest.TestCase):
 
     def headers(self,owner=1):return {'X-PHB-Project':str(owner)}
 
+    def test_company_favorites_round_trip_and_old_backup_defaults(self):
+        company=self.client.get('/api/costs').json['contractors'][0]['id']
+        path='/api/contractors/'+str(company)+'/favorite'
+        self.assertEqual(self.client.patch(path,json={'favorite':True}).status_code,200)
+        foreign=self.snapshot(self.other);archive=self.create()
+        self.client.patch(path,json={'favorite':False})
+        self.assertEqual(self.start_restore(archive)['state'],'done')
+        self.assertTrue(next(c for c in self.client.get('/api/costs').json['contractors'] if c['id']==company)['favorite'])
+        def legacy(data):
+            for row in data['tables']['contractor']:row.pop('favorite',None)
+        self.rewrite(archive,legacy)
+        self.assertEqual(self.start_restore(archive)['state'],'done')
+        self.assertFalse(next(c for c in self.client.get('/api/costs').json['contractors'] if c['id']==company)['favorite'])
+        self.assertEqual(self.snapshot(self.other),foreign)
+
     def snapshot(self,owner):
         b.db.session.remove()
         with b.db.engine.connect() as c:

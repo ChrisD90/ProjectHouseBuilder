@@ -1,3 +1,4 @@
+import { displayDate } from './presentation';
 import { ActionIcon, Group, Paper, Text, Tooltip, UnstyledButton } from '@mantine/core';
 import { IconDownload, IconEye, IconFileText, IconPencil } from '@tabler/icons-react';
 import { Row } from './core';
@@ -69,9 +70,7 @@ export function DocumentCards({
             </UnstyledButton>
             <Group justify="space-between" gap={4} wrap="nowrap">
               <Text size="10px" c="dimmed" title={document.uploaded_at}>
-                {Number.isFinite(uploaded)
-                  ? new Intl.DateTimeFormat(navigator.language || 'de-DE').format(uploaded)
-                  : 'Ohne Datum'}
+                {Number.isFinite(uploaded) ? displayDate(new Date(uploaded)) : 'Ohne Datum'}
               </Text>
               <Group gap={4} wrap="nowrap">
                 {preview && (

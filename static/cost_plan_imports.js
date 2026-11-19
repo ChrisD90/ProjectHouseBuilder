@@ -36,7 +36,7 @@
    const value=tr.querySelector('[data-field=estimate]').value;
    try{sum+=PHBUI.currency.parse(value)||0;count++;}catch(_){}
   }
-  $('planReviewTotal').textContent=count+' Einzelpositionen · '+new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(sum);
+  $('planReviewTotal').textContent=count+' Einzelpositionen · '+({format:value=>window.PHBDisplay.money(value)}).format(sum);
  }
  async function open(id){
   if(busy)return;active=await api('/api/cost-plan-imports/'+id);

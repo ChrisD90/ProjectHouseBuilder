@@ -256,6 +256,8 @@ def load_rows(path, db, owner):
         total += len(rows)
         if total > MAX_ROWS: raise ValueError('Zu viele Datensätze im Backup.')
         for row in rows:
+            if name=='contractor' and 'favorite' not in row:
+                row={**row,'favorite':False}
             if name=='project_document' and 'current_version' not in row:
                 row={**row,'current_version':1}
             if name=='document' and 'offer_id' not in row:

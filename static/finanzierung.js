@@ -23,7 +23,7 @@ const usageFlow=PHBFlow.manage({
 });
 
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const euro=n=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(n)||0);
+const euro=n=>({format:value=>window.PHBDisplay.money(value)}).format(Number(n)||0);
 let state=null;
 const TODAY=new Date().toLocaleDateString('sv-SE');
 let creditActivity=null;

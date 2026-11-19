@@ -7,7 +7,7 @@ from types import ModuleType
 
 def register(runtime: ModuleType):
     def as_dict(obj, fields):
-        return {f: getattr(obj, f) for f in fields} | {'id': obj.id}
+        return {f: getattr(obj, f) for f in fields} | {'id': obj.id} | ({'favorite':bool(obj.favorite)} if isinstance(obj,runtime.Contractor) else {})
 
     runtime.as_dict = as_dict
 
@@ -690,6 +690,21 @@ def register(runtime: ModuleType):
             return (runtime.jsonify(error=str(exc)), 400)
 
     runtime.contractor_edit = contractor_edit
+
+    @runtime.app.get('/api/contractors/preferences')
+    def contractor_preferences():
+        rows=runtime.db.session.scalars(runtime.select(runtime.Contractor)).all()
+        return runtime.jsonify(companies=[{'id':x.id,'name':x.name,'favorite':bool(x.favorite)} for x in sorted(rows,key=lambda c:(not c.favorite,c.name.casefold()))])
+
+    @runtime.app.patch('/api/contractors/<int:item_id>/favorite')
+    def contractor_favorite(item_id):
+        obj=runtime.db.session.get(runtime.Contractor,item_id)
+        if obj is None:return runtime.jsonify(error='Firma nicht gefunden.'),404
+        body=runtime.request.get_json(silent=True)
+        if not isinstance(body,dict) or set(body)!={'favorite'} or type(body['favorite'])is not bool:
+            return runtime.jsonify(error='Favoritenstatus muss wahr oder falsch sein.'),400
+        obj.favorite=body['favorite'];runtime.db.session.commit()
+        return runtime.jsonify(contractor=runtime.as_dict(obj,runtime.CONTACT_FIELDS))
 
     @runtime.app.get('/api/costs.csv')
     def costs_csv():

@@ -149,6 +149,7 @@ def define_models(db):
 
     class Contractor(db.Model):
         id=db.Column(db.Integer,primary_key=True)
+        favorite=db.Column(db.Boolean,nullable=False,default=False,server_default=db.false())
         trade=db.Column(db.String(140),default='')
         name=db.Column(db.String(200),nullable=False)
         contact=db.Column(db.String(200),default='')

@@ -72,7 +72,7 @@ def register_time_tracking(app, db, Contractor):
             select(TimeEntry.person_id, func.sum(TimeEntry.minutes).label('minutes'),
                    func.count(TimeEntry.id).label('count'), func.max(TimeEntry.worked_on).label('last_date')).group_by(TimeEntry.person_id))}
         result = jsonify(people=[person_dict(p, totals.get(p.id, (0, 0, None))) for p in db.session.scalars(select(TimePerson).order_by(TimePerson.name, TimePerson.id))],
-                         companies=[dict(id=c.id, name=c.name) for c in db.session.scalars(select(Contractor).order_by(Contractor.name))])
+                         companies=[dict(id=c.id, name=c.name, favorite=bool(c.favorite)) for c in db.session.scalars(select(Contractor).order_by(Contractor.name))])
         result.headers['Cache-Control'] = 'no-store'
         return result
 

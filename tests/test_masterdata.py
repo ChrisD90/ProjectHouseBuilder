@@ -7,6 +7,22 @@ from app import app,db,initialize,Contractor,Trade,Task,_get_or_add_contractor,a
 
 
 class MasterDataTest(unittest.TestCase):
+    def test_company_favorites_are_scoped_and_preserve_contact_data(self):
+        own=self.client.post('/api/contractors',json={'name':'Zulu','phone':'01234','trade':'Elektro'}).json['contractor']
+        other=self.client.post('/api/projects',json={'title':'Fremdes Projekt'}).json['project']['id']
+        foreign={'X-PHB-Project':str(other)}
+        path='/api/contractors/'+str(own['id'])+'/favorite'
+        self.assertEqual(self.client.patch(path,headers=foreign,json={'favorite':True}).status_code,404)
+        self.assertEqual(self.client.patch(path,json={'favorite':'false'}).status_code,400)
+        self.assertEqual(self.client.patch(path,json={'favorite':True,'name':'Überschrieben'}).status_code,400)
+        self.assertEqual(self.client.patch(path,json={'favorite':True}).status_code,200)
+        self.client.put('/api/contractors/'+str(own['id']),json={'notes':'Notiz'})
+        row=next(c for c in self.client.get('/api/costs').json['contractors'] if c['id']==own['id'])
+        self.assertTrue(row['favorite']);self.assertEqual(row['phone'],'01234');self.assertEqual(row['name'],'Zulu')
+        self.assertTrue(next(c for c in self.client.get('/api/calendar-events').json['companies'] if c['id']==own['id'])['favorite'])
+        self.assertTrue(next(c for c in self.client.get('/api/time-tracking').json['companies'] if c['id']==own['id'])['favorite'])
+        self.assertEqual(self.client.get('/api/contractors/preferences',headers=foreign).json['companies'],[])
+
     def setUp(self):
         self.ctx=app.app_context();self.ctx.push()
         db.session.remove();db.drop_all();initialize()

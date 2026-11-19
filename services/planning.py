@@ -615,7 +615,7 @@ def register(runtime: ModuleType):
     def project():
         tasks = runtime.serialize(runtime.all_tasks())
         contractors = runtime.db.session.scalars(runtime.select(runtime.Contractor).order_by(runtime.Contractor.name)).all()
-        return runtime.jsonify({'start': runtime.setting('start'), 'tasks': tasks, 'plan_digest': runtime._schedule_fingerprint(tasks), 'phases': [runtime.phase_dict(x) for x in runtime.db.session.scalars(runtime.select(runtime.BuildPhase).order_by(runtime.BuildPhase.position, runtime.BuildPhase.start_date, runtime.BuildPhase.id))], 'contractor_suggestions': runtime.contractor_suggestions(), 'contracted_companies': runtime.contracted_companies(), 'trades': [x.name for x in runtime.db.session.scalars(runtime.select(runtime.Trade).order_by(runtime.Trade.name))], 'contractors': [{'id': x.id, 'name': x.name, 'trade': x.trade, 'phone': x.phone, 'email': x.email} for x in contractors]})
+        return runtime.jsonify({'start': runtime.setting('start'), 'tasks': tasks, 'plan_digest': runtime._schedule_fingerprint(tasks), 'phases': [runtime.phase_dict(x) for x in runtime.db.session.scalars(runtime.select(runtime.BuildPhase).order_by(runtime.BuildPhase.position, runtime.BuildPhase.start_date, runtime.BuildPhase.id))], 'contractor_suggestions': runtime.contractor_suggestions(), 'contracted_companies': runtime.contracted_companies(), 'trades': [x.name for x in runtime.db.session.scalars(runtime.select(runtime.Trade).order_by(runtime.Trade.name))], 'contractors': [{'id': x.id, 'name': x.name, 'favorite': bool(x.favorite), 'trade': x.trade, 'phone': x.phone, 'email': x.email} for x in contractors]})
 
     runtime.project = project
 

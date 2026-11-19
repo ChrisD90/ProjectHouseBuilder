@@ -2,7 +2,7 @@
  'use strict';
  const $=id=>document.getElementById(id),form=$('energyFundingForm'),dialog=$('energyFundingDialog');
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const euro=n=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(n||0);
+ const euro=n=>({format:value=>window.PHBDisplay.money(value)}).format(n||0);
  let data=null,current=null,busy=false,dirty=false;
  async function api(url,method='GET',body){const r=await fetch(url,{method,headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});const d=await r.json();if(!r.ok)throw Error(d.error||'Speichern fehlgeschlagen.');return d;}
  async function load(){data=await api('/api/energy-planning');render();}

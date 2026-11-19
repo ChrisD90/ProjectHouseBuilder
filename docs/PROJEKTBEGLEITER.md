@@ -2,6 +2,16 @@
 
 Branch: `feature/projektkalender`. Additive Migration **0040**. Die Anwendung nach dem Update über den üblichen Starter neu starten; dieser führt Migration und die vorhandene Sicherungslogik aus. Es gibt keine neue Cloud- oder Hostingabhängigkeit.
 
+Migration **0041** ergänzt Firmenfavoriten, ohne vorhandene Firmendaten zu ändern. Ältere Projektbackups ohne diese Spalte werden mit `favorite=false` ergänzt.
+
+## Stammdaten und Anzeigeformate
+
+Firmen erscheinen als kompakte Kacheln mit Firmenname und Gewerk. Ein Klick öffnet die vorhandene Detailbearbeitung. Der Stern markiert einen projektbezogenen Firmenfavoriten; diese Kennzeichnung ist Bestandteil der Projektdaten und Backups. Firmenauswahlen zeigen Favoriten zuerst mit **★**, innerhalb der Favoriten und der übrigen Firmen jeweils alphabetisch. Die Auswahlwerte bleiben unveränderte Firmen-IDs. Der Favoriten-Endpunkt ändert ausschließlich die Kennzeichnung; normale Kontaktbearbeitung überschreibt sie nicht.
+
+**Einstellungen → System → Sprache & Formate** bietet zunächst Deutsch, Datumsformate `TT.MM.JJJJ`, `JJJJ-MM-TT` und `TT/MM/JJJJ`, Währungsanzeige mit Symbol oder ISO-Code sowie kurze/ausgeschriebene Einheiten. Die Vorgaben sind Browserpräferenzen für die gesamte Anwendung, einschließlich eingebetteter Erfassungsdialoge. Änderungen wirken ohne Neuladen. Der Darstellungswähler liegt ausschließlich unter System; der Header enthält ihn nicht mehr.
+
+Die zentrale Präsentationsschicht formatiert Anzeigen und Beschriftungen. React- und klassische Währungs-/Datumsausgaben verwenden dieselben Formatter. Technische ISO-Werte, native Auswahlwerte, Beträge und Mengeneinheiten in Formularen, API-Anfragen und Backups werden dabei nicht verändert. Bei Datumseingaben erscheint außerhalb des Fokus das gewählte Format; während der Eingabe und im nativen Kalender gilt das Browserformat. Zahlen bleiben im deutschen Zahlenformat. Es erfolgt keine Währungs- oder Mengenumrechnung. Originaldokumente und maschinenlesbare Exportdaten behalten ihre ursprünglichen Inhalte.
+
 ## Einstiege
 
 Die Sidebar gliedert sich in **Projekt** (Übersicht, Unterlagen, Kalender, Angebote, energetische Planung), **Ausführung** (Eigenleistungen, To-Dos/Notizen, Zeiterfassung, Projektwerkstatt), **Finanzen** (Kosten/Budget, Rechnungen/Belege, Kredite/Eigenkapital), **Einstellungen** (System, Stammdaten) und **Datenmanagement** (Dokumente, Daten/Backups). **Home** oberhalb der Gruppen führt zur Projektauswahl. Alle Menüeinträge verwenden unterschiedliche Icons; eingeklappt bleiben die Icons samt Tooltips erreichbar. Unter **System** sind zunächst Farbschema und der Zugang zu den bestehenden ChatGPT-Einstellungen verfügbar.

@@ -1,3 +1,5 @@
+import { displayDate, displayDateTime } from './presentation';
+import { companyChoices } from './presentation';
 import {
   ActionIcon,
   Accordion,
@@ -87,10 +89,7 @@ const fresh = (kind: string, source?: { type: string; id: number }): Row => ({
 });
 const useCompanion = () =>
   useQuery({ queryKey: ['companion'], queryFn: () => api('/api/companion'), staleTime: 0 });
-const day = (s: string) =>
-  s
-    ? new Intl.DateTimeFormat('de-DE').format(new Date(s.slice(0, 10) + 'T12:00:00'))
-    : 'Ohne Termin';
+const day = (s: string) => (s ? displayDate(s.slice(0, 10)) : 'Ohne Termin');
 async function download(path: string, body: unknown, name: string) {
   const response = await fetch(path, {
     method: 'POST',
@@ -561,10 +560,14 @@ export function CompanionPanel({
                   searchable
                   clearable
                   disabled={!form.values.source_type}
-                  data={(query.data?.references?.[form.values.source_type] || []).map((x: Row) => ({
-                    value: String(x.id),
-                    label: x.title,
-                  }))}
+                  data={
+                    form.values.source_type === 'company'
+                      ? companyChoices(query.data?.references?.company || [])
+                      : (query.data?.references?.[form.values.source_type] || []).map((x: Row) => ({
+                          value: String(x.id),
+                          label: x.title,
+                        }))
+                  }
                   value={form.values.source_id ? String(form.values.source_id) : null}
                   onChange={(value) =>
                     form.setFieldValue('source_id', value ? Number(value) : null)
@@ -676,7 +679,7 @@ export function CheckpointButton() {
               ? 'Status wird geladen …'
               : q.data?.configured
                 ? q.data.latest
-                  ? `${q.data.created ? new Date(q.data.created).toLocaleString('de-DE') : q.data.latest} · ${q.data.changes || 0} geänderte Einträge seitdem`
+                  ? `${q.data.created ? displayDateTime(q.data.created) : q.data.latest} · ${q.data.changes || 0} geänderte Einträge seitdem`
                   : 'Noch keine Projektsicherung.'
                 : 'Sicherungsordner unter Daten & Sicherung einrichten.'}
           </Text>
@@ -1030,10 +1033,7 @@ function Companies() {
           setID(value);
           setParams(value ? { tab: 'companies', company: value } : { tab: 'companies' });
         }}
-        data={(q.data?.references.company || []).map((x: Row) => ({
-          value: String(x.id),
-          label: x.title,
-        }))}
+        data={companyChoices(q.data?.references.company || [])}
       />
       <ErrorBox value={detail.error} />
       {detail.data && (

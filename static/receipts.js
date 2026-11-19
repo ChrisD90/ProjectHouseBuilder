@@ -15,13 +15,10 @@ if(!$('receiptSelfWork')&&$('receiptAssignmentType')){
  container.append(wrapper);
 }
 const safe=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
+const money=value=>({format:value=>window.PHBDisplay.money(value)}).format(Number(value)||0);
 function receiptDate(value){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(value||''))return value||'Ohne Datum';
- const [year,month,day]=value.split('-').map(Number);
- const languages=navigator.languages?.length?navigator.languages:[navigator.language];
- const locale=languages.find(language=>/^de(?:-|$)/i.test(language))||languages;
- return new Intl.DateTimeFormat(locale,{day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(year,month-1,day));
+ return window.PHBDisplay.date(value);
 }
 let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;
 let receiptSearchText='',receiptLaborFilter='all',receiptYearFilter='',receiptKindFilter='all',receiptPaymentFilter='all',receiptCancellationFilter='all';

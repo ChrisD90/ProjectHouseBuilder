@@ -11,6 +11,7 @@ import {
 } from '@mantine/core';
 import { IconPalette, IconSparkles } from '@tabler/icons-react';
 import { PageHeader } from './page-layout';
+import { useDisplaySettings, setDisplaySettings, displayDate, displayMoney } from './presentation';
 
 export function SystemSettings({
   onOpenAI,
@@ -22,10 +23,68 @@ export function SystemSettings({
   sharing: boolean;
 }) {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const settings = useDisplaySettings();
   return (
     <div className="page">
       <PageHeader title="System" description="Darstellung und Verbindungen verwalten." />
       <Stack gap="md" maw={760}>
+        <Paper withBorder p="md" data-phb-raw>
+          <Stack gap="sm">
+            <Title order={3}>Sprache & Formate</Title>
+            <Select
+              label="Sprache"
+              value="de"
+              allowDeselect={false}
+              data={[{ value: 'de', label: 'Deutsch' }]}
+            />
+            <Select
+              label="Datumsformat"
+              value={settings.dateFormat}
+              allowDeselect={false}
+              data={[
+                { value: 'de', label: '31.12.2026' },
+                { value: 'iso', label: '2026-12-31' },
+                { value: 'slash', label: '31/12/2026' },
+              ]}
+              onChange={(value) =>
+                value && setDisplaySettings({ dateFormat: value as typeof settings.dateFormat })
+              }
+            />
+            <Select
+              label="Währungsdarstellung"
+              value={settings.currencyDisplay}
+              allowDeselect={false}
+              data={[
+                { value: 'symbol', label: '1.234,56 €' },
+                { value: 'code', label: '1.234,56 EUR' },
+              ]}
+              onChange={(value) =>
+                value &&
+                setDisplaySettings({ currencyDisplay: value as typeof settings.currencyDisplay })
+              }
+            />
+            <Select
+              label="Einheiten"
+              value={settings.unitDisplay}
+              allowDeselect={false}
+              data={[
+                { value: 'short', label: 'Kurzzeichen (m², cm, kg)' },
+                { value: 'long', label: 'Ausgeschrieben (Quadratmeter, Zentimeter, Kilogramm)' },
+              ]}
+              onChange={(value) =>
+                value && setDisplaySettings({ unitDisplay: value as typeof settings.unitDisplay })
+              }
+            />
+            <Text size="sm">
+              Vorschau: {displayDate('2026-12-31')} · {displayMoney(1234.56)}
+            </Text>
+            <Text size="xs" c="dimmed">
+              Anzeige für die gesamte Anwendung in diesem Browser. Beträge und Mengeneinheiten
+              werden nicht umgerechnet. Während der Eingabe verwendet der native Datumskalender das
+              Browserformat.
+            </Text>
+          </Stack>
+        </Paper>
         <Paper withBorder p="md">
           <Stack gap="sm">
             <Group gap="xs">

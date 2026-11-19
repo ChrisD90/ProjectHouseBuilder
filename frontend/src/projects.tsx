@@ -1,3 +1,4 @@
+import { useDisplaySettings } from './presentation';
 import {
   ActionIcon,
   Alert,
@@ -40,6 +41,7 @@ const empty: Row = {
   start_date: new Date().toLocaleDateString('sv-SE'),
 };
 export function ProjectDashboard() {
+  useDisplaySettings();
   const query = useQuery({
       queryKey: ['projects'],
       queryFn: () => api<ProjectsResponse>('/api/projects'),

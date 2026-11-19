@@ -1,6 +1,6 @@
 'use strict';
 const el=id=>document.getElementById(id);
-const euro=value=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(value)||0);
+const euro=value=>({format:value=>window.PHBDisplay.money(value)}).format(Number(value)||0);
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const groupLabels={category:'Gewerk / Kategorie',kind:'Ausführungsart',phase:'Bauphase',task:'Arbeitspaket',company:'Firma'};
 let state={dashboard:{rows:[],issues:[],totals:{}}};

@@ -129,7 +129,7 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
             return jsonify(error=str(exc)), 400
         response = jsonify(events=[serialize(e) for e in db.session.scalars(query.order_by(
             CalendarEvent.start_date, CalendarEvent.start_time, CalendarEvent.title, CalendarEvent.id))],
-            companies=[dict(id=c.id, name=c.name) for c in db.session.scalars(select(Contractor).order_by(Contractor.name, Contractor.id))])
+            companies=[dict(id=c.id, name=c.name, favorite=bool(c.favorite)) for c in db.session.scalars(select(Contractor).order_by(Contractor.name, Contractor.id))])
         response.headers['Cache-Control'] = 'no-store'
         return response
 
