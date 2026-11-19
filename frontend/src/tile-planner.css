@@ -46,6 +46,47 @@
 .tile-selection {
   min-height: 32px;
 }
+.tile-edge-legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 6px;
+  max-height: 200px;
+  overflow: auto;
+  padding: 3px;
+  margin: 8px 0;
+}
+.tile-edge-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 6px;
+  border: 1px solid var(--brand-line);
+  border-radius: 6px;
+  padding: 5px 7px;
+  background: var(--brand-surface);
+  color: var(--brand-ink);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.tile-edge-item strong {
+  grid-row: span 2;
+  text-align: center;
+}
+.tile-edge-item small {
+  color: var(--brand-muted);
+  font-size: 10px;
+}
+.tile-edge-item:hover,
+.tile-edge-item[aria-pressed='true'] {
+  border-color: var(--brand-accent);
+  background: var(--brand-soft);
+}
+.tile-edge-item:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 1px;
+}
 .tile-cut-list {
   padding: 10px;
   border: 1px solid var(--brand-line);
@@ -77,5 +118,9 @@
   }
   .tile-planner-grid {
     display: block;
+  }
+  .tile-edge-legend {
+    max-height: none;
+    overflow: visible;
   }
 }

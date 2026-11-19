@@ -23,7 +23,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api, error, ErrorBox, Row, success, useConfirm } from './core';
 import { useDirtyGuard } from './shell';
 import { defaultTiles, tileLayout, TileSettings, TilePiece } from './tile-layout';
-import { svgPath, labelPoint } from './tile-geometry';
+import { svgPath, labelPoint, roomEdgeLabels } from './tile-geometry';
 import './tile-planner.css';
 
 const number = (n: number, digits = 1) =>
@@ -81,6 +81,7 @@ export function TilePlanner() {
   const [id, setId] = useState<number | null>(null),
     [busy, setBusy] = useState(false);
   const [active, setActive] = useState('');
+  const [highlightedEdge, setHighlightedEdge] = useState('');
   const [showPoints, setShowPoints] = useState(false);
   const [params, setParams] = useSearchParams();
   const opened = useRef('');
@@ -178,7 +179,7 @@ export function TilePlanner() {
     }
   }
   function exportPlan(print: boolean) {
-    if (!svg.current || !plan) return;
+    if (!svg.current || !plan || !walls) return;
     // React renders all user input as text. Export the SVG with explicit colors,
     // independent of the application's theme, with no external resources.
     const copy = svg.current.cloneNode(true) as SVGSVGElement;
@@ -191,6 +192,32 @@ export function TilePlanner() {
     title.textContent = form.values.title;
     copy.prepend(title);
     if (!print) {
+      const box = walls.viewBox,
+        columns = 3;
+      const font = Math.min(walls.fontSize, box.width / (columns * 14)),
+        line = font * 1.8;
+      const legend = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      const heading = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      heading.setAttribute('x', String(box.left + font));
+      heading.setAttribute('y', String(box.top + box.height + line));
+      heading.setAttribute('font-size', String(font));
+      heading.setAttribute('fill', '#355344');
+      heading.textContent = 'Raumkanten (vor Randabstand)';
+      legend.append(heading);
+      walls.edges.forEach((edge, i) => {
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', String(box.left + font + ((i % columns) * box.width) / columns));
+        text.setAttribute('y', String(box.top + box.height + line * (Math.floor(i / columns) + 2)));
+        text.setAttribute('font-size', String(font));
+        text.setAttribute('fill', '#355344');
+        text.textContent = `${edge.id}: ${mm(edge.length)}`;
+        legend.append(text);
+      });
+      copy.append(legend);
+      copy.setAttribute(
+        'viewBox',
+        `${box.left} ${box.top} ${box.width} ${box.height + line * (Math.ceil(walls.edges.length / columns) + 3)}`,
+      );
       const url = URL.createObjectURL(
         new Blob([new XMLSerializer().serializeToString(copy)], { type: 'image/svg+xml' }),
       );
@@ -231,6 +258,25 @@ export function TilePlanner() {
       `Start: ${s.start === 'center' ? 'Mittig am umschließenden Rechteck' : s.start === 'corner' ? 'Oben links' : `Versatz ${mm(s.offsetX)} / ${mm(s.offsetY)}`}. Rasterbezug: links oben am umschließenden Rechteck der belegbaren Fläche. Alle Maße in mm.`,
     );
     doc.body.append(doc.importNode(copy, true));
+    append('h2', 'Raumkanten');
+    append(
+      'p',
+      'Längen der ursprünglichen Raumkontur, vor Abzug des Randabstands. Bei Rundungen sind dies die geraden Teilstücke der angenäherten Kontur.',
+    );
+    const edgeTable = doc.createElement('table');
+    for (const cells of [
+      ['Kante', 'Eckpunkte', 'Länge'],
+      ...walls.edges.map((edge) => [edge.id, `P${edge.from} – P${edge.to}`, mm(edge.length)]),
+    ]) {
+      const tr = doc.createElement('tr');
+      for (const text of cells) {
+        const td = doc.createElement('td');
+        td.textContent = text;
+        tr.append(td);
+      }
+      edgeTable.append(tr);
+    }
+    doc.body.append(edgeTable);
     append(
       'p',
       `${plan.full} ganze Fliesen · ${plan.cut} Zuschnitte · Einkauf: ca. ${plan.purchase} Fliesen inkl. ${s.reserve}% Reserve. Grün = ganz, schraffiert = Zuschnitt.`,
@@ -340,6 +386,7 @@ export function TilePlanner() {
     );
   }
   const margin = Math.max(s.width, s.height) * 0.065;
+  const walls = plan ? roomEdgeLabels(plan.room, s.width, s.height, margin) : null;
   return (
     <Stack className="tile-planner">
       <Group justify="space-between" align="end">
@@ -571,7 +618,8 @@ export function TilePlanner() {
           {failure ? (
             <Alert color="orange">{failure}</Alert>
           ) : (
-            plan && (
+            plan &&
+            walls && (
               <>
                 <Paper withBorder p="sm" className="tile-preview">
                   <Group justify="space-between">
@@ -589,7 +637,7 @@ export function TilePlanner() {
                   </Group>
                   <svg
                     ref={svg}
-                    viewBox={`${-margin} ${-margin} ${s.width + 2 * margin} ${s.height + 2 * margin}`}
+                    viewBox={`${walls.viewBox.left} ${walls.viewBox.top} ${walls.viewBox.width} ${walls.viewBox.height}`}
                     className="tile-plan-svg"
                     role="img"
                     aria-label="Maßstäblicher Fliesenplan, oben links ist die Bezugsecke"
@@ -667,24 +715,82 @@ export function TilePlanner() {
                           </text>
                         </g>
                       ))}
-                    <text
-                      x={s.width / 2}
-                      y={-margin * 0.3}
-                      textAnchor="middle"
-                      fill="#355344"
-                      fontSize={margin * 0.3}
-                    >
-                      {mm(s.width)}
-                    </text>
-                    <text
-                      transform={`translate(${-margin * 0.3},${s.height / 2}) rotate(-90)`}
-                      textAnchor="middle"
-                      fill="#355344"
-                      fontSize={margin * 0.3}
-                    >
-                      {mm(s.height)}
-                    </text>
+                    {walls.edges.map((edge) => (
+                      <g key={edge.id} pointerEvents="none">
+                        {highlightedEdge === edge.id && (
+                          <line
+                            x1={edge.a.x}
+                            y1={edge.a.y}
+                            x2={edge.b.x}
+                            y2={edge.b.y}
+                            stroke="#1b5533"
+                            strokeWidth="4"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        )}
+                        <line
+                          x1={edge.middle.x}
+                          y1={edge.middle.y}
+                          x2={edge.label.x}
+                          y2={edge.label.y}
+                          stroke={highlightedEdge === edge.id ? '#1b5533' : '#7b8e82'}
+                          strokeWidth="1"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                        <circle
+                          cx={edge.label.x}
+                          cy={edge.label.y}
+                          r={walls.fontSize * 1.12}
+                          fill={highlightedEdge === edge.id ? '#1b5533' : '#f4f6f1'}
+                          stroke="#51685b"
+                          strokeWidth="1"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                        <text
+                          x={edge.label.x}
+                          y={edge.label.y}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fill={highlightedEdge === edge.id ? '#ffffff' : '#355344'}
+                          fontSize={walls.fontSize}
+                          fontWeight="600"
+                        >
+                          {edge.id}
+                          <title>{`Kante ${edge.id}: ${mm(edge.length)} (P${edge.from}–P${edge.to})`}</title>
+                        </text>
+                      </g>
+                    ))}
                   </svg>
+                  <Text size="sm" fw={600}>
+                    Raumkanten
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    Längen vor Abzug des Randabstands. Eine Kante in der Legende anklicken, um sie
+                    im Plan hervorzuheben.
+                  </Text>
+                  <div className="tile-edge-legend" role="group" aria-label="Raumkanten und Längen">
+                    {walls.edges.map((edge) => (
+                      <button
+                        key={edge.id}
+                        type="button"
+                        aria-pressed={highlightedEdge === edge.id}
+                        className="tile-edge-item"
+                        onClick={() => setHighlightedEdge(edge.id)}
+                      >
+                        <strong>{edge.id}</strong>
+                        <span>{mm(edge.length)}</span>
+                        <small>
+                          P{edge.from}–P{edge.to}
+                        </small>
+                      </button>
+                    ))}
+                  </div>
+                  {s.roomShape === 'round' && (
+                    <Text size="xs" c="dimmed">
+                      Bei Rundungen entspricht jede Kante einem geraden Teilstück der angenäherten
+                      Kontur.
+                    </Text>
+                  )}
                   <Text size="xs" c="dimmed" className="tile-selection" aria-live="polite">
                     {selected
                       ? `Reihe ${selected.row} · Feld ${selected.column}: ${mm(selected.width)} × ${mm(selected.height)}${selected.shaped ? ' · Konturzuschnitt (Außenmaße)' : selected.cut ? ' · Zuschnitt' : ' · Ganze Fliese'}`

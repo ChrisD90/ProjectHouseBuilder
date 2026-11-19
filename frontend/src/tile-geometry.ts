@@ -1,6 +1,73 @@
 import ClipperLib from 'clipper-lib';
 
 export type Point = { x: number; y: number };
+
+/** Wall lengths refer to the original room, before deducting the edge joint.
+ * Arrange identifiers in four outer gutters, keeping short neighbouring edges readable. */
+export function roomEdgeLabels(room: Point[], width: number, height: number, margin: number) {
+  const clockwise = signedArea(room) > 0;
+  const alphabet = (index: number) => {
+    let label = '';
+    for (let n = index + 1; n > 0; n = Math.floor((n - 1) / 26))
+      label = String.fromCharCode(65 + ((n - 1) % 26)) + label;
+    return label;
+  };
+  const edges = room.map((a, i) => {
+    const b = room[(i + 1) % room.length],
+      dx = b.x - a.x,
+      dy = b.y - a.y;
+    const nx = clockwise ? dy : -dy,
+      ny = clockwise ? -dx : dx;
+    const side =
+      Math.abs(nx) > Math.abs(ny) ? (nx > 0 ? 'right' : 'left') : ny > 0 ? 'bottom' : 'top';
+    return {
+      id: alphabet(i),
+      from: i + 1,
+      to: ((i + 1) % room.length) + 1,
+      a,
+      b,
+      length: Math.hypot(dx, dy),
+      middle: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+      side,
+      label: { x: 0, y: 0 },
+    };
+  });
+  for (const side of ['left', 'right', 'top', 'bottom']) {
+    const vertical = side === 'left' || side === 'right',
+      axis = vertical ? 'y' : 'x';
+    const group = edges
+      .filter((e) => e.side === side)
+      .sort((a, b) => a.middle[axis] - b.middle[axis] || a.from - b.from);
+    const length = vertical ? height : width,
+      gap = margin * 0.62;
+    const span = Math.max(length, gap * (group.length - 1)),
+      start = (length - span) / 2;
+    const positions: number[] = [];
+    group.forEach((edge, i) =>
+      positions.push(Math.max(start, edge.middle[axis], i ? positions[i - 1] + gap : start)),
+    );
+    for (let i = positions.length - 1; i >= 0; i--)
+      positions[i] = Math.min(
+        positions[i],
+        i === positions.length - 1 ? start + span : positions[i + 1] - gap,
+      );
+    group.forEach((edge, i) => {
+      edge.label = vertical
+        ? { x: side === 'left' ? -margin * 0.65 : width + margin * 0.65, y: positions[i] }
+        : { x: positions[i], y: side === 'top' ? -margin * 0.65 : height + margin * 0.65 };
+    });
+  }
+  const pad = margin * 0.35;
+  const left = Math.min(-margin, ...edges.map((e) => e.label.x - pad)),
+    top = Math.min(-margin, ...edges.map((e) => e.label.y - pad));
+  const right = Math.max(width + margin, ...edges.map((e) => e.label.x + pad)),
+    bottom = Math.max(height + margin, ...edges.map((e) => e.label.y + pad));
+  return {
+    edges,
+    viewBox: { left, top, width: right - left, height: bottom - top },
+    fontSize: margin * 0.23,
+  };
+}
 const SCALE = 1000; // integer micrometres, safely below Clipper's integer limit
 const EPS = 0.001;
 export const signedArea = (points: Point[]) =>
