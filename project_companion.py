@@ -16,6 +16,7 @@ from flask import jsonify, request, send_file
 from sqlalchemy import select, event
 from money_values import Money
 from multi_projects import current_project_id, ProjectSession
+from tile_plans import validate_contour
 
 KINDS = {'journal','defect','house','dossier','addendum','terms','glossary','tool_return','reminder','template','tile_plan'}
 STATUSES = {'Offen','In Arbeit','Erledigt','Archiviert','Entwurf','Freigegeben','Abgelehnt'}
@@ -177,6 +178,7 @@ def register_companion(r):
                         raise ValueError('Ungültiges Fliesenmaß: '+key)
                 if type(settings.get('rotated'))is not bool or settings.get('pattern')not in ('straight','half') or settings.get('start')not in ('center','corner','offset'):
                     raise ValueError('Ungültiges Verlegeraster.')
+                validate_contour(settings.get('contour'),settings['width'],settings['height'])
                 width=settings['width']-2*settings['edge'];height=settings['height']-2*settings['edge']
                 tw=settings['tileHeight']if settings['rotated']else settings['tileWidth']
                 th=settings['tileWidth']if settings['rotated']else settings['tileHeight']

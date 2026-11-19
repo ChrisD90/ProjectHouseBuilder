@@ -346,6 +346,7 @@ class ProjectBackupTest(unittest.TestCase):
         row=self.client.post('/api/companion/records',json={'kind':'journal','title':'Bautag','body':'Vorher','data':{'document_ids':[did]}}).json['record']
         settings=dict(width=4000,height=3000,tileWidth=600,tileHeight=300,joint=3,edge=5,reserve=10,
                       rotated=False,pattern='half',start='center',offsetX=0,offsetY=0)
+        settings['contour']=[{'x':0,'y':0},{'x':4000,'y':0},{'x':4000,'y':1500},{'x':2000,'y':1500},{'x':2000,'y':3000},{'x':0,'y':3000}]
         tile=self.client.post('/api/companion/records',json={'kind':'tile_plan','title':'Fliesen Bad','data':{'settings':settings}}).json['record']
         company=self.client.get('/api/costs').json['contractors'][0]['id']
         event=self.client.post('/api/calendar-events',json={'title':'Geplante Montage','start_date':'2026-11-20','end_date':'2026-11-20','contractor_id':company,'performed':False}).json['event']

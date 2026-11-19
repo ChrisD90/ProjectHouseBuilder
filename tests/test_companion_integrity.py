@@ -68,6 +68,16 @@ class CompanionIntegrityTest(unittest.TestCase):
         own=self.c.get('/api/companion').json['records'][0]
         self.assertEqual(own['title'],'Bad neu');self.assertEqual(own['data']['settings'],settings)
         self.assertFalse(any(x['kind']=='tile_plan' for x in self.c.get('/api/companion',headers=self.foreign).json['records']))
+        contour=[{'x':0,'y':0},{'x':4000,'y':0},{'x':4000,'y':1500},{'x':2000,'y':1500},{'x':2000,'y':3000},{'x':0,'y':3000}]
+        shaped={**settings,'contour':contour,'roomShape':'custom'}
+        self.assertEqual(self.c.patch(path,json={'data':{'settings':shaped}}).status_code,200)
+        for points in ([{'x':0,'y':0},{'x':4000,'y':3000},{'x':0,'y':3000},{'x':4000,'y':0}],
+                       [{'x':0,'y':0},{'x':5000,'y':0},{'x':0,'y':3000}],
+                       [{'x':0,'y':0},{'x':4000,'y':0},{'x':2000,'y':0},{'x':0,'y':3000}]):
+            result=self.c.patch(path,json={'title':'Ungültige Kontur','data':{'settings':{**shaped,'contour':points}}})
+            self.assertEqual(result.status_code,400,result.json)
+        own=self.c.get('/api/companion').json['records'][0]
+        self.assertEqual(own['title'],'Bad neu');self.assertEqual(own['data']['settings'],shaped)
 
     def test_planned_confirmed_hours_and_repeat_are_separate_and_no_duplicates(self):
         company=self.c.post('/api/contractors',json={'name':'Terminbetrieb'}).json['contractor']['id']

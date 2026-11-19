@@ -24,8 +24,24 @@
   background: #f4f6f1;
   border-radius: 8px;
 }
-.tile-plan-svg rect {
+.tile-plan-svg path {
   cursor: pointer;
+}
+.tile-point-list {
+  max-height: 300px;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+  padding: 2px;
+}
+.tile-point-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) minmax(0, 1fr) 24px 24px;
+  gap: 4px;
+  align-items: end;
+}
+.tile-point-row .mantine-ActionIcon-root {
+  margin-bottom: 4px;
 }
 .tile-selection {
   min-height: 32px;

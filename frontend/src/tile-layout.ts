@@ -1,3 +1,5 @@
+import { clipTile, contourKey, Point, roomGeometry, signedArea } from './tile-geometry';
+
 /** All dimensions are millimetres. Clipped pieces consume one tile each;
  * offcut reuse is deliberately not assumed in the purchase estimate. */
 export type TileSettings = {
@@ -13,6 +15,8 @@ export type TileSettings = {
   start: 'center' | 'corner' | 'offset';
   offsetX: number;
   offsetY: number;
+  contour?: Point[];
+  roomShape?: 'rectangle' | 'l' | 'trapezoid' | 'round' | 'custom';
 };
 export const defaultTiles: TileSettings = {
   width: 4000,
@@ -37,6 +41,9 @@ export type TilePiece = {
   width: number;
   height: number;
   cut: boolean;
+  shaped: boolean;
+  paths: Point[][];
+  area: number;
 };
 const EPS = 0.001;
 const round = (n: number) => Math.round(n * 1000) / 1000;
@@ -98,16 +105,23 @@ export function tileLayout(s: TileSettings) {
     !['center', 'corner', 'offset'].includes(s.start)
   )
     throw Error('Bitte gültige Maße eingeben (Raum: 10–10.000 cm, Fliesen: 1–500 cm).');
-  const width = s.width - 2 * s.edge,
-    height = s.height - 2 * s.edge;
-  if (width <= EPS || height <= EPS)
+  const outerWidth = s.width - 2 * s.edge,
+    outerHeight = s.height - 2 * s.edge;
+  if (outerWidth <= EPS || outerHeight <= EPS)
     throw Error('Der Randabstand lässt keine belegbare Fläche übrig.');
   const tw = s.rotated ? s.tileHeight : s.tileWidth,
     th = s.rotated ? s.tileWidth : s.tileHeight;
-  if ((Math.ceil(width / (tw + s.joint)) + 2) * (Math.ceil(height / (th + s.joint)) + 2) > 5000)
+  if (
+    (Math.ceil(outerWidth / (tw + s.joint)) + 2) * (Math.ceil(outerHeight / (th + s.joint)) + 2) >
+    5000
+  )
     throw Error(
       'Mehr als 5.000 Fliesenfelder: Bitte einen kleineren Raum oder größere Fliesen wählen.',
     );
+  const geometry = roomGeometry(s.width, s.height, s.edge, s.contour);
+  const { left, top, right, bottom } = geometry.bounds;
+  const width = right - left,
+    height = bottom - top;
   const ox =
     s.start === 'center'
       ? centered(width, tw, s.joint, s.pattern === 'half')
@@ -124,26 +138,50 @@ export function tileLayout(s: TileSettings) {
   const pieces: TilePiece[] = [];
   rows.forEach((row, r) => {
     const shift = s.pattern === 'half' && r % 2 ? (tw + s.joint) / 2 : 0;
-    segments(width, tw, s.joint, ox + shift).forEach((col, c) =>
+    segments(width, tw, s.joint, ox + shift).forEach((col, c) => {
+      const paths = clipTile(geometry.paths, col.from + left, row.from + top, col.size, row.size);
+      if (!paths.length) return;
+      const points = paths.flat(),
+        x = Math.min(...points.map((p) => p.x)),
+        y = Math.min(...points.map((p) => p.y));
+      const pw = round(Math.max(...points.map((p) => p.x)) - x),
+        ph = round(Math.max(...points.map((p) => p.y)) - y);
+      const area = paths.reduce((sum, p) => sum + Math.abs(signedArea(p)), 0);
+      const shaped = Math.abs(area - pw * ph) > Math.max(0.01, pw * ph * 1e-7);
       pieces.push({
         id: `${r + 1}.${c + 1}`,
         row: r + 1,
         column: c + 1,
-        x: round(col.from + s.edge),
-        y: round(row.from + s.edge),
-        width: col.size,
-        height: row.size,
-        cut: col.size < tw - EPS || row.size < th - EPS,
-      }),
-    );
+        x,
+        y,
+        width: pw,
+        height: ph,
+        paths,
+        area,
+        shaped,
+        cut: shaped || pw < tw - EPS || ph < th - EPS,
+      });
+    });
   });
   const cuts = pieces.filter((p) => p.cut);
-  const grouped = new Map<string, { width: number; height: number; count: number }>();
+  const grouped = new Map<
+    string,
+    { width: number; height: number; count: number; shaped: boolean; fields: string[] }
+  >();
   cuts.forEach((p) => {
-    const key = `${p.width}x${p.height}`;
+    const key = `${p.width}x${p.height}:${p.shaped ? contourKey(p.paths, p.x, p.y) : 'rect'}`;
     const found = grouped.get(key);
-    if (found) found.count++;
-    else grouped.set(key, { width: p.width, height: p.height, count: 1 });
+    if (found) {
+      found.count++;
+      found.fields.push(p.id);
+    } else
+      grouped.set(key, {
+        width: p.width,
+        height: p.height,
+        count: 1,
+        shaped: p.shaped,
+        fields: [p.id],
+      });
   });
   return {
     pieces,
@@ -151,8 +189,10 @@ export function tileLayout(s: TileSettings) {
     full: pieces.length - cuts.length,
     cut: cuts.length,
     purchase: Math.ceil(pieces.length * (1 + s.reserve / 100)),
-    area: (width * height) / 1e6,
-    tileArea: pieces.reduce((sum, p) => sum + p.width * p.height, 0) / 1e6,
+    area: geometry.area / 1e6,
+    tileArea: pieces.reduce((sum, p) => sum + p.area, 0) / 1e6,
+    room: geometry.room,
+    footprint: geometry.paths.map((path) => path.map((p) => ({ x: p.X / 1000, y: p.Y / 1000 }))),
     narrow: cuts.filter((p) => p.width < tw / 3 - EPS || p.height < th / 3 - EPS).length,
     tileWidth: tw,
     tileHeight: th,
