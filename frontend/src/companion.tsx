@@ -18,7 +18,6 @@ import {
   SimpleGrid,
   Stack,
   Table,
-  Tabs,
   Text,
   Textarea,
   TextInput,
@@ -35,14 +34,13 @@ import {
   IconStar,
   IconTrash,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
 import { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, Editor, ErrorBox, error, money, Row, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
-import { projectID, projectURL, workspaceURL } from './project-context';
+import { projectID, projectURL } from './project-context';
 import { useDirtyGuard } from './shell';
 import { SearchField } from './ui';
 import { useWorkActions } from './work';
@@ -337,7 +335,7 @@ export function CompanionPanel({
       </Group>
       <ErrorBox value={query.error} />
       {query.isPending && <Loader size="sm" />}
-      <div className="companion-records">
+      <div className="phb-scroll-region companion-records">
         {rows.map((row: Row) => (
           <Paper key={row.id} withBorder p="sm">
             <Group justify="space-between" align="start">

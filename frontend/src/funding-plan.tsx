@@ -1,3 +1,4 @@
+import { ActionBar } from './ui';
 import {
   Accordion,
   Alert,
@@ -941,7 +942,7 @@ export function FundingPlanDialog({
               Vorgang läuft. Bitte Ergebnis oder Fehler abwarten.
             </Text>
           )}
-          <div className="actions" style={{ flexWrap: 'wrap' }}>
+          <ActionBar>
             {id && (
               <Button
                 variant="subtle"
@@ -980,7 +981,7 @@ export function FundingPlanDialog({
                 {!id ? 'Entwurf anlegen' : step === 0 ? 'Weiter' : 'Prüfung vorbereiten'}
               </Button>
             )}
-          </div>
+          </ActionBar>
           {id && <SourceWork type="funding" id={id} />}
         </Stack>
       </form>

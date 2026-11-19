@@ -328,7 +328,7 @@ export function TimeTracking() {
       {people.isPending ? (
         <Loader aria-label="Stundenerfassung wird geladen" />
       ) : (
-        <div className="time-card-container">
+        <div className="phb-scroll-region time-card-container">
           <SimpleGrid cols={{ base: 1, sm: 2, lg: 3, xl: 4 }} spacing="sm">
             {filtered.map((p) => (
               <UnstyledButton
@@ -501,7 +501,7 @@ export function TimeTracking() {
                   {person.notes}
                 </Text>
               )}
-              <div className="time-entry-list">
+              <div className="phb-scroll-region time-entry-list">
                 {details.data?.entries.length ? (
                   details.data.entries.map((entry) => (
                     <Paper key={entry.id} withBorder radius="sm" p="sm" className="time-entry">

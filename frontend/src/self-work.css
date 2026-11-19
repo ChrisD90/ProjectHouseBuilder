@@ -58,19 +58,16 @@
 .self-work-step-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   padding: 6px 12px;
+  position: relative;
+  background: var(--mantine-color-body);
   border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--mantine-radius-md);
 }
 .self-work-sortable-steps {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-.self-work-step-row {
-  position: relative;
-  background: var(--mantine-color-body);
   gap: 8px;
 }
 .self-work-step-number {
@@ -152,10 +149,6 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 12px;
   max-height: min(680px, calc(70dvh / var(--phb-ui-zoom, 1)));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  padding: 2px;
   align-items: stretch;
 }
 .self-work-page .self-work-card > .mantine-Text-root {
@@ -218,35 +211,6 @@
 }
 .self-work-corner-actions {
   flex-shrink: 0;
-}
-.self-work-corner-icon {
-  position: relative;
-  overflow: visible;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  color: var(--mantine-color-text);
-}
-.self-work-action-count {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  display: grid;
-  place-items: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border: 2px solid var(--mantine-color-body);
-  border-radius: 999px;
-  background: var(--mantine-primary-color-light);
-  color: var(--mantine-primary-color-light-color);
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1;
-}
-.self-work-action-count-todo {
-  background: var(--mantine-color-red-light);
-  color: var(--mantine-color-red-light-color);
 }
 .self-work-page .self-work-task-label {
   max-width: 100%;

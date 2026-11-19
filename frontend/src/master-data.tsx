@@ -11,7 +11,6 @@ import {
   Select,
   SimpleGrid,
   Stack,
-  Table,
   Tabs,
   Text,
   TextInput,
@@ -34,7 +33,7 @@ import type { CompanyRecord, ReferenceRecord } from './contracts';
 import { Editor, ErrorBox, Row, api, error, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { useDirtyGuard } from './shell';
-import { ActionBar, RowAction, SearchField, useViewState, useDialogRouteCleanup } from './ui';
+import { ActionBar, SearchField, useViewState, useDialogRouteCleanup } from './ui';
 const companyFields = [
   ['name', 'Firmenname'],
   ['contact', 'Ansprechpartner'],
@@ -292,7 +291,7 @@ export function MasterData() {
           />
         </Paper>
         <Paper withBorder p="md" className="collection-content">
-          <div className="collection-scroll">
+          <div className="phb-scroll-region collection-scroll">
             {query.isPending ? <Loader size="sm" /> : <ErrorBox value={query.error} />}
             <Tabs.Panel value="companies">
               <Text size="xs" c="dimmed" mb="sm">

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Editor, money } from './core';
 import { projectID } from './project-context';
+import { displayDate } from './presentation';
 
 export type OverviewReceipt = {
   id: number;
@@ -73,7 +74,18 @@ export function ReceiptOverview({
                     ...(sourceLabel ? [sourceLabel] : []),
                     'Aktionen',
                   ].map((label) => (
-                    <Table.Th key={label}>{label}</Table.Th>
+                    <Table.Th
+                      key={label}
+                      className={
+                        ['Brutto', 'Angerechnet', 'Bezahlt', sourceLabel, 'Aktionen'].includes(
+                          label,
+                        )
+                          ? 'phb-table-right'
+                          : undefined
+                      }
+                    >
+                      {label}
+                    </Table.Th>
                   ))}
                 </Table.Tr>
               </Table.Thead>
@@ -85,7 +97,9 @@ export function ReceiptOverview({
                         {r.number}
                       </Text>
                       <Text size="xs" c="dimmed">
-                        {r.supplier} · {r.date || 'Ohne Datum'}
+                        {[r.supplier, r.date ? displayDate(r.date) : 'Ohne Datum']
+                          .filter(Boolean)
+                          .join(' · ')}
                       </Text>
                     </Table.Td>
                     <Table.Td>
@@ -108,12 +122,16 @@ export function ReceiptOverview({
                           : ''}
                       </Text>
                     </Table.Td>
-                    <Table.Td>{money(r.gross)}</Table.Td>
-                    <Table.Td>{money(r.status === 'Gebucht' ? r.amount : 0)}</Table.Td>
-                    <Table.Td>{money(r.paid)}</Table.Td>
-                    {sourceLabel && <Table.Td>{money(r.source_amount || 0)}</Table.Td>}
+                    <Table.Td className="phb-money-cell">{money(r.gross)}</Table.Td>
+                    <Table.Td className="phb-money-cell">
+                      {money(r.status === 'Gebucht' ? r.amount : 0)}
+                    </Table.Td>
+                    <Table.Td className="phb-money-cell">{money(r.paid)}</Table.Td>
+                    {sourceLabel && (
+                      <Table.Td className="phb-money-cell">{money(r.source_amount || 0)}</Table.Td>
+                    )}
                     <Table.Td>
-                      <Group gap="xs" wrap="nowrap">
+                      <Group gap="xs" wrap="nowrap" justify="flex-end">
                         <Button
                           component="a"
                           href={'/api/receipts/' + r.id + '/preview?project_id=' + projectID}

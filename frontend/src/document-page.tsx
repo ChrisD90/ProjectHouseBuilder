@@ -257,7 +257,7 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
             </Group>
           </Paper>
           <Paper withBorder p="sm" className="collection-content">
-            <div className="collection-scroll">
+            <div className="phb-scroll-region collection-scroll">
               <DocumentCards documents={sortProjectDocuments(documents, sort)} onOpen={open} />
             </div>
           </Paper>
@@ -310,7 +310,7 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
             </Group>
           </Paper>
           <Paper withBorder p="md" className="collection-content">
-            <div className="collection-scroll">
+            <div className="phb-scroll-region collection-scroll">
               <Tabs.Panel value="project">
                 <Stack>
                   {documents.map((d) => (

@@ -6,8 +6,30 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { projectID } from './project-context';
 
-export function ActionBar({ children }: { children: ReactNode }) {
-  return <div className="actions phb-action-bar">{children}</div>;
+export function ActionBar({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={`phb-action-bar ${className}`.trim()}>{children}</div>;
+}
+export function ActionCount({
+  count,
+  attention = false,
+  showZero = false,
+}: {
+  count: number;
+  attention?: boolean;
+  showZero?: boolean;
+}) {
+  if (!showZero && count <= 0) return null;
+  return (
+    <span className="phb-action-count" data-attention={attention || undefined}>
+      {count}
+    </span>
+  );
 }
 /** Remove only this dialog's deep-link fields after an actual close/save. */
 export function useDialogRouteCleanup(opened: boolean, keys: string[]) {
@@ -35,7 +57,8 @@ export function StatusPill(props: BadgeProps) {
 export function SearchField(props: TextInputProps) {
   return (
     <TextInput
-      leftSection={<IconSearch size={17} />}
+      leftSection={<IconSearch size={17} aria-hidden="true" />}
+      leftSectionPointerEvents="none"
       aria-label={typeof props.label === 'string' ? props.label : props.placeholder || 'Suchen'}
       {...props}
     />
@@ -90,23 +113,32 @@ export function DocumentPreview({
 }
 export function useViewState<T>(name: string, initial: T) {
   const key = `phb-view:${projectID}:${typeof location === 'undefined' ? '' : location.pathname}:${name}`;
-  const [value, setValue] = useState<T>(() => {
+  const read = (): T => {
     try {
       const raw = localStorage.getItem(key);
       if (raw === null) return initial;
       const parsed = JSON.parse(raw);
-      return typeof parsed === typeof initial ? parsed : initial;
+      return typeof parsed === typeof initial &&
+        (parsed === null) === (initial === null) &&
+        Array.isArray(parsed) === Array.isArray(initial)
+        ? parsed
+        : initial;
     } catch {
       return initial;
     }
-  });
+  };
+  // A route can reuse the same component (e.g. documents / project documents).
+  // Its preferences must switch with the route rather than leak into the next view.
+  const [state, setState] = useState(() => ({ key, value: read() }));
+  const value = state.key === key ? state.value : read();
   const save = (next: T | ((old: T) => T)) =>
-    setValue((old) => {
+    setState((previous) => {
+      const old = previous.key === key ? previous.value : read();
       const result = typeof next === 'function' ? (next as (old: T) => T)(old) : next;
       try {
         localStorage.setItem(key, JSON.stringify(result));
       } catch {}
-      return result;
+      return { key, value: result };
     });
   return [value, save] as const;
 }

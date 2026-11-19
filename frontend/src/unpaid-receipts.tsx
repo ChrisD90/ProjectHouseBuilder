@@ -1,3 +1,4 @@
+import { ActionCount } from './ui';
 import { displayDate } from './presentation';
 import {
   ActionIcon,
@@ -51,7 +52,7 @@ export function UnpaidReceipts() {
           <ActionIcon
             variant="default"
             size={36}
-            className="header-unpaid-button"
+            className="phb-corner-action"
             aria-label={'Offene Rechnungen: ' + rows.length}
             aria-haspopup="dialog"
             onClick={() => {
@@ -60,7 +61,7 @@ export function UnpaidReceipts() {
             }}
           >
             <IconInfoCircle size={19} />
-            <span className="header-unpaid-count">{rows.length}</span>
+            <ActionCount count={rows.length} attention />
           </ActionIcon>
         </Tooltip>
       )}

@@ -1,4 +1,14 @@
 import {
+  ActionCount,
+  ActionBar,
+  SearchField,
+  StatusPill,
+  useViewState,
+  useDialogRouteCleanup,
+  FilterSelect,
+} from './ui';
+
+import {
   ActionIcon,
   Alert,
   Badge,
@@ -40,14 +50,7 @@ import { SourceWork } from './work';
 import { api, Editor, ErrorBox, money, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { useDirtyGuard } from './shell';
-import {
-  ActionBar,
-  SearchField,
-  StatusPill,
-  useViewState,
-  useDialogRouteCleanup,
-  FilterSelect,
-} from './ui';
+
 import { SelfWorkAI } from './self-work-ai';
 import { SelfWorkSteps } from './self-work-steps';
 import { SelfWorkInvoices } from './self-work-invoices';
@@ -473,7 +476,7 @@ export function SelfWorkPage() {
         </Paper>
       ) : (
         <Paper withBorder p="sm" className="self-work-card-container">
-          <div className="self-work-card-grid">
+          <div className="phb-scroll-region self-work-card-grid">
             {records.map((row) => {
               const done = row.steps.filter((step) => step.done).length;
               return (
@@ -509,7 +512,7 @@ export function SelfWorkPage() {
                       <Tooltip label="Eigenleistung bearbeiten">
                         <ActionIcon
                           variant="default"
-                          className="self-work-corner-icon"
+                          className="phb-corner-action"
                           aria-label={'Eigenleistung bearbeiten: ' + row.title}
                           onClick={() => edit(row)}
                         >
@@ -519,12 +522,12 @@ export function SelfWorkPage() {
                       <Tooltip label={'Rechnungen & Kassenzettel: ' + row.receipt_ids.length}>
                         <ActionIcon
                           variant="default"
-                          className="self-work-corner-icon"
+                          className="phb-corner-action"
                           onClick={() => setInvoicePlanID(row.id)}
                           aria-label={'Rechnungen zu ' + row.title + ': ' + row.receipt_ids.length}
                         >
                           <IconReceipt size={17} />
-                          <span className="self-work-action-count">{row.receipt_ids.length}</span>
+                          <ActionCount count={row.receipt_ids.length} showZero />
                         </ActionIcon>
                       </Tooltip>
                       <SourceWork type="self_work" id={row.id} compact />

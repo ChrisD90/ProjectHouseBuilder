@@ -240,7 +240,7 @@ body.phb-app.phb-page-belege .receipt-info-bubble::backdrop{background:transpare
 body.phb-app.phb-page-belege .receipt-labor-heading{align-items:center}
 body.phb-app.phb-page-belege .receipt-labor-heading>div{min-width:0}
 body.phb-app.phb-page-belege #receiptReviewStage{margin-bottom:12px}
-body.phb-app.phb-page-belege #review .receipt-assignment{padding:12px;margin:0;background:transparent}
+body.phb-app.phb-page-belege #review .receipt-assignment{margin:0}
 body.phb-app.phb-page-belege #review .receipt-form-heading{margin:5px 0 0}
 body.phb-app.phb-page-belege #review .receipt-billing{padding:12px;background:transparent}
 body.phb-app.phb-page-belege #review .receipt-billing h3{margin:0 0 12px}
@@ -255,7 +255,7 @@ body.phb-app.phb-page-belege #receiptSaveStatus:empty,body.phb-app.phb-page-bele
 
 /* Attribution first; invoice kind, dates and amounts share one compact section. */
 body.phb-app.phb-page-belege #receiptReviewStage{display:none!important}
-body.phb-app.phb-page-belege #review .receipt-assignment{border:0;padding:0;background:transparent}
+body.phb-app.phb-page-belege #review .receipt-assignment{border:0;padding:0}
 body.phb-app.phb-page-belege .receipt-assignment-fields>.full{grid-column:1/-1}
 body.phb-app.phb-page-belege .receipt-invoice-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:12px}
 body.phb-app.phb-page-belege .receipt-date-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}

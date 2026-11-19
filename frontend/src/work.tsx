@@ -1,3 +1,5 @@
+import { ActionBar, ActionCount, useViewState } from './ui';
+
 import {
   ActionIcon,
   Badge,
@@ -44,7 +46,6 @@ import {
 } from './core';
 import { useDirtyGuard } from './shell';
 import { SortSelect, compareText, compareDate } from './list-sorting';
-import { useViewState } from './ui';
 
 type Source = { type: string; id: number; label?: string };
 const initial: Row = {
@@ -376,7 +377,7 @@ export function WorkProvider({ children }: { children: React.ReactNode }) {
                 Archiviert
               </Badge>
             )}
-            <div className="actions work-editor-actions">
+            <ActionBar className="work-editor-actions">
               {item?.id && (
                 <Group gap="xs" mr="auto">
                   <Button
@@ -407,7 +408,7 @@ export function WorkProvider({ children }: { children: React.ReactNode }) {
               <Button type="submit" loading={busy}>
                 Speichern
               </Button>
-            </div>
+            </ActionBar>
           </Stack>
         </form>
       </Editor>
@@ -609,14 +610,12 @@ export function SourceWork({
       <Tooltip label={'To-dos & Notizen · ' + count + ' offene To-dos'}>
         <ActionIcon
           variant="default"
-          className="self-work-corner-icon"
+          className="phb-corner-action"
           aria-label={'To-dos & Notizen anzeigen · ' + count + ' offene To-dos'}
           onClick={() => open({ type, id })}
         >
           <IconListCheck size={17} />
-          {count > 0 && (
-            <span className="self-work-action-count self-work-action-count-todo">{count}</span>
-          )}
+          {count > 0 && <ActionCount count={count} attention />}
         </ActionIcon>
       </Tooltip>
     );

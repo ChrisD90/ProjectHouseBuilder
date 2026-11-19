@@ -1,3 +1,4 @@
+import { ActionBar } from './ui';
 import { Alert, Anchor, Button, FileInput, Select, Stack, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -186,11 +187,11 @@ export function FundingDocumentIntake({
               ]}
             />
             <ErrorBox value={failure || query.error} />
-            <div className="actions">
+            <ActionBar>
               <Button type="submit" loading={busy} disabled={query.isPending}>
                 Dateien einlesen
               </Button>
-            </div>
+            </ActionBar>
           </Stack>
         </form>
       </Editor>
@@ -266,11 +267,11 @@ export function FundingDocumentIntake({
               </Text>
             )}
             <ErrorBox value={failure || query.error} />
-            <div className="actions">
+            <ActionBar>
               <Button type="submit" loading={busy} disabled={!record || missingFunding}>
                 Speichern
               </Button>
-            </div>
+            </ActionBar>
           </Stack>
         </form>
       </Editor>

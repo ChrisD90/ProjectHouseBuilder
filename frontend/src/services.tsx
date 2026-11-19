@@ -199,6 +199,10 @@ export function useServices(navigate: (url: string) => void) {
     imports: {
       enqueue,
       async run({ form, processingMode, ...options }: Row) {
+        // One foreground controller owns the handoff dialog. Never overwrite
+        // it while another upload is still handing its files to the queue.
+        if (foregroundRun.current)
+          throw Error('Ein Upload wird bereits übergeben. Bitte kurz warten.');
         const mode =
           processingMode || form?.querySelector('[name=processing_mode]')?.value || 'foreground';
         if (!['foreground', 'background'].includes(mode))

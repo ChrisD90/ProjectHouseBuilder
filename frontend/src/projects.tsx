@@ -1,3 +1,4 @@
+import { ActionBar } from './ui';
 import { useDisplaySettings } from './presentation';
 import {
   ActionIcon,
@@ -255,7 +256,9 @@ export function ProjectDashboard() {
     );
   }
   return (
-    <div style={{ minHeight: 'calc(100dvh / var(--phb-ui-zoom, 1))', background: 'var(--brand-bg)' }}>
+    <div
+      style={{ minHeight: 'calc(100dvh / var(--phb-ui-zoom, 1))', background: 'var(--brand-bg)' }}
+    >
       <div className="page" style={{ maxWidth: 1280, paddingTop: 36 }}>
         <Group justify="space-between" mb={42}>
           <Group gap="sm" className="app-header-brand">
@@ -381,7 +384,7 @@ export function ProjectDashboard() {
               autoComplete="off"
             />
             <ErrorBox value={failure} />
-            <div className="actions">
+            <ActionBar>
               <Button
                 color="red"
                 disabled={!removing?.can_delete || confirmation !== removing?.title}
@@ -390,7 +393,7 @@ export function ProjectDashboard() {
               >
                 Endgültig löschen
               </Button>
-            </div>
+            </ActionBar>
           </Stack>
         </Editor>
         <Editor
@@ -453,11 +456,11 @@ export function ProjectDashboard() {
                 Eigenleistungsplanung. Firmen legst du im Projekt an.
               </Text>
               <ErrorBox value={failure} />
-              <div className="actions">
+              <ActionBar>
                 <Button type="submit" loading={busy}>
                   {id ? 'Speichern' : 'Projekt anlegen'}
                 </Button>
-              </div>
+              </ActionBar>
             </Stack>
           </form>
         </Editor>

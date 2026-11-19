@@ -219,7 +219,6 @@ body.phb-app :is(.panel,.kpi,.tile,.offers-stats>div,.smallcard,.offer-card){
   transition:box-shadow .18s,border-color .18s
 }
 body.phb-app .phb-skip{background:var(--ui-raised);color:var(--ui-ink)}
-body.phb-app [hidden]{display:none!important}
 @media(max-width:900px){
  body.phb-app .phb-topbar{min-height:65px}
  body.phb-app .phb-theme-control span{display:none}
@@ -338,9 +337,8 @@ body.phb-app .phb-import-toast-actions{display:flex;flex-wrap:wrap;gap:9px}
 @media(prefers-reduced-motion:reduce){body.phb-app .phb-import-dot.is-working{animation-duration:3s}}
 
 /* Identical top-right primary actions across financial and document areas. */
-body.phb-app .phb-action-header{
-  display:flex;align-items:flex-start;justify-content:space-between;
-  gap:15px 24px;flex-wrap:wrap
+body.phb-app .phb-action-header{align-items:flex-start;justify-content:space-between;
+  gap:15px 24px
 }
 body.phb-app .phb-action-header>div:first-child{flex:1 1 380px;min-width:0}
 body.phb-app .phb-action-header .phb-header-actions{

@@ -20,10 +20,9 @@ function receiptDate(value){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(value||''))return value||'Ohne Datum';
  return window.PHBDisplay.date(value);
 }
-let selected=null,list=[],overview=null,currentReceipt=null,assignmentEditing=false;
+let selected=null,list=[],overview=null,currentReceipt=null;
 let receiptSearchText='',receiptLaborFilter='all',receiptYearFilter='',receiptKindFilter='all',receiptPaymentFilter='all',receiptCancellationFilter='all';
 const receiptDialog=$('receiptWorkflowDialog');
-const discountTools=document.createElement('a');discountTools.className='mini';discountTools.textContent='Skonto & Zahlungsfristen';$('receiptPaymentsPanel')?.prepend(discountTools);
 
 let uploadReceiptKind='Rechnung';
 // Also support a still-rendered older template during an application update.
@@ -445,11 +444,6 @@ $('review').elements.namedItem('kind').addEventListener('change',event=>{
  updateInvoiceControls();
  if(till&&currentReceipt?.status==='Entwurf')void loadTillFinancing(currentReceipt);
 });
-$('receiptAnalysisMode').addEventListener('change',()=>{
- const ai=$('receiptAnalysisMode').value==='ai';
- $('receiptAIHint').hidden=!ai;
- $('receiptUploadButton').textContent=ai?'Mit ChatGPT analysieren':'Datei lokal analysieren';
-});
 function updateReceiptUploadMode(){
  const draft=$('receiptProcessingMode')?.value==='draft';
  $('receiptAnalysisMode').disabled=draft;
@@ -512,7 +506,7 @@ async function reload(keepId=selected,reopen=true){
 }
 async function open(id){
  const version=++receiptNavigationVersion;
- try{let x=await api('/api/receipts/'+id);if(version!==receiptNavigationVersion||(!receiptBusy&&receiptDialog.open&&selected===id&&receiptFlow.dirty()))return;selected=id;currentReceipt=x;assignmentEditing=false;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
+ try{let x=await api('/api/receipts/'+id);if(version!==receiptNavigationVersion||(!receiptBusy&&receiptDialog.open&&selected===id&&receiptFlow.dirty()))return;selected=id;currentReceipt=x;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
  $('review').elements.namedItem('kind').value=x.kind||'Rechnung';
  if(x.kind==='Kassenzettel'&&x.status==='Entwurf')await loadTillFinancing(x);
  if(selected!==id||version!==receiptNavigationVersion||(!receiptBusy&&receiptDialog.open&&receiptFlow.dirty()))return;
@@ -535,8 +529,6 @@ async function open(id){
  $('receiptTaxRate').value=detectReceiptTaxRate(x);
  updateLaborHint(x.labor_source,x.labor_amount);
  $('book').hidden=x.status!=='Entwurf';$('unbook').hidden=x.status!=='Gebucht';$('delete').hidden=x.status!=='Entwurf';
- $('editReceiptAssignment').hidden=true;
- $('saveReceiptAssignment').hidden=true;$('cancelReceiptAssignment').hidden=true;
  $('cancelReceipt').hidden=x.status!=='Gebucht';$('reopenCancelledReceipt').hidden=x.status!=='Storniert';$('markReceiptPaid').hidden=x.status!=='Gebucht'||x.paid_amount>=x.counted_amount;
  for(const button of $('review').querySelectorAll('button[type=submit]')){
    button.hidden=false;
@@ -566,7 +558,6 @@ async function open(id){
  updateInvoiceControls();
  applyTillMode(x.kind==='Kassenzettel');
  if(x.kind==='Kassenzettel'&&x.status==='Entwurf'&&!tillFinanceSelect.disabled)tillFinanceHelp();
- discountTools.href='/projektwerkstatt?tab=terms&receipt='+id;
  const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();
  $('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
@@ -581,33 +572,6 @@ async function open(id){
  }catch(e){notice(e.message,true)}
 }
 
-function setAssignmentEditing(enabled){
- assignmentEditing=enabled;
- $('editReceiptAssignment').hidden=enabled;
- $('saveReceiptAssignment').hidden=!enabled;
- $('cancelReceiptAssignment').hidden=!enabled;
- for(const id of ['receiptAssignmentType','costItems','receiptContractor','budgetLines','receiptSelfWork'])$(id).disabled=!enabled;
- updateInvoiceControls();
- if(enabled){
-  $('receiptReviewHelp').textContent='Korrigiere nur die Zuordnung. Rechnungsbetrag, Zahlungsstand und Stornonachweis bleiben unverändert.';
-  $('receiptAssignmentType').focus();
- }
-}
-$('editReceiptAssignment').onclick=()=>setAssignmentEditing(true);
-$('cancelReceiptAssignment').onclick=()=>{if(currentReceipt)open(currentReceipt.id);};
-$('saveReceiptAssignment').onclick=async()=>{
- if(!selected||!currentReceipt||receiptBusy)return;
- const mode=$('receiptAssignmentType').value;
- if(!mode){notice('Bitte eine Zuordnungsart auswählen.',true);return;}
- const fields={assignment_type:mode,
-   self_work_id:mode==='Eigenleistung'?$('receiptSelfWork').value||null:null,
-   cost_item_id:(mode==='Angebot'||mode==='Kostenposition')?$('costItems').value:null,
-   contractor_id:mode==='Betrieb'?$('receiptContractor').value:null,
-   budget_line_id:$('budgetLines').value||null};
- await receiptAction(()=>api('/api/receipts/'+selected+'/assignment',{
-   method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(fields)
- }),$('saveReceiptAssignment'),'Zuordnung korrigiert. Betrag, Zahlungsstand und Nachweis blieben unverändert.');
-};
 let paymentState=null,assigningPayment=null;
 const paymentForm=$('receiptPaymentForm');
 const currentPaymentReceipt=()=>paymentState?.receipts.find(r=>r.id===selected);

@@ -15,7 +15,6 @@ import {
   Table,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core';
 import { IconDownload, IconPlus, IconPrinter, IconTrash } from '@tabler/icons-react';
 import { useForm } from '@mantine/form';

@@ -38,8 +38,6 @@ import {
   IconLeaf,
   IconListCheck,
   IconReceipt,
-  IconSparkles,
-  IconUsers,
   IconTools,
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';

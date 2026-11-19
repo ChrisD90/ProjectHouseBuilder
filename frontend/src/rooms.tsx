@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Group,
-  Paper,
   SimpleGrid,
   Stack,
   Text,

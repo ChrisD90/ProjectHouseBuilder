@@ -10,9 +10,6 @@ a,
 input {
   touch-action: manipulation;
 }
-.app-brand {
-  letter-spacing: -0.5px;
-}
 .app-sidebar {
   background: var(--brand-sidebar);
   border-color: transparent;
@@ -44,26 +41,36 @@ input {
 .app-header-actions {
   flex-shrink: 0;
 }
-.header-unpaid-button {
+.phb-corner-action {
   position: relative;
   overflow: visible;
   flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: var(--mantine-color-text);
 }
-.header-unpaid-count {
+.phb-action-count {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  min-width: 17px;
-  height: 17px;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
   padding: 0 4px;
   border: 2px solid var(--mantine-color-body);
   border-radius: 999px;
+  background: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-light-color);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+.phb-action-count[data-attention] {
   background: var(--mantine-color-red-light);
   color: var(--mantine-color-red-light-color);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 13px;
-  text-align: center;
 }
 .app-header-actions :is(.mantine-Button-root, .mantine-Select-input) {
   height: 38px;
@@ -74,6 +81,10 @@ input {
   width: 38px;
   min-width: 38px;
   padding: 0;
+}
+.app-header-actions .phb-corner-action {
+  width: 36px;
+  height: 36px;
 }
 .app-header-actions
   .chatgpt-connection-button[data-icon-only='true']
@@ -195,20 +206,6 @@ input {
 }
 .collection-scroll {
   max-height: min(680px, calc(70dvh / var(--phb-ui-zoom, 1)));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  min-width: 0;
-  padding: 2px;
-}
-.actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  align-items: center;
-  padding-top: 18px;
-  margin-top: 16px;
-  border-top: 1px solid var(--mantine-color-default-border);
 }
 .table-button {
   cursor: pointer;
@@ -216,9 +213,13 @@ input {
 .table-button:hover {
   background: var(--brand-soft);
 }
-.compact-note {
-  font-size: 12px;
-  color: var(--mantine-color-dimmed);
+.phb-money-cell {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.phb-table-right {
+  text-align: right;
 }
 .frame-zone {
   position: relative;
@@ -243,13 +244,6 @@ input {
   position: absolute;
   inset: 0 0 auto;
   z-index: 10;
-}
-.header-icon {
-  flex-shrink: 0;
-}
-.route-link {
-  color: var(--mantine-color-teal-text);
-  text-decoration: none;
 }
 @media (max-width: 560px) {
   .page {

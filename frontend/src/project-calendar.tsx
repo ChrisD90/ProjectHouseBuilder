@@ -32,7 +32,7 @@ import { Editor, ErrorBox, api, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { FilterSelect, SearchField, useViewState } from './ui';
 import { useDirtyGuard } from './shell';
-import { calendarDays, dayKey, localDay, onDay, shiftCalendar } from './calendar-model';
+import { calendarDays, dayKey, onDay, shiftCalendar } from './calendar-model';
 import './project-calendar.css';
 
 type CalendarEvent = {

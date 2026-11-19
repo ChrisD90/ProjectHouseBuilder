@@ -2,8 +2,6 @@
   display: grid;
   gap: 10px;
   max-height: calc(64dvh / var(--phb-ui-zoom, 1));
-  overflow: auto;
-  padding: 1px;
 }
 .companion-record-open {
   flex: 1;
