@@ -12,6 +12,7 @@ import {
   IconCalculator,
   IconLayoutGrid,
   IconTemplate,
+  IconStack2,
 } from '@tabler/icons-react';
 export const allWorkshopViews = [
   {
@@ -95,6 +96,12 @@ export const allWorkshopViews = [
     label: 'Fliesen-Verlegeplan',
     icon: IconLayoutGrid,
     description: 'Raumkonturen, Verlegemuster und Zuschnitte planen.',
+  },
+  {
+    value: 'osb',
+    label: 'OSB-Verlegeplan',
+    icon: IconStack2,
+    description: 'Platten, Stoßversatz und Auflager für OSB-Böden planen.',
   },
   {
     value: 'templates',

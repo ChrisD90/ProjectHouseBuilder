@@ -1,5 +1,5 @@
 .time-card-container {
-  max-height: 65dvh;
+  max-height: calc(65dvh / var(--phb-ui-zoom, 1));
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 2px;
@@ -37,12 +37,12 @@
 .time-entry-list {
   display: grid;
   gap: 8px;
-  max-height: 50dvh;
+  max-height: calc(50dvh / var(--phb-ui-zoom, 1));
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 1px;
 }
-@media (max-width: 500px) {
+@media (max-width: 400px) {
   .time-tracking-page > .mantine-Paper-root > .mantine-Group-root {
     flex-wrap: wrap;
   }

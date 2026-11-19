@@ -370,6 +370,9 @@ class ProjectBackupTest(unittest.TestCase):
         self.assertEqual(uploaded.status_code,201,uploaded.json);image_id=uploaded.json['document']['id']
         product={'id':'tile-one','name':'Feinsteinzeug','url':'https://example.org/tile','price':4.25,'image_document_id':image_id}
         tile=self.client.post('/api/companion/records',json={'kind':'tile_plan','title':'Fliesen Bad','data':{'settings':settings,'room_id':room['id'],'tile_products':[product]}}).json['record']
+        osb_settings={**settings,'tileWidth':2500,'tileHeight':675,'edge':15,'joint':0,'pattern':'half','start':'corner','osb':dict(installation='floating',profile='tg',thickness=22,minStagger=400,joistSpacing=625,joistOffset=0,joistWidth=60)}
+        osb=self.client.post('/api/companion/records',json={'kind':'osb_plan','title':'OSB Bad','data':{'settings':osb_settings,'room_id':room['id'],'tile_products':[product]}})
+        self.assertEqual(osb.status_code,201,osb.json);osb_id=osb.json['record']['id']
         company=self.client.get('/api/costs').json['contractors'][0]['id']
         event=self.client.post('/api/calendar-events',json={'title':'Geplante Montage','start_date':'2026-11-20','end_date':'2026-11-20','contractor_id':company,'performed':False}).json['event']
         terms='/api/receipts/'+str(self.ids[1]['receipt'])+'/terms'
@@ -383,6 +386,8 @@ class ProjectBackupTest(unittest.TestCase):
         self.assertEqual(restored[row['id']]['body'],'Vorher')
         self.assertEqual(restored[tile['id']]['data']['settings'],settings)
         self.assertEqual(restored[tile['id']]['data']['tile_products'],[product])
+        self.assertEqual(restored[osb_id]['data']['settings'],osb_settings)
+        self.assertEqual(restored[osb_id]['data']['tile_products'],[product])
         self.assertIn(image_id,restored[tile['id']]['data']['document_ids'])
         preview=self.client.get('/api/project-documents/'+str(image_id)+'/preview')
         self.assertEqual(preview.status_code,200);self.assertEqual(preview.data,raw_image);preview.close()

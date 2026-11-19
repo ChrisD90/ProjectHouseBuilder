@@ -1,3 +1,4 @@
+import { osbLayout } from './osb-layout';
 import { displayDate } from './presentation';
 import {
   ActionIcon,
@@ -158,10 +159,11 @@ function QuickRooms({ records }: { records: Row[] }) {
   }
 }
 
-function QuickTiles({ records }: { records: Row[] }) {
+function QuickTiles({ records, osb = false }: { records: Row[]; osb?: boolean }) {
+  const plural = osb ? 'Platten' : 'Fliesen';
   const [id, setId] = useState<string | null>(null);
   const rows = records
-    .filter((row) => row.kind === 'tile_plan')
+    .filter((row) => row.kind === (osb ? 'osb_plan' : 'tile_plan'))
     .sort((a, b) => a.title.localeCompare(b.title, 'de'));
   const row = rows.find((item) => String(item.id) === id) || rows[0];
   if (!row)
@@ -172,7 +174,7 @@ function QuickTiles({ records }: { records: Row[] }) {
     );
   try {
     const s = row.data.settings,
-      plan = tileLayout(s);
+      plan = osb ? osbLayout(s) : tileLayout(s);
     return (
       <Stack gap="sm">
         <Select
@@ -185,17 +187,19 @@ function QuickTiles({ records }: { records: Row[] }) {
         />
         <Group justify="space-between">
           <Text fw={650}>{format(plan.area)} m²</Text>
-          <Text size="sm">ca. {plan.purchase} Fliesen inkl. Reserve</Text>
+          <Text size="sm">
+            ca. {plan.purchase} {plural} inkl. Reserve
+          </Text>
         </Group>
         <Text size="sm" c="dimmed">
-          {plan.full} ganze Fliesen · {plan.cut} Zuschnitte · Fliese {format(plan.tileWidth / 10)} ×{' '}
-          {format(plan.tileHeight / 10)} cm
+          {plan.full} ganze {plural} · {plan.cut} Zuschnitte · {osb ? 'Platte' : 'Fliese'}{' '}
+          {format(plan.tileWidth / 10)} × {format(plan.tileHeight / 10)} cm
         </Text>
         <svg
           className="workshop-quick-plan"
           viewBox={`0 0 ${s.width} ${s.height}`}
           role="img"
-          aria-label="Vorschau des gespeicherten Fliesenplans"
+          aria-label={osb ? 'Vorschau des OSB-Plans' : 'Vorschau des Fliesenplans'}
         >
           <path d={svgPath([plan.room])} fill="#ced6d0" />
           {plan.pieces.map((piece) => (
@@ -405,7 +409,8 @@ function QuickView({ view }: { view: string }) {
   if (q.error) return <ErrorBox value={q.error} />;
   const data = q.data || {};
   if (view === 'rooms') return <QuickRooms records={data.records || []} />;
-  if (view === 'tiles') return <QuickTiles records={data.records || []} />;
+  if (view === 'tiles' || view === 'osb')
+    return <QuickTiles records={data.records || []} osb={view === 'osb'} />;
   if (view === 'knowledge') return <QuickKnowledge data={data} />;
   return <QuickRecords view={view} data={data} />;
 }
@@ -445,7 +450,11 @@ export function WorkshopQuickAccess() {
           </Tooltip>
         </Popover.Target>
         <Popover.Dropdown
-          style={{ maxHeight: '70dvh', overflowY: 'auto', maxWidth: 'calc(100vw - 20px)' }}
+          style={{
+            maxHeight: 'calc(70dvh / var(--phb-ui-zoom, 1))',
+            overflowY: 'auto',
+            maxWidth: 'calc(calc(100vw / var(--phb-ui-zoom, 1)) - 20px)',
+          }}
         >
           <Stack gap="xs">
             <Text fw={600} size="sm">
@@ -498,7 +507,7 @@ export function WorkshopQuickAccess() {
       <Editor
         opened={!!selected}
         title={'Schnellzugriff · ' + (selected?.label || 'Werkstatt')}
-        size="min(680px, 96vw)"
+        size="min(680px, calc(96vw / var(--phb-ui-zoom, 1)))"
         zIndex={250}
         onClose={close}
         className="workshop-quick-dialog"

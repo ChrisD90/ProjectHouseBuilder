@@ -20,7 +20,7 @@
 .self-work-list-frame {
   display: flex;
   flex-direction: column;
-  height: clamp(200px, 45dvh, 480px);
+  height: clamp(200px, calc(45dvh / var(--phb-ui-zoom, 1)), 480px);
   min-width: 0;
   border: 1px solid var(--mantine-color-default-border);
   border-radius: var(--mantine-radius-md);
@@ -131,7 +131,7 @@
   white-space: nowrap;
   text-align: right;
 }
-@media (max-width: 450px) {
+@media (max-width: 360px) {
   .self-work-supply-row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 64px) max-content;
     gap: 8px;
@@ -151,7 +151,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 12px;
-  max-height: min(680px, 70dvh);
+  max-height: min(680px, calc(70dvh / var(--phb-ui-zoom, 1)));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -171,8 +171,8 @@
 .self-work-editor {
   display: flex;
   flex-direction: column;
-  height: min(820px, calc(100dvh - 48px));
-  max-height: calc(100dvh - 48px);
+  height: min(820px, calc(calc(100dvh / var(--phb-ui-zoom, 1)) - 48px));
+  max-height: calc(calc(100dvh / var(--phb-ui-zoom, 1)) - 48px);
   overflow: hidden;
 }
 .self-work-editor .mantine-Modal-header {
@@ -265,7 +265,7 @@
 .self-work-page .self-work-empty > svg {
   color: var(--brand-accent);
 }
-@media (max-width: 650px) {
+@media (max-width: 520px) {
   .self-work-tabs .mantine-Tabs-list {
     flex-wrap: wrap;
   }

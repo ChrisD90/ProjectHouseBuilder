@@ -194,7 +194,7 @@ input {
   min-width: 0;
 }
 .collection-scroll {
-  max-height: min(680px, 70dvh);
+  max-height: min(680px, calc(70dvh / var(--phb-ui-zoom, 1)));
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -222,7 +222,7 @@ input {
 }
 .frame-zone {
   position: relative;
-  height: calc(100dvh - var(--app-shell-header-height, 80px));
+  height: calc(calc(100dvh / var(--phb-ui-zoom, 1)) - var(--app-shell-header-height, 80px));
   min-height: 480px;
 }
 .workflow-frame {
@@ -251,7 +251,7 @@ input {
   color: var(--mantine-color-teal-text);
   text-decoration: none;
 }
-@media (max-width: 700px) {
+@media (max-width: 560px) {
   .page {
     padding: 20px 15px;
   }
@@ -291,19 +291,19 @@ input {
   display: block;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 560px) {
   .brand-logo {
     width: 180px;
     height: 27px;
   }
 }
-@media (max-width: 380px) {
+@media (max-width: 304px) {
   .brand-logo {
     width: 155px;
     height: 24px;
   }
 }
-@media (max-width: 47.99em) {
+@media (max-width: 38.392em) {
   .header-project-identity {
     flex-direction: column;
     align-items: flex-start;
@@ -313,7 +313,7 @@ input {
     max-width: 100%;
   }
   .app-header-brand .brand-logo {
-    width: clamp(128px, 40vw, 176px);
+    width: clamp(128px, calc(40vw / var(--phb-ui-zoom, 1)), 176px);
     max-width: 100%;
     height: 28px;
     object-fit: contain;
@@ -349,7 +349,7 @@ input {
 .work-row-actions {
   flex: 0 0 auto;
 }
-@media (max-width: 480px) {
+@media (max-width: 384px) {
   .work-row-actions {
     max-width: 30px;
   }
@@ -386,7 +386,7 @@ input {
 [data-funding-field] {
   scroll-margin-block: 25px;
 }
-@media (max-width: 500px) {
+@media (max-width: 400px) {
   .funding-check-row {
     grid-template-columns: 1fr 16px;
     gap: 7px;
@@ -426,7 +426,7 @@ input {
   white-space: nowrap;
   font-weight: 400;
 }
-@media (max-width: 480px) {
+@media (max-width: 384px) {
   .chatgpt-connection-caption {
     max-width: 95px;
     font-size: 10px;

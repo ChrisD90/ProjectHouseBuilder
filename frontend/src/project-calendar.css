@@ -71,7 +71,7 @@
 }
 .project-calendar-scroll {
   overflow: auto;
-  max-height: calc(100dvh - 255px);
+  max-height: calc(calc(100dvh / var(--phb-ui-zoom, 1)) - 255px);
   min-height: 350px;
 }
 .project-calendar-grid {
@@ -212,7 +212,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
-@media (max-width: 48em) {
+@media (max-width: 38.4em) {
   .project-calendar-toolbar {
     flex-wrap: wrap;
     gap: 10px;
@@ -232,6 +232,6 @@
     grid-column: 1 / -1;
   }
   .project-calendar-scroll {
-    max-height: calc(100dvh - 290px);
+    max-height: calc(calc(100dvh / var(--phb-ui-zoom, 1)) - 290px);
   }
 }

@@ -151,7 +151,7 @@ export function App() {
         : [];
       return valid.includes(id) ? valid.filter((value) => value !== id) : [...valid, id];
     });
-  const small = useMediaQuery('(max-width:47.99em)'),
+  const small = useMediaQuery('(max-width:38.392em)'),
     mini = collapsed && !small;
   const [frames, setFrames] = useState<
       Record<string, { src: string; route: string; ready: boolean; previousSrc?: string }>

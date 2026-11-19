@@ -8,6 +8,20 @@ import app as b
 
 
 class CompanionIntegrityTest(unittest.TestCase):
+    def test_osb_plans_are_distinct_scoped_and_invalid_edits_roll_back(self):
+        settings=dict(width=4000,height=3000,tileWidth=2500,tileHeight=675,joint=0,edge=15,reserve=10,rotated=False,pattern='half',start='corner',offsetX=0,offsetY=0,
+            osb=dict(installation='joists',profile='tg',thickness=22,minStagger=400,joistSpacing=625,joistOffset=0,joistWidth=60))
+        room=self.record(kind='room',title='Raum',data={'geometry':{'width':4000,'height':3000}})
+        row=self.record(kind='osb_plan',title='OSB',data={'settings':settings,'room_id':room['id']})
+        path='/api/companion/records/'+str(row['id'])
+        for changes in ({'edge':0},{'pattern':'straight'},{'osb':{**settings['osb'],'profile':'square'}},{'osb':{**settings['osb'],'joistSpacing':1800}}):
+            response=self.c.patch(path,json={'title':'Falsch','data':{'settings':{**settings,**changes}}})
+            self.assertEqual(response.status_code,400,response.json)
+        self.assertEqual(self.c.patch(path,headers=self.foreign,json={'title':'Fremd'}).status_code,404)
+        self.assertEqual(self.c.patch(path,json={'kind':'tile_plan'}).status_code,400)
+        self.c.delete('/api/companion/records/'+str(room['id']))
+        own=next(x for x in self.c.get('/api/companion').json['records'] if x['id']==row['id'])
+        self.assertEqual(own['title'],'OSB');self.assertEqual(own['data']['settings'],settings);self.assertIsNone(own['data']['room_id'])
     def test_tile_comparison_images_and_prices_are_project_local_and_atomic(self):
         from multi_projects import project_context
         documents=[]

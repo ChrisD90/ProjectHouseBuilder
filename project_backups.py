@@ -293,12 +293,15 @@ def load_rows(path, db, owner):
         if row['kind']=='room':
             from tile_plans import validate_room_geometry
             validate_room_geometry(data.get('geometry'))
-        if row['kind']=='tile_plan' and data.get('room_id') is not None and (type(data['room_id'])is not int or data['room_id']not in room_ids):
+        if row['kind'] in ('tile_plan','osb_plan') and data.get('room_id') is not None and (type(data['room_id'])is not int or data['room_id']not in room_ids):
             raise ValueError('Projektfremder oder fehlender Raum im Verlegeplan.')
-        if row['kind']=='tile_plan':
+        if row['kind'] in ('tile_plan','osb_plan'):
             from tile_plans import validate_tile_products
             _,images=validate_tile_products(data.get('tile_products',[]),image_documents.get)
             if not set(images)<=set(ids):raise ValueError('Fliesenbilder sind nicht mit den Projektunterlagen verknüpft.')
+            if row['kind']=='osb_plan':
+                from tile_plans import validate_osb_settings
+                validate_osb_settings(data.get('settings'))
     receipts={row['id']:row for row in result.get('receipt',[])}
     for row in result.get('receipt_terms',[]):
         receipt=receipts[row['receipt_id']]

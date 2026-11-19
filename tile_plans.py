@@ -4,6 +4,40 @@ from decimal import Decimal, InvalidOperation
 from urllib.parse import urlsplit
 
 
+def validate_osb_settings(settings):
+    if not isinstance(settings,dict) or not isinstance(settings.get('osb'),dict):
+        raise ValueError('OSB-Aufbau fehlt.')
+    config=settings['osb']
+    limits={'thickness':(6,60),'minStagger':(100,2500),'joistSpacing':(100,2000),'joistOffset':(0,2000),'joistWidth':(40,200)}
+    for key,(low,high) in limits.items():
+        value=config.get(key)
+        if type(value)not in (int,float) or not math.isfinite(value) or not low<=value<=high:
+            raise ValueError('Ungültige OSB-Einstellung: '+key)
+    dimension_limits={'width':(100,100000),'height':(100,100000),'tileWidth':(10,5000),'tileHeight':(10,5000),'edge':(0,100),'joint':(0,30),'reserve':(0,100),'offsetX':(0,10000),'offsetY':(0,10000)}
+    for key,(low,high) in dimension_limits.items():
+        value=settings.get(key)
+        if type(value)not in(int,float) or not math.isfinite(value) or not low<=value<=high:raise ValueError('Ungültiges Plattenmaß.')
+    if type(settings.get('rotated'))is not bool or settings.get('start')not in ('corner','center','offset'):raise ValueError('Ungültige Plattenausrichtung.')
+    validate_contour(settings.get('contour'),settings['width'],settings['height'])
+    if config.get('installation')not in('floating','joists') or config.get('profile')not in('tg','square'):
+        raise ValueError('Unbekannter OSB-Aufbau.')
+    if settings['edge']<=10 or settings.get('pattern')!='half':raise ValueError('OSB benötigt in diesem Planungsprofil mehr als 10 mm Randfuge und versetzte Stöße.')
+    if settings['tileWidth']<settings['tileHeight']:raise ValueError('Plattenlänge und Hauptachse müssen mindestens der Breite entsprechen.')
+    if (config['profile']=='tg' and settings['joint']!=0) or (config['profile']=='square' and settings['joint']<=0):raise ValueError('Die Plattenfuge passt nicht zum gewählten Kantenprofil.')
+    if config['installation']=='joists' and config['joistOffset']>=config['joistSpacing']:raise ValueError('Die erste Balkenachse muss innerhalb eines Balkenabstands liegen.')
+    length=settings['tileWidth'];shift=(length+settings['joint'])/2
+    if config['installation']=='joists':
+        if config['profile']!='tg':raise ValueError('Balkenlage unterstützt vierseitige Nut/Feder-Platten; geradkantige Platten benötigen zusätzliche Kantenunterstützung.')
+        spans=math.floor((length+.001)/config['joistSpacing']);required=math.ceil(max(config['minStagger'],config['joistSpacing'])/config['joistSpacing'])
+        if spans<2 or spans<required*2:raise ValueError('Plattenformat und Balkenraster erlauben keinen ausreichenden Stoßversatz.')
+        length=spans*config['joistSpacing'];shift=max(required,math.floor(spans/2))*config['joistSpacing']
+    if min(shift,length+settings['joint']-shift)+.001<config['minStagger']:raise ValueError('Mindest-Stoßversatz wird nicht erreicht.')
+    width=(settings['height']if settings['rotated']else settings['width'])-2*settings['edge']
+    height=(settings['width']if settings['rotated']else settings['height'])-2*settings['edge']
+    if width<=0 or height<=0 or (math.ceil(width/(length+settings['joint']))+2)*(math.ceil(height/(settings['tileHeight']+settings['joint']))+2)>5000:
+        raise ValueError('Keine belegbare Fläche oder mehr als 5.000 Plattenfelder.')
+
+
 def validate_tile_products(rows, document_for_id):
     if not isinstance(rows,list) or len(rows)>30:
         raise ValueError('Es können maximal 30 Fliesen verglichen werden.')

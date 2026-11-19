@@ -14,6 +14,7 @@ import { workspaceBase } from './project-context';
 import { ProjectDashboard } from './projects';
 import { App } from './shell';
 import './style.css';
+import '../../static/ui-density.css';
 const client = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 20000, refetchOnWindowFocus: false, retry: 1 },
@@ -21,6 +22,7 @@ const client = new QueryClient({
   },
 });
 const theme = createTheme({
+  breakpoints: { xs: '28.8em', sm: '38.4em', md: '49.6em', lg: '60em', xl: '70.4em' },
   primaryColor: 'teal',
   // Green accents and cool forest surfaces match the shared workflow palette.
   colors: {

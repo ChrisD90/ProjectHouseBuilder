@@ -1829,7 +1829,9 @@ export function Workshop() {
             ) : view === 'tools' ? (
               <Calculator />
             ) : view === 'tiles' ? (
-              <TilePlanner />
+              <TilePlanner key="tiles" />
+            ) : view === 'osb' ? (
+              <TilePlanner key="osb" material="osb" />
             ) : view === 'templates' ? (
               <Templates />
             ) : (

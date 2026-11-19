@@ -1,3 +1,6 @@
+import { defaultOsb, osbLayout, osbSources } from './osb-layout';
+import { OsbFields, OsbNotes } from './osb-fields';
+import { OsbOverlay } from './osb-overlay';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -35,27 +38,32 @@ const cutCoordinates = (p: TilePiece) =>
   p.paths
     .map((path) => path.map((q) => `${number(q.x - p.x, 3)}/${number(q.y - p.y, 3)}`).join(' → '))
     .join(' | ');
-const initial = () => ({
-  title: 'Fliesenplan',
-  settings: { ...defaultTiles },
+const initial = (osb = false) => ({
+  title: osb ? 'OSB-Verlegeplan' : 'Fliesenplan',
+  settings: { ...(osb ? defaultOsb : defaultTiles) },
   roomId: null as number | null,
   roomTitle: '',
   products: [] as TileProduct[],
   documentIds: [] as number[],
 });
 
-export function TilePlanner() {
+export function TilePlanner({ material = 'tile' }: { material?: 'tile' | 'osb' }) {
+  const isOsb = material === 'osb',
+    planKind = isOsb ? 'osb_plan' : 'tile_plan',
+    plannerTitle = isOsb ? 'OSB-Verlegeplan' : 'Fliesen-Verlegeplan',
+    piece = isOsb ? 'Platte' : 'Fliese',
+    plural = isOsb ? 'Platten' : 'Fliesen';
   const query = useQuery({ queryKey: ['companion'], queryFn: () => api('/api/companion') });
   const cache = useQueryClient(),
     ask = useConfirm();
-  const form = useForm({ initialValues: initial() });
+  const form = useForm({ initialValues: initial(isOsb) });
   const [id, setId] = useState<number | null>(null),
     [busy, setBusy] = useState(false);
   const [active, setActive] = useState('');
   const [highlightedEdge, setHighlightedEdge] = useState('');
   const [showPoints, setShowPoints] = useState(false);
-  const [cutsOpen, setCutsOpen] = useState(false),
-    [productsOpen, setProductsOpen] = useState(false);
+  const [cutsOpen, setCutsOpen] = useState(true),
+    [productsOpen, setProductsOpen] = useState(true);
   const { ref: settingsRef, height: settingsHeight } = useElementSize<HTMLFieldSetElement>();
   const [roomChoice, setRoomChoice] = useState('');
   const importedRoom = useRef('');
@@ -64,18 +72,19 @@ export function TilePlanner() {
   const version = useRef('');
   const svg = useRef<SVGSVGElement>(null);
   useDirtyGuard(form.isDirty());
-  const rows: Row[] = (query.data?.records || []).filter((x: Row) => x.kind === 'tile_plan');
+  const rows: Row[] = (query.data?.records || []).filter((x: Row) => x.kind === planKind);
   const rooms: Row[] = (query.data?.records || [])
     .filter((x: Row) => x.kind === 'room')
     .sort((a: Row, b: Row) => a.title.localeCompare(b.title, 'de'));
   const s = form.values.settings;
   const { plan, failure } = useMemo(() => {
     try {
-      return { plan: tileLayout(s), failure: '' };
+      return { plan: isOsb ? osbLayout(s) : tileLayout(s), failure: '' };
     } catch (e) {
       return { plan: null, failure: e instanceof Error ? e.message : String(e) };
     }
-  }, [s]);
+  }, [s, isOsb]);
+  const osbPlan = isOsb && plan ? (plan as ReturnType<typeof osbLayout>) : null;
   const selected = plan?.pieces.find((x) => x.id === active);
   function route(ident: number | null) {
     const next = new URLSearchParams(params);
@@ -89,7 +98,10 @@ export function TilePlanner() {
     const values = row
       ? {
           title: row.title,
-          settings: { ...defaultTiles, ...row.data.settings } as TileSettings,
+          settings: {
+            ...(isOsb ? defaultOsb : defaultTiles),
+            ...row.data.settings,
+          } as TileSettings,
           roomId: row.data.room_id || null,
           roomTitle: row.data.room_title || '',
           products: row.data.tile_products || [],
@@ -100,7 +112,7 @@ export function TilePlanner() {
               ),
           ),
         }
-      : initial();
+      : initial(isOsb);
     form.setValues(values);
     form.resetDirty(values);
     setId(row?.id || null);
@@ -118,7 +130,7 @@ export function TilePlanner() {
   function takeRoom(room: Row, newPlan = false) {
     form.setValues({
       ...form.values,
-      ...(newPlan ? { title: (room.title + ' · Fliesen').slice(0, 200) } : {}),
+      ...(newPlan ? { title: (room.title + (isOsb ? ' · OSB' : ' · Fliesen')).slice(0, 200) } : {}),
       settings: { ...form.values.settings, ...roomGeometryOnly(room.data.geometry) },
       roomId: room.id,
       roomTitle: room.title,
@@ -150,7 +162,7 @@ export function TilePlanner() {
     if (
       form.isDirty() &&
       !(await ask(
-        'Aktuelle Raumkontur durch den gespeicherten Grundriss ersetzen? Fliesenformat und Verlegung bleiben erhalten.',
+        'Aktuelle Raumkontur durch den gespeicherten Grundriss ersetzen? Format und Verlegung bleiben erhalten.',
       ))
     )
       return;
@@ -183,7 +195,7 @@ export function TilePlanner() {
     }
   }
   async function choose(value: string | null) {
-    if (form.isDirty() && !(await ask('Ungespeicherte Änderungen am Fliesenplan verwerfen?')))
+    if (form.isDirty() && !(await ask(`Ungespeicherte Änderungen am ${plannerTitle} verwerfen?`)))
       return;
     const row = rows.find((x) => String(x.id) === value);
     load(row);
@@ -197,7 +209,7 @@ export function TilePlanner() {
         '/api/companion/records' + (id ? '/' + id : ''),
         id ? 'PATCH' : 'POST',
         {
-          kind: 'tile_plan',
+          kind: planKind,
           title: form.values.title.trim(),
           status: 'Offen',
           data: {
@@ -223,7 +235,7 @@ export function TilePlanner() {
       setId(result.record.id);
       route(result.record.id);
       await cache.invalidateQueries({ queryKey: ['companion'] });
-      success('Fliesenplan gespeichert.');
+      success(plannerTitle + ' gespeichert.');
     } catch (e) {
       error(e);
     } finally {
@@ -252,7 +264,7 @@ export function TilePlanner() {
     }
   }
   async function remove() {
-    if (!id || !(await ask('Diesen gespeicherten Fliesenplan endgültig löschen?'))) return;
+    if (!id || !(await ask(`Diesen gespeicherten ${plannerTitle} endgültig löschen?`))) return;
     setBusy(true);
     try {
       await api(
@@ -265,7 +277,7 @@ export function TilePlanner() {
       load();
       route(null);
       await cache.invalidateQueries({ queryKey: ['companion'] });
-      success('Fliesenplan gelöscht.');
+      success(plannerTitle + ' gelöscht.');
     } catch (e) {
       error(e);
     } finally {
@@ -317,7 +329,7 @@ export function TilePlanner() {
       );
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'Fliesenplan.svg';
+      a.download = isOsb ? 'OSB-Verlegeplan.svg' : 'Fliesenplan.svg';
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       return;
@@ -345,7 +357,7 @@ export function TilePlanner() {
     append('h1', form.values.title);
     append(
       'p',
-      `${s.contour ? 'Raumkontur, Planrahmen' : 'Raum'} ${mm(s.width)} × ${mm(s.height)} · Fliese ${mm(plan.tileWidth)} × ${mm(plan.tileHeight)} · Fuge ${mm(s.joint)} · Rand ${mm(s.edge)} · ${s.pattern === 'half' ? 'Halbverband' : 'Gerade Verlegung'}`,
+      `${s.contour ? 'Raumkontur, Planrahmen' : 'Raum'} ${mm(s.width)} × ${mm(s.height)} · ${piece} ${mm(plan.tileWidth)} × ${mm(plan.tileHeight)} · Fuge ${mm(s.joint)} · Rand ${mm(s.edge)} · ${s.pattern === 'half' ? 'Halbverband' : 'Gerade Verlegung'}`,
     );
     append(
       'p',
@@ -373,7 +385,7 @@ export function TilePlanner() {
     doc.body.append(edgeTable);
     append(
       'p',
-      `${plan.full} ganze Fliesen · ${plan.cut} Zuschnitte · Einkauf: ca. ${plan.purchase} Fliesen inkl. ${s.reserve}% Reserve. Grün = ganz, schraffiert = Zuschnitt.`,
+      `${plan.full} ganze ${plural} · ${plan.cut} Zuschnitte · Einkauf: ca. ${plan.purchase} ${plural} inkl. ${s.reserve}% Reserve. Grün = ganz, schraffiert = Zuschnitt.`,
     );
     const table = doc.createElement('table');
     for (const cells of [
@@ -394,8 +406,19 @@ export function TilePlanner() {
     doc.body.append(table);
     append(
       'p',
-      'Orientierungshilfe. Konturzuschnitte: Außenmaße und Rasterfeld-ID beachten; Schnittverlauf siehe Plan. Rundungen sind angenähert. Bestellschätzung: eine neue Fliese je Feld, keine Wiederverwendung von Reststücken. Maße und Untergrund vor Ort prüfen; Bewegungsfugen und Hersteller-Vorgaben gesondert planen.',
+      'Orientierungshilfe. Konturzuschnitte: Außenmaße und Rasterfeld-ID beachten; Schnittverlauf siehe Plan. Rundungen sind angenähert. Bestellschätzung: ein neues Element je Feld, keine Wiederverwendung von Reststücken. Maße und Untergrund vor Ort prüfen; Bewegungsfugen und Hersteller-Vorgaben gesondert planen.',
     );
+    if (osbPlan) {
+      append('h2', 'OSB-Planungsgrundlagen');
+      osbPlan.osb.notices.forEach((note) => append('p', note));
+      osbSources.forEach((source) => {
+        const link = doc.createElement('a');
+        link.href = source.url;
+        link.textContent = source.title;
+        doc.body.append(link);
+        append('br', '');
+      });
+    }
     doc.close();
   }
   function dimension(
@@ -433,12 +456,12 @@ export function TilePlanner() {
       <Group justify="space-between" align="end">
         <TileHeading
           large
-          title="Fliesen-Verlegeplan"
+          title={plannerTitle}
           info="Raum aufnehmen, Raster ausrichten und Zuschnitte prüfen. Konturzuschnitte zeigen Außenmaße; den Schnittverlauf siehst du im Plan. Rundungen werden durch 48 Kanten angenähert, innere Aussparungen sind noch nicht enthalten. Maße vor Ort prüfen; Bewegungsfugen, Untergrund und zulässigen Verband nach Herstellerangaben gesondert planen."
         />
         <Group gap="xs">
           <Select
-            aria-label="Gespeicherten Fliesenplan öffnen"
+            aria-label={'Gespeicherten ' + plannerTitle + ' öffnen'}
             placeholder="Gespeicherte Pläne"
             w={230}
             searchable
@@ -526,19 +549,38 @@ export function TilePlanner() {
             <Paper withBorder p="sm">
               <Stack gap="xs">
                 <TileHeading
-                  title="2. Fliesen & Fugen"
-                  info="Fliesenmaße in Zentimetern, Fugen und Randabstand in Millimetern eingeben. Die Einkaufsmenge zählt eine neue Fliese je belegtem Rasterfeld plus Reserve. Reststücke werden nicht automatisch wiederverwendet. Die Variantenpreise beziehen sich auf diese Einkaufsmenge."
+                  title={isOsb ? '2. OSB-Platten & Fugen' : '2. Fliesen & Fugen'}
+                  info={
+                    isOsb
+                      ? 'Deckmaß eingeben: Decklänge ist die Hauptachse. Plattendicke und Balkenabstand müssen zum statisch geprüften Bodenaufbau passen. Das Nut/Feder-Profil enthält im gewählten Modell die Fuge. Die Einkaufsmenge verwendet eine neue Platte je Rasterfeld plus Reserve.'
+                      : 'Fliesenmaße in Zentimetern, Fugen und Randabstand in Millimetern eingeben. Die Einkaufsmenge zählt eine neue Fliese je belegtem Rasterfeld plus Reserve. Reststücke werden nicht automatisch wiederverwendet. Die Variantenpreise beziehen sich auf diese Einkaufsmenge.'
+                  }
                 />
+                {isOsb && (
+                  <OsbFields
+                    settings={s}
+                    onChange={(settings) => form.setFieldValue('settings', settings)}
+                  />
+                )}
                 <SimpleGrid cols={2}>
-                  {dimension('tileWidth', 'Fliesenbreite (cm)', 10, 500)}
-                  {dimension('tileHeight', 'Fliesenlänge (cm)', 10, 500)}
+                  {dimension('tileWidth', isOsb ? 'Decklänge (cm)' : 'Fliesenbreite (cm)', 10, 500)}
+                  {dimension(
+                    'tileHeight',
+                    isOsb ? 'Deckbreite (cm)' : 'Fliesenlänge (cm)',
+                    10,
+                    500,
+                  )}
                 </SimpleGrid>
                 <SimpleGrid cols={2}>
-                  {dimension('joint', 'Fugenbreite (mm)', 1, 30)}
+                  {isOsb && s.osb?.profile === 'tg' ? (
+                    <TextInput label="Zusatzfuge (mm)" value="0 · im Profil integriert" readOnly />
+                  ) : (
+                    dimension('joint', 'Fugenbreite (mm)', 1, 30)
+                  )}
                   {dimension('reserve', 'Reserve (%)', 1, 100)}
                 </SimpleGrid>
                 <Checkbox
-                  label="Fliesen um 90° drehen"
+                  label={plural + ' um 90° drehen'}
                   {...form.getInputProps('settings.rotated', { type: 'checkbox' })}
                 />
               </Stack>
@@ -547,15 +589,19 @@ export function TilePlanner() {
               <Stack gap="xs">
                 <TileHeading
                   title="3. Verlegung"
-                  warning={!!plan?.narrow}
-                  info={`Links oben am umschließenden Rechteck der belegbaren Fläche ist der Rasterbezug. Positiver Versatz verschiebt das ganze Raster; an der Wand entstehen dabei Zuschnitte.${plan?.narrow ? '\n\n' + plan.narrow + ' schmale Randstücke unter einem Drittel des Fliesenmaßes. Prüfe Drehung oder Rasterversatz.' : ''}`}
+                  warning={isOsb ? !!osbPlan?.osb.unsupported.length : !!plan?.narrow}
+                  info={`Links oben am umschließenden Rechteck der belegbaren Fläche ist der Rasterbezug. Positiver Versatz verschiebt das ganze Raster; an der Wand entstehen dabei Zuschnitte.${!isOsb && plan?.narrow ? '\n\n' + plan.narrow + ' schmale Randstücke unter einem Drittel des Fliesenmaßes. Prüfe Drehung oder Rasterversatz.' : ''}`}
                 />
                 <Select
                   label="Muster"
-                  data={[
-                    { value: 'straight', label: 'Gerade Verlegung' },
-                    { value: 'half', label: 'Halbverband (½ Versatz)' },
-                  ]}
+                  data={
+                    isOsb
+                      ? [{ value: 'half', label: 'Im Verband · versetzte Stöße' }]
+                      : [
+                          { value: 'straight', label: 'Gerade Verlegung' },
+                          { value: 'half', label: 'Halbverband (½ Versatz)' },
+                        ]
+                  }
                   allowDeselect={false}
                   {...form.getInputProps('settings.pattern')}
                 />
@@ -570,7 +616,7 @@ export function TilePlanner() {
                     },
                     {
                       value: 'corner',
-                      label: s.contour ? 'Raster ab links oben' : 'Ganze Fliese oben links',
+                      label: s.contour ? 'Raster ab links oben' : 'Ganze ' + piece + ' oben links',
                     },
                     { value: 'offset', label: 'Eigener Rasterversatz' },
                   ]}
@@ -583,6 +629,7 @@ export function TilePlanner() {
                     {dimension('offsetY', 'Versatz nach unten (mm)')}
                   </SimpleGrid>
                 )}
+                {osbPlan && <OsbNotes notes={osbPlan.osb.notices} />}
               </Stack>
             </Paper>
           </Stack>
@@ -597,12 +644,16 @@ export function TilePlanner() {
                 <Paper withBorder p="sm" className="tile-preview">
                   <TileHeading
                     title="Verlegeplan · Draufsicht"
-                    info="Ein Feld anklicken, um dessen Zuschnittmaße zu sehen. Alle Planmaße sind in Millimetern. Grün steht für ganze Fliesen; Schraffur markiert Zuschnitte. Bei Konturzuschnitten sind die Maße Außenmaße; Schnittpunkte beziehen sich auf die linke obere Zuschnittkante."
+                    info={
+                      isOsb
+                        ? 'Blauer Pfeil: Platten-Hauptachse. Gestrichelte Linien: Balkenachsen. Ockerfarbene Streifen: 15-mm-Feldfugen. Rote Kanten: zusätzliche Auflager erforderlich. Felder anklicken zeigt Schnittmaße. Dies ist eine geometrische Bodenplanung, keine statische Freigabe.'
+                        : 'Ein Feld anklicken, um dessen Zuschnittmaße zu sehen. Alle Planmaße sind in Millimetern. Grün steht für ganze Fliesen; Schraffur markiert Zuschnitte. Bei Konturzuschnitten sind die Maße Außenmaße; Schnittpunkte beziehen sich auf die linke obere Zuschnittkante.'
+                    }
                   />
                   <Group justify="flex-end" gap="xs">
                     <Group gap="xs">
                       <Badge color="green" variant="light">
-                        Ganze Fliese
+                        Ganze {piece}
                       </Badge>
                       <Badge color="orange" variant="light">
                         Zuschnitt
@@ -614,7 +665,7 @@ export function TilePlanner() {
                     viewBox={`${walls.viewBox.left} ${walls.viewBox.top} ${walls.viewBox.width} ${walls.viewBox.height}`}
                     className="tile-plan-svg"
                     role="img"
-                    aria-label="Maßstäblicher Fliesenplan, oben links ist die Bezugsecke"
+                    aria-label={'Maßstäblicher ' + plannerTitle}
                   >
                     <defs>
                       <pattern
@@ -654,6 +705,14 @@ export function TilePlanner() {
                         <title>{`Reihe ${p.row}, Feld ${p.column}: ${mm(p.width)} × ${mm(p.height)}${p.shaped ? ' (Konturzuschnitt, Außenmaße)' : p.cut ? ' (Zuschnitt)' : ''}`}</title>
                       </path>
                     ))}
+                    {osbPlan && (
+                      <OsbOverlay
+                        plan={osbPlan}
+                        width={s.width}
+                        height={s.height}
+                        rotated={s.rotated}
+                      />
+                    )}
                     {plan.pieces
                       .filter((p) => plan.pieces.length <= 200 || p.shaped)
                       .map((p) => {
@@ -758,7 +817,7 @@ export function TilePlanner() {
                   </div>
                   <Text size="xs" c="dimmed" className="tile-selection" aria-live="polite">
                     {selected
-                      ? `Reihe ${selected.row} · Feld ${selected.column}: ${mm(selected.width)} × ${mm(selected.height)}${selected.shaped ? ' · Konturzuschnitt (Außenmaße)' : selected.cut ? ' · Zuschnitt' : ' · Ganze Fliese'}`
+                      ? `Reihe ${selected.row} · Feld ${selected.column}: ${mm(selected.width)} × ${mm(selected.height)}${selected.shaped ? ' · Konturzuschnitt (Außenmaße)' : selected.cut ? ' · Zuschnitt' : ' · Ganze ' + piece}`
                       : ''}
                   </Text>
                   {selected?.shaped && (
@@ -787,64 +846,77 @@ export function TilePlanner() {
                     <Text size="xs" c="dimmed">
                       Einkauf inkl. {s.reserve}% Reserve
                     </Text>
-                    <Text fw={600}>ca. {plan.purchase} Fliesen</Text>
+                    <Text fw={600}>
+                      ca. {plan.purchase} {plural}
+                    </Text>
                   </Paper>
                 </SimpleGrid>
-                <div className="tile-plan-lists" data-expanded={cutsOpen || productsOpen}>
-                  <details
-                    className="tile-cut-list"
-                    open={cutsOpen}
-                    onToggle={(event) => setCutsOpen(event.currentTarget.open)}
-                  >
-                    <summary className="tile-section-heading tile-list-heading">
-                      Zuschnittliste ({plan.cut} Stück)
-                      <TileInfo
-                        title="Zuschnittliste"
-                        text="Breite und Höhe sind die Außenmaße des Zuschnitts. Bei Konturzuschnitten zeigt der Plan den tatsächlichen Schnittverlauf. Die Feldnummern ordnen die Zuschnitte dem Raster zu."
-                      />
-                    </summary>
-                    {plan.cut ? (
-                      <Table>
-                        <Table.Thead>
-                          <Table.Tr>
-                            <Table.Th>Breite × Höhe (mm)</Table.Th>
-                            <Table.Th>Stück</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {plan.cuts.map((c, i) => (
-                            <Table.Tr key={i}>
-                              <Table.Td>
-                                {number(c.width, 3)} × {number(c.height, 3)}
-                                {c.shaped && (
-                                  <Text size="xs" c="dimmed">
-                                    Kontur · Außenmaße · Felder {c.fields.join(', ')}
-                                  </Text>
-                                )}
-                              </Table.Td>
-                              <Table.Td>{c.count}</Table.Td>
-                            </Table.Tr>
-                          ))}
-                        </Table.Tbody>
-                      </Table>
-                    ) : (
-                      <Text size="sm">Keine Zuschnitte erforderlich.</Text>
-                    )}
-                  </details>
-                  <TileProducts
-                    products={form.values.products}
-                    quantity={plan.purchase}
-                    busy={busy}
-                    open={productsOpen}
-                    onToggle={setProductsOpen}
-                    onChange={(products) => form.setFieldValue('products', products)}
-                    onUpload={(ident, file) => void uploadProductImage(ident, file)}
-                  />
-                </div>
               </>
             )
           )}
         </Stack>
+        <aside className="tile-plan-aside" aria-label="Zuschnitte und Materialauswahl">
+          {plan ? (
+            <div className="tile-plan-lists" data-expanded={cutsOpen || productsOpen}>
+              <details
+                className="tile-cut-list"
+                open={cutsOpen}
+                onToggle={(event) => setCutsOpen(event.currentTarget.open)}
+              >
+                <summary className="tile-section-heading tile-list-heading">
+                  Zuschnittliste ({plan.cut} Stück)
+                  <TileInfo
+                    title="Zuschnittliste"
+                    text="Breite und Höhe sind die Außenmaße des Zuschnitts. Bei Konturzuschnitten zeigt der Plan den tatsächlichen Schnittverlauf. Die Feldnummern ordnen die Zuschnitte dem Raster zu."
+                  />
+                </summary>
+                {plan.cut ? (
+                  <Table>
+                    <Table.Thead>
+                      <Table.Tr>
+                        <Table.Th>Breite × Höhe (mm)</Table.Th>
+                        <Table.Th>Stück</Table.Th>
+                      </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                      {plan.cuts.map((c, i) => (
+                        <Table.Tr key={i}>
+                          <Table.Td>
+                            {number(c.width, 3)} × {number(c.height, 3)}
+                            {c.shaped && (
+                              <Text size="xs" c="dimmed">
+                                Kontur · Außenmaße · Felder {c.fields.join(', ')}
+                              </Text>
+                            )}
+                          </Table.Td>
+                          <Table.Td>{c.count}</Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                ) : (
+                  <Text size="sm">Keine Zuschnitte erforderlich.</Text>
+                )}
+              </details>
+              <TileProducts
+                material={material}
+                products={form.values.products}
+                quantity={plan.purchase}
+                busy={busy}
+                open={productsOpen}
+                onToggle={setProductsOpen}
+                onChange={(products) => form.setFieldValue('products', products)}
+                onUpload={(ident, file) => void uploadProductImage(ident, file)}
+              />
+            </div>
+          ) : (
+            <Paper withBorder p="sm">
+              <Text size="sm" c="dimmed">
+                Nach Eingabe gültiger Maße erscheinen hier Zuschnitte und Materialauswahl.
+              </Text>
+            </Paper>
+          )}
+        </aside>
       </div>
       <Group justify="space-between" className="tile-footer">
         <Group gap="xs">

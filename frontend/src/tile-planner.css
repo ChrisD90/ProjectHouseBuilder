@@ -1,8 +1,77 @@
 .tile-planner-grid {
   display: grid;
-  grid-template-columns: 310px minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
   gap: 18px;
   align-items: start;
+}
+.tile-planner {
+  container-type: inline-size;
+}
+.tile-planner-bounded {
+  grid-template-columns: 260px minmax(360px, 1fr) minmax(310px, 350px);
+  gap: 14px;
+}
+.tile-plan-aside {
+  height: var(--tile-panel-height, auto);
+  min-height: 0;
+  min-width: 0;
+}
+.tile-plan-aside .tile-plan-lists {
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  height: 100%;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+.tile-plan-aside .tile-plan-lists .tile-cut-list {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  max-height: none;
+}
+.tile-planner .tile-settings .mantine-InputWrapper-label {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.tile-plan-aside .tile-product-columns,
+.tile-plan-aside .tile-product-row {
+  grid-template-columns: 32px minmax(90px, 1fr) 25px 70px 85px 20px;
+  min-width: 365px;
+  gap: 5px;
+  padding-inline: 7px;
+}
+@container (max-width:1050px) {
+  .tile-planner-bounded {
+    grid-template-columns: 250px minmax(0, 1fr);
+  }
+  .tile-plan-aside {
+    grid-column: 1/-1;
+    height: 380px;
+  }
+  .tile-plan-aside .tile-plan-lists {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+@container (max-width:650px) {
+  .tile-planner-bounded {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tile-planner-bounded .tile-preview-column {
+    height: auto;
+  }
+  .tile-plan-aside {
+    height: 600px;
+  }
+  .tile-plan-aside .tile-plan-lists {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    max-height: none;
+  }
 }
 .tile-settings {
   border: 0;
@@ -257,7 +326,16 @@
   border-top: 1px solid var(--brand-line);
   padding-top: 12px;
 }
-@media (max-width: 60em) {
+.tile-plan-aside .tile-plan-lists .tile-cut-list[open] {
+  height: 100%;
+  max-height: none;
+  min-height: 0;
+}
+.tile-plan-aside .tile-product-upload {
+  width: 30px;
+  height: 32px;
+}
+@media (max-width: 48em) {
   .tile-planner-bounded .tile-preview-column {
     height: auto;
   }

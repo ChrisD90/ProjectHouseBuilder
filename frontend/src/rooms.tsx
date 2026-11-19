@@ -361,7 +361,7 @@ export function Rooms() {
       <Editor
         opened={opened}
         title={id ? 'Raum bearbeiten' : 'Raum anlegen'}
-        size="min(1150px, 96vw)"
+        size="min(1150px, calc(96vw / var(--phb-ui-zoom, 1)))"
         dirty={form.isDirty()}
         busy={busy}
         onClose={() => {

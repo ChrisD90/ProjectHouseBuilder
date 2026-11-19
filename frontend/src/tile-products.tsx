@@ -1,4 +1,4 @@
-import { ActionIcon, Anchor, FileButton, NumberInput, TextInput } from '@mantine/core';
+import { ActionIcon, Anchor, FileButton, NumberInput, TextInput, Popover } from '@mantine/core';
 import {
   IconChevronRight,
   IconExternalLink,
@@ -34,6 +34,7 @@ const safeLink = (value: string) => {
   }
 };
 export function TileProducts({
+  material = 'tile',
   products,
   quantity,
   busy,
@@ -42,6 +43,7 @@ export function TileProducts({
   onChange,
   onUpload,
 }: {
+  material?: 'tile' | 'osb';
   products: TileProduct[];
   quantity: number;
   busy: boolean;
@@ -50,6 +52,8 @@ export function TileProducts({
   onChange: (rows: TileProduct[]) => void;
   onUpload: (id: string, file: File) => void;
 }) {
+  const piece = material === 'osb' ? 'Platte' : 'Fliese',
+    plural = material === 'osb' ? 'Platten' : 'Fliesen';
   const update = (id: string, changes: Partial<TileProduct>) =>
     onChange(products.map((row) => (row.id === id ? { ...row, ...changes } : row)));
   return (
@@ -61,14 +65,14 @@ export function TileProducts({
       <summary className="tile-section-heading tile-list-heading">
         <span>
           <IconChevronRight size={15} className="tile-list-chevron" data-open={open} />
-          Fliesenauswahl ({products.length})
+          {plural}auswahl ({products.length})
         </span>
         <ActionIcon
           className="tile-list-add"
           variant="subtle"
           size="sm"
-          aria-label="Fliese hinzufügen"
-          title="Fliese hinzufügen"
+          aria-label={piece + ' hinzufügen'}
+          title={piece + ' hinzufügen'}
           disabled={busy || products.length >= 30}
           onClick={(event) => {
             event.preventDefault();
@@ -80,19 +84,19 @@ export function TileProducts({
           <IconPlus size={16} />
         </ActionIcon>
         <TileInfo
-          title="Fliesenauswahl"
-          text={`Vergleiche bis zu 30 Fliesen im Format der aktuellen Planung. Der Gesamtpreis entspricht dem Stückpreis × ${quantity} geplanten Einkaufsfliesen inklusive Reserve. Einträge sind Alternativen und werden nicht aufsummiert oder ins Projektbudget gebucht. Bilder (JPG, PNG, WEBP) werden als Projektunterlagen abgelegt und mit dem Plan gespeichert. Änderungen werden mit „Speichern“ gesichert.`}
+          title={plural + 'auswahl'}
+          text={`Vergleiche bis zu 30 ${plural} im Format der aktuellen Planung. Der Gesamtpreis entspricht dem Stückpreis × ${quantity} geplanten Einkaufs${plural.toLowerCase()} inklusive Reserve. Einträge sind Alternativen und werden nicht aufsummiert oder ins Projektbudget gebucht. Bilder (JPG, PNG, WEBP) werden als Projektunterlagen abgelegt und mit dem Plan gespeichert. Änderungen werden mit „Speichern“ gesichert.`}
         />
       </summary>
       {!products.length ? (
-        <p className="tile-products-empty">Über + eine Fliese hinzufügen.</p>
+        <p className="tile-products-empty">Über + eine {piece} hinzufügen.</p>
       ) : (
         <div className="tile-products-scroll">
           <div className="tile-product-columns" aria-hidden="true">
             <span>Bild</span>
             <span>Bezeichnung</span>
             <span>URL</span>
-            <span>Preis / Fliese (€)</span>
+            <span>Preis / {piece} (€)</span>
             <span>Gesamtpreis</span>
             <span />
           </div>
@@ -110,7 +114,7 @@ export function TileProducts({
                       className="tile-product-upload"
                       disabled={busy}
                       aria-label={
-                        row.image_document_id ? 'Fliesenbild ersetzen' : 'Fliesenbild hochladen'
+                        row.image_document_id ? piece + 'nbild ersetzen' : piece + 'nbild hochladen'
                       }
                     >
                       {row.image_document_id ? (
@@ -118,7 +122,7 @@ export function TileProducts({
                           src={projectURL(
                             '/api/project-documents/' + row.image_document_id + '/preview',
                           )}
-                          alt={row.name || 'Fliese'}
+                          alt={row.name || piece}
                           loading="lazy"
                         />
                       ) : (
@@ -142,37 +146,50 @@ export function TileProducts({
               </div>
               <TextInput
                 size="xs"
-                aria-label="Bezeichnung der Fliese"
+                aria-label={'Bezeichnung: ' + piece}
                 placeholder="Bezeichnung"
                 maxLength={200}
                 disabled={busy}
                 value={row.name}
                 onChange={(event) => update(row.id, { name: event.currentTarget.value })}
               />
-              <TextInput
-                size="xs"
-                aria-label="Produkt-URL"
-                placeholder="https://…"
-                maxLength={2000}
-                disabled={busy}
-                value={row.url}
-                onChange={(event) => update(row.id, { url: event.currentTarget.value })}
-                rightSection={
-                  safeLink(row.url) && (
+              <Popover width={300} position="bottom-end" withinPortal>
+                <Popover.Target>
+                  <ActionIcon
+                    variant="subtle"
+                    size="sm"
+                    aria-label="Produkt-URL bearbeiten"
+                    title={row.url || 'Produkt-URL hinzufügen'}
+                    disabled={busy}
+                  >
+                    <IconExternalLink size={15} />
+                  </ActionIcon>
+                </Popover.Target>
+                <Popover.Dropdown>
+                  <TextInput
+                    size="xs"
+                    label="Produkt-URL"
+                    placeholder="https://…"
+                    maxLength={2000}
+                    disabled={busy}
+                    value={row.url}
+                    onChange={(event) => update(row.id, { url: event.currentTarget.value })}
+                  />
+                  {safeLink(row.url) && (
                     <Anchor
+                      size="xs"
                       href={safeLink(row.url)!}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label="Produktseite öffnen"
                     >
-                      <IconExternalLink size={14} />
+                      Produktseite öffnen
                     </Anchor>
-                  )
-                }
-              />
+                  )}
+                </Popover.Dropdown>
+              </Popover>
               <NumberInput
                 size="xs"
-                aria-label="Preis pro Fliese"
+                aria-label={'Preis pro ' + piece}
                 min={0}
                 max={999999999}
                 decimalScale={2}
@@ -197,7 +214,7 @@ export function TileProducts({
                 size="sm"
                 variant="subtle"
                 color="red"
-                aria-label="Fliese entfernen"
+                aria-label={piece + ' entfernen'}
                 disabled={busy}
                 onClick={() => onChange(products.filter((item) => item.id !== row.id))}
               >

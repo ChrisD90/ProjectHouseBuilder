@@ -128,7 +128,14 @@ export function validateContour(points: Point[], width: number, height: number) 
 const toPath = (points: Point[]) =>
   points.map((p) => ({ X: Math.round(p.x * SCALE), Y: Math.round(p.y * SCALE) }));
 const fromPath = (path: ClipperLib.Path) => path.map((p) => ({ x: p.X / SCALE, y: p.Y / SCALE }));
-export function roomGeometry(width: number, height: number, edge: number, contour?: Point[]) {
+export type GapBand = { x: number; y: number; width: number; height: number };
+export function roomGeometry(
+  width: number,
+  height: number,
+  edge: number,
+  contour?: Point[],
+  gaps: GapBand[] = [],
+) {
   const room = contour ?? [
     { x: 0, y: 0 },
     { x: width, y: 0 },
@@ -144,6 +151,29 @@ export function roomGeometry(width: number, height: number, edge: number, contou
     offset.AddPath(path, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
     paths = [];
     offset.Execute(paths, -edge * SCALE);
+  }
+  if (gaps.length && paths.length) {
+    const clipper = new ClipperLib.Clipper();
+    clipper.AddPaths(paths, ClipperLib.PolyType.ptSubject, true);
+    for (const gap of gaps)
+      clipper.AddPath(
+        toPath([
+          { x: gap.x, y: gap.y },
+          { x: gap.x + gap.width, y: gap.y },
+          { x: gap.x + gap.width, y: gap.y + gap.height },
+          { x: gap.x, y: gap.y + gap.height },
+        ]),
+        ClipperLib.PolyType.ptClip,
+        true,
+      );
+    const result: ClipperLib.Paths = [];
+    clipper.Execute(
+      ClipperLib.ClipType.ctDifference,
+      result,
+      ClipperLib.PolyFillType.pftNonZero,
+      ClipperLib.PolyFillType.pftNonZero,
+    );
+    paths = result;
   }
   if (!paths.length)
     throw Error('Der Randabstand lässt keine belegbare Fläche in dieser Kontur übrig.');

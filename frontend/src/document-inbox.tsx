@@ -355,7 +355,7 @@ export function DocumentInbox({ bridge }: { bridge: Row }) {
                 checked={ignored}
                 onChange={(event) => setIgnored(event.currentTarget.checked)}
               />
-              <ScrollArea.Autosize mah="55dvh">
+              <ScrollArea.Autosize mah="calc(55dvh / var(--phb-ui-zoom, 1))">
                 <Stack gap="xs">
                   {query.data?.items.map((item) => (
                     <Paper withBorder radius="md" p="sm" key={item.id}>

@@ -73,7 +73,7 @@ export function UnpaidReceipts() {
         closeOnClickOutside={false}
         closeButtonProps={{ 'aria-label': 'Schließen' }}
       >
-        <ScrollArea.Autosize mah="70dvh">
+        <ScrollArea.Autosize mah="calc(70dvh / var(--phb-ui-zoom, 1))">
           <Stack gap="sm">
             {!rows.length && <Text c="dimmed">Alle Rechnungen sind bezahlt.</Text>}
             {rows.map((row) => (

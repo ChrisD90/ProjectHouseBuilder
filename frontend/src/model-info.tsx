@@ -82,13 +82,13 @@ export function ModelInfo({
         onTouchMove={(event) => event.stopPropagation()}
         p={0}
         style={{
-          maxWidth: 'calc(100vw - 32px)',
-          maxHeight: 'calc(100dvh - 32px)',
+          maxWidth: 'calc(calc(100vw / var(--phb-ui-zoom, 1)) - 32px)',
+          maxHeight: 'calc(calc(100dvh / var(--phb-ui-zoom, 1)) - 32px)',
           overflow: 'hidden',
         }}
       >
         <ScrollArea.Autosize
-          mah="calc(100dvh - 32px)"
+          mah="calc(calc(100dvh / var(--phb-ui-zoom, 1)) - 32px)"
           type="auto"
           scrollbarSize={8}
           overscrollBehavior="contain"

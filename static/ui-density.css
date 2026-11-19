@@ -1,0 +1,17 @@
+/* One 80% UI scale, including px-sized controls. Embedded workflows inherit
+   their physical scale from the parent frame and must not be scaled again. */
+:root { --phb-ui-zoom: .8; --phb-viewport-height: calc(100dvh / var(--phb-ui-zoom)); }
+@media screen {
+  html { zoom: var(--phb-ui-zoom); }
+  html:has(body.phb-embedded) { --phb-ui-zoom: 1; }
+  /* Floating UI needs an element offset parent with measurable scale on both
+     axes. A zero-height portal would still misplace menus vertically. */
+  body > [data-portal] { position: absolute; top: 0; left: 0; width: 100%; height: 1px; }
+  .mantine-AppShell-navbar { height: calc(var(--phb-viewport-height) - var(--app-shell-header-offset,0px) - var(--app-shell-footer-offset,0px)); }
+  .mantine-AppShell-main { min-height: var(--phb-viewport-height); }
+  .mantine-Modal-content { --modal-content-max-height: calc(var(--phb-viewport-height) - var(--modal-y-offset) * 2); }
+  .mantine-Modal-root { --modal-y-offset:calc(5dvh / var(--phb-ui-zoom));--modal-x-offset:calc(5vw / var(--phb-ui-zoom)); }
+  body.phb-app .phb-appshell { min-height:var(--phb-viewport-height); }
+  body.phb-app .phb-sidebar {height:var(--phb-viewport-height);}
+}
+@media print { html {zoom:1;--phb-ui-zoom:1;} }

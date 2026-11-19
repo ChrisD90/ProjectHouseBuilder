@@ -30,7 +30,7 @@ export function TileInfo({
           </ActionIcon>
         </Popover.Target>
         <Popover.Dropdown
-          style={{ maxWidth: 'calc(100vw - 24px)', maxHeight: '60dvh', overflowY: 'auto' }}
+          style={{ maxWidth: 'calc(calc(100vw / var(--phb-ui-zoom, 1)) - 24px)', maxHeight: 'calc(60dvh / var(--phb-ui-zoom, 1))', overflowY: 'auto' }}
         >
           <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
             {text}

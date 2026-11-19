@@ -435,5 +435,32 @@ body.phb-app .offer-editor-actions .offer-tile-icon:hover{background:var(--ui-so
 
 body.phb-app .phb-offer-edit-layout:has(>#offerEditPdfPane[hidden]){grid-template-columns:minmax(0,1fr)}
 
+/* Match the shared UI typography and keep three complete desktop rows visible. */
+body.phb-app.phb-page-angebote {font-size:14px;}
+body.phb-app.phb-page-angebote #angebotsliste {container-type:inline-size;}
+body.phb-app.phb-page-angebote #offerList {
+  --offer-row-height:184px;
+  grid-template-columns:repeat(5,minmax(0,1fr));grid-auto-rows:var(--offer-row-height);
+  gap:12px;padding:10px;height:calc(3 * var(--offer-row-height) + 24px + 20px);
+  max-height:calc(3 * var(--offer-row-height) + 20px + 24px);align-content:start;
+}
+body.phb-app.phb-page-angebote #offerList .offer-tile {height:var(--offer-row-height);border-radius:10px;}
+body.phb-app.phb-page-angebote #offerList .offer-tile-header {padding:8px 8px 0;gap:5px;}
+body.phb-app.phb-page-angebote #offerList .offer-tile-header .offer-stage {font-size:10px;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+body.phb-app.phb-page-angebote #offerList .offer-tile-vendor {font-size:14px;font-weight:650;line-height:1.25;}
+body.phb-app.phb-page-angebote #offerList .offer-tile-price {font-size:18px;}
+body.phb-app.phb-page-angebote #offerList .offer-tile-open {padding:6px 9px;gap:3px 8px;}
+body.phb-app.phb-page-angebote #offerList .offer-tile-corner-actions {gap:3px;}
+body.phb-app.phb-page-angebote #offerList .offer-tile-icon {width:24px;height:24px;min-height:24px;border-radius:6px;}
+body.phb-app.phb-page-angebote #offerList .offer-tile-icon .phb-icon {width:14px;height:14px;}
+body.phb-app.phb-page-angebote #offerList .offer-tile-actions {height:42px;flex-basis:42px;padding:6px 9px;gap:5px;}
+body.phb-app.phb-page-angebote #offerList .offer-tile-actions :is(button,a) {height:28px;min-height:28px;line-height:18px;font-size:11px;padding:4px 6px;}
+body.phb-app.phb-page-angebote :is(.panelbar h2,.phb-workflow-head h2) {font-size:19px;}
+body.phb-app.phb-page-angebote :is(input,select,textarea) {font-size:13px;}
+body.phb-app.phb-page-angebote .offers-stats strong {font-size:22px;}
+@media(max-width:1000px){body.phb-app.phb-page-angebote #offerList{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:700px){body.phb-app.phb-page-angebote #offerList{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:440px){body.phb-app.phb-page-angebote #offerList{grid-template-columns:minmax(0,1fr);}}
+
 body.phb-app .offer-tax-field{font-size:12px;font-weight:650;color:var(--ui-ink-soft)}
 body.phb-app .offer-tax-input :is(input,select){font:inherit}

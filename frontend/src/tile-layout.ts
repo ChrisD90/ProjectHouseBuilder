@@ -1,4 +1,13 @@
-import { clipTile, contourKey, Point, roomGeometry, signedArea } from './tile-geometry';
+import { clipTile, contourKey, Point, roomGeometry, signedArea, GapBand } from './tile-geometry';
+export type OsbConfig = {
+  installation: 'floating' | 'joists';
+  profile: 'tg' | 'square';
+  thickness: number;
+  minStagger: number;
+  joistSpacing: number;
+  joistOffset: number;
+  joistWidth: number;
+};
 
 /** All dimensions are millimetres. Clipped pieces consume one tile each;
  * offcut reuse is deliberately not assumed in the purchase estimate. */
@@ -17,6 +26,7 @@ export type TileSettings = {
   offsetY: number;
   contour?: Point[];
   roomShape?: 'rectangle' | 'l' | 'trapezoid' | 'round' | 'custom';
+  osb?: OsbConfig;
 };
 export const defaultTiles: TileSettings = {
   width: 4000,
@@ -68,7 +78,10 @@ function centered(length: number, tile: number, joint: number, stagger = false) 
   };
   return score(candidates[1]) > score(candidates[0]) + EPS ? candidates[1] : candidates[0];
 }
-export function tileLayout(s: TileSettings) {
+export function tileLayout(
+  s: TileSettings,
+  options: { gaps?: GapBand[]; originX?: number; rowShift?: (row: number) => number } = {},
+) {
   const nums = [
     'width',
     'height',
@@ -118,16 +131,17 @@ export function tileLayout(s: TileSettings) {
     throw Error(
       'Mehr als 5.000 Fliesenfelder: Bitte einen kleineren Raum oder größere Fliesen wählen.',
     );
-  const geometry = roomGeometry(s.width, s.height, s.edge, s.contour);
+  const geometry = roomGeometry(s.width, s.height, s.edge, s.contour, options.gaps);
   const { left, top, right, bottom } = geometry.bounds;
   const width = right - left,
     height = bottom - top;
   const ox =
-    s.start === 'center'
+    options.originX ??
+    (s.start === 'center'
       ? centered(width, tw, s.joint, s.pattern === 'half')
       : s.start === 'offset'
         ? s.offsetX % (tw + s.joint)
-        : 0;
+        : 0);
   const oy =
     s.start === 'center'
       ? centered(height, th, s.joint)
@@ -137,7 +151,11 @@ export function tileLayout(s: TileSettings) {
   const rows = segments(height, th, s.joint, oy);
   const pieces: TilePiece[] = [];
   rows.forEach((row, r) => {
-    const shift = s.pattern === 'half' && r % 2 ? (tw + s.joint) / 2 : 0;
+    const shift = options.rowShift
+      ? options.rowShift(r)
+      : s.pattern === 'half' && r % 2
+        ? (tw + s.joint) / 2
+        : 0;
     segments(width, tw, s.joint, ox + shift).forEach((col, c) => {
       const paths = clipTile(geometry.paths, col.from + left, row.from + top, col.size, row.size);
       if (!paths.length) return;
@@ -163,6 +181,14 @@ export function tileLayout(s: TileSettings) {
       });
     });
   });
+  return {
+    ...summarizePieces(pieces, tw, th, s.reserve),
+    area: geometry.area / 1e6,
+    room: geometry.room,
+    footprint: geometry.paths.map((path) => path.map((p) => ({ x: p.X / 1000, y: p.Y / 1000 }))),
+  };
+}
+export function summarizePieces(pieces: TilePiece[], tw: number, th: number, reserve: number) {
   const cuts = pieces.filter((p) => p.cut);
   const grouped = new Map<
     string,
@@ -188,11 +214,8 @@ export function tileLayout(s: TileSettings) {
     cuts: [...grouped.values()],
     full: pieces.length - cuts.length,
     cut: cuts.length,
-    purchase: Math.ceil(pieces.length * (1 + s.reserve / 100)),
-    area: geometry.area / 1e6,
+    purchase: Math.ceil(pieces.length * (1 + reserve / 100)),
     tileArea: pieces.reduce((sum, p) => sum + p.area, 0) / 1e6,
-    room: geometry.room,
-    footprint: geometry.paths.map((path) => path.map((p) => ({ x: p.X / 1000, y: p.Y / 1000 }))),
     narrow: cuts.filter((p) => p.width < tw / 3 - EPS || p.height < th / 3 - EPS).length,
     tileWidth: tw,
     tileHeight: th,
