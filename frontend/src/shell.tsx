@@ -14,10 +14,11 @@ import {
   Stack,
   Text,
   Tooltip,
+  UnstyledButton,
   useMantineColorScheme,
   useComputedColorScheme,
 } from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
+import { useLocalStorage, useMediaQuery } from '@mantine/hooks';
 import {
   IconBuildingBank,
   IconHome,
@@ -79,19 +80,22 @@ const items = [
 ] as const;
 const navigationGroups = [
   {
+    id: 'project',
     label: 'Projekt',
     paths: ['/uebersicht', '/projektunterlagen', '/', '/angebote', '/energieplanung'],
   },
   {
+    id: 'execution',
     label: 'Ausführung',
     paths: ['/eigenleistungen', '/aufgaben', '/stunden', '/projektwerkstatt'],
   },
   {
+    id: 'finance',
     label: 'Finanzen',
     paths: ['/kosten', '/belege', '/finanzierung'],
   },
-  { label: 'Einstellungen', paths: ['/system', '/stammdaten'] },
-  { label: 'Datenmanagement', paths: ['/dokumente', '/daten'] },
+  { id: 'settings', label: 'Einstellungen', paths: ['/system', '/stammdaten'] },
+  { id: 'data', label: 'Datenmanagement', paths: ['/dokumente', '/daten'] },
 ];
 const native = new Set([
   '/system',
@@ -130,6 +134,22 @@ export function App() {
       }
     }),
     [mobile, setMobile] = useState(false);
+  const [closedGroups, setClosedGroups] = useLocalStorage<string[]>({
+    key: 'phb-sidebar-groups:' + projectID,
+    defaultValue: [],
+    getInitialValueInEffect: false,
+  });
+  const groupClosed = (id: string) => Array.isArray(closedGroups) && closedGroups.includes(id);
+  const toggleGroup = (id: string) =>
+    setClosedGroups((current) => {
+      const valid = Array.isArray(current)
+        ? current.filter(
+            (value) =>
+              typeof value === 'string' && navigationGroups.some((group) => group.id === value),
+          )
+        : [];
+      return valid.includes(id) ? valid.filter((value) => value !== id) : [...valid, id];
+    });
   const small = useMediaQuery('(max-width:47.99em)'),
     mini = collapsed && !small;
   const [frames, setFrames] = useState<
@@ -420,41 +440,60 @@ export function App() {
             <Divider color="var(--brand-line)" my="sm" />
             <Stack gap="xs" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
               {navigationGroups.map((group, index) => (
-                <section key={group.label} aria-label={group.label}>
+                <section key={group.id} aria-label={group.label}>
                   {mini ? (
                     index > 0 && <Divider color="var(--brand-line)" mb="sm" />
                   ) : (
-                    <Text className="sidebar-group-label" size="xs" fw={700} mb={4} px="sm">
-                      {group.label}
-                    </Text>
+                    <UnstyledButton
+                      className="sidebar-group-toggle"
+                      aria-expanded={!groupClosed(group.id)}
+                      aria-controls={'sidebar-group-' + group.id}
+                      data-active={
+                        (groupClosed(group.id) && group.paths.includes(location.pathname)) ||
+                        undefined
+                      }
+                      onClick={() => toggleGroup(group.id)}
+                    >
+                      <IconChevronRight
+                        size={14}
+                        className="sidebar-group-chevron"
+                        data-open={!groupClosed(group.id)}
+                        aria-hidden="true"
+                      />
+                      <Text component="span" className="sidebar-group-label" size="xs" fw={700}>
+                        {group.label}
+                      </Text>
+                    </UnstyledButton>
                   )}
-                  {items
-                    .filter(([path]) => group.paths.includes(path))
-                    .map(([path, label, Icon]) => (
-                      <Tooltip key={path} label={label} disabled={!mini} position="right">
-                        <NavLink
-                          component="a"
-                          href={workspaceURL(path)}
-                          onClick={(e) => {
-                            if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
-                              e.preventDefault();
-                              navigate(path);
-                            }
-                          }}
-                          label={mini ? undefined : label}
-                          leftSection={<Icon size={20} />}
-                          active={location.pathname === path}
-                          aria-label={label}
-                          styles={{
-                            root: {
-                              justifyContent: mini ? 'center' : undefined,
-                              padding: mini ? '8px' : '6px 12px',
-                            },
-                            section: { marginRight: mini ? 0 : undefined },
-                          }}
-                        />
-                      </Tooltip>
-                    ))}
+                  <div id={'sidebar-group-' + group.id} hidden={!mini && groupClosed(group.id)}>
+                    {items
+                      .filter(([path]) => group.paths.includes(path))
+                      .map(([path, label, Icon]) => (
+                        <Tooltip key={path} label={label} disabled={!mini} position="right">
+                          <NavLink
+                            component="a"
+                            href={workspaceURL(path)}
+                            onClick={(e) => {
+                              if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+                                e.preventDefault();
+                                navigate(path);
+                              }
+                            }}
+                            label={mini ? undefined : label}
+                            leftSection={<Icon size={20} />}
+                            active={location.pathname === path}
+                            aria-label={label}
+                            styles={{
+                              root: {
+                                justifyContent: mini ? 'center' : undefined,
+                                padding: mini ? '8px' : '6px 12px',
+                              },
+                              section: { marginRight: mini ? 0 : undefined },
+                            }}
+                          />
+                        </Tooltip>
+                      ))}
+                  </div>
                 </section>
               ))}
             </Stack>

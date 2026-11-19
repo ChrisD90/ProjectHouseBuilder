@@ -128,6 +128,29 @@ input {
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
+.sidebar-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  margin-bottom: 4px;
+  border-radius: 7px;
+  color: var(--brand-muted);
+}
+.sidebar-group-toggle:hover {
+  background: var(--brand-nav-hover);
+}
+.sidebar-group-toggle:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 1px;
+}
+.sidebar-group-chevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+.sidebar-group-toggle[data-active] .sidebar-group-label {
+  color: var(--brand-accent);
+}
 .app-main {
   background: var(--brand-bg);
 }
