@@ -161,7 +161,7 @@ export function RoomGeometryFields({
               {s.contour.map((p, i) => (
                 <div className="tile-point-row" key={i}>
                   <Text size="xs" fw={600}>
-                    {i + 1}
+                    P{i + 1}
                   </Text>
                   {(['x', 'y'] as const).map((axis) => (
                     <Measurement

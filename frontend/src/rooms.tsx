@@ -111,9 +111,40 @@ function RoomPreview({ geometry, compact = false }: { geometry: RoomGeometry; co
                 </text>
               </g>
             ))}
+          {!compact &&
+            plan.room.map((point, index) => (
+              <g key={'point-' + index} className="room-point-marker">
+                <title>{`P${index + 1} · X: ${number(point.x, 3)} mm · Y: ${number(point.y, 3)} mm`}</title>
+                <circle
+                  cx={point.x}
+                  cy={point.y}
+                  r={margin * 0.045}
+                  fill="#1b5533"
+                  stroke="#f4f6f1"
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                />
+                <text
+                  x={point.x + margin * 0.09}
+                  y={point.y + margin * 0.19}
+                  fill="#173e29"
+                  stroke="#f4f6f1"
+                  strokeWidth="3"
+                  vectorEffect="non-scaling-stroke"
+                  paintOrder="stroke"
+                  fontSize={margin * 0.21}
+                  fontWeight="700"
+                >
+                  P{index + 1}
+                </text>
+              </g>
+            ))}
         </svg>
         {!compact && (
           <>
+            <Text size="xs" c="dimmed">
+              P1, P2, … sind die Raumpunkte in derselben Reihenfolge wie in der Eckpunktbearbeitung.
+            </Text>
             <Group gap="xs">
               <Badge variant="light">{number(plan.area / 1e6)} m²</Badge>
               <Badge variant="light">

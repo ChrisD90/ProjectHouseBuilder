@@ -10,3 +10,6 @@
 .room-card > .mantine-Stack-root {
   min-height: 0;
 }
+.room-point-marker {
+  cursor: help;
+}

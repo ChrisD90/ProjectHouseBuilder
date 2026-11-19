@@ -36,7 +36,7 @@
 }
 .tile-point-row {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) minmax(0, 1fr) 24px 24px;
+  grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1fr) 24px 24px;
   gap: 4px;
   align-items: end;
 }
