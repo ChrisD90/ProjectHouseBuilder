@@ -1,0 +1,49 @@
+.glossary-toolbar > :first-child {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.glossary-toolbar > :last-child {
+  flex: 0 1 250px;
+  min-width: 140px;
+}
+.glossary-entries .mantine-Accordion-control {
+  padding: 9px 12px;
+}
+.glossary-entries .mantine-Accordion-label {
+  padding-block: 2px;
+  min-width: 0;
+}
+.glossary-entries .mantine-Accordion-item {
+  border-color: var(--brand-line);
+  background: var(--brand-surface);
+}
+.glossary-category {
+  flex-shrink: 0;
+  max-width: 48%;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.glossary-source {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+.glossary-source > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+@media (max-width: 420px) {
+  .glossary-toolbar {
+    flex-wrap: wrap;
+  }
+  .glossary-toolbar > :last-child {
+    flex: 1 1 100%;
+  }
+  .glossary-entries .mantine-Accordion-label .mantine-Group-root {
+    flex-wrap: wrap;
+  }
+  .glossary-category {
+    max-width: 100%;
+  }
+}

@@ -8,6 +8,31 @@ import app as b
 
 
 class CompanionIntegrityTest(unittest.TestCase):
+    def test_glossary_sources_are_offline_and_personal_metadata_is_atomic_and_scoped(self):
+        catalogue=self.c.get('/api/companion').json
+        self.assertEqual(catalogue['records'],[])
+        terms=catalogue['glossary'];categories={row['id'] for row in catalogue['glossary_categories']}
+        self.assertGreaterEqual(len(terms),200)
+        self.assertEqual(len({row['id'] for row in terms}),len(terms))
+        for term in terms:
+            self.assertIn(term['category'],categories);self.assertTrue(term['body'])
+            self.assertTrue(term['sources'])
+            for source in term['sources']:
+                self.assertTrue(source['url'].startswith('https://'))
+                self.assertTrue(source['publisher']);self.assertTrue(source['checked_on'])
+        self.assertEqual(self.c.get('/api/companion',headers=self.foreign).json['glossary'],terms)
+        row=self.record(kind='glossary',title='Eigene Werkzeugnotiz',data={'category':'tool','source_url':'https://example.org/werkzeug'})
+        path='/api/companion/records/'+str(row['id'])
+        for data in ({'category':[]},{'category':'unbekannt'},{'source_url':'javascript:alert(1)'},{'source_url':'https://user:password@example.org'},{'source_url':'https://example.org/ungueltiger link'}):
+            response=self.c.patch(path,json={'title':'Darf nicht bleiben','data':data})
+            self.assertEqual(response.status_code,400,response.json)
+        self.assertEqual(self.c.patch(path,headers=self.foreign,json={'body':'Fremd'}).status_code,404)
+        saved=self.c.get('/api/companion').json['records'][0]
+        self.assertEqual(saved['title'],row['title']);self.assertEqual(saved['data'],row['data'])
+        self.assertEqual(self.c.get('/api/companion',headers=self.foreign).json['records'],[])
+        legacy=self.record(kind='glossary',title='Bisherige Notiz',data={'document_ids':[]})
+        self.assertEqual(legacy['data'],{'document_ids':[]})
+
     def test_osb_plans_are_distinct_scoped_and_invalid_edits_roll_back(self):
         settings=dict(width=4000,height=3000,tileWidth=2500,tileHeight=675,joint=0,edge=15,reserve=10,rotated=False,pattern='half',start='corner',offsetX=0,offsetY=0,
             osb=dict(installation='joists',profile='tg',thickness=22,minStagger=400,joistSpacing=625,joistOffset=0,joistWidth=60))

@@ -14,24 +14,13 @@ import re
 import zipfile
 from flask import jsonify, request, send_file
 from sqlalchemy import select, event
+from glossary_catalog import GLOSSARY, GLOSSARY_CATEGORIES, GLOSSARY_VERSION, validate_glossary_metadata
 from money_values import Money
 from multi_projects import current_project_id, ProjectSession
 from tile_plans import validate_contour, validate_room_geometry, validate_tile_products, validate_osb_settings
 
 KINDS = {'journal','defect','house','dossier','addendum','terms','glossary','tool_return','reminder','template','tile_plan','osb_plan','room'}
 STATUSES = {'Offen','In Arbeit','Erledigt','Archiviert','Entwurf','Freigegeben','Abgelehnt'}
-GLOSSARY = [
- ('Aufmaß','Das Erfassen tatsächlicher Maße vor Ort. Grundlage für Mengen, Bestellung und häufig die Abrechnung.'),
- ('Grundierung','Vorbehandlung, die je nach Produkt die Saugfähigkeit reguliert oder die Haftung des folgenden Materials verbessert.'),
- ('Dampfbremse','Schicht zur Begrenzung von Wasserdampfdiffusion. Anschlüsse und Material müssen zum Bauteilaufbau passen.'),
- ('Wärmebrücke','Bereich mit erhöhtem Wärmeabfluss, etwa an Anschlüssen. Kann niedrige Oberflächentemperaturen und Feuchte begünstigen.'),
- ('Estrich','Lastverteilende Schicht unter dem Bodenbelag. Aufbau, Trocknung und Belegreife hängen vom System ab.'),
- ('Drehmomentschlüssel','Werkzeug zum Anziehen mit festgelegtem Drehmoment. Herstellerwerte beachten.'),
- ('Bohrhammer','Werkzeug mit Schlagwerk zum Bohren oder Meißeln in mineralischem Material. Untergrund und Leitungen vorher prüfen.'),
- ('Exzenterschleifer','Schleifgerät mit kombinierter Dreh- und Schwingbewegung. Absaugung und geeignete Körnung verwenden.'),
- ('Abnahme','Bestätigung der vertragsgemäßen Leistung; offene Punkte und Vorbehalte schriftlich dokumentieren.'),
- ('Nachtrag','Änderung oder Ergänzung des vereinbarten Leistungsumfangs. Leistung und Preis vor Ausführung schriftlich klären.'),
-]
 TEMPLATES = {
  'garten': ('Garten', ['Bestand und Maße aufnehmen','Boden und Entwässerung prüfen','Material und Liefertermine planen','Ausführung und Entsorgung organisieren']),
  'dach': ('Dach', ['Bestand und Schäden dokumentieren','Fachbetrieb und Genehmigungen klären','Angebote vergleichen','Witterungsschutz und Abnahme planen']),
@@ -138,7 +127,7 @@ def register_companion(r):
 
     @app.get('/api/companion')
     def companion_index():
-        return jsonify(records=[wire(x) for x in records()], references=refs(), glossary=[dict(title=t,body=b) for t,b in GLOSSARY],
+        return jsonify(records=[wire(x) for x in records()], references=refs(), glossary=GLOSSARY, glossary_categories=GLOSSARY_CATEGORIES, glossary_version=GLOSSARY_VERSION,
                        templates=[dict(id=k,title=v[0],steps=v[1]) for k,v in TEMPLATES.items()])
 
     @app.post('/api/companion/records')
@@ -169,6 +158,7 @@ def register_companion(r):
             row.amount=money(body.get('amount',row.amount))
             data=body.get('data',data_for(row))
             if not isinstance(data,dict) or len(json.dumps(data,allow_nan=False))>20000:raise ValueError('Ungültige Zusatzangaben.')
+            if row.kind=='glossary':validate_glossary_metadata(data)
             if row.kind=='room':validate_room_geometry(data.get('geometry'))
             if row.kind in ('tile_plan','osb_plan'):
                 data['tile_products'],images=validate_tile_products(data.get('tile_products',[]),lambda ident:db.session.get(r.ProjectDocument,ident))

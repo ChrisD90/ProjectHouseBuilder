@@ -1,0 +1,3597 @@
+{
+  "version": "2026-11-22",
+  "categories": [
+    {
+      "id": "material",
+      "label": "Materialien & Baustoffe"
+    },
+    {
+      "id": "tool",
+      "label": "Werkzeuge & Maschinen"
+    },
+    {
+      "id": "technique",
+      "label": "Techniken & Verarbeitung"
+    },
+    {
+      "id": "component",
+      "label": "Bauteile & Konstruktion"
+    },
+    {
+      "id": "physics",
+      "label": "Bauphysik & Energie"
+    },
+    {
+      "id": "general",
+      "label": "Allgemeine Begriffe & Planung"
+    },
+    {
+      "id": "services",
+      "label": "Haustechnik & Installation"
+    },
+    {
+      "id": "safety",
+      "label": "Arbeitsschutz"
+    }
+  ],
+  "entries": [
+    {
+      "id": "abdichtung",
+      "title": "Abdichtung",
+      "body": "Schutzkonstruktion gegen das Eindringen von Wasser in beanspruchte Bauteile. Sie ist von bloßer Wasserabweisung oder einer sichtbaren Dichtstofffuge zu unterscheiden.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Abdichtung | Stadt- und Dachbegrünung | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/a/abdichtung-8226023",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "abnahme",
+      "title": "Abnahme",
+      "body": "Rechtlich bedeutsame Erklärung beziehungsweise Vorgang zur Anerkennung einer Leistung als im Wesentlichen vertragsgerecht. Mängel, Vorbehalte und Vertragsgrundlage sind zu beachten.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "§ 640 BGB - Einzelnorm",
+          "publisher": "Gesetze im Internet",
+          "url": "https://www.gesetze-im-internet.de/bgb/__640.html",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "abschlagsrechnung",
+      "title": "Abschlagsrechnung",
+      "body": "Rechnung über einen Teil der bereits erbrachten vertraglichen Leistung. Sie ist nicht automatisch eine zusätzliche Leistung zum ursprünglichen Auftrag.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "§ 632a BGB - Einzelnorm",
+          "publisher": "Gesetze im Internet",
+          "url": "https://www.gesetze-im-internet.de/bgb/__632a.html",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "absperrventil",
+      "title": "Absperrventil",
+      "body": "Armatur zum Unterbrechen eines Flüssigkeits- oder Gasstroms. Ein Absperrventil ist nicht automatisch für jede Regelaufgabe geeignet.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Absperrventil – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Absperrventil",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "absturzsicherung",
+      "title": "Absturzsicherung",
+      "body": "Technische oder persönliche Schutzmaßnahmen gegen Absturz. Die passende Lösung richtet sich nach Arbeitsplatz und Gefährdung; kollektive Schutzmaßnahmen haben grundsätzlich Vorrang.",
+      "category": "safety",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Absturzsicherung | Gerüste und Schalungen | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/a/absturzsicherung-10087375",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "acryl-dichtstoff",
+      "title": "Acryl-Dichtstoff",
+      "body": "Dichtstoff für geeignete Anschluss- und Rissfugen, oft überstreichbar. Bewegungsaufnahme und Feuchtebeständigkeit sind geringer als bei manchen anderen Dichtstoffsystemen.",
+      "category": "material",
+      "aliases": [
+        "Acryldichtmasse"
+      ],
+      "sources": [
+        {
+          "title": "Dichtstoff – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Dichtstoff#Acrylat-Dichtstoffe",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "akkuschrauber",
+      "title": "Akkuschrauber",
+      "body": "Akkubetriebenes Werkzeug zum Ein- und Ausdrehen von Schrauben, je nach Bauart auch zum Bohren. Drehmoment und Bit müssen zur Schraubverbindung passen.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Bohrschrauber – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Akkuschrauber",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "anschlussfuge",
+      "title": "Anschlussfuge",
+      "body": "Fuge am Übergang zwischen Bauteilen oder Materialien. Ihre Ausbildung richtet sich unter anderem nach Bewegungen sowie Schall-, Luft- und Wasserbeanspruchung.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Fuge (Bauwesen) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Anschlussfuge",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "arbeitsfuge",
+      "title": "Arbeitsfuge",
+      "body": "Fuge zwischen zeitlich getrennt ausgeführten Betonierabschnitten. Lage und gegebenenfalls Abdichtung müssen geplant werden.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Fuge (Bauwesen) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Fuge_(Bauwesen)#Arbeitsfuge",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "asbest",
+      "title": "Asbest",
+      "body": "Faserförmige Mineralien, die in vielen älteren Bauprodukten vorkommen können. Bei Verdacht Material nicht eigenständig bearbeiten; Erkundung und zulässige Arbeiten fachkundig klären.",
+      "category": "safety",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Asbest | Gesund Bauen | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/a/asbest-1547053",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "atemschutz",
+      "title": "Atemschutz",
+      "body": "Schutz gegen das Einatmen gefährlicher Stoffe oder ungeeigneter Atemluft. Filterart, Passform und Arbeitsbedingungen bestimmen die Eignung.",
+      "category": "safety",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Atemschutzgerät – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Atemschutz",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "attika",
+      "title": "Attika",
+      "body": "Wandartiger Abschluss über dem Dachrand. Abdeckung und Anschlüsse müssen Niederschlagswasser sicher ableiten.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Attika | Flachdach | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/a/attika-52571",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "aufmass",
+      "title": "Aufmaß",
+      "body": "Erfassen der tatsächlichen Abmessungen und Mengen vor Ort. Es dient etwa Bestandsplänen, Materialermittlung oder der Prüfung einer Abrechnung.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Aufmaß | Bauen im Bestand | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/a/aufmass-49533",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "aufsparrendaemmung",
+      "title": "Aufsparrendämmung",
+      "body": "Dämmung oberhalb der Sparren. Sie kann eine weitgehend durchgehende Dämmebene bilden, benötigt aber eine entsprechend geplante Dachkonstruktion.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Aufsparrendämmung | Holz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/a/aufsparrendaemmung-6606523",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "ausdehnungsgefaess",
+      "title": "Ausdehnungsgefäß",
+      "body": "Bauteil zum Ausgleich von Volumenänderungen in einer Anlage, beispielsweise durch Erwärmung von Heizungswasser. Dimensionierung und Vordruck müssen zum System passen.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Ausdehnungsgefäß | Heizung | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/a/ausdehnungsgefaess-46845",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "bandschleifer",
+      "title": "Bandschleifer",
+      "body": "Schleifmaschine mit umlaufendem Schleifband und hohem Materialabtrag. Sie erfordert eine kontrollierte Führung, um Vertiefungen zu vermeiden.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Bandschleifer – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Bandschleifer",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "baufeuchte",
+      "title": "Baufeuchte",
+      "body": "Während Bau oder Nutzung in ein Gebäude gelangte beziehungsweise eingebaute Feuchtigkeit. Sie muss bei Trocknung, Lüftung und Folgearbeiten berücksichtigt werden.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Baufeuchte | Flachdach | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/b/baufeuchte-52573",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "baustelleneinrichtung",
+      "title": "Baustelleneinrichtung",
+      "body": "Vorbereitende Einrichtungen und Organisation einer Baustelle, etwa Zufahrt, Lager, Versorgung und Schutzmaßnahmen. Auch deren spätere Räumung gehört zur Planung.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Baustelleneinrichtung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Baustelleneinrichtung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "bauzeitenplan",
+      "title": "Bauzeitenplan",
+      "body": "Zeitliche Darstellung geplanter Bauabläufe, Termine und gegebenenfalls Abhängigkeiten. Sie unterstützt die Abstimmung zwischen beteiligten Firmen.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Bauzeitenplan – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Bauzeitenplan",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "belegreife",
+      "title": "Belegreife",
+      "body": "Zustand eines Untergrunds, in dem ein bestimmter Belag nach den geltenden Systemvorgaben verlegt werden kann. Eine feste Zahl von Trocknungstagen genügt als Nachweis nicht.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Belegreife | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/b/belegreife-50749",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "bestandsaufnahme",
+      "title": "Bestandsaufnahme",
+      "body": "Systematisches Erfassen des vorhandenen Gebäudes, seiner Maße, Bauteile und gegebenenfalls Schäden. Sie bildet eine Grundlage für Planung und Sanierung.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Bestandsaufnahme | Bauen im Bestand | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/b/bestandsaufnahme-49541",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "beton",
+      "title": "Beton",
+      "body": "Baustoff aus Zement, Wasser und Gesteinskörnung. Er kann hohe Druckkräfte aufnehmen; Zugkräfte übernimmt bei Stahlbeton vor allem die Bewehrung.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Beton – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Beton",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "betonmischer",
+      "title": "Betonmischer",
+      "body": "Gerät zum Mischen der Bestandteile von Beton oder geeigneten Mörteln. Rezeptur und Mischzeit sind für gleichbleibende Eigenschaften wichtig.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Betonmischer – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Betonmischer",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "bewegungsfuge",
+      "title": "Bewegungsfuge",
+      "body": "Geplant freigehaltener beziehungsweise passend ausgebildeter Zwischenraum, der Bewegungen aufnehmen soll. Sie darf nicht beliebig starr überbrückt werden.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Bewegungsfuge | Flachdach | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/b/bewegungsfuge-52577",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "bewehrung",
+      "title": "Bewehrung",
+      "body": "Einlagen, meist aus Stahl, zur Aufnahme von Beanspruchungen in Betonbauteilen. Lage, Überdeckung und Verankerung sind Teil der statischen Planung.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Bewehrung | Beton | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/b/bewehrung-46581",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "bitumen",
+      "title": "Bitumen",
+      "body": "Dunkles Bindemittel, das unter anderem für Dach- und Bauwerksabdichtungen sowie Asphalt verwendet wird. Es ist nicht mit teerhaltigen Altbaustoffen gleichzusetzen.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Bitumen | Flachdach | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/b/bitumen-52579",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "blower-door-test",
+      "title": "Blower-Door-Test",
+      "body": "Messung der Luftdurchlässigkeit einer Gebäudehülle durch kontrollierte Druckdifferenz. Sie kann auch zur Suche nach Leckagen eingesetzt werden.",
+      "category": "physics",
+      "aliases": [
+        "Differenzdruckmessung",
+        "Luftdichtheitsmessung"
+      ],
+      "sources": [
+        {
+          "title": "Blower-Door-Test | Holz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/b/blower-door-test-6611550",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "bodenplatte",
+      "title": "Bodenplatte",
+      "body": "Flächiges Bauteil am unteren Gebäudeabschluss. Ob und wie es Lasten gründet, hängt vom statischen System ab.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Gründung (Bauwesen) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Gr%C3%BCndung_(Bauwesen)#Flachgr%C3%BCndungen",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "bohren",
+      "title": "Bohren",
+      "body": "Herstellen meist runder Löcher mit einem Bohrwerkzeug. Bohrertyp und Drehzahl richten sich nach Material und Durchmesser.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Bohren – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Bohren",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "bohrhammer",
+      "title": "Bohrhammer",
+      "body": "Bohrgerät mit eigenständigem Schlagwerk, besonders für mineralische Untergründe. Je nach Bauart ist zusätzlich Meißelbetrieb möglich.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Bohrhammer – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Bohrhammer",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "bohrmaschine",
+      "title": "Bohrmaschine",
+      "body": "Maschine zum Herstellen von Bohrungen mit rotierendem Werkzeug. Bohrer, Drehzahl und Betriebsart müssen zum Werkstoff passen.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Bohrmaschine – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Bohrmaschine",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "brettschichtholz",
+      "title": "Brettschichtholz",
+      "body": "Tragender Holzwerkstoff aus miteinander verklebten Brettlamellen. Er ermöglicht große, formstabile Bauteile; Bemessung und Verbindung sind Planungsaufgaben.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Brettschichtholz – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Brettschichtholz",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "buttering-floating-verfahren",
+      "title": "Buttering-Floating-Verfahren",
+      "body": "Kombiniertes Auftragen von Klebemörtel auf Untergrund und Fliesenrückseite. Es wird eingesetzt, wenn eine besonders hohe Kontaktfläche erforderlich ist.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Buttering-Floating-Verfahren – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Buttering-Floating-Verfahren",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "butteringsverfahren",
+      "title": "Buttering-Verfahren",
+      "body": "Fliesenverlegung, bei der der Klebemörtel auf die Fliesenrückseite aufgetragen wird. Es ist vom Floatingverfahren zu unterscheiden.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Buttering-Floating-Verfahren – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Buttering-Floating-Verfahren",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "calciumsulfatestrich",
+      "title": "Calciumsulfatestrich",
+      "body": "Estrich mit Calciumsulfat als Bindemittel, häufig auch Anhydritestrich genannt. Für Feuchtebeanspruchungen sind die Systemgrenzen zu beachten.",
+      "category": "material",
+      "aliases": [
+        "Anhydritestrich",
+        "CA-Estrich"
+      ],
+      "sources": [
+        {
+          "title": "Anhydritestrich – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Calciumsulfatestrich",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "cuttermesser",
+      "title": "Cuttermesser",
+      "body": "Messer mit auswechselbarer oder abbrechbarer Klinge, beispielsweise zum Schneiden von Karton und geeigneten Belägen. Sichere Schnittführung und geeignete Unterlage sind wichtig.",
+      "category": "tool",
+      "aliases": [
+        "Teppichmesser",
+        "Cutter",
+        "Tapetenmesser"
+      ],
+      "sources": [
+        {
+          "title": "Cutter (Messer) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Cuttermesser",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "dachlatte",
+      "title": "Dachlatte",
+      "body": "Schmaler Holzquerschnitt, auf dem geeignete Dachdeckungen befestigt oder aufgelegt werden. Abstände und Befestigung richten sich nach Deckung und Konstruktion.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Dachlatte – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Dachlatte",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "dampfbremse",
+      "title": "Dampfbremse",
+      "body": "Schicht zur Begrenzung der Wasserdampfdiffusion durch ein Bauteil. Sie muss zum Aufbau passen und ist von der separat zu erfüllenden Luftdichtheit zu unterscheiden.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Dampfbremse | Bauen im Bestand | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/d/dampfbremse-49513",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "dampfsperre",
+      "title": "Dampfsperre",
+      "body": "Schicht mit sehr hohem Widerstand gegen Wasserdampfdiffusion. Ein besonders hoher Widerstand ist nicht automatisch die beste Lösung für jeden Bauteilaufbau.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Dampfsperre | Dämmstoffe | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/d/dampfsperre-1142567",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "dickbettverfahren",
+      "title": "Dickbettverfahren",
+      "body": "Verlegen von Platten oder Fliesen in einem dickeren Mörtelbett. Aufbau und Mörtel müssen zum Material und Einsatzort passen.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Dickbettverfahren – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Dickbettverfahren",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "diffusion",
+      "title": "Diffusion",
+      "body": "Transport von Teilchen aufgrund von Konzentrationsunterschieden; in der Bauphysik häufig auf Wasserdampf bezogen. Sie ist von strömender Luft zu unterscheiden.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Diffusion | Nachhaltig Bauen | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/d/diffusion-664264",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "dispersionsfarbe",
+      "title": "Dispersionsfarbe",
+      "body": "Beschichtungsstoff, bei dem Bindemittelteilchen in einer Flüssigkeit verteilt sind. Waschbeständigkeit, Deckvermögen und Untergrundeignung sind produktabhängig.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Dispersionsfarbe – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Dispersionsfarbe",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "drainage",
+      "title": "Drainage",
+      "body": "Einrichtung zum Sammeln und Ableiten von Wasser im Boden. Sie ersetzt keine erforderliche Bauwerksabdichtung und muss zulässig entwässern können.",
+      "category": "component",
+      "aliases": [
+        "Dränage"
+      ],
+      "sources": [
+        {
+          "title": "Drainage (technische Systeme) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Drainage_(Boden)",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "drehmomentschluessel",
+      "title": "Drehmomentschlüssel",
+      "body": "Werkzeug zum Anziehen von Schraubverbindungen mit einem vorgegebenen Drehmoment. Herstellerwerte, Messbereich und gegebenenfalls Kalibrierung beachten.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Drehmomentschlüssel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Drehmomentschl%C3%BCssel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "duebel",
+      "title": "Dübel",
+      "body": "Befestigungselement zur Verankerung in einem Untergrund, beispielsweise Mauerwerk oder Beton. Untergrund, Last, Randabstand und das zugelassene System bestimmen die Auswahl.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Dübel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/D%C3%BCbel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "duennbettverfahren",
+      "title": "Dünnbettverfahren",
+      "body": "Verlegen eines Belags in einer vergleichsweise dünnen Klebemörtelschicht. Es verlangt einen ausreichend ebenen und geeigneten Untergrund.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Dünnbettverlegung | Fliesen und Platten | Verlegung | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/fliesen-und-platten/fachwissen/verlegung/duennbettverlegung-156895",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "einheitspreis",
+      "title": "Einheitspreis",
+      "body": "Vereinbarter Preis je Mengeneinheit einer Leistung, etwa pro m². Der Gesamtbetrag ergibt sich bei entsprechender Vertragsgestaltung aus Preis und abrechenbarer Menge.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Einheitspreis – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Einheitspreis",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "entkopplung",
+      "title": "Entkopplung",
+      "body": "Konstruktive Trennung von Belag und Untergrund, um bestimmte Spannungsübertragungen zu reduzieren. Sie ersetzt weder einen tragfähigen Untergrund noch jede notwendige Bewegungsfuge.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Entkopplung | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/e/entkopplung-50761",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "epoxidharz",
+      "title": "Epoxidharz",
+      "body": "Reaktionsharz, meist aus Harz und Härter angemischt. Es wird unter anderem für Beschichtungen, Verklebungen und spezielle Fugenmörtel eingesetzt.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Epoxidharz | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/e/epoxidharz-50661",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "eps",
+      "title": "EPS",
+      "body": "Expandiertes Polystyrol: ein leichter Kunststoff-Hartschaum für zahlreiche Dämmaufgaben. Druckfestigkeit, Brandverhalten und Einsatzbereich unterscheiden sich je nach Produkt.",
+      "category": "material",
+      "aliases": [
+        "Expandiertes Polystyrol",
+        "Styropor"
+      ],
+      "sources": [
+        {
+          "title": "Expandiertes Polystyrol (EPS) | Dämmstoffe | Dämmstoffe | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/daemmstoffe/fachwissen/daemmstoffe/expandiertes-polystyrol-eps-152198",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "estrich",
+      "title": "Estrich",
+      "body": "Schicht im Fußbodenaufbau, die einen ebenen Untergrund für den Belag bildet und je nach Konstruktion Lasten verteilt. Estrich ist nicht mit der tragenden Rohdecke gleichzusetzen.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Estrich | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/e/estrich-50883",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "exzenterschleifer",
+      "title": "Exzenterschleifer",
+      "body": "Schleifmaschine mit überlagerter Dreh- und Schwingbewegung. Sie wird häufig für gleichmäßige Oberflächenbearbeitung eingesetzt.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schwingschleifer – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Exzenterschleifer",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "farbrolle",
+      "title": "Farbrolle",
+      "body": "Walzenförmiges Werkzeug zum Auftragen von Beschichtungsstoffen auf größere Flächen. Bezug, Flor und Breite beeinflussen Auftrag und Oberflächenbild.",
+      "category": "tool",
+      "aliases": [
+        "Farbroller",
+        "Malerwalze"
+      ],
+      "sources": [
+        {
+          "title": "Farbroller – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Farbroller",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "fehlerstrom-schutzschalter",
+      "title": "Fehlerstrom-Schutzschalter",
+      "body": "Schutzeinrichtung, die bestimmte Fehlerströme erkennt und den Stromkreis abschaltet; auch FI oder RCD genannt. Sie ersetzt andere erforderliche Schutzmaßnahmen nicht.",
+      "category": "services",
+      "aliases": [
+        "FI-Schalter",
+        "RCD"
+      ],
+      "sources": [
+        {
+          "title": "Fehlerstrom-Schutzschalter – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Fehlerstrom-Schutzschalter",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "feile",
+      "title": "Feile",
+      "body": "Spanendes Handwerkzeug mit vielen Schneiden zum Bearbeiten und Entgraten. Form und Hieb werden passend zu Werkstoff und Aufgabe gewählt.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Feile – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Feile",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "feinsteinzeug",
+      "title": "Feinsteinzeug",
+      "body": "Dicht gesinterte keramische Fliese mit sehr geringer Wasseraufnahme. Auswahl von Kleber und Werkzeug muss zu Format, Untergrund und Anwendung passen.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Feinsteinzeug – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Feinsteinzeug",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "first",
+      "title": "First",
+      "body": "Oberer Abschluss, an dem sich geneigte Dachflächen treffen. Deckung und gegebenenfalls Lüftung müssen zur Konstruktion passen.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "First | Geneigtes Dach | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/f/first-49013",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "fischgraetmuster",
+      "title": "Fischgrätmuster",
+      "body": "Verlegemuster, in dem längliche Elemente wiederholt winklig aneinander anschließen. Zuschnitt und Bedarf unterscheiden sich von einer geraden Reihenverlegung.",
+      "category": "technique",
+      "aliases": [
+        "Fischgrat",
+        "Fischgrätenmuster"
+      ],
+      "sources": [
+        {
+          "title": "Fischgrätmuster – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Fischgr%C3%A4tmuster",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "fliesenkleber",
+      "title": "Fliesenkleber",
+      "body": "Klebstoff beziehungsweise Klebemörtel zum Befestigen keramischer Beläge. Untergrund, Fliesenmaterial, Format und Beanspruchung bestimmen das geeignete Produkt.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Fliesenkleber | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/f/fliesenkleber-50931",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "fliesenschneider",
+      "title": "Fliesenschneider",
+      "body": "Werkzeug zum Zuschneiden von Fliesen. Handgeräte ritzen und brechen; elektrische Geräte trennen mit einer passenden Scheibe.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Fliesenschneider – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Fliesenschneider",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "floatingverfahren",
+      "title": "Floating-Verfahren",
+      "body": "Fliesenverlegung, bei der der Klebemörtel auf den Untergrund aufgetragen und durchgekämmt wird. Erforderliche Benetzung und Klebermenge sind zu beachten.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Buttering-Floating-Verfahren – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Buttering-Floating-Verfahren",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "fraesen",
+      "title": "Fräsen",
+      "body": "Spanendes Verfahren mit rotierendem mehrschneidigem Werkzeug. Es wird beispielsweise zum Herstellen von Nuten und Profilen genutzt.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Fräsen – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Fr%C3%A4sen",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "fugenmoertel",
+      "title": "Fugenmörtel",
+      "body": "Mörtel zum Füllen von Fugen, beispielsweise zwischen Fliesen oder Mauersteinen. Er muss zur Fugenbreite und zur erwarteten Beanspruchung passen.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Fugenmörtel | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/f/fugenmoertel-50989",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "fundament",
+      "title": "Fundament",
+      "body": "Bauteil, das Lasten eines Bauwerks in den Untergrund überträgt. Form und Abmessungen hängen von Baugrund und Tragwerk ab.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Fundament – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Fundament",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "fussbodenheizung",
+      "title": "Fußbodenheizung",
+      "body": "Flächenheizung im Bodenaufbau, wassergeführt oder elektrisch. Aufbauhöhe, Regelung und Eignung des Bodenbelags sind zu berücksichtigen.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Fußbodenheizung | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/f/fussbodenheizung-50763",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "garantie",
+      "title": "Garantie",
+      "body": "Zusätzliche Zusage eines Garantiegebers unter bestimmten Bedingungen. Sie ersetzt die gesetzlichen Mängelrechte nicht automatisch.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Garantie – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Garantie",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "gefaehrdungsbeurteilung",
+      "title": "Gefährdungsbeurteilung",
+      "body": "Systematisches Ermitteln und Bewerten von Gefährdungen mit anschließender Festlegung geeigneter Maßnahmen. Sie steht vor der Auswahl einzelner Schutzmittel.",
+      "category": "safety",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Gefährdungsbeurteilung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Gef%C3%A4hrdungsbeurteilung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "gehrung",
+      "title": "Gehrung",
+      "body": "Schräg ausgeführter Schnitt beziehungsweise eine Verbindung über solche Schnittflächen. Bei rechtwinkligen Rahmen werden häufig zwei passende 45-Grad-Schnitte kombiniert.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Gehrung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Gehrung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "gehoerschutz",
+      "title": "Gehörschutz",
+      "body": "Schutzausrüstung zur Verringerung der Lärmeinwirkung auf das Gehör. Sie muss zur Lärmbelastung passen und korrekt getragen werden.",
+      "category": "safety",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Gehörschutz – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Geh%C3%B6rschutz",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "gewerk",
+      "title": "Gewerk",
+      "body": "Fachlich zusammengehöriger Arbeitsbereich am Bau, beispielsweise Zimmerer-, Elektro- oder Malerarbeiten. Seine Abgrenzung muss nicht mit genau einer Firma übereinstimmen.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Gewerk – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Gewerk",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "gewindeschneiden",
+      "title": "Gewindeschneiden",
+      "body": "Herstellen eines Gewindes mit schneidendem Werkzeug, etwa einem Gewindebohrer. Kernlochmaß und Werkzeug richten sich nach dem Gewindetyp.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Gewindebohrer – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Gewindebohrer",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "gewaehrleistung",
+      "title": "Gewährleistung",
+      "body": "Umgangssprachliche Bezeichnung für gesetzliche beziehungsweise vertragliche Mängelrechte. Sie ist von einer zusätzlichen Garantie zu unterscheiden.",
+      "category": "general",
+      "aliases": [
+        "Mängelrechte",
+        "Mängelhaftung"
+      ],
+      "sources": [
+        {
+          "title": "§ 634 BGB - Einzelnorm",
+          "publisher": "Gesetze im Internet",
+          "url": "https://www.gesetze-im-internet.de/bgb/__634.html",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "gips",
+      "title": "Gips",
+      "body": "Mineralischer Baustoff, der unter anderem als Putz, Spachtelmasse und Plattenkern eingesetzt wird. Für dauerhaft feuchte Bereiche ist nicht jedes Gipsprodukt geeignet.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Gips | Gesund Bauen | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/g/gips-1547625",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "gipsfaserplatte",
+      "title": "Gipsfaserplatte",
+      "body": "Bauplatte aus Gips und verteilten Fasern. Verarbeitung, Befestigung und Fugenausbildung unterscheiden sich von herkömmlichen Gipskartonplatten.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Gipsfaserplatten | Gesund Bauen | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/g/gipsfaserplatten-1547637",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "gipskartonplatte",
+      "title": "Gipskartonplatte",
+      "body": "Bauplatte mit Gipskern und Kartonummantelung, etwa für Trockenbauwände und Deckenbekleidungen. Feuchte- und Brandschutz erfordern den passenden Plattentyp und Systemaufbau.",
+      "category": "material",
+      "aliases": [
+        "Gipskarton",
+        "GK-Platte"
+      ],
+      "sources": [
+        {
+          "title": "Gipskarton – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Gipskartonplatte",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "glaswolle",
+      "title": "Glaswolle",
+      "body": "Mineralischer Faserdämmstoff, dessen Ausgangsstoffe unter anderem Glas enthalten. Er wird beispielsweise zwischen Sparren und in leichten Trennwänden eingesetzt.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Mineralwolle – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Glaswolle",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "glaettkelle",
+      "title": "Glättkelle",
+      "body": "Kelle mit weitgehend ebener Arbeitsfläche zum Aufziehen und Glätten von Putz oder Spachtelmasse. Sie dient nicht zum Vermessen der Ebenheit.",
+      "category": "tool",
+      "aliases": [
+        "Traufel",
+        "Glättscheibe"
+      ],
+      "sources": [
+        {
+          "title": "Glättkelle – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Gl%C3%A4ttkelle",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "grundierung",
+      "title": "Grundierung",
+      "body": "Vorbehandlung eines Untergrunds, etwa zur Regulierung der Saugfähigkeit oder Verbesserung der Haftung. Das Produkt muss zu Untergrund und Folgeauftrag passen.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Grundierung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Grundierung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "halbverband",
+      "title": "Halbverband",
+      "body": "Verlegemuster mit um eine halbe Elementlänge versetzten Reihen. Bei großformatigen Fliesen können produktabhängige Verformungen gegen diesen Versatz sprechen.",
+      "category": "technique",
+      "aliases": [
+        "Halber Versatz"
+      ],
+      "sources": [
+        {
+          "title": "Verlegemuster | Fliesen und Platten | Verlegung | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/fliesen-und-platten/fachwissen/verlegung/verlegemuster-156887",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "hammer",
+      "title": "Hammer",
+      "body": "Schlagwerkzeug aus Kopf und Stiel, beispielsweise zum Eintreiben oder Formen. Kopfmaterial und Bauform müssen zur Arbeit und zur empfindlichen Oberfläche passen.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Hammer – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Hammer",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "handkreissaege",
+      "title": "Handkreissäge",
+      "body": "Handgeführte Säge mit rotierendem Kreissägeblatt. Schnitttiefe, Blatt und Führung sind auf den Werkstoff abzustimmen.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Kreissäge – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Handkreiss%C3%A4ge",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "handsaege",
+      "title": "Handsäge",
+      "body": "Säge, deren Schnittbewegung unmittelbar von Hand ausgeführt wird. Zahnform, Blatt und Schnittführung richten sich nach Material und gewünschtem Ergebnis.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Säge – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Hands%C3%A4ge",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "heizkreis",
+      "title": "Heizkreis",
+      "body": "Kreislauf, in dem ein Wärmeträger Heizflächen versorgt. Temperaturregelung und hydraulische Abstimmung beeinflussen die Wärmeverteilung.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Heizkreis | Heizung | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/h/heizkreis-47169",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "hobel",
+      "title": "Hobel",
+      "body": "Werkzeug zum spanenden Bearbeiten von Holzflächen und Kanten. Der kontrollierte Spanabtrag kann Flächen glätten oder Maße anpassen.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Hobel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Hobel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "hobeln",
+      "title": "Hobeln",
+      "body": "Spanende Bearbeitung, bei der eine Schneide dünne Späne abnimmt. Im Holzhandwerk dient sie etwa dem Glätten und maßhaltigen Zurichten.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Hobel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Hobel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "holz",
+      "title": "Holz",
+      "body": "Natürlicher Werkstoff mit stark richtungsabhängigen Eigenschaften. Feuchteänderungen können Quellen und Schwinden verursachen; Holzart, Sortierung und Einbauort sind zu berücksichtigen.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Holz | Gerüste und Schalungen | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/h/holz-4826407",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "holzfaserdaemmung",
+      "title": "Holzfaserdämmung",
+      "body": "Dämmstoff aus Holzfasern, als flexible Matte oder druckfestere Platte erhältlich. Rohdichte, Feuchteeinwirkung und Verwendungsbereich müssen zusammenpassen.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Holzfasern | Dämmstoffe | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/h/holzfasern-1121071",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "hydraulischer-abgleich",
+      "title": "Hydraulischer Abgleich",
+      "body": "Abstimmen der Volumenströme einer Heizungsanlage auf den jeweiligen Wärmebedarf. Ziel ist eine bedarfsgerechte Verteilung statt zufälliger Über- und Unterversorgung.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Hydraulischer Abgleich | Heizung | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/h/hydraulischer-abgleich-2441089",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "hydrophobierung",
+      "title": "Hydrophobierung",
+      "body": "Behandlung zur Verringerung der Benetzbarkeit und kapillaren Wasseraufnahme einer Oberfläche. Vorhandene Risse oder fehlende Abdichtungen werden dadurch nicht ersetzt.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Hydrophobierung | Holz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/h/hydrophobierung-8470598",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "impraegnierung",
+      "title": "Imprägnierung",
+      "body": "Behandlung, die ein Material gegen bestimmte Einflüsse widerstandsfähiger machen soll. Sie ist nicht automatisch eine Abdichtung oder ein vollständiger Holzschutz.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Imprägnierung | Bauen im Bestand | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/i/impraegnierung-49631",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "innendaemmung",
+      "title": "Innendämmung",
+      "body": "Dämmung auf der Raumseite einer Außenwand. Feuchteschutz und Wärmebrücken an Anschlüssen müssen besonders sorgfältig geplant werden.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Innendämmung | Dämmstoffe | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/i/innendaemmung-768041",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "innensechskantschluessel",
+      "title": "Innensechskantschlüssel",
+      "body": "Werkzeug für Schrauben mit sechseckiger Innenaufnahme, umgangssprachlich oft Inbusschlüssel genannt. Es ist nicht mit einem Torx-Profil austauschbar.",
+      "category": "tool",
+      "aliases": [
+        "Inbusschlüssel",
+        "Inbus",
+        "Imbus"
+      ],
+      "sources": [
+        {
+          "title": "Innensechskant – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Innensechskantschl%C3%BCssel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "kalkmoertel",
+      "title": "Kalkmörtel",
+      "body": "Mörtel mit Kalk als wesentlichem Bindemittel. Seine Eigenschaften hängen unter anderem davon ab, ob Luftkalk oder hydraulischer Kalk verwendet wird.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Kalkmörtel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Kalkm%C3%B6rtel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "kalkputz",
+      "title": "Kalkputz",
+      "body": "Putz mit Kalk als wesentlichem Bindemittel. Zusammensetzung, Untergrund und Nachbehandlung beeinflussen Haftung und Erhärtung.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Kalkmörtel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Kalkputz",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "kalksandstein",
+      "title": "Kalksandstein",
+      "body": "Mauerstein aus Kalk, Sand und Wasser, der unter Dampfdruck gehärtet wird. Seine hohe Rohdichte ist unter anderem für Schallschutz und Tragfähigkeit relevant.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Kalksandstein | Mauerwerk | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/k/kalksandstein-613065",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "kapillaritaet",
+      "title": "Kapillarität",
+      "body": "Transport von Flüssigkeit in engen Poren und Spalten. Sie ist unter anderem für Feuchteaufnahme und Feuchteverteilung in mineralischen Baustoffen wichtig.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Kapillarität | Dämmstoffe | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/k/kapillaritaet-1111151",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "kappsaege",
+      "title": "Kappsäge",
+      "body": "Säge zum Ablängen von Werkstücken, oft mit verstellbarer Gehrung. Das Werkstück muss sicher aufliegen und fixiert sein.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Kappsäge – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Kapps%C3%A4ge",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "kartuschenpistole",
+      "title": "Kartuschenpistole",
+      "body": "Werkzeug zum dosierten Auspressen von Dicht- oder Klebstoff aus Kartuschen. Gleichmäßiger Vorschub unterstützt eine kontrollierte Fuge.",
+      "category": "tool",
+      "aliases": [
+        "Kartuschenpresse"
+      ],
+      "sources": [
+        {
+          "title": "Kartuschenpistole – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Kartuschenpistole",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "kernbohrung",
+      "title": "Kernbohrung",
+      "body": "Bohrverfahren, bei dem ein ringförmiges Werkzeug einen Kern stehen lässt. Tragwerk, Leitungen und zulässige Durchführung müssen vorab geprüft werden.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Kernlochbohrung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Kernbohrung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "kies",
+      "title": "Kies",
+      "body": "Überwiegend rundliche mineralische Körnung. Korngröße und Zusammensetzung bestimmen die Eignung, etwa als Betonzuschlag oder für bestimmte Schichten im Außenbereich.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Kies – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Kies",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "kombizange",
+      "title": "Kombizange",
+      "body": "Zange, die mehrere Funktionen wie Greifen, Halten und Schneiden vereint. Sie ist kein universeller Ersatz für Spezialzangen oder elektrische Schutzmaßnahmen.",
+      "category": "tool",
+      "aliases": [
+        "Kombinationszange"
+      ],
+      "sources": [
+        {
+          "title": "Kombinationszange – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Kombizange",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "konterlattung",
+      "title": "Konterlattung",
+      "body": "Lattung oberhalb einer darunterliegenden Schicht, die unter anderem Abstand und Hinterlüftung beziehungsweise Wasserableitung ermöglichen kann.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Konterlattung | Schiefer | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/k/konterlattung-3231667",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "konvektion",
+      "title": "Konvektion",
+      "body": "Wärme- oder Stofftransport durch strömende Flüssigkeiten beziehungsweise Gase. Durch undichte Bauteile strömende feuchte Luft kann erhebliche Feuchtemengen transportieren.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Konvektion | Holz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/k/konvektion-6629381",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "kreuzverband",
+      "title": "Kreuzverband",
+      "body": "Verlegemuster, bei dem Fugen benachbarter Reihen durchlaufen und Kreuzfugen entstehen. Maßhaltigkeit der Elemente ist für das Fugenbild wichtig.",
+      "category": "technique",
+      "aliases": [
+        "Kreuzfuge"
+      ],
+      "sources": [
+        {
+          "title": "Verlegemuster | Fliesen und Platten | Verlegung | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/fliesen-und-platten/fachwissen/verlegung/verlegemuster-156887",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "koerperschall",
+      "title": "Körperschall",
+      "body": "Schallausbreitung in festen Körpern. Er kann an anderen Stellen wieder als hörbarer Luftschall abgestrahlt werden.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Körperschall | Dämmstoffe | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/k/koerperschall-45011",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "laibung",
+      "title": "Laibung",
+      "body": "Seitliche oder obere Begrenzungsfläche einer Wandöffnung, beispielsweise am Fenster. Anschlüsse sind für Wärme- und Feuchteschutz wichtig.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Laibung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Laibung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "laminieren",
+      "title": "Laminieren",
+      "body": "Verbinden mehrerer Schichten zu einem Verbund. Der Begriff wird je nach Gewerk etwa für faserverstärkte Kunststoffe oder beschichtete Werkstoffe verwendet.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Lamination – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Laminieren",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "lehmputz",
+      "title": "Lehmputz",
+      "body": "Putz mit Lehm als Bindemittel. Er kann Feuchtigkeit aus der Raumluft puffern, ist aber ohne geeigneten Schutz nicht für jede Wasserbeanspruchung geeignet.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Lehmputz – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Lehmputz",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "leichtbeton",
+      "title": "Leichtbeton",
+      "body": "Beton mit geringerer Rohdichte, beispielsweise durch leichte Gesteinskörnungen. Festigkeit und Wärmedämmung hängen vom konkreten Aufbau ab.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Leichtbeton | Mauerwerk | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/l/leichtbeton-541645",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "leistungsverzeichnis",
+      "title": "Leistungsverzeichnis",
+      "body": "Strukturierte Beschreibung der auszuführenden Leistungen, meist gegliedert nach Positionen. Es erleichtert vergleichbare Angebote und die spätere Abrechnung.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Leistungsverzeichnis | Controlling und Management | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/l/leistungsverzeichnis-8503934",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "leitungsschutzschalter",
+      "title": "Leitungsschutzschalter",
+      "body": "Schutzeinrichtung zum Abschalten bei Überlast oder Kurzschluss. Auslegung und Installation müssen zur Leitung und zum Stromkreis passen.",
+      "category": "services",
+      "aliases": [
+        "LS-Schalter",
+        "Sicherungsautomat"
+      ],
+      "sources": [
+        {
+          "title": "Leitungsschutzschalter | Elektro | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/l/leitungsschutzschalter-48851",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "lot",
+      "title": "Lot",
+      "body": "Gewicht an einer Schnur zur Bestimmung der Senkrechten. Es wird beispielsweise zum Übertragen von Punkten oder Prüfen einer Flucht eingesetzt.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Lot (Messzeug) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Lot_%28Werkzeug%29",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "luftdichtheit",
+      "title": "Luftdichtheit",
+      "body": "Eigenschaft einer Gebäudehülle, ungewollte Luftströmungen durch Fugen und Bauteile zu begrenzen. Geplante Lüftung bleibt trotzdem erforderlich.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Luftdichtheit | Holz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/l/luftdichtheit-6895011",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "luftschall",
+      "title": "Luftschall",
+      "body": "Schall, der sich über die Luft ausbreitet und Bauteile zum Schwingen anregen kann. Seine Übertragung unterscheidet sich von unmittelbar eingeleitetem Körperschall.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Luftschall | Dämmstoffe | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/l/luftschall-902375",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "loeten",
+      "title": "Löten",
+      "body": "Fügen von Werkstücken mit einem geschmolzenen Zusatzwerkstoff, während die Grundwerkstoffe nicht aufgeschmolzen werden. Verfahren und Lot müssen zur Anwendung passen.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Löten – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/L%C3%B6ten",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "mangel",
+      "title": "Mangel",
+      "body": "Abweichung der geschuldeten von der tatsächlich erbrachten Leistung. Die rechtliche Bewertung hängt insbesondere von Vertrag und vereinbarter Beschaffenheit ab.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "§ 633 BGB - Einzelnorm",
+          "publisher": "Gesetze im Internet",
+          "url": "https://www.gesetze-im-internet.de/bgb/__633.html",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "maurerkelle",
+      "title": "Maurerkelle",
+      "body": "Handwerkzeug zum Aufnehmen, Verteilen und Formen von Mörtel. Unterschiedliche Kellenformen passen zu unterschiedlichen Mauer- und Putzarbeiten.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Maurerkelle – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Maurerkelle",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "meissel",
+      "title": "Meißel",
+      "body": "Werkzeug zum Trennen, Bearbeiten oder Abtragen harter Werkstoffe. Schneidenform und Werkzeugmaterial müssen zum bearbeiteten Untergrund passen.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Meißel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Mei%C3%9Fel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "messschieber",
+      "title": "Messschieber",
+      "body": "Messwerkzeug für Außen-, Innen- und Tiefenmaße. Für verlässliche Werte müssen Messflächen und Werkstück sauber sein.",
+      "category": "tool",
+      "aliases": [
+        "Schieblehre"
+      ],
+      "sources": [
+        {
+          "title": "Messschieber – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Messschieber",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "meterriss",
+      "title": "Meterriss",
+      "body": "Dauerhafte Höhenmarkierung als gemeinsamer Bezug für Ausbauarbeiten. Welche Bezugshöhe markiert ist, muss eindeutig festgelegt sein.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Meterriss – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Meterriss",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "mineralwolle",
+      "title": "Mineralwolle",
+      "body": "Sammelbegriff für faserförmige mineralische Dämmstoffe, insbesondere Glas- und Steinwolle. Wärme-, Schall- und Brandschutzeigenschaften sind produktabhängig.",
+      "category": "material",
+      "aliases": [
+        "Mineralfaserdämmstoff"
+      ],
+      "sources": [
+        {
+          "title": "Mineralwolle | Dämmstoffe | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/m/mineralwolle-45043",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "montageschaum",
+      "title": "Montageschaum",
+      "body": "Reaktiver Schaum, häufig auf Polyurethanbasis, zum Füllen und für dafür vorgesehene Montageaufgaben. Er ersetzt nicht automatisch eine mechanische Befestigung, Abdichtung oder Brandschutzlösung.",
+      "category": "material",
+      "aliases": [
+        "Bauschaum",
+        "PU-Schaum"
+      ],
+      "sources": [
+        {
+          "title": "Montageschaum – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Montageschaum",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "moertel",
+      "title": "Mörtel",
+      "body": "Gemisch aus Bindemittel, feiner Gesteinskörnung und Wasser, etwa zum Mauern, Verputzen oder Verfugen. Zusammensetzung und Festigkeit müssen zur Anwendung passen.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Mörtel | Mauerwerk | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/m/moertel-48045",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "nachbehandlung",
+      "title": "Nachbehandlung",
+      "body": "Maßnahmen nach dem Einbau, insbesondere um jungen Beton vor zu schnellem Austrocknen oder ungünstiger Witterung zu schützen. Umfang und Dauer sind abhängig von Bedingungen und Material.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Beton – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Beton#Nachbehandlung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "nachtrag",
+      "title": "Nachtrag",
+      "body": "Änderung oder Ergänzung eines Bauvertrags beziehungsweise seiner Vergütung. Anlass, Umfang und Preis sollten nachvollziehbar dokumentiert werden.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Nachtrag | Controlling und Management | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/n/nachtrag-8444258",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "nagel",
+      "title": "Nagel",
+      "body": "Meist stiftförmiges Verbindungselement, das durch Einschlagen in den Werkstoff befestigt wird. Form, Länge und Korrosionsschutz beeinflussen die Eignung.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Nagel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Nagel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "naturstein",
+      "title": "Naturstein",
+      "body": "Natürlich entstandenes Gestein, das beispielsweise als Platte oder Bodenbelag eingesetzt wird. Empfindlichkeit und geeignete Verlegeprodukte hängen von der Gesteinsart ab.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Naturstein – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Naturstein",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "nut-und-feder",
+      "title": "Nut und Feder",
+      "body": "Verbindung mit einer Ausnehmung und einem dazu passenden Vorsprung. Sie kann Bauteile führen und ausrichten; die erforderliche Verklebung oder Befestigung ist systemabhängig.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Nut-Feder-Verbindung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Nut_und_Feder",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "oberfraese",
+      "title": "Oberfräse",
+      "body": "Handgeführte Fräsmaschine für Nuten, Kanten und Profile, besonders in Holzwerkstoffen. Fräser, Drehzahl und Vorschub müssen zusammenpassen.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Oberfräse – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Oberfr%C3%A4se",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "ortgang",
+      "title": "Ortgang",
+      "body": "Seitlicher Abschluss einer geneigten Dachfläche am Giebel. Er benötigt eine zur Deckung und Windbeanspruchung passende Ausbildung.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Ortgang | Schiefer | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/o/ortgang-46307",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "osb-platte",
+      "title": "OSB-Platte",
+      "body": "Platte aus ausgerichteten länglichen Holzspänen. Nutzungsklasse, Plattendicke, Auflager und Verbindungen bestimmen, wofür sie eingesetzt werden darf.",
+      "category": "material",
+      "aliases": [
+        "Grobspanplatte",
+        "Oriented Strand Board"
+      ],
+      "sources": [
+        {
+          "title": "OSB | Holz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/o/osb-6983495",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "pauschalpreis",
+      "title": "Pauschalpreis",
+      "body": "Für einen definierten Leistungsumfang vereinbarter Gesamtpreis. Was umfasst ist und wie Änderungen behandelt werden, ergibt sich aus dem Vertrag.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Pauschalpreis – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Pauschalpreis",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "perimeterdaemmung",
+      "title": "Perimeterdämmung",
+      "body": "Dämmung erdberührter Gebäudebauteile außerhalb der Abdichtung. Dämmstoff und Konstruktion müssen Feuchte- und Druckbeanspruchung vertragen.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Perimeterdämmung | Bauen im Bestand | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/p/perimeterdaemmung-49629",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "persoenliche-schutzausruestung",
+      "title": "Persönliche Schutzausrüstung",
+      "body": "Am Körper getragene Ausrüstung gegen bestimmte Gefährdungen, etwa Schutzbrille, Gehörschutz oder Sicherheitsschuhe. Die Auswahl folgt der konkreten Gefährdung.",
+      "category": "safety",
+      "aliases": [
+        "PSA"
+      ],
+      "sources": [
+        {
+          "title": "Persönliche Schutzausrüstung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Pers%C3%B6nliche_Schutzausr%C3%BCstung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "pfette",
+      "title": "Pfette",
+      "body": "Längs verlaufender Träger einer Dachkonstruktion, der beispielsweise Sparren unterstützt. Die Lage wird etwa als Fuß-, Mittel- oder Firstpfette bezeichnet.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Pfette – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Pfette",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "photovoltaik",
+      "title": "Photovoltaik",
+      "body": "Umwandlung von Licht in elektrische Energie durch Solarzellen. Sie ist von Solarthermie zur Wärmeerzeugung zu unterscheiden.",
+      "category": "services",
+      "aliases": [
+        "PV",
+        "Solarstrom"
+      ],
+      "sources": [
+        {
+          "title": "Photovoltaik | Flachdach | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/p/photovoltaik-1133569",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "pinsel",
+      "title": "Pinsel",
+      "body": "Werkzeug zum Auftragen von Farbe, Lack oder anderen Flüssigkeiten. Besatz und Form müssen zum Beschichtungsstoff und zur gewünschten Oberfläche passen.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Pinsel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Pinsel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "porenbeton",
+      "title": "Porenbeton",
+      "body": "Leichter mineralischer Baustoff mit vielen kleinen Luftporen. Er lässt sich gut bearbeiten; Befestigungen und Oberflächenbehandlung müssen zum Untergrund passen.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Porenbeton | Beton | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/p/porenbeton-46599",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "potentialausgleich",
+      "title": "Potentialausgleich",
+      "body": "Elektrische Verbindung leitfähiger Teile zur Verringerung von Potentialunterschieden. Planung, Prüfung und Anschluss gehören in fachkundige Hände.",
+      "category": "services",
+      "aliases": [
+        "Potenzialausgleich"
+      ],
+      "sources": [
+        {
+          "title": "Potentialausgleich – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Potentialausgleich",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "pulverbeschichtung",
+      "title": "Pulverbeschichtung",
+      "body": "Beschichtungsverfahren mit pulverförmigem Material, das aufgebracht und anschließend zu einer Schicht verschmolzen beziehungsweise vernetzt wird.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Pulverbeschichtung | Sonnenschutz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/p/pulverbeschichtung-877109",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "quarzstaub",
+      "title": "Quarzstaub",
+      "body": "Feiner Staub mit kristallinem Siliziumdioxid, der etwa beim Bearbeiten mineralischer Baustoffe entstehen kann. Staubarme Verfahren und geeignete Absaugung sind wesentlich.",
+      "category": "safety",
+      "aliases": [
+        "Quarzfeinstaub"
+      ],
+      "sources": [
+        {
+          "title": "Quarzfeinstaub – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Quarzfeinstaub",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "randdaemmstreifen",
+      "title": "Randdämmstreifen",
+      "body": "Trennender Streifen zwischen Estrich beziehungsweise Bodenaufbau und angrenzenden Bauteilen. Er ermöglicht Bewegungen und hilft, Schallbrücken zu vermeiden.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Randdämmstreifen | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/r/randdaemmstreifen-51055",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "raspel",
+      "title": "Raspel",
+      "body": "Werkzeug mit einzeln vorstehenden Zähnen für eher groben Materialabtrag, besonders an Holz und anderen weicheren Werkstoffen. Die Oberfläche wird oft anschließend feiner nachbearbeitet.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Raspel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Raspel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "reibebrett",
+      "title": "Reibebrett",
+      "body": "Flächiges Handwerkzeug zum Bearbeiten und Strukturieren von Putz oder ähnlichen Mörteloberflächen. Material des Bretts und Bearbeitungszeitpunkt beeinflussen das Ergebnis.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Reibebrett – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Reibebrett",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "relative-luftfeuchte",
+      "title": "Relative Luftfeuchte",
+      "body": "Verhältnis des vorhandenen Wasserdampfs zur bei derselben Temperatur möglichen Sättigungsmenge. Sie ändert sich auch bei Temperaturänderung ohne zusätzliche Wasserzufuhr.",
+      "category": "physics",
+      "aliases": [
+        "Luftfeuchtigkeit"
+      ],
+      "sources": [
+        {
+          "title": "Relative Luftfeuchte | Beton | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/r/relative-luftfeuchte-46637",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "restfeuchte",
+      "title": "Restfeuchte",
+      "body": "Im Baustoff noch enthaltene Feuchtigkeit. Ob ein Belag aufgebracht werden darf, hängt zusätzlich von Messverfahren, Material und Systemvorgaben ab.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Restfeuchte | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/r/restfeuchte-51063",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "richtscheit",
+      "title": "Richtscheit",
+      "body": "Gerade Leiste zur Prüfung oder Herstellung ebener Flächen, etwa bei Estrich und Putz. Länge und Eigensteifigkeit beeinflussen die Messung.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Richtscheit – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Richtscheit",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "ringanker",
+      "title": "Ringanker",
+      "body": "Bauteil zur zugfesten Verbindung von Wänden beziehungsweise zur Aufnahme bestimmter horizontaler Kräfte. Lage und Ausführung werden statisch festgelegt.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Ringanker | Mauerwerk | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/r/ringanker-48067",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "rohrzange",
+      "title": "Rohrzange",
+      "body": "Zange zum Greifen und Drehen geeigneter Rohre und Verschraubungen. Ihre gezahnten Backen können empfindliche Oberflächen beschädigen.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Rohrzange – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Rohrzange",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "ruecklauf",
+      "title": "Rücklauf",
+      "body": "Leitung beziehungsweise Wärmeträger auf dem Rückweg von den Heizflächen zum Wärmeerzeuger. Temperaturdifferenz und Volumenstrom bestimmen gemeinsam die übertragene Wärme.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Rücklauf | Heizung | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/r/ruecklauf-46841",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "rueckstau",
+      "title": "Rückstau",
+      "body": "Ansteigen von Abwasser entgegen der vorgesehenen Fließrichtung, beispielsweise bei überlasteter Kanalisation. Der passende Rückstauschutz hängt von Entwässerung und Nutzung ab.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Rückstau | Gebäudetechnik | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/r/rueckstau-2439699",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "ruettelplatte",
+      "title": "Rüttelplatte",
+      "body": "Motorbetriebenes Verdichtungsgerät für geeignete Böden und Tragschichten. Eignung, Schichtdicke und empfindliche angrenzende Bauteile müssen geprüft werden.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Rüttelplatte – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/R%C3%BCttelplatte",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "sand",
+      "title": "Sand",
+      "body": "Feinkörniges mineralisches Material, unter anderem Bestandteil von Mörtel und Beton. Kornverteilung und Reinheit sind für die Anwendung relevant.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Sand – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Sand",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schallbruecke",
+      "title": "Schallbrücke",
+      "body": "Starre oder anderweitig ungünstige Verbindung, über die Schall eine geplante Trennung umgeht. Ein Estrichkontakt zur Wand ist ein typisches Beispiel.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schallbrücke | Bauen im Bestand | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/schallbruecke-2984371",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schallschutz",
+      "title": "Schallschutz",
+      "body": "Maßnahmen zur Begrenzung unerwünschter Schallübertragung. Luftschall, Trittschall und flankierende Bauteile müssen gemeinsam betrachtet werden.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schallschutz | Mauerwerk | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/schallschutz-7718516",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schalung",
+      "title": "Schalung",
+      "body": "Formgebende Konstruktion für frischen Beton, bis dieser ausreichend erhärtet ist. Sie muss den auftretenden Lasten sicher standhalten.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schalung | Gerüste und Schalungen | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/schalung-49201",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schlagbohrmaschine",
+      "title": "Schlagbohrmaschine",
+      "body": "Bohrmaschine mit zuschaltbarer mechanischer Schlagbewegung. Ihr Schlagprinzip unterscheidet sich vom Bohrhammer.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schlagbohrmaschine – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Schlagbohrmaschine",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schlauchwaage",
+      "title": "Schlauchwaage",
+      "body": "Messhilfe zur Übertragung gleicher Höhen mithilfe des Wasserspiegels in verbundenen Gefäßen. Luftblasen und abgeknickte Schläuche stören das Ergebnis.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schlauchwaage – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Schlauchwaage",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schleifen",
+      "title": "Schleifen",
+      "body": "Spanendes Bearbeiten einer Oberfläche mit Schleifmitteln. Körnung, Druck, Material und Staubabsaugung bestimmen das Ergebnis.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schleifen (Fertigungsverfahren) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Schleifen_(Fertigungsverfahren)",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schlussrechnung",
+      "title": "Schlussrechnung",
+      "body": "Abschließende Abrechnung einer vertraglichen Leistung. Bereits berechnete oder geleistete Abschläge müssen nachvollziehbar berücksichtigt werden.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schlussrechnung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Schlussrechnung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schraube",
+      "title": "Schraube",
+      "body": "Verbindungselement mit Gewinde, das Kräfte zwischen Bauteilen übertragen kann. Gewinde, Werkstoff, Korrosionsschutz und Einschraubtiefe müssen zur Verbindung passen.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schraube – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Schraube",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schraubendreher",
+      "title": "Schraubendreher",
+      "body": "Handwerkzeug zum Übertragen eines Drehmoments auf eine passende Schraube. Profil und Größe müssen zum Schraubenkopf passen, um Abrutschen und Beschädigungen zu vermeiden.",
+      "category": "tool",
+      "aliases": [
+        "Schraubenzieher"
+      ],
+      "sources": [
+        {
+          "title": "Schraubenzieher – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Schraubenzieher",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schraubenschluessel",
+      "title": "Schraubenschlüssel",
+      "body": "Werkzeug zum Anziehen und Lösen passender Schrauben und Muttern, etwa als Maul- oder Ringschlüssel. Die Schlüsselweite muss zum Verbindungselement passen.",
+      "category": "tool",
+      "aliases": [
+        "Maulschlüssel",
+        "Ringschlüssel"
+      ],
+      "sources": [
+        {
+          "title": "Schraubenschlüssel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Schraubenschl%C3%BCssel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schraubzwinge",
+      "title": "Schraubzwinge",
+      "body": "Spannwerkzeug, das Werkstücke vorübergehend fixiert oder beim Verkleben zusammenpresst. Druck und Schutz der Oberfläche sind zu beachten.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schraubzwinge – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Schraubzwinge",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schutzbrille",
+      "title": "Schutzbrille",
+      "body": "Augenschutz gegen bestimmte mechanische oder stoffliche Einwirkungen. Bauart und Kennzeichnung müssen zur konkreten Arbeit passen.",
+      "category": "safety",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schutzbrille – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Schutzbrille",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schutzleiter",
+      "title": "Schutzleiter",
+      "body": "Leiter für elektrische Schutzfunktionen, üblicherweise grün-gelb gekennzeichnet. Er darf nicht als gewöhnlicher Betriebsleiter zweckentfremdet werden.",
+      "category": "services",
+      "aliases": [
+        "PE-Leiter"
+      ],
+      "sources": [
+        {
+          "title": "Schutzleiter | Elektro | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/schutzleiter-48867",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schweissen",
+      "title": "Schweißen",
+      "body": "Fügen von Werkstoffen durch Wärme und/oder Kraft, gegebenenfalls mit Zusatzwerkstoff. Verfahren und erforderliche Qualifikation sind von Werkstoff und Bauteil abhängig.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schweißen | Flachdach | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/schweissen-52625",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "schwingschleifer",
+      "title": "Schwingschleifer",
+      "body": "Schleifmaschine mit schwingender Schleifplatte, meist für ebene Flächen. Form und Größe der Platte beeinflussen die erreichbaren Bereiche.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Schwingschleifer – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Schwingschleifer",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "sd-wert",
+      "title": "sd-Wert",
+      "body": "Wasserdampfdiffusionsäquivalente Luftschichtdicke in Metern. Er beschreibt den Diffusionswiderstand einer Schicht über die entsprechende Dicke ruhender Luft.",
+      "category": "physics",
+      "aliases": [
+        "Diffusionsäquivalente Luftschichtdicke"
+      ],
+      "sources": [
+        {
+          "title": "Wasserdampfdurchlässigkeit s<sub>d</sub> | Dämmstoffe | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/w/wasserdampfdurchlaessigkeit-sd-45063",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "seitenschneider",
+      "title": "Seitenschneider",
+      "body": "Zange zum Trennen geeigneter Drähte oder kleiner Metallteile. Schneidenhärte und zugelassener Materialquerschnitt begrenzen die Verwendung.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Seitenschneider – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Seitenschneider",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "senken",
+      "title": "Senken",
+      "body": "Bearbeiten einer Bohrungsöffnung, beispielsweise damit ein passender Schraubenkopf bündig sitzt. Senkwinkel und Tiefe müssen zur Verbindung passen.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Senken – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Senken",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "sicherheitsdatenblatt",
+      "title": "Sicherheitsdatenblatt",
+      "body": "Dokument mit Informationen zu Gefahren, Schutzmaßnahmen, Lagerung und Entsorgung eines Stoffes oder Gemisches. Es ergänzt die Produkt-Verarbeitungsanleitung.",
+      "category": "safety",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Sicherheitsdatenblatt – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Sicherheitsdatenblatt",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "sicherheitsschuhe",
+      "title": "Sicherheitsschuhe",
+      "body": "Schuhe mit Schutzfunktionen, beispielsweise gegen Stoßbelastungen im Zehenbereich. Die benötigte Schutzklasse hängt von den Arbeitsbedingungen ab.",
+      "category": "safety",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Sicherheitsschuh – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Sicherheitsschuh",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "silikatfarbe",
+      "title": "Silikatfarbe",
+      "body": "Mineralische Farbe mit Wasserglas als wesentlichem Bindemittel. Sie benötigt einen dafür geeigneten Untergrund; reine und dispersionshaltige Produkte unterscheiden sich.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Mineralfarbe – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Silikatfarbe",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "silikon",
+      "title": "Silikon",
+      "body": "Elastischer Dichtstoff, beispielsweise für Anschlussfugen. Eine Silikonfuge ersetzt keine erforderliche flächige Bauwerks- oder Verbundabdichtung.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Silikon | Glas | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/silikon-51655",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "siphon",
+      "title": "Siphon",
+      "body": "Geruchsverschluss mit Wasservorlage, der den Austritt von Kanalgasen in einen Raum begrenzen soll. Bei Austrocknung kann seine Wirkung verloren gehen.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Siphon | Wasserkreislauf | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/siphon-8332401",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "sockel",
+      "title": "Sockel",
+      "body": "Unterer Bereich einer Wand beziehungsweise Fassade am Übergang zum Boden. Hier treffen häufig besondere Wasser-, Wärme- und Stoßbeanspruchungen zusammen.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Sockel | Mauerwerk | Keller | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/mauerwerk/fachwissen/keller/sockel-162760",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "solarthermie",
+      "title": "Solarthermie",
+      "body": "Nutzung von Sonnenstrahlung zur Wärmeerzeugung, etwa für Warmwasser. Kollektoren, Speicher und Regelung müssen zusammenpassen.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Solarthermie | Heizung | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/solarthermie-47085",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "spachtel",
+      "title": "Spachtel",
+      "body": "Werkzeug zum Auftragen, Verteilen oder Entfernen von Material. Breite und Steifigkeit werden nach Aufgabe und Untergrund gewählt.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Spachtel (Werkzeug) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Spachtel_(Werkzeug)",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "spachteln",
+      "title": "Spachteln",
+      "body": "Auftragen und Verteilen einer pastösen Masse zum Ausgleichen oder Glätten. Schichtdicke, Trocknung und Schleifen richten sich nach dem System.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Spachtelmassen: Allgemeines | Boden | Unterkonstruktionen | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/boden/fachwissen/unterkonstruktionen/spachtelmassen-allgemeines-984993",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "spanplatte",
+      "title": "Spanplatte",
+      "body": "Holzwerkstoff aus Spänen und Bindemittel, die zu Platten verpresst werden. Feuchtebeständigkeit und Tragfähigkeit unterscheiden sich je nach Plattentyp.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Spanplatte | Holz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/spanplatte-6988880",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "sparren",
+      "title": "Sparren",
+      "body": "Geneigte Träger einer Dachkonstruktion, die unter anderem Dachhaut und weitere Aufbauten tragen. Querschnitt und Abstände sind statisch festgelegt.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Sparren – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Sparren",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "sperrholz",
+      "title": "Sperrholz",
+      "body": "Holzwerkstoff aus mehreren miteinander verklebten Lagen, deren Faserrichtungen meist gekreuzt sind. Das reduziert richtungsabhängige Verformungen.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Sperrholz | Holz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/sperrholz-6988887",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "spitzzange",
+      "title": "Spitzzange",
+      "body": "Zange mit schmalen, länglichen Backen zum Greifen kleiner Teile oder Arbeiten an engen Stellen. Einige Bauformen haben zusätzlich Schneiden.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Spitzzange – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Spitzzange",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "splitt",
+      "title": "Splitt",
+      "body": "Gebrochene mineralische Körnung mit kantigen Körnern. Er wird beispielsweise für Belagsbettungen und als Bestandteil mineralischer Baustoffgemische verwendet.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Gesteinskörnung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Gesteinsk%C3%B6rnung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "stahlbeton",
+      "title": "Stahlbeton",
+      "body": "Verbundwerkstoff aus Beton und Stahlbewehrung. Beide Bestandteile übernehmen gemeinsam die Beanspruchungen des Bauteils.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Stahlbeton | Beton | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/stahlbeton-46661",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "stechbeitel",
+      "title": "Stechbeitel",
+      "body": "Handwerkzeug mit scharfer Schneide zum Ausstemmen und Nacharbeiten von Holz. Er wird geführt oder mit einem geeigneten Klopfholz angetrieben.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Beitel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Stechbeitel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "steckschluessel",
+      "title": "Steckschlüssel",
+      "body": "Aufsteckbares Schraubwerkzeug, das beispielsweise mit einer Ratsche oder einem Drehmomentschlüssel angetrieben wird. Aufnahme, Schlüsselweite und Belastbarkeit müssen passen.",
+      "category": "tool",
+      "aliases": [
+        "Stecknuss",
+        "Nuss"
+      ],
+      "sources": [
+        {
+          "title": "Schraubenschlüssel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Steckschl%C3%BCssel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "steingut",
+      "title": "Steingut",
+      "body": "Keramisches Material für Fliesen mit vergleichsweise hoher Wasseraufnahme. Es wird häufig als glasierte Wandfliese im Innenbereich verwendet.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Steingut – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Steingut",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "steinwolle",
+      "title": "Steinwolle",
+      "body": "Mineralischer Faserdämmstoff aus aufgeschmolzenen mineralischen Rohstoffen. Er wird für Wärme- und Schallschutz sowie in geeigneten Systemen für Brandschutz verwendet.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Steinwolle | Flachdach | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/s/steinwolle-52609",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "stichsaege",
+      "title": "Stichsäge",
+      "body": "Säge mit auf- und abbewegtem schmalem Sägeblatt. Sie eignet sich auch für Kurven, ist aber nicht für jeden präzisen geraden Schnitt die beste Wahl.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Stichsäge – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Stichs%C3%A4ge",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "streifenfundament",
+      "title": "Streifenfundament",
+      "body": "Längliches Fundament, häufig unter tragenden Wänden. Baugrund, Frostbedingungen und Lasten bestimmen die Ausführung.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Flachgründung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Streifenfundament",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "sturz",
+      "title": "Sturz",
+      "body": "Bauteil über einer Öffnung, das Lasten seitlich auf die angrenzenden Auflager überträgt. Ein Sturz darf nicht ohne Tragwerksprüfung verändert werden.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Sturz (Architektur) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Sturz_(Architektur)",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "saebelsaege",
+      "title": "Säbelsäge",
+      "body": "Elektrosäge mit langem, hin- und hergehendem Blatt. Sie wird unter anderem für Rückbau und schwer zugängliche Schnitte verwendet.",
+      "category": "tool",
+      "aliases": [
+        "Tigersäge",
+        "Reciprosäge"
+      ],
+      "sources": [
+        {
+          "title": "Säbelsäge – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/S%C3%A4bels%C3%A4ge",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "tauchsaege",
+      "title": "Tauchsäge",
+      "body": "Kreissägenbauart, bei der das Blatt in das Werkstück abgesenkt werden kann. In Verbindung mit geeigneter Führung sind präzise Plattenzuschnitte möglich.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Kreissäge – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Tauchs%C3%A4ge",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "taupunkt",
+      "title": "Taupunkt",
+      "body": "Temperatur, bei der Luft bei unverändertem Wasserdampfgehalt gesättigt ist. Wird sie unterschritten, kann Wasser kondensieren.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Taupunkt | Holz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/t/taupunkt-6895803",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "tiefengrund",
+      "title": "Tiefengrund",
+      "body": "Grundierung, die in geeignete poröse Untergründe eindringt und unter anderem Saugverhalten oder Oberflächenfestigkeit beeinflussen kann. Sie ist nicht für jeden Untergrund die passende Haftbrücke.",
+      "category": "technique",
+      "aliases": [
+        "Tiefgrund"
+      ],
+      "sources": [
+        {
+          "title": "Tiefgrund – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Tiefgrund",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "toleranz",
+      "title": "Toleranz",
+      "body": "Zulässige Abweichung von einem Sollmaß oder einer geforderten Eigenschaft. Messverfahren und maßgebliche Regeln müssen zur jeweiligen Prüfung passen.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Toleranzen | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/t/toleranzen-50707",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "traufe",
+      "title": "Traufe",
+      "body": "Unterer Dachrand eines geneigten Dachs, an dem Niederschlag gewöhnlich abläuft. Dachentwässerung und Lüftungsdetails werden hier angeschlossen.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Traufe | Schiefer | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/t/traufe-46279",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "trennwand",
+      "title": "Trennwand",
+      "body": "Wand zur Unterteilung von Räumen, die je nach Konstruktion tragend oder nicht tragend sein kann. Schall- und Brandschutz ergeben sich aus dem gesamten Aufbau.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Wand (Bauteil) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Trennwand",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "trittschall",
+      "title": "Trittschall",
+      "body": "Durch Begehen oder ähnliche Stöße eingeleiteter Körperschall, der in anderen Räumen hörbar wird. Entkopplung und die Vermeidung von Schallbrücken sind wichtig.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Trittschall | Treppen | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/t/trittschall-10318153",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "trittschalldaemmung",
+      "title": "Trittschalldämmung",
+      "body": "Elastische Schicht zur Verringerung der Übertragung von Geh- und Stoßgeräuschen. Schallbrücken an Rändern oder Durchdringungen können ihre Wirkung verschlechtern.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Trittschalldämmung | Fliesen und Platten | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/t/trittschalldaemmung-51119",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "trockenestrich",
+      "title": "Trockenestrich",
+      "body": "Vorgefertigte Plattenelemente als Estrichersatz, die ohne das übliche Anmachwasser eines Nassestrichs eingebaut werden. Untergrund und zulässige Belastung sind systemabhängig.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Fertigteilestrich | Boden | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/f/fertigteilestrich-997867",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "u-wert",
+      "title": "U-Wert",
+      "body": "Wärmedurchgangskoeffizient eines Bauteils in W/(m²·K). Ein kleinerer Wert bedeutet unter vergleichbaren Bedingungen weniger Wärmeverlust durch dieses Bauteil.",
+      "category": "physics",
+      "aliases": [
+        "Wärmedurchgangskoeffizient"
+      ],
+      "sources": [
+        {
+          "title": "U-Wert | Bauen im Bestand | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/u/u-wert-49471",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "unterdeckbahn",
+      "title": "Unterdeckbahn",
+      "body": "Bahnförmige Zusatzmaßnahme unter Dachdeckungen, häufig auf flächiger Unterlage verlegt. Anforderungen und Nahtausbildung hängen von der Dachplanung ab.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Unterdeckbahn | Geneigtes Dach | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/u/unterdeckbahn-49173",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "unterkonstruktion",
+      "title": "Unterkonstruktion",
+      "body": "Tragende oder befestigende Konstruktion unter einer Bekleidung oder einem Belag. Sie muss die auftretenden Lasten und die geforderte Ebenheit aufnehmen.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Unterkonstruktion | Flachdach | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/u/unterkonstruktion-52681",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "unterspannbahn",
+      "title": "Unterspannbahn",
+      "body": "Bahn unter einer Dachdeckung als zusätzliche Schutzschicht gegen eingetriebene Feuchtigkeit. Sie ist nicht mit jeder Unterdeckbahn oder einem Unterdach gleichzusetzen.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Unterspannbahn | Bauen im Bestand | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/u/unterspannbahn-49515",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "verfugen",
+      "title": "Verfugen",
+      "body": "Füllen beziehungsweise Ausbilden der Zwischenräume zwischen Bauteilen oder Belägen. Starre und bewegliche Fugen erfüllen unterschiedliche Aufgaben.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Fuge (Bauwesen) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Verfugen",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "vergabe",
+      "title": "Vergabe",
+      "body": "Auswahl und Beauftragung eines Unternehmens für eine Leistung. Im privaten und öffentlichen Bereich können unterschiedliche Regeln gelten.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "AVA – Ausschreibung, Vergabe, Abrechnung | Controlling und Management | Kosten und Verträge | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/controlling-und-management/fachwissen/kosten-und-vertraege/ava--ausschreibung-vergabe-abrechnung-8442498",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "verputzen",
+      "title": "Verputzen",
+      "body": "Aufbringen einer oder mehrerer Putzlagen auf Wand oder Decke. Untergrundvorbereitung und Verträglichkeit der Schichten sind entscheidend.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Putz (Baustoff) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Putz_(Baustoff)",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "verschnitt",
+      "title": "Verschnitt",
+      "body": "Materialanteil, der beim Zuschneiden anfällt und nicht unmittelbar im geplanten Bauteil verwendet wird. Wiederverwendbare Reststücke sollten getrennt betrachtet werden.",
+      "category": "general",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Verschnittplanung – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Verschnittplanung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "verzinkung",
+      "title": "Verzinkung",
+      "body": "Aufbringen einer Zinkschicht auf Stahl oder andere geeignete Metalle, hauptsächlich als Korrosionsschutz. Verschiedene Verfahren erzeugen unterschiedliche Schichten.",
+      "category": "technique",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Verzinken – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Verzinkung",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "vorlauf",
+      "title": "Vorlauf",
+      "body": "Leitung beziehungsweise Wärmeträger auf dem Weg vom Wärmeerzeuger zu den Heizflächen. Die Vorlauftemperatur beeinflusst unter anderem die Effizienz einer Wärmepumpe.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Vorlauf | Heizung | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/v/vorlauf-46843",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "vorsatzschale",
+      "title": "Vorsatzschale",
+      "body": "Zusätzliche Schale vor einer vorhandenen Wand, etwa für Installationen oder verbesserten Schallschutz. Anschluss und Befestigung beeinflussen die Wirkung.",
+      "category": "component",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Vorsatzschale – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Vorsatzschale",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "wasserwaage",
+      "title": "Wasserwaage",
+      "body": "Messwerkzeug mit Libelle zur Prüfung waagerechter oder senkrechter Ausrichtung. Saubere Auflageflächen sind für verlässliche Messungen wichtig.",
+      "category": "tool",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Wasserwaage – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Wasserwaage",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "winkelschleifer",
+      "title": "Winkelschleifer",
+      "body": "Handgeführte Maschine zum Schleifen oder Trennen mit rotierender Scheibe. Nur geeignete Scheiben, Schutzhaube und die zum Material passende Staubkontrolle verwenden.",
+      "category": "tool",
+      "aliases": [
+        "Flex",
+        "Trennschleifer"
+      ],
+      "sources": [
+        {
+          "title": "Trennschleifer – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Winkelschleifer",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "waermebruecke",
+      "title": "Wärmebrücke",
+      "body": "Bereich eines Bauteils mit gegenüber benachbarten Flächen erhöhtem Wärmestrom. Niedrige innere Oberflächentemperaturen können Feuchteprobleme begünstigen.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Wärmebrücke | Mauerwerk | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/w/waermebruecke-7772300",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "waermedurchlasswiderstand",
+      "title": "Wärmedurchlasswiderstand",
+      "body": "Widerstand einer Materialschicht gegen Wärmedurchgang. Er hängt von Schichtdicke und Wärmeleitfähigkeit ab.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Wärmedurchlasswiderstand | Dämmstoffe | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/w/waermedurchlasswiderstand-1324893",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "waermedaemmverbundsystem",
+      "title": "Wärmedämmverbundsystem",
+      "body": "Abgestimmtes System aus Dämmung, Befestigung, Armierung und Oberputz beziehungsweise Bekleidung. Beliebige Produktkombinationen sind nicht automatisch ein zulässiges System.",
+      "category": "physics",
+      "aliases": [
+        "WDVS",
+        "Vollwärmeschutz"
+      ],
+      "sources": [
+        {
+          "title": "Wärmedämmverbundsystem – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/W%C3%A4rmed%C3%A4mmverbundsystem",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "waermeleitfaehigkeit",
+      "title": "Wärmeleitfähigkeit",
+      "body": "Materialkennwert für den Wärmetransport durch Wärmeleitung, angegeben in W/(m·K). Er ist nicht mit dem U-Wert des gesamten Bauteils gleichzusetzen.",
+      "category": "physics",
+      "aliases": [
+        "Lambda-Wert"
+      ],
+      "sources": [
+        {
+          "title": "Wärmeleitfähigkeit | Bauen im Bestand | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/w/waermeleitfaehigkeit-2384105",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "waermepumpe",
+      "title": "Wärmepumpe",
+      "body": "Anlage, die Wärme aus einer Quelle auf ein höheres nutzbares Temperaturniveau bringt. Sie benötigt Antriebsenergie; Effizienz hängt stark von den Betriebsbedingungen ab.",
+      "category": "services",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Wärmepumpe | Gebäudetechnik | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/w/waermepumpe-49299",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "waermespeicherfaehigkeit",
+      "title": "Wärmespeicherfähigkeit",
+      "body": "Fähigkeit eines Baustoffs beziehungsweise Bauteils, Wärme aufzunehmen und wieder abzugeben. Sie ist nicht dasselbe wie geringe Wärmeleitfähigkeit.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Wärmespeicherfähigkeit | Bauen im Bestand | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/w/waermespeicherfaehigkeit-49489",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "xps",
+      "title": "XPS",
+      "body": "Extrudiertes Polystyrol: überwiegend geschlossenzelliger Hartschaum. Er wird unter anderem dort eingesetzt, wo Dämmung durch Druck und Feuchtigkeit beansprucht wird.",
+      "category": "material",
+      "aliases": [
+        "Extrudiertes Polystyrol"
+      ],
+      "sources": [
+        {
+          "title": "Extrudiertes Polystyrol (XPS) | Dämmstoffe | Dämmstoffe | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/daemmstoffe/fachwissen/daemmstoffe/extrudiertes-polystyrol-xps-152204",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "zahnspachtel",
+      "title": "Zahnspachtel",
+      "body": "Werkzeug mit gezahntem Rand zum definierten Auftragen von Klebstoff. Zahnung und Auftragsmenge müssen zum Belag und Klebersystem passen.",
+      "category": "tool",
+      "aliases": [
+        "Zahnkelle",
+        "Zahntraufel"
+      ],
+      "sources": [
+        {
+          "title": "Zahnspachtel – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Zahnspachtel",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "zellulosedaemmung",
+      "title": "Zellulosedämmung",
+      "body": "Dämmstoff aus aufbereiteten Zellulosefasern, oft als Einblasdämmung verarbeitet. Hohlraum, Einbaudichte und Schutz vor Feuchtigkeit gehören zur Systemplanung.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Zellulose | Dämmstoffe | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/z/zellulose-4359681",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "zement",
+      "title": "Zement",
+      "body": "Hydraulisches Bindemittel: Es erhärtet mit Wasser und bleibt auch unter Wasser fest. Zement ist ein Bestandteil von Beton und vielen Mörteln.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Zement | Beton | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/z/zement-46585",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "zementestrich",
+      "title": "Zementestrich",
+      "body": "Estrich mit Zement als Bindemittel. Trocknung, Schwindverhalten und Belegreife sind bei der weiteren Verarbeitung zu beachten.",
+      "category": "material",
+      "aliases": [
+        "CT-Estrich"
+      ],
+      "sources": [
+        {
+          "title": "Estrich – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Zementestrich",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "ziegel",
+      "title": "Ziegel",
+      "body": "Gebrannter keramischer Baustoff, beispielsweise als Mauer- oder Dachziegel. Lochung, Rohdichte und Format beeinflussen seine Eigenschaften.",
+      "category": "material",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Ziegel | Mauerwerk | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/z/ziegel-48091",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "zollstock",
+      "title": "Zollstock",
+      "body": "Gliedermaßstab für Längenmessungen. Gelenke, Ablesung und Anlegepunkt beeinflussen die Genauigkeit.",
+      "category": "tool",
+      "aliases": [
+        "Gliedermaßstab",
+        "Meterstab"
+      ],
+      "sources": [
+        {
+          "title": "Zollstock (Messgerät) – Wikipedia",
+          "publisher": "Wikipedia",
+          "url": "https://de.wikipedia.org/wiki/Gliederma%C3%9Fstab",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    },
+    {
+      "id": "zwischensparrendaemmung",
+      "title": "Zwischensparrendämmung",
+      "body": "Dämmung zwischen den Sparren eines geneigten Dachs. Lücken, Anschlüsse und Luftdichtheit beeinflussen die Wirkung des gesamten Aufbaus.",
+      "category": "physics",
+      "aliases": [],
+      "sources": [
+        {
+          "title": "Zwischensparrendämmung | Holz | Glossar | BauNetz Wissen",
+          "publisher": "BauNetz Wissen",
+          "url": "https://www.baunetzwissen.de/glossar/z/zwischensparrendaemmung-6752634",
+          "checked_on": "2026-11-22"
+        }
+      ]
+    }
+  ]
+}

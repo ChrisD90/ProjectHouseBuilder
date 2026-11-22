@@ -74,7 +74,7 @@ Auf breiten Ansichten wird die Höhe der rechten Planungsspalte an das Ende von 
 - **Mängel & Abnahme**: Ort, zuständige Firma bzw. anderer Bezug, Beschreibung/Vorbehalte, Frist, Status und Nachweisfotos. Einträge lassen sich als To-do vorbereiten, archivieren und als Protokoll drucken.
 - **Hausakte**: Bauteile/Räume, Wartungs- und Garantiefristen, Beschreibungen und verknüpfte Originalunterlagen. Ein bewusst ausgewähltes Übergabepaket enthält die Dokumente und ein lesbares Inhaltsverzeichnis; es ersetzt kein vollständiges Projektbackup.
 - **Firmenchronik** bündelt Kontaktdaten, Termine, Angebote, Rechnungen und den Einstieg zu Stunden. Verknüpfte Originale bleiben in ihren bisherigen Bereichen.
-- **Wissen** enthält ein lokales Starterglossar mit Begriffen/Werkzeugen und eigene Wissensnotizen. Eine kontextbezogene ChatGPT-Erklärung ist optional, benötigt die bestehende Verbindung/Freigabe und eine ausdrückliche Bestätigung. Eingaben werden nicht automatisch übertragen oder als geprüfte technische Vorgaben gespeichert.
+- **Wissen** enthält ein lokales [Handwerk-Glossar mit 230 Begriffen, acht Kategorien und verlinkten Quellen](HANDWERK-GLOSSAR.md) sowie eigene Wissensnotizen. Eine kontextbezogene ChatGPT-Erklärung ist optional, benötigt die bestehende Verbindung/Freigabe und eine ausdrückliche Bestätigung. Eingaben werden nicht automatisch übertragen oder als geprüfte technische Vorgaben gespeichert.
 
 ## Angebote und Geld
 

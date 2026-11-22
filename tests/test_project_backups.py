@@ -359,6 +359,7 @@ class ProjectBackupTest(unittest.TestCase):
         project_doc=self.client.post('/api/project-documents',data={'title':'Plan','category':'Sonstiges','area':'Allgemein','file':(io.BytesIO(b'Lokale Dokumentation'),'Notiz.txt')},content_type='multipart/form-data')
         self.assertEqual(project_doc.status_code,201,project_doc.json);did=project_doc.json['document']['id']
         row=self.client.post('/api/companion/records',json={'kind':'journal','title':'Bautag','body':'Vorher','data':{'document_ids':[did]}}).json['record']
+        glossary=self.client.post('/api/companion/records',json={'kind':'glossary','title':'Eigene Notiz','data':{'category':'tool','source_url':'https://example.org/handwerk'}}).json['record']
         settings=dict(width=4000,height=3000,tileWidth=600,tileHeight=300,joint=3,edge=5,reserve=10,
                       rotated=False,pattern='half',start='center',offsetX=0,offsetY=0)
         settings['contour']=[{'x':0,'y':0},{'x':4000,'y':0},{'x':4000,'y':1500},{'x':2000,'y':1500},{'x':2000,'y':3000},{'x':0,'y':3000}]
@@ -383,6 +384,7 @@ class ProjectBackupTest(unittest.TestCase):
         self.client.patch('/api/calendar-events/'+str(event['id']),json={'performed':True})
         self.assertEqual(self.start_restore(path)['state'],'done')
         restored={x['id']:x for x in self.client.get('/api/companion').json['records']}
+        self.assertEqual(restored[glossary['id']]['data'],glossary['data'])
         self.assertEqual(restored[row['id']]['body'],'Vorher')
         self.assertEqual(restored[tile['id']]['data']['settings'],settings)
         self.assertEqual(restored[tile['id']]['data']['tile_products'],[product])

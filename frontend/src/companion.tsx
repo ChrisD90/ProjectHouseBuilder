@@ -1,3 +1,4 @@
+import { GlossaryBrowser, GlossarySources, glossaryEntries } from './glossary';
 import { displayDate, displayDateTime } from './presentation';
 import { companyChoices } from './presentation';
 import {
@@ -366,6 +367,22 @@ export function CompanionPanel({
                 {row.body}
               </Text>
             )}
+            {kind === 'glossary' && (
+              <>
+                <Badge size="xs" variant="light" mt={6}>
+                  {(query.data?.glossary_categories || []).find(
+                    (category: Row) => category.id === row.data.category,
+                  )?.label || 'Eigene Wissensnotiz'}
+                </Badge>
+                <GlossarySources
+                  sources={
+                    row.data.source_url
+                      ? [{ url: row.data.source_url, title: 'Eigene Quelle öffnen' }]
+                      : []
+                  }
+                />
+              </>
+            )}
             {row.amount > 0 && (
               <Text size="sm" fw={600} mt={5}>
                 {money(row.amount)}
@@ -518,6 +535,34 @@ export function CompanionPanel({
           <Stack gap="sm">
             <ErrorBox value={failure} />
             <TextInput label="Titel" required maxLength={200} {...form.getInputProps('title')} />
+            {kind === 'glossary' && (
+              <>
+                <Select
+                  label="Kategorie"
+                  clearable
+                  data={(query.data?.glossary_categories || []).map((category: Row) => ({
+                    value: category.id,
+                    label: category.label,
+                  }))}
+                  value={form.values.data.category || null}
+                  onChange={(value) => {
+                    const data = { ...form.values.data };
+                    if (value) data.category = value;
+                    else delete data.category;
+                    form.setFieldValue('data', data);
+                  }}
+                />
+                <TextInput
+                  label="Quellenlink (optional)"
+                  placeholder="https://…"
+                  maxLength={2000}
+                  value={form.values.data.source_url || ''}
+                  onChange={(event) =>
+                    form.setFieldValue('data.source_url', event.currentTarget.value)
+                  }
+                />
+              </>
+            )}
             <SimpleGrid cols={2}>
               <TextInput label="Datum" type="date" {...form.getInputProps('day')} />
               <TextInput
@@ -1551,25 +1596,14 @@ function Knowledge() {
   }
   return (
     <Stack>
-      <SearchField
-        placeholder="Begriff oder Werkzeug suchen"
-        value={search}
-        onChange={(e) => setSearch(e.currentTarget.value)}
+      <ErrorBox value={q.error} />
+      {q.isPending && <Loader size="sm" />}
+      <GlossaryBrowser
+        entries={glossaryEntries(q.data || {})}
+        categories={q.data?.glossary_categories || []}
+        search={search}
+        onSearchChange={setSearch}
       />
-      <Accordion multiple>
-        {(q.data?.glossary || [])
-          .filter((x: Row) =>
-            (x.title + ' ' + x.body).toLocaleLowerCase().includes(search.toLocaleLowerCase()),
-          )
-          .map((x: Row) => (
-            <Accordion.Item value={x.title} key={x.title}>
-              <Accordion.Control>{x.title}</Accordion.Control>
-              <Accordion.Panel>
-                <Text size="sm">{x.body}</Text>
-              </Accordion.Panel>
-            </Accordion.Item>
-          ))}
-      </Accordion>
       <Textarea
         label="Dein Vorhaben für eine passende Erklärung (optional)"
         value={context}
@@ -1588,7 +1622,14 @@ function Knowledge() {
           <Text style={{ whiteSpace: 'pre-wrap' }}>{answer}</Text>
         </Paper>
       )}
-      <CompanionPanel kind="glossary" />
+      <Accordion>
+        <Accordion.Item value="personal-notes">
+          <Accordion.Control>Eigene Wissensnotizen verwalten</Accordion.Control>
+          <Accordion.Panel>
+            <CompanionPanel kind="glossary" />
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
     </Stack>
   );
 }

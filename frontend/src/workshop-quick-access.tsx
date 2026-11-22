@@ -1,3 +1,4 @@
+import { GlossaryBrowser, glossaryEntries } from './glossary';
 import { osbLayout } from './osb-layout';
 import { displayDate } from './presentation';
 import {
@@ -23,7 +24,6 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, Editor, ErrorBox, hasWrites, Row } from './core';
 import { projectID } from './project-context';
-import { SearchField } from './ui';
 import { workshopViews } from './workshop-catalog';
 import { Calculator } from './quantity-calculator';
 import { roomEdgeLabels, roomGeometry, svgPath } from './tile-geometry';
@@ -272,40 +272,14 @@ function QuickShopping() {
 
 function QuickKnowledge({ data }: { data: Row }) {
   const [search, setSearch] = useState('');
-  const glossary = [
-    ...(data.glossary || []),
-    ...(data.records || []).filter(
-      (row: Row) => row.kind === 'glossary' && row.status !== 'Archiviert',
-    ),
-  ];
-  const rows = glossary.filter((row) =>
-    (row.title + ' ' + row.body).toLocaleLowerCase().includes(search.toLocaleLowerCase()),
-  );
   return (
-    <Stack gap="sm">
-      <SearchField
-        placeholder="Begriff oder Werkzeug suchen"
-        value={search}
-        onChange={(e) => setSearch(e.currentTarget.value)}
-      />
-      <Accordion multiple>
-        {rows.map((row, index) => (
-          <Accordion.Item value={String(index)} key={index}>
-            <Accordion.Control>{row.title}</Accordion.Control>
-            <Accordion.Panel>
-              <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                {row.body}
-              </Text>
-            </Accordion.Panel>
-          </Accordion.Item>
-        ))}
-      </Accordion>
-      {!rows.length && (
-        <Text size="sm" c="dimmed">
-          Keine passenden Begriffe.
-        </Text>
-      )}
-    </Stack>
+    <GlossaryBrowser
+      entries={glossaryEntries(data)}
+      categories={data.glossary_categories || []}
+      search={search}
+      onSearchChange={setSearch}
+      compact
+    />
   );
 }
 

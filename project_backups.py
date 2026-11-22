@@ -290,6 +290,9 @@ def load_rows(path, db, owner):
         if not isinstance(data,dict):raise ValueError('Ungültige Projektdokumentation im Backup.')
         ids=data.get('document_ids',[])
         if not isinstance(ids,list) or any(type(i)is not int or i not in values.get(('project_document','id'),set()) for i in ids):raise ValueError('Projektfremde Unterlagen in der Dokumentation.')
+        if row['kind']=='glossary':
+            from glossary_catalog import validate_glossary_metadata
+            validate_glossary_metadata(data)
         if row['kind']=='room':
             from tile_plans import validate_room_geometry
             validate_room_geometry(data.get('geometry'))

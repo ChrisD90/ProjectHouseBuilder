@@ -3,7 +3,7 @@ WORKDIR /build/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
-COPY static/palette.css static/request.js static/components.css /build/static/
+COPY static/palette.css static/request.js static/components.css static/presentation.js static/ui-density.css /build/static/
 RUN npm run build
 
 FROM python:3.12-slim-trixie
