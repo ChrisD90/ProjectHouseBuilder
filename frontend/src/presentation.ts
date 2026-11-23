@@ -3,6 +3,7 @@ import '../../static/presentation.js';
 import type { Row } from './core';
 export type DisplaySettings = {
   language: 'de';
+  density: 'compact' | 'comfortable';
   dateFormat: 'de' | 'iso' | 'slash';
   currencyDisplay: 'symbol' | 'code';
   unitDisplay: 'short' | 'long';

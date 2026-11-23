@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 function service(nodes = []) {
+  for (const node of nodes) {
+    const original = node.parentElement.closest;
+    node.parentElement.closest = (selector) => (selector === 'option' ? original(selector) : null);
+  }
   const data = new Map();
   const window = { addEventListener() {}, dispatchEvent() {} };
   const context = {
     window,
     document: {
-      body: {},
+      body: { isConnected: true, nodeType: 1 },
+      documentElement: { dataset: {} },
       readyState: 'loading',
       addEventListener() {},
       querySelectorAll: () => [],
@@ -23,6 +28,7 @@ function service(nodes = []) {
     requestAnimationFrame(fn) {
       window.flush = fn;
     },
+    Node: { TEXT_NODE: 3 },
     NodeFilter: { SHOW_TEXT: 4, FILTER_REJECT: 2, FILTER_ACCEPT: 1 },
     Event,
     Intl,
@@ -55,10 +61,19 @@ describe('presentation preserves canonical project values', () => {
     expect(option.label).toBe('m²');
     expect(option.value).toBe('m²');
   });
-  it('preserves date-like identifiers and filenames in displayed records',()=>{
-    const nodes=['RE-2026-12-31','2026-12-31.pdf','file_2026-12-31','2026-12-31/01'].map(data=>({data,parentElement:{closest:()=>null}}));
-    const api=service(nodes);api.set({dateFormat:'slash'});api.flush();
-    expect(nodes.map(node=>node.data)).toEqual(['RE-2026-12-31','2026-12-31.pdf','file_2026-12-31','2026-12-31/01']);
+  it('preserves date-like identifiers and filenames in displayed records', () => {
+    const nodes = ['RE-2026-12-31', '2026-12-31.pdf', 'file_2026-12-31', '2026-12-31/01'].map(
+      (data) => ({ data, parentElement: { closest: () => null } }),
+    );
+    const api = service(nodes);
+    api.set({ dateFormat: 'slash' });
+    api.flush();
+    expect(nodes.map((node) => node.data)).toEqual([
+      'RE-2026-12-31',
+      '2026-12-31.pdf',
+      'file_2026-12-31',
+      '2026-12-31/01',
+    ]);
   });
   it('changes date and currency presentation without modifying source values', () => {
     const api = service(),
@@ -94,6 +109,7 @@ describe('presentation preserves canonical project values', () => {
       dateFormat: 'de',
       currencyDisplay: 'symbol',
       unitDisplay: 'short',
+      density: 'compact',
     });
   });
 });

@@ -1,3 +1,4 @@
+import { DraftTools } from './draft-tools';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -179,7 +180,10 @@ function RoomPreview({ geometry, compact = false }: { geometry: RoomGeometry; co
 }
 
 export function Rooms() {
-  const query = useQuery({ queryKey: ['companion'], queryFn: () => api('/api/companion') });
+  const query = useQuery({
+    queryKey: ['companion', 'rooms'],
+    queryFn: () => api('/api/companion?kind=room&references=0'),
+  });
   const cache = useQueryClient(),
     ask = useConfirm(),
     navigate = useNavigate();
@@ -359,6 +363,16 @@ export function Rooms() {
       )}
       <Editor
         opened={opened}
+        headerActions={
+          opened ? (
+            <DraftTools
+              name={'room:' + (id || 'new')}
+              value={form.values}
+              onRestore={(values) => form.setValues(values)}
+              disabled={busy}
+            />
+          ) : undefined
+        }
         title={id ? 'Raum bearbeiten' : 'Raum anlegen'}
         size="min(1150px, calc(96vw / var(--phb-ui-zoom, 1)))"
         dirty={form.isDirty()}

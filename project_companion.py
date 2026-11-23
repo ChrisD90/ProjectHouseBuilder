@@ -54,6 +54,7 @@ def register_companion(r):
         event_id = db.Column(db.Integer, db.ForeignKey('calendar_event.id'), nullable=False, unique=True)
         performed = db.Column(db.Boolean, nullable=False, default=False)
         series = db.Column(db.String(32), nullable=False, default='')
+        work_json = db.Column(db.Text, nullable=False, default='{}', server_default='{}')
 
     class WorkRecurrence(db.Model):
         __tablename__ = 'work_recurrence'
@@ -107,7 +108,8 @@ def register_companion(r):
 
     def wire(row):
         data=data_for(row)
-        return dict(id=row.id,kind=row.kind,title=row.title,body=row.body,status=row.status,day=row.day,
+        revision=__import__('hashlib').sha256(json.dumps(data.get('geometry'),sort_keys=True).encode()).hexdigest() if row.kind=='room' else ''
+        return dict(geometry_revision=revision,id=row.id,kind=row.kind,title=row.title,body=row.body,status=row.status,day=row.day,
                     until=row.until,location=row.location,source_type=row.source_type,source_id=row.source_id,
                     amount=float(row.amount),data=data,created_at=row.created_at.isoformat())
 
@@ -127,8 +129,15 @@ def register_companion(r):
 
     @app.get('/api/companion')
     def companion_index():
-        return jsonify(records=[wire(x) for x in records()], references=refs(), glossary=GLOSSARY, glossary_categories=GLOSSARY_CATEGORIES, glossary_version=GLOSSARY_VERSION,
+        requested=request.args.get('kind','')
+        selected=set(requested.split(',')) if requested else set()
+        if selected-set(KINDS):return jsonify(error='Unbekannter Werkstattbereich.'),400
+        return jsonify(records=[wire(x) for x in records() if not selected or x.kind in selected], references=refs() if request.args.get('references')!='0' else {}, glossary_categories=GLOSSARY_CATEGORIES, glossary_version=GLOSSARY_VERSION,
                        templates=[dict(id=k,title=v[0],steps=v[1]) for k,v in TEMPLATES.items()])
+
+    @app.get('/api/glossary')
+    def glossary_index():
+        return jsonify(entries=GLOSSARY,categories=GLOSSARY_CATEGORIES,version=GLOSSARY_VERSION)
 
     @app.post('/api/companion/records')
     @app.route('/api/companion/records/<int:ident>',methods=['PATCH','DELETE'])
@@ -437,7 +446,7 @@ def register_companion(r):
             ids=[]
             for index in range(1,count+1):
                 clone=r.CalendarEvent(title=event.title,notes=event.notes,start_date=event.start_date+timedelta(days=index*interval),end_date=event.end_date+timedelta(days=index*interval),all_day=event.all_day,start_time=event.start_time,end_time=event.end_time)
-                clone.preferences=CalendarPreferences(performed=False,series=group)
+                clone.preferences=CalendarPreferences(performed=False,series=group,work_json=event.preferences.work_json if event.preferences else '{}')
                 clone.trades=[r.CalendarEventTrade(trade_id=x.trade_id) for x in event.trades]
                 if event.company:clone.company=r.CalendarEventCompany(contractor_id=event.company.contractor_id)
                 db.session.add(clone)

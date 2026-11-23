@@ -565,7 +565,7 @@ export function TimeTracking() {
                             color={entry.calendar_flat_rate ? 'orange' : 'teal'}
                           >
                             {entry.calendar_flat_rate
-                              ? 'Ganztägig · 8 Std. pauschal'
+                              ? 'Ganztägig · ' + duration(entry.minutes) + ' pauschal'
                               : 'Aus Kalendertermin'}
                           </Badge>
                         </Tooltip>

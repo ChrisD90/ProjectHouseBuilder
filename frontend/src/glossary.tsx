@@ -1,7 +1,8 @@
 import { Accordion, Anchor, Badge, Group, Pagination, Stack, Text } from '@mantine/core';
 import { IconExternalLink } from '@tabler/icons-react';
 import { useState } from 'react';
-import type { Row } from './core';
+import { api, ErrorBox, type Row } from './core';
+import { useQuery } from '@tanstack/react-query';
 import { displayDate } from './presentation';
 import { FilterSelect, SearchField } from './ui';
 import './glossary.css';
@@ -81,6 +82,13 @@ export function GlossaryBrowser({
   onSearchChange: (value: string) => void;
   compact?: boolean;
 }) {
+  const catalog = useQuery({
+    queryKey: ['glossary-catalog'],
+    queryFn: () => api('/api/glossary'),
+    staleTime: Infinity,
+  });
+  entries = [...(catalog.data?.entries || []), ...entries];
+  categories = catalog.data?.categories || categories;
   const [category, setCategory] = useState<string | null>(null),
     [page, setPage] = useState(1);
   const needle = search.trim().toLocaleLowerCase('de-DE');
@@ -102,6 +110,7 @@ export function GlossaryBrowser({
   const visible = rows.slice((currentPage - 1) * perPage, currentPage * perPage);
   return (
     <Stack gap="sm" className="glossary-browser">
+      <ErrorBox value={catalog.error} />
       <Group className="glossary-toolbar" wrap="nowrap" gap="sm">
         <SearchField
           placeholder="Begriff, Werkzeug oder Synonym suchen"

@@ -5,6 +5,7 @@ import {
   Button,
   Group,
   Modal,
+  Loader,
   Paper,
   ScrollArea,
   Stack,
@@ -15,7 +16,7 @@ import { IconInfoCircle } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, money, type Row } from './core';
+import { api, money, ErrorBox, type Row } from './core';
 import { projectID } from './project-context';
 
 function localDate(value: string) {
@@ -44,16 +45,26 @@ export function UnpaidReceipts() {
       (a: Row, b: Row) =>
         String(a.due_date || '9999').localeCompare(String(b.due_date || '9999')) || a.id - b.id,
     );
-  if (!rows.length && !opened) return null;
+  if (!rows.length && !opened && !query.isError) return null;
   return (
     <>
-      {!!rows.length && (
-        <Tooltip label={'Offene Rechnungen: ' + rows.length}>
+      {(!!rows.length || query.isError) && (
+        <Tooltip
+          label={
+            query.isError
+              ? 'Rechnungsstatus konnte nicht geladen werden'
+              : 'Offene Rechnungen: ' + rows.length
+          }
+        >
           <ActionIcon
             variant="default"
             size={36}
             className="phb-corner-action"
-            aria-label={'Offene Rechnungen: ' + rows.length}
+            aria-label={
+              query.isError
+                ? 'Rechnungsstatus konnte nicht geladen werden'
+                : 'Offene Rechnungen: ' + rows.length
+            }
             aria-haspopup="dialog"
             onClick={() => {
               setOpened(true);
@@ -76,7 +87,16 @@ export function UnpaidReceipts() {
       >
         <ScrollArea.Autosize mah="calc(70dvh / var(--phb-ui-zoom, 1))">
           <Stack gap="sm">
-            {!rows.length && <Text c="dimmed">Alle Rechnungen sind bezahlt.</Text>}
+            {query.isPending && <Loader size="sm" />}
+            <ErrorBox value={query.error} />
+            {query.isError && (
+              <Button variant="light" onClick={() => void query.refetch()}>
+                Erneut laden
+              </Button>
+            )}
+            {!query.isPending && !query.isError && !rows.length && (
+              <Text c="dimmed">Alle Rechnungen sind bezahlt.</Text>
+            )}
             {rows.map((row) => (
               <Paper withBorder p="md" key={row.id}>
                 <Group justify="space-between" align="start" wrap="nowrap">

@@ -167,6 +167,11 @@ def initialize():
         if needs_money:
             _backup_before_project_upgrade()
             with db.engine.begin() as connection:migrate_money(connection)
+    from workflow_schema import pending as workflow_changes,upgrade as upgrade_workflows
+    changes=workflow_changes(db.engine)
+    if changes:
+        _backup_before_project_upgrade()
+        upgrade_workflows(db.engine,changes)
     db.create_all()
     from request_safety import ensure_schema as ensure_request_schema
     ensure_request_schema(db.session.connection())
@@ -592,7 +597,7 @@ FundingDetail, FundingAssessment, FundingDocument, energy_funding_dict = registe
 from funding_plans import register_funding_plans
 FundingPlan, FundingPlanOffer = register_funding_plans(app,db,Funding,FundingDetail,FundingAssessment,FundingDocument,
     Offer,ProjectDocument,energy_funding_dict,contract_gross=_contract_gross,ai_required=_ai_request_required,
-    chatgpt=chatgpt,extract_json=extract_json)
+    chatgpt=chatgpt,extract_json=extract_json,document_root=lambda:PROJECT_DOCUMENT_ROOT)
 from funding_estimates import register_funding_estimates
 register_funding_estimates(app, db, Offer, ProjectDocument,
     contract_gross=_contract_gross, ai_required=_ai_request_required, chatgpt=chatgpt, extract_json=extract_json)
@@ -718,6 +723,9 @@ request_fingerprint=register_request_safety(app,db,Project,globals())
 app.before_request(app.extensions['companion_protect_references'])
 from job_leases import install_fence
 install_fence(db,Project,ImportJob)
+
+from workspace_ui import register_workspace_ui
+register_workspace_ui(app,db,Setting)
 
 if __name__=='__main__':
     from ocr_runtime import main as check_ocr

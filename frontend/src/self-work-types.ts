@@ -23,6 +23,9 @@ export type PlanDraft = {
   experience: string;
   status: string;
   task_id: number | null;
+  calendar_event_id?: number | null;
+  calendar_event_title?: string;
+  calendar_event_missing?: boolean;
   steps: Step[];
   materials: Material[];
   tools: Tool[];
@@ -70,6 +73,7 @@ export const emptyPlan = (): PlanDraft => ({
   experience: 'Einsteiger',
   status: 'Geplant',
   task_id: null,
+  calendar_event_id: null,
   steps: [],
   materials: [],
   tools: [],

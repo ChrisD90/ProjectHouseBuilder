@@ -44,7 +44,7 @@ class CalendarCompanyTimeTest(unittest.TestCase):
         same = next(e for e in self.entries(person) if e['calendar_event_id'])
         self.assertEqual(same['id'], linked['id']); self.assertEqual(same['minutes'], 180)
         self.assertEqual(same['description'], 'Montage korrigiert')
-        self.assertEqual(self.client.delete(path).status_code, 200)
+        self.assertEqual(self.client.delete(path,json={'time_action':'delete'}).status_code, 200)
         self.assertEqual([e['id'] for e in self.entries(person)], [manual['id']])
         self.assertFalse(self.people()[0]['has_calendar_entries'])
 
@@ -102,5 +102,5 @@ class CalendarCompanyTimeTest(unittest.TestCase):
         first = self.event(); second = self.event(title='Besprechung')
         self.assertEqual(len(self.people()), 1); person = self.people()[0]
         self.assertEqual(len(self.entries(person)), 2); self.assertEqual(person['total_minutes'], 300)
-        self.client.delete('/api/calendar-events/'+str(first['id']))
+        self.client.delete('/api/calendar-events/'+str(first['id']),json={'time_action':'delete'})
         self.assertEqual(self.entries(person)[0]['calendar_event_id'], second['id'])

@@ -1,3 +1,4 @@
+import { DraftTools } from './draft-tools';
 import { defaultOsb, osbLayout, osbSources } from './osb-layout';
 import { OsbFields, OsbNotes } from './osb-fields';
 import { OsbOverlay } from './osb-overlay';
@@ -42,6 +43,7 @@ const initial = (osb = false) => ({
   settings: { ...(osb ? defaultOsb : defaultTiles) },
   roomId: null as number | null,
   roomTitle: '',
+  roomRevision: '',
   products: [] as TileProduct[],
   documentIds: [] as number[],
 });
@@ -52,7 +54,10 @@ export function TilePlanner({ material = 'tile' }: { material?: 'tile' | 'osb' }
     plannerTitle = isOsb ? 'OSB-Verlegeplan' : 'Fliesen-Verlegeplan',
     piece = isOsb ? 'Platte' : 'Fliese',
     plural = isOsb ? 'Platten' : 'Fliesen';
-  const query = useQuery({ queryKey: ['companion'], queryFn: () => api('/api/companion') });
+  const query = useQuery({
+    queryKey: ['companion', material],
+    queryFn: () => api('/api/companion?kind=room,tile_plan,osb_plan&references=0'),
+  });
   const cache = useQueryClient(),
     ask = useConfirm();
   const form = useForm({ initialValues: initial(isOsb) });
@@ -103,6 +108,7 @@ export function TilePlanner({ material = 'tile' }: { material?: 'tile' | 'osb' }
           } as TileSettings,
           roomId: row.data.room_id || null,
           roomTitle: row.data.room_title || '',
+          roomRevision: row.data.room_revision || '',
           products: row.data.tile_products || [],
           documentIds: (row.data.document_ids || []).filter(
             (ident: number) =>
@@ -133,6 +139,7 @@ export function TilePlanner({ material = 'tile' }: { material?: 'tile' | 'osb' }
       settings: { ...form.values.settings, ...roomGeometryOnly(room.data.geometry) },
       roomId: room.id,
       roomTitle: room.title,
+      roomRevision: room.geometry_revision || '',
     });
     setRoomChoice(String(room.id));
     setActive('');
@@ -155,8 +162,8 @@ export function TilePlanner({ material = 'tile' }: { material?: 'tile' | 'osb' }
       takeRoom(room, true);
     }
   }, [params.get('room'), query.dataUpdatedAt]);
-  async function importRoom() {
-    const room = rooms.find((x) => String(x.id) === roomChoice);
+  async function importRoom(choice = roomChoice) {
+    const room = rooms.find((x) => String(x.id) === choice);
     if (!room) return;
     if (
       form.isDirty() &&
@@ -167,6 +174,11 @@ export function TilePlanner({ material = 'tile' }: { material?: 'tile' | 'osb' }
       return;
     takeRoom(room);
   }
+  const roomSource = rooms.find((x) => x.id === form.values.roomId);
+  const sourceChanged =
+    roomSource &&
+    form.values.roomRevision &&
+    roomSource.geometry_revision !== form.values.roomRevision;
   async function storeRoom() {
     if (!plan) return;
     const title = await ask({
@@ -183,7 +195,12 @@ export function TilePlanner({ material = 'tile' }: { material?: 'tile' | 'osb' }
         title: title.trim(),
         data: { geometry: roomGeometryOnly(s), document_ids: [] },
       });
-      form.setValues({ ...form.values, roomId: result.record.id, roomTitle: result.record.title });
+      form.setValues({
+        ...form.values,
+        roomId: result.record.id,
+        roomTitle: result.record.title,
+        roomRevision: result.record.geometry_revision || '',
+      });
       setRoomChoice(String(result.record.id));
       await cache.invalidateQueries({ queryKey: ['companion'] });
       success('Grundriss als Raum gespeichert.');
@@ -213,6 +230,7 @@ export function TilePlanner({ material = 'tile' }: { material?: 'tile' | 'osb' }
           status: 'Offen',
           data: {
             settings: s,
+            room_revision: form.values.roomRevision || '',
             document_ids: [
               ...new Set([
                 ...form.values.documentIds,
@@ -452,6 +470,26 @@ export function TilePlanner({ material = 'tile' }: { material?: 'tile' | 'osb' }
   const walls = plan ? roomEdgeLabels(plan.room, s.width, s.height, margin) : null;
   return (
     <Stack className="tile-planner">
+      <DraftTools
+        name={planKind + ':' + (id || 'new')}
+        value={form.values}
+        onRestore={(values) => form.setValues(values)}
+        disabled={busy}
+      />
+      {sourceChanged && (
+        <Alert color="orange" title="Gespeicherter Raum wurde geändert">
+          <Text size="sm">Dieser Plan verwendet weiterhin seine bisherige Raumkopie.</Text>
+          <Button
+            variant="light"
+            onClick={() => {
+              void importRoom(String(roomSource.id));
+            }}
+          >
+            Raumkontur nach Bestätigung abgleichen
+          </Button>
+        </Alert>
+      )}
+
       <Group justify="space-between" align="end">
         <TileHeading
           large

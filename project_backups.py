@@ -256,6 +256,9 @@ def load_rows(path, db, owner):
         total += len(rows)
         if total > MAX_ROWS: raise ValueError('Zu viele Datensätze im Backup.')
         for row in rows:
+            if name=='calendar_preferences' and 'work_json' not in row:row={**row,'work_json':'{}'}
+            if name=='finance_loan_drawdown' and 'payouts_json' not in row:row={**row,'payouts_json':'[]'}
+            if name=='self_work_plan' and 'calendar_event_id' not in row:row={**row,'calendar_event_id':None}
             if name=='contractor' and 'favorite' not in row:
                 row={**row,'favorite':False}
             if name=='project_document' and 'current_version' not in row:
@@ -305,6 +308,25 @@ def load_rows(path, db, owner):
             if row['kind']=='osb_plan':
                 from tile_plans import validate_osb_settings
                 validate_osb_settings(data.get('settings'))
+    for row in result.get('calendar_preferences',[]):
+        rules=_loads(row['work_json'])
+        if rules:
+            from calendar_work import clean_work
+            clean_work(rules)
+    payout_events={event['id']:event for event in result.get('finance_event',[])}
+    for row in result.get('finance_loan_drawdown',[]):
+        parts=_loads(row['payouts_json'])
+        if not isinstance(parts,list):raise ValueError('Ungültige Teilauszahlungen im Backup.')
+        if row['status'] in ('Teilweise ausgezahlt','Ausgezahlt'):
+            total_parts=Decimal(0)
+            for part in parts:
+                if not isinstance(part,dict) or part.get('event_id') not in values.get(('finance_event','id'),set()):raise ValueError('Projektfremde Teilbuchung im Backup.')
+                if any(x.get('receipt_id') not in values.get(('receipt','id'),set()) for x in part.get('positions',[])):raise ValueError('Projektfremde Teilzahlungsrechnung.')
+                event=payout_events[part['event_id']];amount=Decimal(str(part.get('amount')))
+                if not amount.is_finite() or amount<=0 or event['loan_id']!=row['loan_id'] or event['kind']!='loan_drawdown' or event['amount']!=amount:raise ValueError('Unstimmige Teilbuchung im Backup.')
+                if sum((Decimal(str(position['amount'])) for position in part.get('positions',[])),Decimal(0))!=amount:raise ValueError('Teilbeträge stimmen nicht mit der Auszahlung überein.')
+                total_parts+=amount
+            if total_parts>row['requested_amount']:raise ValueError('Teilzahlungen übersteigen den Mittelabruf.')
     receipts={row['id']:row for row in result.get('receipt',[])}
     for row in result.get('receipt_terms',[]):
         receipt=receipts[row['receipt_id']]

@@ -82,12 +82,16 @@ export function Energy() {
       documentId: number;
     } | null>(null);
   const handledOffer = useRef('');
-  useDialogRouteCleanup(opened || planOpened, ['funding_id', 'offer_id']);
+  useDialogRouteCleanup(opened || planOpened, ['funding_id', 'offer_id', 'funding_plan']);
   function startPlan(ident: number | null = null, offer: number | null = null) {
     setPlanId(ident);
     setPlanOffer(offer);
     setPlanOpened(true);
   }
+  useEffect(() => {
+    const ident = Number(params.get('funding_plan'));
+    if (ident) startPlan(ident);
+  }, [params.get('funding_plan')]);
   const form = useForm<Row>({ initialValues: emptyFunding });
   function startDocuments(funding: number | null = null) {
     setUploadFunding(funding);

@@ -1,13 +1,13 @@
 /* Read-only projection over existing financing records; no inferred fund allocation. */
 (function(root){
  'use strict';
- const activeStatuses=['Eingereicht','Ausgezahlt','Bestätigt'];
+ const activeStatuses=['Eingereicht','Teilweise ausgezahlt','Ausgezahlt','Bestätigt'];
  function build(state){
   const drawdowns=state.drawdowns||[],events=state.events||[],usages=state.usages||[],payments=state.payments||[];
-  const linkedEvents=new Set(drawdowns.map(d=>d.event_id).filter(id=>id!=null));
+  const linkedEvents=new Set(drawdowns.flatMap(d=>[d.event_id,...(d.payouts||[]).map(part=>part.event_id)]).filter(id=>id!=null));
   const claimedPayments=new Set();
   const rows=drawdowns.map(d=>{
-   const applications=['Ausgezahlt','Bestätigt'].includes(d.status)?(d.applications||[]):[];
+   const applications=['Ausgezahlt','Bestätigt','Teilweise ausgezahlt'].includes(d.status)?(d.applications||[]):[];
    for(const application of applications)for(const id of application.payment_ids||[])claimedPayments.add(id);
    return {key:'drawdown:'+d.id,type:'drawdown',loan_id:d.loan_id,date:d.requested_date,data:d,applications};
   });

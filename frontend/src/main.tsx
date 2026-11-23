@@ -1,3 +1,4 @@
+import { useDisplaySettings } from './presentation';
 import { createTheme, MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
 import '@mantine/dates/styles.css';
@@ -65,57 +66,72 @@ const theme = createTheme({
     Button: { defaultProps: { fw: 600 } },
   },
 });
-createRoot(document.getElementById('root')!).render(
-  <MantineProvider
-    theme={theme}
-    defaultColorScheme="auto"
-    cssVariablesResolver={() => ({
-      variables: {},
-      light: {
-        '--mantine-color-body': 'var(--brand-surface)',
-        '--mantine-color-text': 'var(--brand-ink)',
-        '--mantine-color-dimmed': 'var(--brand-muted)',
-        '--mantine-color-placeholder': 'var(--brand-muted-light)',
-        '--mantine-color-default': 'var(--brand-surface)',
-        '--mantine-color-default-hover': 'var(--brand-soft)',
-        '--mantine-color-default-border': 'var(--brand-line)',
-        '--mantine-primary-color-filled': 'var(--brand-button)',
-        '--mantine-primary-color-filled-hover': 'var(--brand-button-hover)',
-      },
-      dark: {
-        '--mantine-color-body': 'var(--brand-surface)',
-        '--mantine-color-text': 'var(--brand-ink)',
-        '--mantine-color-dimmed': 'var(--brand-muted)',
-        '--mantine-color-placeholder': 'var(--brand-muted-light)',
-        '--mantine-color-default': 'var(--brand-raised)',
-        '--mantine-color-default-hover': 'var(--brand-soft)',
-        '--mantine-color-default-border': 'var(--brand-line)',
-        '--mantine-primary-color-filled': 'var(--brand-button)',
-        '--mantine-primary-color-filled-hover': 'var(--brand-button-hover)',
-        '--mantine-primary-color-light-color': 'var(--brand-accent)',
-      },
-    })}
-  >
-    <Notifications position="bottom-right" />
-    <QueryClientProvider client={client}>
-      <DialogProvider>
-        <RouterProvider
-          router={createBrowserRouter(
-            [
-              {
-                path: '*',
-                element:
-                  !workspaceBase && ['/', '/projekte'].includes(window.location.pathname) ? (
-                    <ProjectDashboard />
-                  ) : (
-                    <App />
-                  ),
-              },
-            ],
-            { basename: workspaceBase || '/' },
-          )}
-        />
-      </DialogProvider>
-    </QueryClientProvider>
-  </MantineProvider>,
-);
+function ApplicationProviders() {
+  const settings = useDisplaySettings();
+  const factor = settings.density === 'comfortable' ? 1 : 0.8;
+  const sizedTheme = {
+    ...theme,
+    breakpoints: {
+      xs: 36 * factor + 'em',
+      sm: 48 * factor + 'em',
+      md: 62 * factor + 'em',
+      lg: 75 * factor + 'em',
+      xl: 88 * factor + 'em',
+    },
+  };
+  return (
+    <MantineProvider
+      theme={sizedTheme}
+      defaultColorScheme="auto"
+      cssVariablesResolver={() => ({
+        variables: {},
+        light: {
+          '--mantine-color-body': 'var(--brand-surface)',
+          '--mantine-color-text': 'var(--brand-ink)',
+          '--mantine-color-dimmed': 'var(--brand-muted)',
+          '--mantine-color-placeholder': 'var(--brand-muted-light)',
+          '--mantine-color-default': 'var(--brand-surface)',
+          '--mantine-color-default-hover': 'var(--brand-soft)',
+          '--mantine-color-default-border': 'var(--brand-line)',
+          '--mantine-primary-color-filled': 'var(--brand-button)',
+          '--mantine-primary-color-filled-hover': 'var(--brand-button-hover)',
+        },
+        dark: {
+          '--mantine-color-body': 'var(--brand-surface)',
+          '--mantine-color-text': 'var(--brand-ink)',
+          '--mantine-color-dimmed': 'var(--brand-muted)',
+          '--mantine-color-placeholder': 'var(--brand-muted-light)',
+          '--mantine-color-default': 'var(--brand-raised)',
+          '--mantine-color-default-hover': 'var(--brand-soft)',
+          '--mantine-color-default-border': 'var(--brand-line)',
+          '--mantine-primary-color-filled': 'var(--brand-button)',
+          '--mantine-primary-color-filled-hover': 'var(--brand-button-hover)',
+          '--mantine-primary-color-light-color': 'var(--brand-accent)',
+        },
+      })}
+    >
+      <Notifications position="bottom-right" />
+      <QueryClientProvider client={client}>
+        <DialogProvider>
+          <RouterProvider
+            router={createBrowserRouter(
+              [
+                {
+                  path: '*',
+                  element:
+                    !workspaceBase && ['/', '/projekte'].includes(window.location.pathname) ? (
+                      <ProjectDashboard />
+                    ) : (
+                      <App />
+                    ),
+                },
+              ],
+              { basename: workspaceBase || '/' },
+            )}
+          />
+        </DialogProvider>
+      </QueryClientProvider>
+    </MantineProvider>
+  );
+}
+createRoot(document.getElementById('root')!).render(<ApplicationProviders />);

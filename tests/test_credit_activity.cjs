@@ -20,3 +20,7 @@ assert.equal(result.rows.filter(row=>row.type==='usage').length,2);
 assert.equal(JSON.stringify(state),before,'Projection must not mutate persisted inputs');
 assert.equal(build({}).rows.length,0);
 console.log('PASS counts include manual payouts, avoid linked event/payment duplicates, preserve legacy/reversed rows and never mutate input.');
+
+const partial=build({drawdowns:[{id:7,loan_id:1,status:'Teilweise ausgezahlt',event_id:20,payouts:[{event_id:20},{event_id:21}],applications:[{payment_ids:[30]}]}],events:[{id:20,loan_id:1,kind:'loan_drawdown'},{id:21,loan_id:1,kind:'loan_drawdown'}],payments:[{id:30,loan_id:1,source:'loan'}]});
+assert.equal(partial.counts.get(1),1,'Several partial bank payouts remain one drawdown request');
+assert.equal(partial.rows.length,1,'Partial events and payment allocations must not appear as independent duplicate activities');

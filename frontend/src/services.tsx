@@ -1,3 +1,4 @@
+import { AIResult } from './ai-result';
 import {
   Alert,
   Badge,
@@ -18,6 +19,7 @@ import { api, error, Row, success, useConfirm, useConfirmVisible, useModalLayer 
 import { ModelInfo } from './model-info';
 import { ReceiptOverview, type ReceiptOverviewData } from './receipt-overview';
 export function useServices(navigate: (url: string) => void) {
+  const [batchResult, setBatchResult] = useState<Row[] | null>(null);
   const [receiptOverview, setReceiptOverview] = useState<ReceiptOverviewData | null>(null);
   const { setExternal } = useModalLayer();
   const confirming = useConfirmVisible(),
@@ -92,13 +94,8 @@ export function useServices(navigate: (url: string) => void) {
       processingMode = 'foreground',
       handoff,
     } = options;
-    if (
-      running.current.has(kind) ||
-      state.current.jobs.some(
-        (j: Row) => j.kind === kind && ['Wartend', 'Läuft'].includes(j.status),
-      )
-    )
-      throw Error('Diese Verarbeitung läuft bereits. Bitte Ergebnis oder Fehler abwarten.');
+    if (running.current.has(kind))
+      throw Error('Dieses Uploadpaket wird bereits übergeben. Bitte kurz warten.');
     const selected = Array.from(files || []) as File[];
     if (!inboxItemId && (!selected.length || selected.length > 8))
       throw Error('Bitte eine bis acht Dateien auswählen.');
@@ -164,7 +161,12 @@ export function useServices(navigate: (url: string) => void) {
           const failed = batch.jobs.filter((j: Row) =>
             ['Fehler', 'Unterbrochen'].includes(j.status),
           );
-          if (failed.length) throw Error(failed.map((j: Row) => j.error || j.stage).join(' · '));
+          if (failed.length) {
+            setBatchResult(batch.jobs);
+            setQueueOpen(true);
+            if (!batch.jobs.some((j: Row) => j.status === 'Fertig'))
+              throw Error(failed.map((j: Row) => j.error || j.stage).join(' · '));
+          }
           return batch.jobs;
         }
         await Promise.race([
@@ -233,6 +235,11 @@ export function useServices(navigate: (url: string) => void) {
         }
       },
       review(jobs: Row[]) {
+        if (jobs.some((j) => ['Fehler', 'Unterbrochen'].includes(j.status))) {
+          setBatchResult(jobs);
+          setQueueOpen(true);
+          return;
+        }
         const job = jobs.find((j) => j.status === 'Fertig' && j.review_url);
         if (job) setTimeout(() => navigate(job.review_url), 0);
         else setQueueOpen(true);
@@ -249,6 +256,32 @@ export function useServices(navigate: (url: string) => void) {
     isBusy: () => !!wait || running.current.size > 0,
   };
   const bridge = useRef<Row>({
+    actions: {
+      wait: async (title: string, poll: (stop: () => boolean) => Promise<Row | null>) => {
+        if (foregroundRun.current) {
+          setQueueOpen(true);
+          return null;
+        }
+        let release!: () => void;
+        const signal = new Promise<null>((resolve) => {
+          release = () => resolve(null);
+        });
+        const handoff = { background: false, release };
+        foregroundRun.current = handoff;
+        setWait(title + ' wird verarbeitet …');
+        setCanBackground(true);
+        try {
+          const result = await Promise.race([poll(() => handoff.background), signal]);
+          if (handoff.background) setQueueOpen(true);
+          return result;
+        } finally {
+          foregroundRun.current = null;
+          setWait('');
+          setCanBackground(false);
+          void refreshJobs();
+        }
+      },
+    },
     receipts: { open: (data: ReceiptOverviewData) => setReceiptOverview(data) },
     ai: {
       selection: () => methods.current.ai.selection(),
@@ -340,6 +373,7 @@ export function useServices(navigate: (url: string) => void) {
   }
   const overlays = (
     <>
+      <AIResult />
       {receiptOverview && (
         <ReceiptOverview
           {...receiptOverview}
@@ -540,6 +574,17 @@ export function useServices(navigate: (url: string) => void) {
       >
         <ScrollArea.Autosize mah="70vh">
           <Stack>
+            {batchResult && (
+              <Alert color="orange" title="Ergebnis des Uploadpakets">
+                {batchResult.filter((j) => j.status === 'Fertig').length} erfolgreich ·{' '}
+                {batchResult.filter((j) => ['Fehler', 'Unterbrochen'].includes(j.status)).length}{' '}
+                fehlgeschlagen. Erfolgreiche Dateien können einzeln geprüft werden. Fehlgeschlagene
+                Dateien lassen sich separat erneut starten.
+                <Button variant="subtle" size="xs" onClick={() => setBatchResult(null)}>
+                  Hinweis schließen
+                </Button>
+              </Alert>
+            )}
             {!jobs.length && <Text c="dimmed">Keine Aufträge vorhanden.</Text>}
             {jobs.map((job) => (
               <Paper key={job.id} withBorder p="md">

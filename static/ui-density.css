@@ -1,6 +1,7 @@
 /* One 80% UI scale, including px-sized controls. Embedded workflows inherit
    their physical scale from the parent frame and must not be scaled again. */
 :root { --phb-ui-zoom: .8; --phb-viewport-height: calc(100dvh / var(--phb-ui-zoom)); }
+:root[data-phb-density="comfortable"] { --phb-ui-zoom: 1; }
 @media screen {
   html { zoom: var(--phb-ui-zoom); }
   html:has(body.phb-embedded) { --phb-ui-zoom: 1; }

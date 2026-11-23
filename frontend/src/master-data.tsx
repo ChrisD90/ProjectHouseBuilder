@@ -33,7 +33,7 @@ import type { CompanyRecord, ReferenceRecord } from './contracts';
 import { Editor, ErrorBox, Row, api, error, success, useConfirm } from './core';
 import { PageHeader } from './page-layout';
 import { useDirtyGuard } from './shell';
-import { ActionBar, SearchField, useViewState, useDialogRouteCleanup } from './ui';
+import { FilterSummary, ActionBar, SearchField, useViewState, useDialogRouteCleanup } from './ui';
 const companyFields = [
   ['name', 'Firmenname'],
   ['contact', 'Ansprechpartner'],
@@ -289,6 +289,7 @@ export function MasterData() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <FilterSummary count={Number(!!search.trim())} onReset={() => setSearch('')} />
         </Paper>
         <Paper withBorder p="md" className="collection-content">
           <div className="phb-scroll-region collection-scroll">
@@ -332,9 +333,9 @@ export function MasterData() {
                     </div>
                   ))}
               </div>
-              {!filtered.length && !query.isPending && (
+              {!filtered.length && !query.isPending && !query.isError && (
                 <Text c="dimmed" size="sm">
-                  Keine passenden Firmen.
+                  {search.trim() ? 'Keine Treffer für deine Suche.' : 'Noch keine Firmen erfasst.'}
                 </Text>
               )}
             </Tabs.Panel>

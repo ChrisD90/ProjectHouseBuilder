@@ -71,9 +71,10 @@ const ConfirmContext = createContext<(q: Question | string) => Promise<string | 
 );
 export function DialogProvider({ children }: { children: React.ReactNode }) {
   const [external, setExternal] = useState(false);
+  const [requestNotice, setRequestNotice] = useState(false);
   React.useEffect(() => {
-    const opened = () => setExternal(true),
-      closed = () => setExternal(false);
+    const opened = () => setRequestNotice(true),
+      closed = () => setRequestNotice(false);
     document.addEventListener('phb-request-conflict', opened);
     document.addEventListener('phb-request-uncertain', opened);
     document.addEventListener('phb-request-notice-closed', closed);
@@ -85,22 +86,40 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const [question, setQuestion] = useState<Question | null>(null),
     [text, setText] = useState('');
-  const resolve = useRef<(v: string | boolean) => void>(() => {});
+  type PendingQuestion = { question: Question; resolve: (value: string | boolean) => void };
+  const queue = useRef<PendingQuestion[]>([]),
+    active = useRef<PendingQuestion | null>(null);
+  const showNext = () => {
+    if (active.current || !queue.current.length) return;
+    active.current = queue.current.shift()!;
+    setText(active.current.question.initial || '');
+    setQuestion(active.current.question);
+  };
   const ask = (q: Question | string) =>
-    new Promise<string | boolean>((done) => {
-      const next = typeof q === 'string' ? { message: q } : q;
-      setText(next.initial || '');
-      resolve.current = done;
-      setQuestion(next);
+    new Promise<string | boolean>((resolve) => {
+      queue.current.push({ question: typeof q === 'string' ? { message: q } : q, resolve });
+      showNext();
     });
   const finish = (value: string | boolean) => {
+    const current = active.current;
+    active.current = null;
     setQuestion(null);
-    resolve.current(value);
+    current?.resolve(value);
+    showNext();
   };
+  React.useEffect(
+    () => () => {
+      active.current?.resolve(false);
+      queue.current.splice(0).forEach((q) => q.resolve(false));
+    },
+    [],
+  );
   return (
     <ConfirmContext.Provider value={ask}>
       <ConfirmVisibleContext.Provider value={!!question}>
-        <ModalLayerContext.Provider value={{ blocked: !!question || external, setExternal }}>
+        <ModalLayerContext.Provider
+          value={{ blocked: !!question || external || requestNotice, setExternal }}
+        >
           {children}
           <Modal
             zIndex={500}

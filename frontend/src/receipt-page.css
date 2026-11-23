@@ -1,0 +1,65 @@
+.receipt-native-toolbar {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding: 2px;
+}
+.receipt-native-toolbar > * {
+  flex: 0 0 145px;
+  min-width: 0;
+}
+.receipt-native-toolbar > :first-child {
+  flex: 1 0 190px;
+}
+.receipt-native-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+  max-height: min(680px, calc(70dvh / var(--phb-ui-zoom, 1)));
+}
+.receipt-native-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  height: 175px;
+  min-width: 0;
+  cursor: pointer;
+  background: var(--brand-surface);
+}
+.receipt-native-card:hover {
+  border-color: var(--brand-accent);
+}
+.receipt-native-open {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  overflow: hidden;
+}
+.receipt-native-open svg {
+  flex-shrink: 0;
+}
+.receipt-native-date {
+  white-space: nowrap;
+}
+.receipt-workflow-body {
+  height: calc(90dvh / var(--phb-ui-zoom, 1));
+  min-height: 400px;
+  overflow: hidden;
+}
+@media (max-width: 900px) {
+  .receipt-native-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 550px) {
+  .receipt-native-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 340px) {
+  .receipt-native-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

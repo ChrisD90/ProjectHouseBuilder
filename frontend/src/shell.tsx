@@ -1,3 +1,4 @@
+import { ReceiptPage } from './receipt-page';
 import {
   ActionIcon,
   Alert,
@@ -96,6 +97,7 @@ const navigationGroups = [
   { id: 'data', label: 'Datenmanagement', paths: ['/dokumente', '/daten'] },
 ];
 const native = new Set([
+  '/belege',
   '/system',
   '/uebersicht',
   '/projektwerkstatt',
@@ -117,7 +119,7 @@ export function useDirtyGuard(dirty: boolean) {
   useEffect(() => register(() => ref.current), [register]);
 }
 export function App() {
-  useDisplaySettings();
+  const displaySettings = useDisplaySettings();
   const projectInfo = useQuery({
     queryKey: ['current-project', projectID],
     queryFn: () => api('/api/projects/' + projectID),
@@ -149,7 +151,9 @@ export function App() {
         : [];
       return valid.includes(id) ? valid.filter((value) => value !== id) : [...valid, id];
     });
-  const small = useMediaQuery('(max-width:38.392em)'),
+  const small = useMediaQuery(
+      '(max-width:' + (displaySettings.density === 'comfortable' ? 47.99 : 38.392) + 'em)',
+    ),
     mini = collapsed && !small;
   const [frames, setFrames] = useState<
       Record<string, { src: string; route: string; ready: boolean; previousSrc?: string }>
@@ -184,7 +188,8 @@ export function App() {
       guards.current.delete(guard);
     };
   }, []);
-  const frameWindow = () => refs.current[currentPath.current]?.contentWindow as any;
+  const frameWindow = () =>
+    (refs.current[currentPath.current]?.contentWindow || services.bridge.workflowWindow?.()) as any;
   const busy = () => hasWrites() || services.bridge.busy() || !!frameWindow()?.PHBEmbed?.busy();
   const dirty = () => [...guards.current].some((g) => g()) || !!frameWindow()?.PHBEmbed?.dirty();
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
@@ -644,6 +649,8 @@ export function App() {
                 <Energy />
               ) : location.pathname === '/projektunterlagen' ? (
                 <Documents key="project-documents" projectOnly />
+              ) : location.pathname === '/belege' ? (
+                <ReceiptPage bridge={services.bridge} />
               ) : location.pathname === '/dokumente' ? (
                 <Documents key="document-library" />
               ) : null}

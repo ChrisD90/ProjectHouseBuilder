@@ -79,6 +79,7 @@ def register_self_work(app, db, Task, Receipt, *, ai_required, chatgpt, extract_
         # Soft link, like source-linked notes: deleting/clearing a schedule must stay independent.
         # IDs are monotonic; scoped lookups display a missing source without rebinding it.
         task_id = db.Column(db.Integer, nullable=True)
+        calendar_event_id = db.Column(db.Integer, nullable=True)
         steps_json = db.Column(db.Text, nullable=False, default='[]')
         materials_json = db.Column(db.Text, nullable=False, default='[]')
         tools_json = db.Column(db.Text, nullable=False, default='[]')
@@ -89,6 +90,8 @@ def register_self_work(app, db, Task, Receipt, *, ai_required, chatgpt, extract_
 
     def serialize(item):
         task = db.session.get(Task, item.task_id) if item.task_id else None
+        model=db.Model.registry._class_registry['CalendarEvent']
+        calendar=db.session.get(model,item.calendar_event_id) if item.calendar_event_id else None
         steps = json.loads(item.steps_json); materials = json.loads(item.materials_json); tools = json.loads(item.tools_json)
         known = sum((Decimal(str(r['quantity']))*Decimal(str(r['unit_price'])) for r in materials
                      if r['quantity'] is not None and r['unit_price'] is not None), Decimal(0))
@@ -98,7 +101,7 @@ def register_self_work(app, db, Task, Receipt, *, ai_required, chatgpt, extract_
         procured = sum((Decimal(str(r['quantity']))*Decimal(str(r['unit_price'])) for r in materials
                         if r['status'] in ('Bestellt','Vorhanden') and r['quantity'] is not None and r['unit_price'] is not None), Decimal(0))
         return dict(id=item.id, title=item.title, description=item.description, location=item.location,
-                    experience=item.experience, status=item.status, task_id=item.task_id,
+                    experience=item.experience, status=item.status, task_id=item.task_id,calendar_event_id=item.calendar_event_id,calendar_event_title=calendar.title if calendar else '',calendar_event_missing=bool(item.calendar_event_id and not calendar),
                     task_label=(task.code+' · '+task.name) if task else '', task_missing=bool(item.task_id and not task),
                     steps=steps, materials=materials, tools=tools, notes=item.notes, archived=item.archived,
                     estimated_cost=float(rounded(known)),
@@ -139,7 +142,7 @@ def register_self_work(app, db, Task, Receipt, *, ai_required, chatgpt, extract_
             db.session.delete(item); db.session.commit(); return jsonify(ok=True)
         try:
             body = request.get_json(silent=True)
-            allowed = {'title','description','location','experience','status','task_id','steps','materials','tools','notes','archived','receipt_ids'}
+            allowed = {'title','description','location','experience','status','task_id','calendar_event_id','steps','materials','tools','notes','archived','receipt_ids'}
             if not isinstance(body, dict) or set(body)-allowed: raise ValueError('Ungültige Planungsdaten.')
             for key, limit in [('title',200), ('description',6000), ('location',200), ('notes',6000)]:
                 if key in body: setattr(item,key,plain(body[key],key,limit,required=key=='title'))
@@ -150,6 +153,12 @@ def register_self_work(app, db, Task, Receipt, *, ai_required, chatgpt, extract_
             if 'status' in body:
                 if body['status'] not in STATUSES: raise ValueError('Ungültiger Status.')
                 item.status=body['status']
+            if 'calendar_event_id' in body:
+                target=body['calendar_event_id']
+                if target is not None and (type(target)is not int or target<1):raise ValueError('Ungültiger Kalenderbezug.')
+                model=db.Model.registry._class_registry['CalendarEvent']
+                if target is not None and db.session.get(model,target) is None and target!=item.calendar_event_id:raise ValueError('Kalendertermin gehört nicht zu diesem Projekt.')
+                item.calendar_event_id=target
             if 'task_id' in body:
                 target=body['task_id']
                 if target is not None and (type(target) is not int or target<=0): raise ValueError('Ungültiges Arbeitspaket.')

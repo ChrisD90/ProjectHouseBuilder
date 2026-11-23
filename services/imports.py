@@ -97,6 +97,7 @@ def register(runtime: ModuleType):
                 if meta.get('funding_id'):
                     result += '&document_funding_id=' + str(meta['funding_id'])
                 return result
+        if job.kind=='ai_actions':return '/projektwerkstatt?ai_result='+str(job.id)
         prefix = {'costplans': '/kosten?cost_plan_import=', 'offers': '/angebote?offer_draft=', 'versions': '/angebote?offer_draft=', 'receipts': '/belege?receipt_id=', 'documents': '/dokumente?document_id=', 'loans': '/finanzierung?loan_scan=', 'schedules': '/?schedule_job='}[job.kind]
         return prefix + str(job.result_id)
 
@@ -177,6 +178,24 @@ def register(runtime: ModuleType):
                         item.updated_at = runtime.datetime.utcnow()
                         runtime.db.session.commit()
                 runtime.ai_background_hooks.progress = update_stage
+                if job_type=='ai_actions':
+                    allowed={'glossary_explain':'/api/companion/glossary/explain','self_work_consult':'/api/self-work/ai/consult','self_work_plan':'/api/self-work/ai/plan'}
+                    if meta.get('action')=='funding_check' and type(meta.get('target'))is int and runtime.db.session.get(runtime.FundingPlan,meta['target']) is not None:allowed['funding_check']='/api/funding/plans/'+str(meta['target'])+'/check'
+                    if meta.get('endpoint')!=allowed.get(meta.get('action')) or not isinstance(meta.get('payload'),dict) or meta['payload'].get('consent')is not True:raise ValueError('Gespeicherter KI-Auftrag ist ungültig oder gehört nicht zu diesem Projekt.')
+                    update_stage('ChatGPT bearbeitet den gespeicherten Auftrag …')
+                    endpoint=meta['endpoint'];payload={**meta['payload'],'model':ai_model}
+                    with runtime.app.test_request_context(endpoint,method='POST',json=payload,
+                            headers={'X-PHB-AI':'1','X-PHB-Project':str(job.project_id)},environ_base={'REMOTE_ADDR':'127.0.0.1'}):
+                        name,args=runtime.app.url_map.bind('localhost').match(endpoint,method='POST')
+                        result=runtime.app.view_functions[name](**args)
+                        response,status=(result[0],result[1]) if isinstance(result,tuple) else (result,200)
+                        answer=response.get_json() or {}
+                    if status>=400:raise ValueError(answer.get('error','KI-Auftrag fehlgeschlagen.'))
+                    job=runtime.db.session.get(runtime.ImportJob,job_id)
+                    meta['result']=answer;job.extra_json=runtime.json.dumps(meta,ensure_ascii=False)
+                    job.result_id=job.id;job.status='Fertig';job.stage='Ergebnis gespeichert – bitte prüfen'
+                    job.error='';job.finished_at=runtime.datetime.utcnow();job.updated_at=runtime.datetime.utcnow()
+                    runtime.db.session.commit();return
                 if job_type == 'schedules':
                     update_stage('ChatGPT erstellt Bauphasen und Arbeitspakete …')
                     try:
@@ -495,8 +514,10 @@ def register(runtime: ModuleType):
             model = runtime.request.get_json(silent=True) or {}
             if isinstance(model.get('model'), str) and model['model']:
                 job.model = model['model'][:100]
-        if not (runtime.IMPORT_QUEUE_ROOT / job.stored_name).is_file():
+        if job.kind!='ai_actions' and not (runtime.IMPORT_QUEUE_ROOT / job.stored_name).is_file():
             return (runtime.jsonify(error='Temporäre Quelldatei fehlt, bitte Datei erneut hochladen.'), 409)
+        if job.kind=='ai_actions':
+            meta=runtime.json.loads(job.extra_json or '{}');meta.pop('result',None);job.extra_json=runtime.json.dumps(meta,ensure_ascii=False)
         job.status = 'Wartend'
         job.lease_owner = 'queued'
         job.lease_until = None
@@ -543,3 +564,33 @@ def register(runtime: ModuleType):
         runtime._start_import_worker()
 
     runtime._ensure_import_recovery = _ensure_import_recovery
+
+    @runtime.app.post('/api/ai-actions')
+    def enqueue_ai_action():
+        runtime._ai_request_required()
+        data=runtime.request.get_json(silent=True) or {}
+        if not isinstance(data,dict):return runtime.jsonify(error='Ungültiger KI-Auftrag.'),400
+        action=data.get('action');ident=data.get('target')
+        if action=='funding_check':
+            if type(ident)is not int or runtime.db.session.get(runtime.FundingPlan,ident) is None:return runtime.jsonify(error='Förderplanung nicht gefunden.'),404
+            endpoint='/api/funding/plans/'+str(ident)+'/check'
+        elif action in ('self_work_consult','self_work_plan','glossary_explain'):
+            endpoint={'self_work_consult':'/api/self-work/ai/consult','self_work_plan':'/api/self-work/ai/plan','glossary_explain':'/api/companion/glossary/explain'}[action]
+        else:return runtime.jsonify(error='Unbekannte KI-Aktion.'),400
+        payload=data.get('payload')
+        if not isinstance(payload,dict) or len(runtime.json.dumps(payload))>150000 or payload.get('consent')is not True:return runtime.jsonify(error='Bitte Umfang und Übermittlung ausdrücklich bestätigen.'),400
+        existing=runtime.db.session.scalars(runtime.select(runtime.ImportJob).where(runtime.ImportJob.kind=='ai_actions',runtime.ImportJob.status.in_(('Wartend','Läuft')))).all()
+        for job in existing:
+            meta=runtime.json.loads(job.extra_json or '{}')
+            if meta.get('endpoint')==endpoint and meta.get('payload')==payload:return runtime.jsonify(job=runtime._import_json(job)),200
+        job=runtime.ImportJob(kind='ai_actions',batch_id=runtime.uuid4().hex,filename=str(data.get('title') or 'ChatGPT-Auftrag')[:240],stored_name='',analysis_mode='ai',model=str(payload.get('model') or '')[:100],
+            extra_json=runtime.json.dumps(dict(endpoint=endpoint,payload=payload,action=action,target=ident),ensure_ascii=False),status='Wartend',stage='KI-Auftrag eingereiht')
+        runtime.db.session.add(job);runtime.db.session.commit();runtime._import_queue.put(job.id);runtime._start_import_worker()
+        return runtime.jsonify(job=runtime._import_json(job)),202
+
+    @runtime.app.get('/api/ai-actions/<int:ident>')
+    def ai_action_result(ident):
+        job=runtime.db.session.get(runtime.ImportJob,ident)
+        if not job or job.kind!='ai_actions':return runtime.jsonify(error='KI-Auftrag nicht gefunden.'),404
+        meta=runtime.json.loads(job.extra_json or '{}')
+        return runtime.jsonify(job=runtime._import_json(job),result=meta.get('result'),action=meta.get('action'),target=meta.get('target'),input=meta.get('payload',{}))

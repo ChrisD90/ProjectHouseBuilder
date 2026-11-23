@@ -95,6 +95,18 @@ export function SystemSettings({
               Wähle die Darstellung für diese Anwendung in deinem Browser.
             </Text>
             <Select
+              label="Darstellungsdichte"
+              value={settings.density}
+              allowDeselect={false}
+              data={[
+                { value: 'compact', label: 'Kompakt (bisherige Ansicht)' },
+                { value: 'comfortable', label: 'Komfortabel (größere Schrift und Bedienelemente)' },
+              ]}
+              onChange={(value) =>
+                setDisplaySettings({ density: value === 'comfortable' ? 'comfortable' : 'compact' })
+              }
+            />
+            <Select
               label="Farbschema"
               value={colorScheme}
               allowDeselect={false}

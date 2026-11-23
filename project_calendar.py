@@ -3,6 +3,10 @@
 Dates/times are local wall-clock values. End dates are inclusive, like the UI.
 """
 from datetime import date, time, timedelta
+import json
+from hashlib import sha256
+from calendar_work import LEGACY_WORK, clean_work, work_minutes
+from multi_projects import current_project_id
 from flask import jsonify, request
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -65,17 +69,8 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
         if person is None:
             person = TimePerson(kind='company', name=contractor.name[:160], contractor_id=contractor.id, role='', notes='')
             db.session.add(person)
-        expected = {}
-        for offset in range((event.end_date - event.start_date).days + 1):
-            current = event.start_date + timedelta(days=offset)
-            if event.all_day:
-                minutes = 480
-            else:
-                first = event.start_time.hour * 60 + event.start_time.minute if current == event.start_date else 0
-                last = event.end_time.hour * 60 + event.end_time.minute if current == event.end_date else 1440
-                minutes = last - first
-            if minutes > 0:
-                expected[current] = minutes
+        expected = work_minutes(event.start_date,event.end_date,event.all_day,event.start_time,event.end_time,
+                                work_rules(event))
         event.time_links[:] = [link for link in event.time_links if link.worked_on in expected]
         existing = {link.worked_on: link for link in event.time_links}
         for worked_on, minutes in expected.items():
@@ -106,8 +101,49 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
             raise ValueError('Bitte eine gültige Uhrzeit angeben (HH:MM).')
         return time.fromisoformat(value)
 
+    def work_rules(event):
+        raw=json.loads(event.preferences.work_json or '{}') if event.preferences else {}
+        return clean_work(raw) if raw else dict(LEGACY_WORK)
+
+    def targets_for(event,scope):
+        if scope not in ('one','following','series'):raise ValueError('Ungültiger Serienumfang.')
+        group=event.preferences.series if event.preferences else ''
+        if scope=='one' or not group:return [event]
+        items=db.session.scalars(select(CalendarEvent).join(CalendarEvent.preferences).where(
+            CalendarEvent.preferences.property.mapper.class_.series==group).order_by(CalendarEvent.start_date,CalendarEvent.id)).all()
+        return [x for x in items if scope=='series' or (x.start_date,x.id)>=(event.start_date,event.id)]
+
+    def impact(items):
+        state=[(e.id,e.title,e.start_date.isoformat(),e.end_date.isoformat(),e.notes,
+                e.start_time.isoformat() if e.start_time else '',e.end_time.isoformat() if e.end_time else '',
+                e.company.contractor_id if e.company else None,[x.trade_id for x in e.trades],
+                bool(not e.preferences or e.preferences.performed),work_rules(e),
+                [(x.entry_id,x.entry.minutes,x.entry.person_id) for x in e.time_links]) for e in items]
+        confirmed=sum(x.entry.minutes for e in items if not e.preferences or e.preferences.performed for x in e.time_links)
+        planned=sum(x.entry.minutes for e in items if e.preferences and not e.preferences.performed for x in e.time_links)
+        return dict(event_count=len(items),confirmed_minutes=confirmed,planned_minutes=planned,
+                    token=sha256(json.dumps(state,sort_keys=True).encode()).hexdigest())
+
+    @app.get('/api/calendar-events/<int:event_id>/impact')
+    def calendar_impact(event_id):
+        event=db.session.get(CalendarEvent,event_id)
+        if not event:return jsonify(error='Termin nicht gefunden.'),404
+        try:return jsonify(impact(targets_for(event,request.args.get('scope','one'))))
+        except ValueError as exc:return jsonify(error=str(exc)),400
+
+    @app.post('/api/calendar-hours/preview')
+    def hours_preview():
+        try:
+            data=request.get_json(silent=True) or {}
+            if not isinstance(data,dict):raise ValueError('Ungültige Vorschauwerte.')
+            expected=work_minutes(day(data.get('start_date')),day(data.get('end_date')),data.get('all_day') is True,
+                None if data.get('all_day') else clock(data.get('start_time')),
+                None if data.get('all_day') else clock(data.get('end_time')),data.get('work',LEGACY_WORK))
+            return jsonify(total_minutes=sum(expected.values()),days=[dict(day=k.isoformat(),minutes=v) for k,v in expected.items()])
+        except (ValueError,TypeError) as exc:return jsonify(error=str(exc)),400
+
     def serialize(event):
-        return dict(id=event.id, title=event.title, performed=event.preferences.performed if event.preferences else True, series=event.preferences.series if event.preferences else '', start_date=event.start_date.isoformat(),
+        return dict(id=event.id, title=event.title, work=work_rules(event), hours=impact([event]), performed=event.preferences.performed if event.preferences else True, series=event.preferences.series if event.preferences else '', start_date=event.start_date.isoformat(),
                     end_date=event.end_date.isoformat(), all_day=event.all_day,
                     start_time=event.start_time.strftime('%H:%M') if event.start_time else '',
                     end_time=event.end_time.strftime('%H:%M') if event.end_time else '',
@@ -143,15 +179,51 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
     @app.post('/api/calendar-events')
     @app.route('/api/calendar-events/<int:event_id>', methods=['PATCH', 'DELETE'])
     def calendar_save(event_id=None):
+        from project_lifecycle import sqlite_write_lock
+        sqlite_write_lock(db.session.connection())
+        db.session.execute(select(db.metadata.tables['project']).where(db.metadata.tables['project'].c.id==current_project_id()).with_for_update())
+        db.session.expire_all()
         event = db.session.get(CalendarEvent, event_id) if event_id else CalendarEvent(all_day=True, notes='')
         if event is None:
             return jsonify(error='Termin nicht gefunden.'), 404
-        if request.method == 'DELETE':
-            db.session.delete(event); db.session.commit()
-            return jsonify(ok=True)
+        data=request.get_json(silent=True) or {}
+        if not isinstance(data,dict):return jsonify(error='Ungültige Termineingaben.'),400
         try:
-            data = request.get_json(silent=True)
-            if not isinstance(data, dict) or set(data) - {'title','start_date','end_date','all_day','start_time','end_time','notes','trade_ids','contractor_id','performed'}:
+            targets=targets_for(event,data.get('scope','one'))
+            preview=impact(targets) if event_id else {}
+            if data.get('impact_token') and data['impact_token']!=preview['token']:
+                return jsonify(error='Termine oder Stunden wurden inzwischen geändert. Bitte die Vorschau erneut öffnen.'),409
+            if len(targets)>1 and not data.get('impact_token'):
+                return jsonify(error='Serienänderung zunächst mit Vorschau bestätigen.'),409
+            if request.method=='DELETE':
+                action=data.get('time_action','keep')
+                if action not in ('keep','delete'):raise ValueError('Stunden erhalten oder gemeinsam löschen wählen.')
+                for target in targets:
+                    if action=='keep' and (not target.preferences or target.preferences.performed):
+                        for link in target.time_links:
+                            old=link.entry
+                            db.session.add(TimeEntry(person_id=old.person_id,worked_on=old.worked_on,minutes=old.minutes,
+                                description=(old.description+' · Aus gelöschtem Kalendertermin übernommen')[:2000]))
+                    db.session.delete(target)
+                db.session.commit();return jsonify(ok=True,impact=preview)
+            original_start=event.start_date or day(data.get('start_date'))
+            original_end=event.end_date or day(data.get('end_date') or data.get('start_date'))
+            start_delta=(day(data['start_date'])-original_start) if 'start_date' in data else timedelta()
+            end_delta=(day(data['end_date'])-original_end) if data.get('end_date') else timedelta()
+            for target in targets:
+                fields={key:value for key,value in data.items() if key not in ('scope','impact_token')}
+                if target.id!=event.id:
+                    if 'start_date' in fields:fields['start_date']=(target.start_date+start_delta).isoformat()
+                    if 'end_date' in fields:fields['end_date']=(target.end_date+end_delta).isoformat()
+                apply_event(target,fields)
+            db.session.commit()
+            return jsonify(event=serialize(event),affected=len(targets)),200 if event_id else 201
+        except (ValueError,TypeError) as exc:
+            db.session.rollback();return jsonify(error=str(exc)),400
+
+    def apply_event(event,data):
+        try:
+            if not isinstance(data, dict) or set(data) - {'title','start_date','end_date','all_day','start_time','end_time','notes','trade_ids','contractor_id','performed','work'}:
                 raise ValueError('Ungültige Termineingaben.')
             event.title = text(data.get('title', event.title), 'Titel', 160, True)
             event.start_date = day(data.get('start_date', event.start_date.isoformat() if event.start_date else None))
@@ -197,14 +269,16 @@ def register_project_calendar(app, db, Trade, Contractor, TimePerson, TimeEntry)
                 else:
                     model=db.Model.registry._class_registry['CalendarPreferences']
                     event.preferences=model(performed=data['performed'])
+            if 'work' in data:
+                model=db.Model.registry._class_registry['CalendarPreferences']
+                if not event.preferences:event.preferences=model(performed=False)
+                event.preferences.work_json=json.dumps(clean_work(data['work']))
             db.session.add(event)
             # Save the appointment and its derived daily entries in one transaction.
             with db.session.no_autoflush:
                 sync_hours(event)
-            db.session.commit()
-            return jsonify(event=serialize(event)), 200 if event_id else 201
         except (ValueError, TypeError) as exc:
             db.session.rollback()
-            return jsonify(error=str(exc)), 400
+            raise ValueError(str(exc)) from exc
 
     return CalendarEvent, CalendarEventTrade, CalendarEventCompany, CalendarCompanyTime, serialize, sync_hours

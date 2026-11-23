@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 import re
 from uuid import uuid4
+from types import SimpleNamespace
 import zipfile
 
 from flask import jsonify, request, send_file
@@ -35,6 +36,7 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         loan_id=db.Column(db.Integer,db.ForeignKey('finance_loan.id',ondelete='RESTRICT'),nullable=False)
         event_id=db.Column(db.Integer,db.ForeignKey('finance_event.id',ondelete='RESTRICT'),nullable=True,unique=True)
         template_document_id=db.Column(db.Integer,db.ForeignKey('finance_loan_document.id',ondelete='SET NULL'))
+        payouts_json=db.Column(db.Text,nullable=False,default='[]',server_default='[]')
         requested_amount=db.Column(db.Numeric(14,2),nullable=False)
         stored_name=db.Column(db.String(80),nullable=False,unique=True)
         preview_name=db.Column(db.String(80),nullable=True)
@@ -120,6 +122,20 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         except (TypeError,json.JSONDecodeError):return fallback
         return value if isinstance(value,type(fallback)) else fallback
 
+    def payouts(row):return load_json(row.payouts_json,[])
+    def paid_amount(row):
+        parts=payouts(row)
+        return sum((dec(x['amount']) for x in parts),ZERO) if parts else (dec(row.requested_amount) if row.status in ('Ausgezahlt','Bestätigt') else ZERO)
+    def paid_positions(row):
+        result={}
+        for part in payouts(row):
+            for position in part['positions']:
+                ident=position['receipt_id'];result[ident]=result.get(ident,ZERO)+dec(position['amount'])
+        return result
+    def snapshot_items(row,items):
+        parts=payouts(row)
+        return [SimpleNamespace(receipt_id=int(ident),snapshot_json=json.dumps(snapshot)) for part in parts for ident,snapshot in part['snapshots'].items()] if parts else items
+
     def drawdown_json(row,detail=False):
         loan=db.session.get(Loan,row.loan_id);items=items_for(row.id);data=load_json(row.data_json,{})
         result={'id':row.id,'event_id':row.event_id,'loan_id':row.loan_id,'loan_name':loan.name if loan else 'Gelöschter Kredit',
@@ -134,10 +150,11 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
                 'receipt_ids':[item.receipt_id for item in items],
                 'preview_url':f'/api/financing/drawdowns/{row.id}/preview' if row.preview_name else None,
                 'download_url':f'/api/financing/drawdowns/{row.id}/download' if (PACKAGE_ROOT/row.stored_name).is_file() else None}
+        result.update(paid_amount=float(paid_amount(row)),remaining_amount=float(max(ZERO,dec(row.requested_amount)-paid_amount(row))),payouts=payouts(row),remaining_positions=[dict(receipt_id=item.receipt_id,amount=float(max(ZERO,dec(item.claimed_amount)-paid_positions(row).get(item.receipt_id,ZERO)))) for item in items])
         # Exact operations recorded on confirmation, not a guess from receipt/date.
         applications=[]
-        if row.status in ('Ausgezahlt','Bestätigt'):
-            for item in items:
+        if row.status in ('Ausgezahlt','Bestätigt','Teilweise ausgezahlt'):
+            for item in snapshot_items(row,items):
                 snapshot=load_json(item.snapshot_json,{})
                 receipt=snapshot.get('receipt',{})
                 if snapshot.get('version')!=2:
@@ -179,8 +196,8 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
         receipts=db.session.scalars(select(Receipt).where(Receipt.status=='Gebucht')
             .order_by(Receipt.document_date.desc(),Receipt.id.desc())).all()
         grouped=payment_rows([row.id for row in receipts]) if receipts else {};template=template_for(loan_id)
-        pending=sum((dec(row.requested_amount) for row in db.session.scalars(select(LoanDrawdown).where(
-            LoanDrawdown.loan_id==loan_id,LoanDrawdown.status=='Eingereicht')).all()),ZERO)
+        pending=sum((dec(row.requested_amount)-paid_amount(row) for row in db.session.scalars(select(LoanDrawdown).where(
+            LoanDrawdown.loan_id==loan_id,LoanDrawdown.status.in_(('Eingereicht','Teilweise ausgezahlt')))).all()),ZERO)
         available=max(ZERO,loan_account(loan)['undrawn']-pending)
         return jsonify(loan_id=loan_id,loan_name=loan.name,undrawn=float(available),pending=float(pending),
             template={'id':template.id,'filename':template.original_name} if template else None,
@@ -525,27 +542,53 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
 
     @app.post('/api/financing/drawdowns/<int:drawdown_id>/confirm')
     def drawdown_confirm(drawdown_id):
+        from project_lifecycle import sqlite_write_lock
+        sqlite_write_lock(db.session.connection())
+        db.session.expire_all()
         row=db.session.scalar(select(LoanDrawdown).where(LoanDrawdown.id==drawdown_id).with_for_update())
         if not row:return jsonify(error='Mittelabruf nicht gefunden.'),404
-        if row.status!='Eingereicht':return jsonify(error='Nur ein eingereichter Mittelabruf kann als ausgezahlt gebucht werden.'),409
+        submitted=request.get_json(silent=True) or {};confirmation=submitted.get('confirmation_id')
+        if confirmation is not None and (not isinstance(confirmation,str) or not re.fullmatch(r'[a-zA-Z0-9-]{16,80}',confirmation)):return jsonify(error='Ungültige Auszahlungsbestätigung.'),400
+        previous=next((part for part in payouts(row) if confirmation and part.get('confirmation_id')==confirmation),None)
+        if previous:
+            try:
+                same=money(submitted.get('amount'))==dec(previous['amount']) and submitted.get('confirmed_date')==previous['date'] and submitted.get('positions')==previous.get('request_positions')
+            except (ValueError,TypeError):same=False
+            return (jsonify(drawdown_json(row,True)),200) if same else (jsonify(error='Diese Bestätigung wurde bereits mit anderen Angaben verwendet.'),409)
+        if row.status not in ('Eingereicht','Teilweise ausgezahlt'):return jsonify(error='Nur ein offener Mittelabruf kann ausgezahlt werden.'),409
         body=request.get_json(silent=True) or {}
         try:
             confirmed_date=iso_date(body.get('confirmed_date'));loan=db.session.get(Loan,row.loan_id)
             items=items_for(row.id);ids=[item.receipt_id for item in items];_ids,by_id,grouped,options=selected_options(row.loan_id,ids)
-            total=sum((dec(item.claimed_amount) for item in items),ZERO)
-            if total!=dec(row.requested_amount):raise ValueError('Gesamtsumme und Positionen stimmen nicht überein.')
-            if any(dec(item.claimed_amount)>dec(options[item.receipt_id]['submittable']) for item in items):
-                raise ValueError('Ein Rechnungsbetrag ist nicht mehr vollständig einreichbar.')
-            if row.payout_type=='reimbursement' and any(
-                    dec(item.claimed_amount)>dec(options[item.receipt_id]['rebookable']) for item in items):
-                raise ValueError('Ein vorfinanzierter Anteil hat sich seit der Einreichung geändert.')
-            if total>loan_account(loan)['undrawn']:raise ValueError('Der ausgezahlte Betrag übersteigt den Darlehensrahmen.')
-            event=FinancingEvent(kind='loan_drawdown',loan_id=loan.id,amount=total,event_date=confirmed_date,
-                                 notes='Mittelabruf #'+str(row.id)+' · Auszahlung eingegangen')
-            db.session.add(event);db.session.flush();row.event_id=event.id
+            already=paid_positions(row);remaining={item.receipt_id:dec(item.claimed_amount)-already.get(item.receipt_id,ZERO) for item in items}
+            amount=money(body.get('amount',sum(remaining.values(),ZERO)))
+            if amount<=ZERO or amount>sum(remaining.values(),ZERO):raise ValueError('Auszahlung muss positiv sein und darf den offenen Abrufbetrag nicht übersteigen.')
+            if amount<sum(remaining.values(),ZERO) and not confirmation:raise ValueError('Teilauszahlung benötigt eine eindeutige Bestätigung.')
+            positions=body.get('positions')
+            if positions is None:
+                if amount!=sum(remaining.values(),ZERO):raise ValueError('Bei einer Teilauszahlung bitte die Rechnungsanteile angeben.')
+                claims={ident:value for ident,value in remaining.items() if value>ZERO}
+            else:
+                if not isinstance(positions,list) or any(not isinstance(x,dict) or type(x.get('receipt_id')) is not int for x in positions):raise ValueError('Ungültige Auszahlungspositionen.')
+                claims={x['receipt_id']:money(x.get('amount')) for x in positions}
+                if len(claims)!=len(positions):raise ValueError('Rechnung mehrfach ausgewählt.')
+            if sum(claims.values(),ZERO)!=amount or any(ident not in remaining or value<=ZERO or value>remaining[ident] for ident,value in claims.items()):raise ValueError('Rechnungsanteile und Auszahlung stimmen nicht überein.')
+            if any(value>dec(options[ident]['submittable']) for ident,value in claims.items()):raise ValueError('Ein Rechnungsanteil ist inzwischen nicht mehr einreichbar.')
+            if row.payout_type=='reimbursement' and any(value>dec(options[ident]['rebookable']) for ident,value in claims.items()):raise ValueError('Ein vorfinanzierter Anteil wurde inzwischen verändert.')
+            if amount>loan_account(loan)['undrawn']:raise ValueError('Auszahlung übersteigt den Darlehensrahmen.')
+            event=FinancingEvent(kind='loan_drawdown',loan_id=loan.id,amount=amount,event_date=confirmed_date,notes='Mittelabruf #'+str(row.id)+' · Auszahlung eingegangen')
+            db.session.add(event);db.session.flush()
+            part=dict(confirmation_id=confirmation,request_positions=body.get('positions'),event_id=event.id,amount=format(amount,'.2f'),date=confirmed_date,positions=[],snapshots={})
             for item in items:
-                apply_claim(row,item,by_id[item.receipt_id],grouped.get(item.receipt_id,[]),dec(item.claimed_amount),confirmed_date)
-            row.status='Ausgezahlt';row.confirmed_at=datetime.utcnow();db.session.flush();validate_ledger();db.session.commit()
+                claim=claims.get(item.receipt_id,ZERO)
+                if not claim:continue
+                apply_claim(row,item,by_id[item.receipt_id],grouped.get(item.receipt_id,[]),claim,confirmed_date)
+                part['positions'].append(dict(receipt_id=item.receipt_id,amount=format(claim,'.2f')))
+                part['snapshots'][str(item.receipt_id)]=load_json(item.snapshot_json,{})
+            parts=payouts(row)+[part];row.payouts_json=json.dumps(parts,ensure_ascii=False)
+            if not row.event_id:row.event_id=event.id
+            row.status='Ausgezahlt' if paid_amount(row)==dec(row.requested_amount) else 'Teilweise ausgezahlt'
+            row.confirmed_at=datetime.utcnow();db.session.flush();validate_ledger();db.session.commit()
             return jsonify(drawdown_json(row,True))
         except (ValueError,TypeError,OverflowError) as exc:
             db.session.rollback();return jsonify(error=str(exc)),409
@@ -608,18 +651,30 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
 
     @app.delete('/api/financing/drawdowns/<int:drawdown_id>')
     def drawdown_withdraw(drawdown_id):
+        from project_lifecycle import sqlite_write_lock
+        sqlite_write_lock(db.session.connection())
+        db.session.expire_all()
         row=db.session.scalar(select(LoanDrawdown).where(LoanDrawdown.id==drawdown_id).with_for_update())
         if not row:return jsonify(error='Mittelabruf nicht gefunden.'),404
         if row.status in ('Abgelehnt','Zurückgenommen'):return jsonify(error='Dieser Mittelabruf ist bereits abgeschlossen.'),409
         try:
-            if row.status in ('Ausgezahlt','Bestätigt'):
-                for item in items_for(row.id):
-                    snapshot=load_json(item.snapshot_json,{})
-                    reverse_v2(row,snapshot) if snapshot.get('version')==2 else reverse_legacy(row,snapshot)
-                event=db.session.get(FinancingEvent,row.event_id)
-                if not event or event.kind!='loan_drawdown' or event.loan_id!=row.loan_id or dec(event.amount)!=dec(row.requested_amount):
-                    raise ValueError('Die zugehörige Kreditbuchung wurde verändert.')
-                row.event_id=None;db.session.delete(event)
+            if row.status in ('Ausgezahlt','Bestätigt','Teilweise ausgezahlt'):
+                parts=payouts(row)
+                if parts:
+                    for part in reversed(parts):
+                        for snapshot in part['snapshots'].values():reverse_v2(row,snapshot)
+                        event=db.session.get(FinancingEvent,part['event_id'])
+                        if not event or event.loan_id!=row.loan_id or event.kind!='loan_drawdown' or dec(event.amount)!=dec(part['amount']):raise ValueError('Eine Teilbuchung wurde inzwischen verändert.')
+                        if row.event_id==event.id:row.event_id=None
+                        db.session.delete(event);db.session.flush()
+                    # Keep immutable payment history; status excludes it from active balances.
+                else:
+                    for item in items_for(row.id):
+                        snapshot=load_json(item.snapshot_json,{})
+                        reverse_v2(row,snapshot) if snapshot.get('version')==2 else reverse_legacy(row,snapshot)
+                    event=db.session.get(FinancingEvent,row.event_id)
+                    if not event or event.kind!='loan_drawdown' or event.loan_id!=row.loan_id or dec(event.amount)!=dec(row.requested_amount):raise ValueError('Die Kreditbuchung wurde verändert.')
+                    row.event_id=None;db.session.delete(event)
             row.status='Zurückgenommen';db.session.flush();validate_ledger();db.session.commit()
             return jsonify(drawdown_json(row,True))
         except (ValueError,TypeError) as exc:
@@ -628,15 +683,19 @@ def register_loan_drawdowns(app, db, Loan, LoanDocument, FinancingEvent,
     def receipt_has_drawdown(receipt_id):
         return db.session.scalar(select(LoanDrawdownItem.id).join(LoanDrawdown,
             LoanDrawdown.id==LoanDrawdownItem.drawdown_id).where(
-            LoanDrawdownItem.receipt_id==receipt_id,LoanDrawdown.status.in_(('Ausgezahlt','Bestätigt'))).limit(1)) is not None
+            LoanDrawdownItem.receipt_id==receipt_id,LoanDrawdown.status.in_(('Ausgezahlt','Bestätigt','Teilweise ausgezahlt'))).limit(1)) is not None
 
     def payment_lock_reason(payment_id):
         payment=db.session.get(Payment,payment_id)
         if not payment:return ''
         items=db.session.scalars(select(LoanDrawdownItem).join(LoanDrawdown,
             LoanDrawdown.id==LoanDrawdownItem.drawdown_id).where(
-            LoanDrawdownItem.receipt_id==payment.receipt_id,LoanDrawdown.status.in_(('Ausgezahlt','Bestätigt')))).all()
+            LoanDrawdownItem.receipt_id==payment.receipt_id,LoanDrawdown.status.in_(('Ausgezahlt','Bestätigt','Teilweise ausgezahlt')))).all()
+        expanded=[]
         for item in items:
+            parent=db.session.get(LoanDrawdown,item.drawdown_id)
+            expanded.extend(snapshot_items(parent,[item]) if payouts(parent) else [item])
+        for item in expanded:
             snapshot=load_json(item.snapshot_json,{});ids=set()
             if snapshot.get('version')==2:
                 ids|={entry.get('payment_id') for entry in snapshot.get('full',[])}

@@ -118,17 +118,17 @@ function drawdownActions(d){
  const actions=[];
  if(d.status==='Entwurf')actions.push(`<button type="button" data-edit-drawdown="${d.id}">Weiter bearbeiten</button>`);
  if(d.download_url)actions.push(`<a class="button-link" href="${esc(d.download_url)}">ZIP laden</a>`);
- if(d.status==='Eingereicht'){
+ if(['Eingereicht','Teilweise ausgezahlt'].includes(d.status)){
   actions.push(`<button type="button" class="primary" data-confirm-drawdown="${d.id}">Auszahlung eingegangen</button>`);
-  actions.push(`<button type="button" data-reject-drawdown="${d.id}">Bank abgelehnt</button>`);
+  if(d.status==='Eingereicht')actions.push(`<button type="button" data-reject-drawdown="${d.id}">Bank abgelehnt</button>`);
  }
- if(['Entwurf','Eingereicht','Ausgezahlt','Bestätigt'].includes(d.status))actions.push(`<button type="button" class="danger" data-undo-drawdown="${d.id}">${['Ausgezahlt','Bestätigt'].includes(d.status)?'Auszahlung zurücknehmen':'Abruf zurücknehmen'}</button>`);
+ if(['Entwurf','Eingereicht','Teilweise ausgezahlt','Ausgezahlt','Bestätigt'].includes(d.status))actions.push(`<button type="button" class="danger" data-undo-drawdown="${d.id}">${['Ausgezahlt','Bestätigt','Teilweise ausgezahlt'].includes(d.status)?'Auszahlung zurücknehmen':'Abruf zurücknehmen'}</button>`);
  return actions.join('');
 }
 function drawdownMilestone(d){
- const value=['Ausgezahlt','Bestätigt'].includes(d.status)?d.confirmed_at:d.status==='Eingereicht'?d.submitted_at:
+ const value=['Ausgezahlt','Bestätigt','Teilweise ausgezahlt'].includes(d.status)?d.confirmed_at:d.status==='Eingereicht'?d.submitted_at:
   d.status==='Abgelehnt'?d.rejected_at:d.updated_at||d.created_at;
- const label=['Ausgezahlt','Bestätigt'].includes(d.status)?'ausgezahlt':d.status==='Eingereicht'?'eingereicht':
+ const label=['Ausgezahlt','Bestätigt','Teilweise ausgezahlt'].includes(d.status)?'ausgezahlt':d.status==='Eingereicht'?'eingereicht':
   d.status==='Abgelehnt'?'abgelehnt':d.status==='Zurückgenommen'?'zurückgenommen':'erstellt';
  return value?' · '+label+' '+esc(value.slice(0,10)):'';
 }
@@ -165,7 +165,7 @@ function creditHistoryRow(row){
  let title='',status='',details='',actions='',nested='';
  if(row.type==='drawdown'){
   const payout={own_account:'Eigenes Konto',direct:'Direktzahlung',reimbursement:'Eigenkapitalerstattung'};
-  title='Mittelabruf · '+euro(data.requested_amount);status=data.status;
+  title='Mittelabruf · '+euro(data.requested_amount)+(data.status==='Teilweise ausgezahlt'?' · ausgezahlt '+euro(data.paid_amount)+' · offen '+euro(data.remaining_amount):'');status=data.status;
   details=(payout[data.payout_type]||'Eigenes Konto')+' · '+data.receipt_count+' Belege'+(data.rejection_reason?' · '+data.rejection_reason:'');
   actions=drawdownActions(data);
   if(row.applications.length)nested=`<details class="credit-linked-usages"><summary>Verwendungen zu diesem Abruf</summary><ul>${applicationList(row.applications)}</ul></details>`;
@@ -210,7 +210,7 @@ function render(){
  creditActivity=PHBCreditActivity.build(state);
  $('newCreditActivity').disabled=!state.loans.length;
  $('loanList').innerHTML=state.loans.map(l=>{
-   const pending=(state.drawdowns||[]).filter(d=>d.loan_id===l.id&&d.status==='Eingereicht').reduce((sum,d)=>sum+Number(d.requested_amount),0);
+   const pending=(state.drawdowns||[]).filter(d=>d.loan_id===l.id&&['Eingereicht','Teilweise ausgezahlt'].includes(d.status)).reduce((sum,d)=>sum+Number(d.remaining_amount ?? d.requested_amount),0);
    const drawdownCount=creditActivity.counts.get(l.id)||0;
    const used=Number(l.balance.paid_for_project),available=Number(l.balance.unallocated_drawn),frame=Number(l.principal)||1;
    return `<article class="smallcard loan-overview-card"><div class="loan-card-head"><div><h3>${esc(l.name)}</h3><p class="meta">${esc([l.bank,l.reference].filter(Boolean).join(' · ')||'Vertragsdaten ergänzen')}</p></div>${pending>0?`<span class="loan-pending">${euro(pending)} in Prüfung</span>`:''}</div><div class="loan-progress" aria-label="${euro(used)} verwendet, ${euro(available)} ausgezahlt und verfügbar"><span class="loan-progress-used" style="width:${Math.min(100,used/frame*100)}%"></span><span class="loan-progress-available" style="width:${Math.min(100,available/frame*100)}%"></span></div><div class="loan-key-values"><div><span>Rahmen</span><b>${euro(l.principal)}</b></div><div><span>Ausgezahlt</span><b>${euro(l.balance.drawn)}</b></div><div><span>Verwendet</span><b>${euro(used)}</b></div><div><span>Verfügbar</span><b>${euro(available)}</b></div></div><div class="inline-actions"><span class="loan-card-counts"><span class="loan-doc-count">${l.documents?.length||0} Dokumente</span><span class="loan-drawdown-count" title="Eingereichte Abrufe und manuell nachgetragene Auszahlungen, jeweils einmal gezählt">${drawdownCount} ${drawdownCount===1?'Abruf':'Abrufe'}</span></span><button type="button" data-credit-loan="${l.id}">Kredit nutzen</button><button type="button" data-loan="${l.id}">Kredit verwalten</button></div></article>`;
@@ -579,7 +579,7 @@ $('drawdownPayoutType').onchange=renderDrawdownOptions;
 $('closeDrawdown').onclick=async()=>{if(drawdownBusy)return;$('drawdownDialog').close();if(currentDrawdown)await reload();};
 document.addEventListener('phb-ai-status',()=>{if($('drawdownDialog').open)renderDrawdownOptions();});
 async function undoDrawdown(id){
- const row=(state.drawdowns||[]).find(item=>item.id===id),booked=['Ausgezahlt','Bestätigt'].includes(row?.status);
+ const row=(state.drawdowns||[]).find(item=>item.id===id),booked=['Ausgezahlt','Bestätigt','Teilweise ausgezahlt'].includes(row?.status);
  const question=booked
   ? 'Diese ausgezahlte Kreditsumme zurücknehmen? Kreditbuchung und alle dadurch umgebuchten Finanzierungsquellen werden gemeinsam wiederhergestellt; der Vorgang bleibt in der Historie.'
   : 'Diesen Mittelabruf zurücknehmen? Der Vorgang bleibt mit dem Status „Zurückgenommen“ in der Historie.';
@@ -588,11 +588,30 @@ async function undoDrawdown(id){
  catch(error){message(error.message,true);}
 }
 async function confirmDrawdown(id){
- const confirmedDate=await PHBUI.prompt('An welchem Tag ist die Auszahlung tatsächlich eingegangen? Datum im Format JJJJ-MM-TT:',TODAY);
- if(confirmedDate===null)return;
- try{await api('/api/financing/drawdowns/'+id+'/confirm','POST',{confirmed_date:confirmedDate});await reload();message('Auszahlung erfasst. Der Betrag ist jetzt verfügbar oder gemäß Auszahlungsziel verwendet.');}
- catch(error){message(error.message,true);}
+ if(drawdownBusy)return;drawdownBusy=true;
+ try{
+  const row=await api('/api/financing/drawdowns/'+id);
+  const confirmedDate=await PHBUI.prompt('Datum des tatsächlichen Zahlungseingangs (JJJJ-MM-TT):',TODAY);
+  if(confirmedDate===null)return;
+  const raw=await PHBUI.prompt('Tatsächlich ausgezahlter Betrag. Noch offen: '+euro(row.remaining_amount),String(row.remaining_amount).replace('.',','));
+  if(raw===null)return;const amount=PHBUI.currency.parse(raw);
+  if(!Number.isFinite(amount)||amount<=0)throw Error('Bitte einen positiven Betrag angeben.');
+  const positions=[];let left=amount;
+  for(const p of row.remaining_positions){
+   if(p.amount<=0)continue;let value=p.amount;
+   if(Math.abs(amount-row.remaining_amount)>.005){
+    const answer=await PHBUI.prompt('Davon für Rechnung #'+p.receipt_id+' (offen '+euro(p.amount)+'):',String(Math.min(left,p.amount)).replace('.',','));
+    if(answer===null)return;value=PHBUI.currency.parse(answer);
+   }
+   if(!Number.isFinite(value)||value<0||value>p.amount)throw Error('Ungültiger Rechnungsanteil.');
+   if(value>0)positions.push({receipt_id:p.receipt_id,amount:value});left=Math.round((left-value)*100)/100;
+  }
+  if(Math.abs(left)>.005)throw Error('Rechnungsanteile müssen genau dem ausgezahlten Betrag entsprechen.');
+  await api('/api/financing/drawdowns/'+id+'/confirm','POST',{confirmed_date:confirmedDate,amount,positions,confirmation_id:crypto.randomUUID()});
+  await reload();message('Nur die bestätigten Rechnungsanteile wurden gebucht und umgebucht.');
+ }catch(error){message(error.message,true);}finally{drawdownBusy=false;}
 }
+
 async function rejectDrawdown(id){
  const reason=await PHBUI.prompt('Ablehnungsgrund der Bank (optional):','');if(reason===null)return;
  try{await api('/api/financing/drawdowns/'+id+'/reject','POST',{reason});await reload();message('Mittelabruf als abgelehnt dokumentiert.');}

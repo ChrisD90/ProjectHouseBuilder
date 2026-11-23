@@ -11,7 +11,8 @@ class CompanionIntegrityTest(unittest.TestCase):
     def test_glossary_sources_are_offline_and_personal_metadata_is_atomic_and_scoped(self):
         catalogue=self.c.get('/api/companion').json
         self.assertEqual(catalogue['records'],[])
-        terms=catalogue['glossary'];categories={row['id'] for row in catalogue['glossary_categories']}
+        glossary=self.c.get('/api/glossary').json
+        terms=glossary['entries'];categories={row['id'] for row in glossary['categories']}
         self.assertGreaterEqual(len(terms),200)
         self.assertEqual(len({row['id'] for row in terms}),len(terms))
         for term in terms:
@@ -20,7 +21,7 @@ class CompanionIntegrityTest(unittest.TestCase):
             for source in term['sources']:
                 self.assertTrue(source['url'].startswith('https://'))
                 self.assertTrue(source['publisher']);self.assertTrue(source['checked_on'])
-        self.assertEqual(self.c.get('/api/companion',headers=self.foreign).json['glossary'],terms)
+        self.assertEqual(self.c.get('/api/glossary',headers=self.foreign).json['entries'],terms)
         row=self.record(kind='glossary',title='Eigene Werkzeugnotiz',data={'category':'tool','source_url':'https://example.org/werkzeug'})
         path='/api/companion/records/'+str(row['id'])
         for data in ({'category':[]},{'category':'unbekannt'},{'source_url':'javascript:alert(1)'},{'source_url':'https://user:password@example.org'},{'source_url':'https://example.org/ungueltiger link'}):

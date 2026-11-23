@@ -1,3 +1,6 @@
+import { FilterSummary } from './ui';
+import type { Row } from './core';
+import { DraftTools } from './draft-tools';
 import {
   ActionCount,
   ActionBar,
@@ -177,6 +180,10 @@ export function SelfWorkPage() {
   const cache = useQueryClient(),
     ask = useConfirm(),
     pending = useRef(false);
+  const calendar = useQuery({
+    queryKey: ['calendar-events', 'all'],
+    queryFn: () => api('/api/calendar-events'),
+  });
   const [opened, setOpened] = useState(false),
     [id, setID] = useState<number | null>(null),
     [busy, setBusy] = useState(false),
@@ -189,7 +196,7 @@ export function SelfWorkPage() {
     [status, setStatus] = useViewState('self-work-status', 'all'),
     [archive, setArchive] = useViewState('self-work-archive', 'active');
   const [invoicePlanID, setInvoicePlanID] = useState<number | null>(null);
-  useDialogRouteCleanup(opened, ['plan_id']);
+  useDialogRouteCleanup(opened, ['ai_job', 'plan_id']);
   const invoicePlan = query.data?.plans.find((row) => row.id === invoicePlanID);
   const form = useForm<PlanDraft>({
     initialValues: emptyPlan(),
@@ -252,6 +259,28 @@ export function SelfWorkPage() {
     const target = query.data?.plans.find((x) => x.id === Number(params.get('plan_id')));
     if (target) edit(target);
   }, [params.get('plan_id'), !!query.data]);
+  const handledAI = useRef('');
+  useEffect(() => {
+    const job = params.get('ai_job');
+    if (!job || job === handledAI.current) return;
+    handledAI.current = job;
+    void api('/api/ai-actions/' + job)
+      .then((result) => {
+        if (!result.result?.proposal) return;
+        const proposal = result.result.proposal,
+          context = result.input?.context || {};
+        edit();
+        form.setValues({
+          ...emptyPlan(),
+          ...context,
+          steps: proposal.steps,
+          materials: proposal.materials,
+          tools: proposal.tools,
+          notes: [proposal.summary, ...(proposal.assumptions || [])].join('\n'),
+        });
+      })
+      .catch(setFailure);
+  }, [params.get('ai_job')]);
   async function save(archived?: boolean) {
     if (pending.current) return;
     if (form.validate().hasErrors) {
@@ -449,11 +478,19 @@ export function SelfWorkPage() {
             ]}
           />
         </Group>
+        <FilterSummary
+          count={Number(!!search.trim()) + Number(status !== 'all') + Number(archive !== 'active')}
+          onReset={() => {
+            setSearch('');
+            setStatus('all');
+            setArchive('active');
+          }}
+        />
       </Paper>
       <ErrorBox value={query.error} />
       {query.isPending ? (
         <Text c="dimmed">Eigenleistungen werden geladen …</Text>
-      ) : !records.length ? (
+      ) : query.isError ? null : !records.length ? (
         <Paper withBorder p="xl" className="self-work-empty">
           <IconTool size={34} />
           <Title order={3}>
@@ -538,6 +575,18 @@ export function SelfWorkPage() {
                       {row.title}
                     </Title>
                   </UnstyledButton>
+                  {row.calendar_event_id && (
+                    <Button
+                      variant="subtle"
+                      size="compact-xs"
+                      onClick={() => navigate('/?calendar_event=' + row.calendar_event_id)}
+                      disabled={row.calendar_event_missing}
+                    >
+                      {row.calendar_event_missing
+                        ? 'Kalendertermin nicht mehr verfügbar'
+                        : row.calendar_event_title || 'Kalendertermin öffnen'}
+                    </Button>
+                  )}
                   {row.location && (
                     <Text size="sm" c="dimmed">
                       {row.location}
@@ -601,6 +650,16 @@ export function SelfWorkPage() {
       </Text>
       <Editor
         className="self-work-editor"
+        headerActions={
+          opened ? (
+            <DraftTools
+              name={'self-work:' + (id || 'new')}
+              value={form.values}
+              onRestore={(values) => form.setValues(values)}
+              disabled={busy}
+            />
+          ) : undefined
+        }
         opened={opened}
         title={id ? 'Eigenleistung bearbeiten' : 'Neue Eigenleistung'}
         dirty={form.isDirty()}
@@ -667,22 +726,43 @@ export function SelfWorkPage() {
                         />
                       </SimpleGrid>
                       <Select
-                        label="Arbeitspaket verknüpfen (optional)"
-                        description="Eine Verknüpfung zur Orientierung; das Arbeitspaket wird nicht verändert."
+                        label="Kalendertermin verknüpfen (optional)"
                         searchable
                         clearable
-                        data={taskOptions}
-                        value={form.values.task_id ? String(form.values.task_id) : null}
-                        onChange={(value) =>
-                          form.setFieldValue('task_id', value ? Number(value) : null)
+                        value={
+                          form.values.calendar_event_id
+                            ? String(form.values.calendar_event_id)
+                            : null
                         }
+                        onChange={(v) =>
+                          form.setFieldValue('calendar_event_id', v ? Number(v) : null)
+                        }
+                        data={(calendar.data?.events || []).map((event: Row) => ({
+                          value: String(event.id),
+                          label: event.title + ' · ' + event.start_date,
+                        }))}
                       />
-                      {form.values.task_id && !linkedTask && (
-                        <Alert color="yellow">
-                          Das verknüpfte Arbeitspaket ist nicht mehr verfügbar. Du kannst die
-                          Verknüpfung entfernen oder ein anderes auswählen. Deine Eigenleistung
-                          bleibt erhalten.
-                        </Alert>
+                      {(taskOptions.length > 0 || form.values.task_id) && (
+                        <>
+                          <Select
+                            label="Arbeitspaket verknüpfen (optional)"
+                            description="Eine Verknüpfung zur Orientierung; das Arbeitspaket wird nicht verändert."
+                            searchable
+                            clearable
+                            data={taskOptions}
+                            value={form.values.task_id ? String(form.values.task_id) : null}
+                            onChange={(value) =>
+                              form.setFieldValue('task_id', value ? Number(value) : null)
+                            }
+                          />
+                          {form.values.task_id && !linkedTask && (
+                            <Alert color="yellow">
+                              Das verknüpfte Arbeitspaket ist nicht mehr verfügbar. Du kannst die
+                              Verknüpfung entfernen oder ein anderes auswählen. Deine Eigenleistung
+                              bleibt erhalten.
+                            </Alert>
+                          )}
+                        </>
                       )}
                       <Select
                         label="Status dieser Eigenleistung"
@@ -992,7 +1072,6 @@ export function SelfWorkPage() {
                                 onChange={(value) =>
                                   toolChange(index, {
                                     source: value || 'Noch offen',
-                                    ...(value === 'Vorhanden' ? { cost: 0 } : {}),
                                   })
                                 }
                               />

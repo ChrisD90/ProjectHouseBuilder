@@ -20,6 +20,7 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
 import { useForm } from '@mantine/form';
 import { IconChevronLeft, IconChevronRight, IconPlus, IconTrash } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -51,6 +52,8 @@ type CalendarEvent = {
   company_trade?: string;
   performed: boolean;
   series?: string;
+  work: { mode: string; weekdays: number[]; break_minutes: number; daily_minutes: number };
+  hours?: { confirmed_minutes: number; planned_minutes: number };
 };
 type EventForm = Omit<
   CalendarEvent,
@@ -68,6 +71,7 @@ const empty = (day: string): EventForm => ({
   contractor_id: null,
   assignment: 'trade',
   performed: false,
+  work: { mode: 'daily', weekdays: [0, 1, 2, 3, 4], break_minutes: 0, daily_minutes: 480 },
 });
 const dateLabel = (day: string, options?: Intl.DateTimeFormatOptions) =>
   displayDate(day, options || { day: 'numeric', month: 'long' });
@@ -99,6 +103,8 @@ export function ProjectCalendar() {
     [repeatDays, setRepeatDays] = useState<number | string>(7);
   const [opened, setOpened] = useState(false),
     [selected, setSelected] = useState<number | null>(null);
+  const [scope, setScope] = useState<string>('one'),
+    [keepHours, setKeepHours] = useState(true);
   const [busy, setBusy] = useState(false),
     [failure, setFailure] = useState<unknown>(null);
   const days = calendarDays(anchor, view);
@@ -136,9 +142,22 @@ export function ProjectCalendar() {
           : null,
     },
   });
+  const [previewValues] = useDebouncedValue(form.values, 250);
+  const hours = useQuery({
+    queryKey: ['calendar-hours', previewValues],
+    enabled:
+      opened &&
+      previewValues.assignment === 'company' &&
+      !!previewValues.start_date &&
+      !!previewValues.end_date,
+    retry: false,
+    queryFn: () => api('/api/calendar-hours/preview', 'POST', previewValues),
+  });
   useDirtyGuard(opened && form.isDirty());
   function open(day: string, event?: CalendarEvent) {
     setFailure(null);
+    setScope('one');
+    setKeepHours(true);
     setSelected(event?.id ?? null);
     const values = event
       ? {
@@ -202,6 +221,21 @@ export function ProjectCalendar() {
     setBusy(true);
     setFailure(null);
     try {
+      const impact = selected
+        ? await api('/api/calendar-events/' + selected + '/impact?scope=' + scope)
+        : null;
+      if (
+        impact &&
+        scope !== 'one' &&
+        !(await ask(
+          'Änderung auf ' +
+            impact.event_count +
+            ' Termine anwenden? Datumsverschiebungen werden um das gleiche Delta übertragen. Betroffen: ' +
+            (impact.confirmed_minutes + impact.planned_minutes) / 60 +
+            ' Stunden.',
+        ))
+      )
+        return;
       const {
         title,
         start_date,
@@ -227,6 +261,9 @@ export function ProjectCalendar() {
           end_time,
           notes,
           performed,
+          work: values.work,
+          scope,
+          ...(impact ? { impact_token: impact.token } : {}),
           trade_ids: assignment === 'trade' ? trade_ids.map(Number) : [],
           contractor_id: assignment === 'company' && contractor_id ? Number(contractor_id) : null,
         },
@@ -246,20 +283,38 @@ export function ProjectCalendar() {
     }
   }
   async function remove() {
+    if (!selected || busy) return;
+    let impact;
+    try {
+      impact = await api('/api/calendar-events/' + selected + '/impact?scope=' + scope);
+    } catch (e) {
+      setFailure(e);
+      return;
+    }
     if (
-      !selected ||
-      busy ||
       !(await ask({
         title: 'Termin löschen',
-        message: 'Diesen Termin endgültig löschen?',
         confirmLabel: 'Löschen',
+        message:
+          impact.event_count +
+          ' Termin(e) löschen? ' +
+          impact.confirmed_minutes / 60 +
+          ' erfasste Stunden werden ' +
+          (keepHours ? 'als unabhängige Ist-Stunden erhalten.' : 'gemeinsam gelöscht.') +
+          ' ' +
+          impact.planned_minutes / 60 +
+          ' geplante Stunden entfallen.',
       }))
     )
       return;
     setBusy(true);
     setFailure(null);
     try {
-      await api('/api/calendar-events/' + selected, 'DELETE');
+      await api('/api/calendar-events/' + selected, 'DELETE', {
+        scope,
+        time_action: keepHours ? 'keep' : 'delete',
+        impact_token: impact.token,
+      });
       form.resetDirty();
       setOpened(false);
       await Promise.all(
@@ -665,14 +720,17 @@ export function ProjectCalendar() {
                   data={companyChoices(events.data?.companies || [])}
                   {...form.getInputProps('contractor_id')}
                 />
-                <Text size="xs" c="dimmed">
-                  Die Terminzeiten werden automatisch in die Stundenerfassung dieser Firma
-                  übernommen.{' '}
-                  {form.values.all_day
-                    ? 'Ganztägige Termine werden je Kalendertag mit 8 Std. pauschal gekennzeichnet.'
-                    : 'Mehrtägige Termine werden an Mitternacht auf die einzelnen Tage aufgeteilt.'}{' '}
-                  Änderungen und Löschungen werden dort ebenfalls übernommen.
-                </Text>
+                <SimpleWorkFields
+                  work={form.values.work}
+                  onChange={(work) => form.setFieldValue('work', work)}
+                />
+                <ErrorBox value={hours.error} />
+                {hours.data && (
+                  <Text size="sm" fw={600}>
+                    Stundenvorschau: {Number(hours.data.total_minutes) / 60} Std. an{' '}
+                    {hours.data.days.length} Tagen · {form.values.performed ? 'Ist' : 'Geplant'}
+                  </Text>
+                )}
               </>
             ) : (
               <MultiSelect
@@ -696,6 +754,28 @@ export function ProjectCalendar() {
               maxLength={4000}
               {...form.getInputProps('notes')}
             />
+            {selected && (
+              <>
+                {form.values.series && (
+                  <Select
+                    label="Änderungen anwenden auf"
+                    value={scope}
+                    onChange={(v) => setScope(v || 'one')}
+                    allowDeselect={false}
+                    data={[
+                      { value: 'one', label: 'Nur diesen Termin' },
+                      { value: 'following', label: 'Diesen und folgende Termine' },
+                      { value: 'series', label: 'Gesamte Serie' },
+                    ]}
+                  />
+                )}
+                <Checkbox
+                  label="Beim Löschen erfasste Ist-Stunden erhalten"
+                  checked={keepHours}
+                  onChange={(e) => setKeepHours(e.currentTarget.checked)}
+                />
+              </>
+            )}
             {selected && (
               <>
                 <WorkButton type="event" id={selected} />
@@ -758,5 +838,53 @@ export function ProjectCalendar() {
         </form>
       </Editor>
     </div>
+  );
+}
+
+function SimpleWorkFields({
+  work,
+  onChange,
+}: {
+  work: CalendarEvent['work'];
+  onChange: (work: CalendarEvent['work']) => void;
+}) {
+  return (
+    <Stack gap="xs">
+      <Select
+        label="Arbeitszeitberechnung"
+        value={work.mode}
+        allowDeselect={false}
+        data={[
+          { value: 'daily', label: 'Tägliche Arbeitszeit' },
+          { value: 'continuous', label: 'Durchgehender Zeitraum (auch nachts)' },
+        ]}
+        onChange={(v) => onChange({ ...work, mode: v || 'daily' })}
+      />
+      <MultiSelect
+        label="Arbeitstage"
+        data={['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((label, value) => ({
+          label,
+          value: String(value),
+        }))}
+        value={work.weekdays.map(String)}
+        onChange={(v) => onChange({ ...work, weekdays: v.map(Number) })}
+      />
+      <Group grow>
+        <NumberInput
+          label="Pause je Tag (Min.)"
+          min={0}
+          max={720}
+          value={work.break_minutes}
+          onChange={(v) => onChange({ ...work, break_minutes: Number(v) || 0 })}
+        />
+        <NumberInput
+          label="Ganztägig: Minuten je Tag"
+          min={1}
+          max={1440}
+          value={work.daily_minutes}
+          onChange={(v) => onChange({ ...work, daily_minutes: Number(v) || 480 })}
+        />
+      </Group>
+    </Stack>
   );
 }

@@ -27,6 +27,7 @@ import {
   useViewState,
   useDialogRouteCleanup,
   FilterSelect,
+  FilterSummary,
 } from './ui';
 import { DocumentVersions } from './document-versions';
 import { SourceWork } from './work';
@@ -255,6 +256,14 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
                 ]}
               />
             </Group>
+            <FilterSummary
+              count={Number(!!search.trim()) + Number(!!category) + Number(!!area)}
+              onReset={() => {
+                setSearch('');
+                setCategory(null);
+                setArea(null);
+              }}
+            />
           </Paper>
           <Paper withBorder p="sm" className="collection-content">
             <div className="phb-scroll-region collection-scroll">
@@ -308,6 +317,14 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
                 />
               )}
             </Group>
+            <FilterSummary
+              count={Number(!!search.trim()) + Number(!!area) + Number(!!source)}
+              onReset={() => {
+                setSearch('');
+                setArea(null);
+                setSource(null);
+              }}
+            />
           </Paper>
           <Paper withBorder p="md" className="collection-content">
             <div className="phb-scroll-region collection-scroll">
@@ -358,7 +375,7 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
                       </Group>
                     </Paper>
                   ))}
-                  {!documents.length && (
+                  {!query.isPending && !query.isError && !documents.length && (
                     <Text c="dimmed" size="sm">
                       Keine passenden Projektdokumente.
                     </Text>
@@ -397,7 +414,7 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
                       </Group>
                     </Paper>
                   ))}
-                  {!library.length && (
+                  {!query.isPending && !query.isError && !library.length && (
                     <Text size="sm" c="dimmed">
                       Keine passenden Originalbelege.
                     </Text>

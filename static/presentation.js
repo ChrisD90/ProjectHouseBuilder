@@ -3,8 +3,8 @@
  'use strict';
  if(typeof window==='undefined'||typeof document==='undefined')return;
  if(window.PHBDisplay)return;
- const KEY='phb-display-settings-v1',defaults={language:'de',dateFormat:'de',currencyDisplay:'symbol',unitDisplay:'short'};
- const normalize=value=>({language:'de',dateFormat:['de','iso','slash'].includes(value?.dateFormat)?value.dateFormat:'de',currencyDisplay:value?.currencyDisplay==='code'?'code':'symbol',unitDisplay:value?.unitDisplay==='long'?'long':'short'});
+ const KEY='phb-display-settings-v1',defaults={language:'de',dateFormat:'de',currencyDisplay:'symbol',unitDisplay:'short',density:'compact'};
+ const normalize=value=>({language:'de',dateFormat:['de','iso','slash'].includes(value?.dateFormat)?value.dateFormat:'de',currencyDisplay:value?.currencyDisplay==='code'?'code':'symbol',unitDisplay:value?.unitDisplay==='long'?'long':'short',density:value?.density==='comfortable'?'comfortable':'compact'});
  let settings=defaults;try{settings=normalize(JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(_){}
  const read=()=>{try{settings=normalize(JSON.parse(localStorage.getItem(KEY)||'{}'));}catch(_){}return settings;};
  const parseDate=value=>{
@@ -28,7 +28,8 @@
   const iso=y?`${y}-${m}-${d}`:`${year}-${month}-${day}`,parsed=parseDate(iso);
   return Number.isFinite(parsed.getTime())&&parsed.getFullYear()===Number(y||year)&&parsed.getMonth()+1===Number(m||month)&&parsed.getDate()===Number(d||day)?date(iso):match;
  }));
- const originals=new WeakMap(),dateStyles=new WeakMap();let queued=false;
+ const originals=new WeakMap(),dateStyles=new WeakMap();let queued=false;const dirtyRoots=new Set();
+ const applyDensity=()=>{document.documentElement.dataset.phbDensity=settings.density;};applyDensity();
  function decorateDate(input){
   let previous=dateStyles.get(input);if(!previous){previous={color:input.style.color,backgroundImage:input.style.backgroundImage,backgroundRepeat:input.style.backgroundRepeat,backgroundPosition:input.style.backgroundPosition};dateStyles.set(input,previous);}
   Object.assign(input.style,previous);
@@ -50,10 +51,16 @@
   }
  }
  function refresh(){
-  queued=false;
+  queued=false;const roots=[...dirtyRoots];dirtyRoots.clear();
   if(!document.body)return;
-  const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{acceptNode:node=>node.parentElement?.closest('script,style,textarea,input,code,pre,[contenteditable="true"],[data-phb-raw]')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});
-  let node;while((node=walker.nextNode())){
+  const texts=[];
+  for(const root of roots){
+   if(!root.isConnected)continue;
+   if(root.nodeType===Node.TEXT_NODE)texts.push(root);
+   else {const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;while((node=walker.nextNode()))texts.push(node);}
+  }
+  for(const node of new Set(texts)){
+   if(node.parentElement?.closest('script,style,textarea,input,code,pre,[contenteditable="true"],[data-phb-raw]'))continue;
    if(!node.data.trim())continue;
    // An option without a value attribute derives its submitted value from its
    // text. Use its display-only label instead, so unit/date preferences can
@@ -65,8 +72,8 @@
   }
   document.querySelectorAll('input[type="date"]').forEach(decorateDate);orderCompanies();
  }
- const schedule=()=>{if(!queued){queued=true;requestAnimationFrame(refresh);}};
- function changed(){read();schedule();window.dispatchEvent(new Event('phb-display-change'));}
+ const schedule=(root=document.body)=>{if(root)dirtyRoots.add(root);if(!queued){queued=true;requestAnimationFrame(refresh);}};
+ function changed(){read();applyDensity();schedule();window.dispatchEvent(new Event('phb-display-change'));}
  function set(value){settings=normalize({...settings,...value});try{localStorage.setItem(KEY,JSON.stringify(settings));}catch(_){}
   changed();for(const frame of document.querySelectorAll('iframe')){try{frame.contentWindow.dispatchEvent(new Event('phb-display-reload'));}catch(_){}}
  }
@@ -81,6 +88,6 @@
  document.addEventListener('input',e=>{if(e.target.matches?.('input[type="date"]'))decorateDate(e.target);});
  document.addEventListener('focusin',e=>{if(e.target.matches?.('input[type="date"]'))decorateDate(e.target);});
  document.addEventListener('focusout',e=>{if(e.target.matches?.('input[type="date"]'))schedule();});
- const start=()=>{const observer=new MutationObserver(schedule);observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-mantine-color-scheme','data-phb-theme']});observer.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['value','open','data-mantine-color-scheme','data-phb-theme']});schedule();loadCompanies();};
+ const start=()=>{const observer=new MutationObserver(changes=>{for(const change of changes){if(change.type==='characterData')schedule(change.target);else if(change.type==='childList')change.addedNodes.forEach(node=>schedule(node));else if(change.target.matches?.('input[type="date"]'))decorateDate(change.target);else schedule();}});observer.observe(document.documentElement,{attributes:true,attributeFilter:['data-mantine-color-scheme','data-phb-theme']});observer.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['value','open','data-mantine-color-scheme','data-phb-theme']});schedule();loadCompanies();};
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();

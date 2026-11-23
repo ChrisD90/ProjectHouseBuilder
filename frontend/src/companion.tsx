@@ -1,3 +1,4 @@
+import { runAIAction } from './ai-action';
 import { GlossaryBrowser, GlossarySources, glossaryEntries } from './glossary';
 import { displayDate, displayDateTime } from './presentation';
 import { companyChoices } from './presentation';
@@ -1576,18 +1577,17 @@ function Knowledge() {
     if (!(await ask('Begriff und deinen Kontext zur Erklärung an ChatGPT senden?'))) return;
     setBusy(true);
     try {
-      const result = await api(
-        '/api/companion/glossary/explain',
-        'POST',
+      const result = await runAIAction(
+        'glossary_explain',
         {
           term: search,
           context,
           consent: true,
           ...((window as any).PHBReactBridge?.ai.selection() || {}),
         },
-        true,
+        { title: 'Glossarbegriff erklären' },
       );
-      setAnswer(result.answer);
+      if (result) setAnswer(result.answer);
     } catch (e) {
       error(e);
     } finally {

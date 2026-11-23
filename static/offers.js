@@ -624,7 +624,10 @@
     });
   };
 
+  const filterReset=document.createElement('button');filterReset.type='button';filterReset.className='subtle';filterReset.textContent='Filter zurücksetzen';filters.append(filterReset);
+  filterReset.onclick=()=>{$('offerCategoryFilter').value='';refreshUI();};
   function refreshUI() {
+    filterReset.hidden=!$('offerCategoryFilter').value;
     const drafts=offers.filter(o=>o.status==='Entwurf');
     const listed=offers.filter(o=>o.status==='Angebot');
     const accepted=offers.filter(o=>['Angenommen','Beauftragt'].includes(o.status));

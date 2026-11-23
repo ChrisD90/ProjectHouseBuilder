@@ -1,5 +1,5 @@
 import type { BadgeProps, TextInputProps, SelectProps } from '@mantine/core';
-import { Badge, Select, TextInput, UnstyledButton } from '@mantine/core';
+import { Badge, Button, Group, Text, Select, TextInput, UnstyledButton } from '@mantine/core';
 import { IconSearch, IconFilter } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -30,6 +30,18 @@ export function ActionCount({
       {count}
     </span>
   );
+}
+export function FilterSummary({ count, onReset }: { count: number; onReset: () => void }) {
+  return count > 0 ? (
+    <Group justify="space-between" gap="xs" mt={6}>
+      <Text size="xs" c="dimmed" role="status">
+        {count} aktive Such-/Filterbedingung{count === 1 ? '' : 'en'}
+      </Text>
+      <Button size="compact-xs" variant="subtle" onClick={onReset}>
+        Filter zurücksetzen
+      </Button>
+    </Group>
+  ) : null;
 }
 /** Remove only this dialog's deep-link fields after an actual close/save. */
 export function useDialogRouteCleanup(opened: boolean, keys: string[]) {

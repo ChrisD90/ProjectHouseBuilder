@@ -1,17 +1,8 @@
-import {
-  Alert,
-  Button,
-  Checkbox,
-  List,
-  Paper,
-  Stack,
-  Text,
-  Textarea,
-  Title,
-} from '@mantine/core';
+import { runAIAction } from './ai-action';
+import { Alert, Button, Checkbox, List, Paper, Stack, Text, Textarea, Title } from '@mantine/core';
 import { IconSparkles } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
-import { api, Editor, ErrorBox, money } from './core';
+import { Editor, ErrorBox, money } from './core';
 import { ActionBar } from './ui';
 import { useDirtyGuard } from './shell';
 import type { PlanningContext, Proposal } from './self-work-types';
@@ -71,15 +62,20 @@ export function SelfWorkAI({
         ...(generate ? { token: reply?.token, user_ready: ready } : {}),
       };
       if (generate) {
-        const result = await api<{ proposal: Proposal }>(
-          '/api/self-work/ai/plan',
-          'POST',
-          body,
-          true,
-        );
+        const result = await runAIAction('self_work_plan', body, { title: 'Eigenleistung planen' });
+        if (!result) {
+          onClose();
+          return;
+        }
         setProposal(result.proposal);
       } else {
-        const result = await api<Reply>('/api/self-work/ai/consult', 'POST', body, true);
+        const result = (await runAIAction('self_work_consult', body, {
+          title: 'Eigenleistung recherchieren',
+        })) as Reply;
+        if (!result) {
+          onClose();
+          return;
+        }
         setHistory([
           ...conversation,
           {
@@ -110,8 +106,9 @@ export function SelfWorkAI({
     >
       <Stack>
         <Text size="sm" c="dimmed">
-          {context.title} · {context.experience}. Frage direkt nach Werkzeugen, Materialien oder
-          dem Vorgehen – oder lass ChatGPT dazu recherchieren. Einen Plan erstellst du bei Bedarf anschließend.
+          {context.title} · {context.experience}. Frage direkt nach Werkzeugen, Materialien oder dem
+          Vorgehen – oder lass ChatGPT dazu recherchieren. Einen Plan erstellst du bei Bedarf
+          anschließend.
         </Text>
         <Alert variant="light" color="teal">
           Der Vorschlag ist eine Orientierung. Mengen, Ausführung und Annahmen vor der Verwendung
@@ -175,7 +172,8 @@ export function SelfWorkAI({
             )}
             {reply && !reply.ready && (
               <Text size="sm" c="dimmed">
-                Du kannst weiterfragen oder die Hinweise ergänzen. Einen strukturierten Plan kannst du anschließend separat erstellen.
+                Du kannst weiterfragen oder die Hinweise ergänzen. Einen strukturierten Plan kannst
+                du anschließend separat erstellen.
               </Text>
             )}
             <ErrorBox value={failure} />

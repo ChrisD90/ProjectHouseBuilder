@@ -1,3 +1,4 @@
+import { FilterSummary } from './ui';
 import {
   Alert,
   Button,
@@ -118,6 +119,7 @@ export function Costs() {
           [gap < 0 ? 'Finanzierungslücke' : 'Puffer', money(Math.abs(gap))],
         ]}
       />
+      <FilterSummary count={Number(!!search.trim())} onReset={() => setSearch('')} />
       <Paper className="paper" mb="lg">
         <SimpleGrid cols={{ base: 2, md: 4 }}>
           {['forecast', 'committed', 'invoiced', 'paid'].map((key, i) => (
@@ -177,8 +179,12 @@ export function Costs() {
               data={[
                 { value: 'category', label: 'Gewerk / Kategorie' },
                 { value: 'kind', label: 'Ausführungsart' },
-                { value: 'phase', label: 'Bauphase' },
-                { value: 'task', label: 'Arbeitspaket' },
+                ...(rows.some((row) => row.phase)
+                  ? [{ value: 'phase', label: 'Bauphase (Altbestand)' }]
+                  : []),
+                ...(rows.some((row) => row.task)
+                  ? [{ value: 'task', label: 'Arbeitspaket (Altbestand)' }]
+                  : []),
                 { value: 'company', label: 'Firma' },
               ]}
             />

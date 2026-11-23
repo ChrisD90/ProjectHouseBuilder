@@ -1,3 +1,4 @@
+import { runAIAction } from './ai-action';
 import { ActionBar } from './ui';
 import {
   Accordion,
@@ -61,6 +62,9 @@ export function FundingPlanDialog({
   onUpload: (funding: number) => void;
   onManual: (funding: Row) => void;
 }) {
+  const [background, setBackground] = useState(true),
+    [documentContext, setDocumentContext] = useState<Row[]>([]),
+    [documentsReviewed, setDocumentsReviewed] = useState(false);
   const [id, setID] = useState<number | null>(planId),
     [step, setStep] = useState(0),
     [busy, setBusy] = useState(false),
@@ -120,6 +124,8 @@ export function FundingPlanDialog({
     setConsent(false);
     setAccept(false);
     setAmount('');
+    setDocumentContext([]);
+    setDocumentsReviewed(false);
     initialized.current = null;
     form.setValues(empty);
     form.setInitialValues(empty);
@@ -160,6 +166,10 @@ export function FundingPlanDialog({
     void cache.invalidateQueries({ queryKey: ['funding-plan-options'] });
     void query.refetch();
   }, [latestDocument, opened, id]);
+  useEffect(() => {
+    setDocumentContext([]);
+    setDocumentsReviewed(false);
+  }, [JSON.stringify(form.values.document_ids)]);
   const signature = JSON.stringify(form.values);
   useEffect(() => {
     setConsent(false);
@@ -285,12 +295,24 @@ export function FundingPlanDialog({
       if (!current.checklist[phase + '_ready'])
         throw Error('Bitte die offenen Voraussetzungen in der Checkliste ergänzen.');
       const choice = (window as any).PHBReactBridge.ai.selection();
-      const result = await api(
-        '/api/funding/plans/' + current.id + '/check',
-        'POST',
-        { phase, consent: true, plan_only: true, model: choice.model },
-        true,
+      const result = await runAIAction(
+        'funding_check',
+        {
+          phase,
+          consent: true,
+          plan_only: true,
+          model: choice.model,
+          document_excerpts: documentsReviewed
+            ? documentContext.map(({ id, digest, text }) => ({ id, digest, text }))
+            : [],
+          documents_reviewed: documentsReviewed,
+        },
+        { target: current.id, title: 'Förderplanung prüfen', background },
       );
+      if (!result) {
+        onClose();
+        return;
+      }
       setSaved(result);
       setStep(2);
       void query.refetch();
@@ -942,6 +964,78 @@ export function FundingPlanDialog({
               Vorgang läuft. Bitte Ergebnis oder Fehler abwarten.
             </Text>
           )}
+          <Paper withBorder p="sm">
+            <Stack gap="xs">
+              {saved?.report?.token && (
+                <Text size="xs">
+                  Letzte Prüfung:{' '}
+                  {saved.report.document_basis === 'reviewed_text'
+                    ? 'mit bestätigten Textauszügen'
+                    : 'nur Formular und Dokument-Metadaten'}
+                </Text>
+              )}
+              <Text size="xs" c="dimmed">
+                Ohne bestätigte Textauszüge erhält ChatGPT nur die Angaben aus dem Formular sowie
+                Titel und Kategorien der Unterlagen.
+              </Text>
+              <Button
+                variant="light"
+                disabled={!id || busy}
+                onClick={() =>
+                  void action(async () => {
+                    const current = await saveDraft();
+                    const context = await api(
+                      '/api/funding/plans/' + current.id + '/document-context',
+                    );
+                    setDocumentContext(context.documents);
+                    setDocumentsReviewed(false);
+                  })
+                }
+              >
+                Unterlagentext lokal auslesen und prüfen
+              </Button>
+              {!!documentContext.length && (
+                <Accordion>
+                  <Accordion.Item value="document-context">
+                    <Accordion.Control>Auszüge prüfen ({documentContext.length})</Accordion.Control>
+                    <Accordion.Panel>
+                      <Stack>
+                        {documentContext.map((doc, index) => (
+                          <Textarea
+                            key={doc.id}
+                            label={doc.title}
+                            description={doc.warning}
+                            value={doc.text}
+                            maxLength={6000}
+                            minRows={3}
+                            onChange={(e) => {
+                              const text = e.currentTarget.value;
+                              setDocumentContext((old) =>
+                                old.map((x, n) => (n === index ? { ...x, text } : x)),
+                              );
+                              setDocumentsReviewed(false);
+                            }}
+                          />
+                        ))}
+                      </Stack>
+                    </Accordion.Panel>
+                  </Accordion.Item>
+                </Accordion>
+              )}
+              {!!documentContext.length && (
+                <Checkbox
+                  label="Diese Auszüge geprüft und für ChatGPT freigegeben"
+                  checked={documentsReviewed}
+                  onChange={(e) => setDocumentsReviewed(e.currentTarget.checked)}
+                />
+              )}
+              <Checkbox
+                label="Prüfung im Hintergrund ausführen"
+                checked={background}
+                onChange={(e) => setBackground(e.currentTarget.checked)}
+              />
+            </Stack>
+          </Paper>
           <ActionBar>
             {id && (
               <Button

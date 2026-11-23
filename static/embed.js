@@ -23,7 +23,13 @@
   const label=document.createElement('label');label.className='phb-processing-control';label.append('Verarbeitung');const select=document.createElement('select');select.name='processing_mode';select.dataset.phbIgnoreDirty='true';select.add(new Option('Im Vordergrund – direkt prüfen','foreground'));select.add(new Option('Im Hintergrund – später prüfen','background'));label.append(select);form.querySelector('button[type=submit]')?.before(label);
  }}
  prepareModes();new MutationObserver(prepareModes).observe(document.body,{childList:true,subtree:true});
- function lockSources(){const active=new Set(jobs.filter(j=>['Wartend','Läuft'].includes(j.status)).map(j=>j.kind));for(const node of document.querySelectorAll('[data-import-kind],form[data-version-upload]')){const kind=node.dataset.importKind||(node.matches('form[data-version-upload]')?'versions':'');for(const control of node.matches('form')?node.querySelectorAll('input,select,textarea,button'):[node]){if(active.has(kind)){if(!locked.has(control))locked.set(control,control.disabled);control.disabled=true;control.dataset.importBusy='true';}else if(locked.has(control)){control.disabled=locked.get(control);locked.delete(control);delete control.dataset.importBusy;}}}}
+ function lockSources(){
+  // Server-side jobs may queue independently. Only the submitting workflow owns
+  // its transient controls; completed background handoffs must not freeze pages.
+  for(const node of document.querySelectorAll('[data-import-busy]')){
+   if(locked.has(node)){node.disabled=locked.get(node);locked.delete(node);}delete node.dataset.importBusy;
+  }
+ }
  window.PHBEmbed={
   setJobs(value){jobs=value;lockSources();},
   release(control){if(locked.has(control))locked.set(control,false);control.disabled=false;lockSources();},
