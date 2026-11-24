@@ -46,6 +46,11 @@
       <div class="phb-messagebox-actions"><button id="cancelOfferCompany" type="button" class="subtle">Abbrechen</button><button type="submit" class="primary">Firma anlegen und auswählen</button></div>
     </form>
   </dialog>
+  <dialog id="offerPositionsDialog" class="phb-workflow-dialog offer-positions-dialog" aria-labelledby="offerPositionsTitle">
+    <div class="phb-workflow-head"><div><h2 id="offerPositionsTitle">Positionen</h2><p>Leistungen und Nettopreise bearbeiten. Die Angebotssumme wird daraus berechnet.</p></div><button id="closeOfferPositions" type="button" class="subtle">Schließen</button></div>
+    <div class="phb-workflow-body"><form id="offerPositionsForm" class="offer-review-form"></form><p id="offerPositionsError" role="alert"></p></div>
+    <div class="phb-dialog-actions"><button id="saveOfferPositions" type="submit" form="offerPositionsForm" class="primary">Speichern</button></div>
+  </dialog>
   <dialog id="offerEditDialog" class="phb-workflow-dialog phb-offer-edit-dialog" aria-labelledby="offerEditTitle">
   <div class="phb-workflow-head"><div><span class="phb-page-kicker">Angebote / Bearbeitung</span><h2 id="offerEditTitle">Angebot bearbeiten</h2><p>Werte mit dem Original-PDF prüfen und anschließend speichern.</p></div><div class="offer-editor-actions"><button id="openOfferDocuments" type="button" class="offer-tile-icon offer-documents-trigger" aria-label="Weitere Dokumente" title="Weitere Dokumente"><svg class="phb-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#paperclip"></use></svg><span id="offerDocumentsCount" class="offer-icon-badge" hidden></span></button><button id="openOfferVersionUpload" type="button" class="offer-tile-icon" aria-label="Neue PDF-Version hochladen" title="Neue PDF-Version hochladen"><svg class="phb-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#upload"></use></svg></button><button id="openOfferVersionHistory" type="button" class="offer-tile-icon" aria-label="Versionshistorie anzeigen" title="Versionshistorie anzeigen"><svg class="phb-icon" aria-hidden="true"><use href="/static/icons/ui-icons.svg#history"></use></svg></button><button id="closeOfferEdit" type="button" class="subtle">Schließen</button></div></div>
   <div class="phb-workflow-body">

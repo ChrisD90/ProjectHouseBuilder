@@ -172,6 +172,10 @@ def initialize():
     if changes:
         _backup_before_project_upgrade()
         upgrade_workflows(db.engine,changes)
+    from offer_positions import pending as missing_offer_positions,backfill as fill_offer_positions
+    if missing_offer_positions(db.engine):
+        _backup_before_project_upgrade()
+        with db.engine.begin() as connection:fill_offer_positions(connection)
     db.create_all()
     from request_safety import ensure_schema as ensure_request_schema
     ensure_request_schema(db.session.connection())

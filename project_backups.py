@@ -426,6 +426,8 @@ def restore(path, db, root, owner):
                         maximum = connection.scalar(sa.select(sa.func.max(table.c.id))) or 1
                         last = connection.scalar(sa.text('SELECT last_value FROM ' + quoted))
                         connection.execute(sa.text('SELECT setval(:s,:v,true)'), {'s': sequence, 'v': max(last, maximum)})
+                from offer_positions import backfill as fill_offer_positions
+                fill_offer_positions(connection,owner=owner)
                 for name in file_refs(current):
                     source = _path(root, name)
                     if source.is_file():

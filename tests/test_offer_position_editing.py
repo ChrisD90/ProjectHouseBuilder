@@ -108,11 +108,11 @@ class OfferPositionEditingTests(unittest.TestCase):
         self.assertEqual(self.client.patch(f'/api/offers/{oid}',json={'status':'Angenommen'}).status_code,200)
         self.assertEqual(self.client.get('/api/costs').json['summary']['planned'],1190)
 
-    def test_full_replacement_allows_removing_every_position(self):
+    def test_empty_draft_replacement_keeps_one_baseline_position(self):
         oid=self.upload()
         res=self.patch_positions(oid,[])
         self.assertEqual(res.status_code,200,res.json)
-        self.assertEqual(db.session.scalars(select(OfferPosition).where(OfferPosition.offer_id==oid)).all(),[])
+        self.assertEqual(len(db.session.scalars(select(OfferPosition).where(OfferPosition.offer_id==oid)).all()),1)
         self.assertEqual(db.session.scalars(select(OfferSection).where(OfferSection.offer_id==oid)).all(),[])
         self.assertFalse(db.session.get(Offer,oid).reconciled)
         self.assertEqual(self.client.patch(f'/api/offers/{oid}',json={'status':'Angebot'}).status_code,200)

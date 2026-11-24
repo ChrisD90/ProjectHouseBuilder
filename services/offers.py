@@ -7,6 +7,8 @@ from types import ModuleType
 from offer_diy import estimate as diy_estimate
 
 def register(runtime: ModuleType):
+    from offer_positions import install
+    install(runtime)
     def add_parsed_offer(parsed, digest, source_document=None, category='Sonstiges'):
         """Persist a non-binding analysis draft. Its PDF is stored in private/documents."""
         if runtime.db.session.scalar(runtime.select(runtime.Offer.id).where(runtime.Offer.digest == digest)):
@@ -80,6 +82,7 @@ def register(runtime: ModuleType):
 
     def _offer_snapshot(o):
         """A complete, independent copy of the quote's original data and OCR corrections."""
+        runtime.ensure_offer_position(o)
         result = {field: getattr(o, field) for field in runtime._OFFER_VERSION_FIELDS}
         result['positions'] = [{field: getattr(pos, field) for field in runtime._POSITION_VERSION_FIELDS} for pos in sorted(o.positions, key=lambda x: x.id or 0)]
         result['sections'] = [{field: getattr(g, field) for field in runtime._SECTION_VERSION_FIELDS} for g in sorted(o.sections, key=lambda x: x.sort_order)]
@@ -355,7 +358,7 @@ def register(runtime: ModuleType):
         reversals = [dict(reversed_at=x.reversed_at.isoformat(), agreed_gross=float(x.agreed_gross), document_id=x.confirmation_document_id) for x in runtime.db.session.scalars(runtime.select(runtime.OfferAcceptanceReversal).where(runtime.OfferAcceptanceReversal.offer_id == o.id).order_by(runtime.OfferAcceptanceReversal.id.desc()))]
         acceptance_json = {'id': acceptance.id, 'mode': acceptance.mode, 'quoted_gross': float(acceptance.quoted_gross), 'agreed_gross': float(acceptance.agreed_gross), 'document_id': acceptance.confirmation_document_id, 'created_at': acceptance.created_at.isoformat() if acceptance.created_at else ''} if acceptance else None
         deletion_reason = runtime._offer_deletion_reason(o)
-        return {'diy_estimate':diy_estimate(o),'attachments':[{'id':d.id,'filename':d.original_name,'uploaded_at':d.uploaded_at.isoformat() if d.uploaded_at else '', 'view_url':f'/api/documents/{d.id}/preview' if runtime.Path(d.original_name).suffix.lower() in ('.pdf','.jpg','.jpeg','.png','.webp','.txt') else None,'download_url':f'/api/documents/{d.id}/download'} for d in runtime.db.session.scalars(runtime.select(runtime.Document).where(runtime.Document.offer_id==o.id).order_by(runtime.Document.id.desc()))], 'acceptance_reversals': reversals, 'acceptance': acceptance_json, 'agreed_gross': runtime._contract_gross(o), 'can_delete': not deletion_reason, 'deletion_reason': deletion_reason, 'id': o.id, 'number': o.number, 'vendor': o.vendor, 'filename': o.filename, 'issued': o.issued, 'expires': o.expires, 'net': o.net, 'vat': o.vat, 'gross': o.gross, 'category': o.category, 'budget_line_id': o.budget_line_id, 'notes': o.notes, 'tax_rate': o.tax_rate, 'status': o.status, 'reconciled': o.reconciled, 'warnings': runtime.json.loads(o.warnings or '[]'), 'document_id': o.document_id, 'contractor_id': o.contractor_id, 'billing': runtime.offer_billing_dict(o), 'current_version': o.current_version or 1, 'versions': [runtime._version_json(v) for v in reversed(o.versions)], 'sections': [{'id': g.id, 'name': g.name, 'net': g.net, 'gross': g.gross, 'budget_line_id': g.budget_line_id, 'selected': g.selected} for g in sorted(o.sections, key=lambda x: x.sort_order)], 'positions': [{'id': p.id, 'number': p.number, 'section': p.section, 'description': p.description, 'quantity': p.quantity, 'unit': p.unit, 'unit_price': p.unit_price, 'net_amount': p.net_amount, 'optional_amount': p.optional_amount, 'optional': p.optional, 'page': p.page, 'own_work': bool(p.own_work)} for p in sorted(o.positions, key=lambda x: x.id)]}
+        return {'positions_token':positions_token(o),'diy_estimate':diy_estimate(o),'attachments':[{'id':d.id,'filename':d.original_name,'uploaded_at':d.uploaded_at.isoformat() if d.uploaded_at else '', 'view_url':f'/api/documents/{d.id}/preview' if runtime.Path(d.original_name).suffix.lower() in ('.pdf','.jpg','.jpeg','.png','.webp','.txt') else None,'download_url':f'/api/documents/{d.id}/download'} for d in runtime.db.session.scalars(runtime.select(runtime.Document).where(runtime.Document.offer_id==o.id).order_by(runtime.Document.id.desc()))], 'acceptance_reversals': reversals, 'acceptance': acceptance_json, 'agreed_gross': runtime._contract_gross(o), 'can_delete': not deletion_reason, 'deletion_reason': deletion_reason, 'id': o.id, 'number': o.number, 'vendor': o.vendor, 'filename': o.filename, 'issued': o.issued, 'expires': o.expires, 'net': o.net, 'vat': o.vat, 'gross': o.gross, 'category': o.category, 'budget_line_id': o.budget_line_id, 'notes': o.notes, 'tax_rate': o.tax_rate, 'status': o.status, 'reconciled': o.reconciled, 'warnings': runtime.json.loads(o.warnings or '[]'), 'document_id': o.document_id, 'contractor_id': o.contractor_id, 'billing': runtime.offer_billing_dict(o), 'current_version': o.current_version or 1, 'versions': [runtime._version_json(v) for v in reversed(o.versions)], 'sections': [{'id': g.id, 'name': g.name, 'net': g.net, 'gross': g.gross, 'budget_line_id': g.budget_line_id, 'selected': g.selected} for g in sorted(o.sections, key=lambda x: x.sort_order)], 'positions': [{'id': p.id, 'number': p.number, 'section': p.section, 'description': p.description, 'quantity': p.quantity, 'unit': p.unit, 'unit_price': p.unit_price, 'net_amount': p.net_amount, 'optional_amount': p.optional_amount, 'optional': p.optional, 'page': p.page, 'own_work': bool(p.own_work)} for p in sorted(o.positions, key=lambda x: x.id)]}
 
     runtime.offer_dict = offer_dict
 
@@ -662,6 +665,73 @@ def register(runtime: ModuleType):
 
     runtime._update_draft_positions = _update_draft_positions
 
+    def positions_token(offer):
+        from hashlib import sha256
+        fields=runtime._POSITION_VERSION_FIELDS
+        payload=[offer.current_version,offer.net,offer.vat,offer.gross,offer.status,
+            [{**{key:getattr(p,key) for key in fields},'id':p.id} for p in sorted(offer.positions,key=lambda p:p.id or 0)]]
+        return sha256(runtime.json.dumps(payload,sort_keys=True,default=str).encode()).hexdigest()
+
+    @runtime.app.put('/api/offers/<int:offer_id>/positions')
+    def offer_positions_update(offer_id):
+        from decimal import Decimal,InvalidOperation,ROUND_HALF_UP
+        from project_lifecycle import sqlite_write_lock
+        sqlite_write_lock(runtime.db.session.connection());runtime.db.session.expire_all()
+        offer=runtime.db.session.scalar(runtime.select(runtime.Offer).where(runtime.Offer.id==offer_id).with_for_update())
+        if not offer:return runtime.jsonify(error='Angebot nicht gefunden.'),404
+        values=runtime.request.get_json(silent=True)
+        if not isinstance(values,dict):return runtime.jsonify(error='Ungültige Positionsdaten.'),400
+        if values.get('positions_token')!=positions_token(offer):return runtime.jsonify(error='Die Positionen wurden inzwischen geändert. Bitte den Dialog neu öffnen; deine Eingaben bleiben erhalten.'),409
+        try:
+            raw=values.get('positions');rows=runtime._validated_offer_positions(raw)
+            if not rows or not any(not row['optional'] for row in rows):raise ValueError('Mindestens eine nicht optionale Position muss erhalten bleiben.')
+            current={p.id:p for p in offer.positions};seen=set()
+            for item in raw:
+                ident=item.get('id')
+                if ident is not None:
+                    if type(ident)is not int or ident not in current or ident in seen:raise ValueError('Ungültige oder doppelte Positionszuordnung.')
+                    seen.add(ident)
+            removed=set(current)-seen
+            for link in runtime.db.session.scalars(runtime.select(runtime.FundingPlanOffer).where(runtime.FundingPlanOffer.offer_id==offer.id)):
+                if removed & set(runtime.json.loads(link.position_ids)):
+                    raise ValueError('Eine entfernte Position wird in einer Förderplanung verwendet. Bitte dort zuerst die Auswahl anpassen.')
+            included=[row for row in rows if not row['optional']]
+            if any(row['net_amount'] is None for row in included):raise ValueError('Bitte für jede nicht optionale Position einen Nettobetrag eingeben.')
+            net=sum((Decimal(str(row['net_amount'])) for row in included),Decimal(0)).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
+            if values.get('tax_rate')=='manual':
+                parsed=runtime._offer_amount(values.get('vat'),'Umsatzsteuer')
+                if parsed is None:raise ValueError('Bitte den Umsatzsteuerbetrag eingeben.')
+                vat=Decimal(str(parsed));rate=float(vat/net*100) if net else 0
+            else:
+                try:rate=Decimal(str(values.get('tax_rate')))
+                except InvalidOperation:raise ValueError('Ungültiger Umsatzsteuersatz.')
+                if not rate.is_finite() or not 0<=rate<=100:raise ValueError('Ungültiger Umsatzsteuersatz.')
+                vat=(net*rate/100).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)
+            gross=net+vat
+            if gross>Decimal('99999999.99'):raise ValueError('Angebotsbetrag ist zu groß.')
+            groups={}
+            for item,row in zip(raw,rows):
+                position=current.get(item.get('id'))
+                if position is None:
+                    position=runtime.OfferPosition();offer.positions.append(position)
+                for key,value in row.items():setattr(position,key,value)
+                if not row['optional']:
+                    group=row['section'] or 'Weitere Leistungen'
+                    groups[group]=groups.get(group,Decimal(0))+Decimal(str(row['net_amount']))
+            for ident in removed:offer.positions.remove(current[ident])
+            for section in offer.sections:
+                section.net=float(groups.pop(section.name,Decimal(0)))
+                section.gross=float((Decimal(str(section.net))*(gross/net if net else 1)).quantize(Decimal('.01'),rounding=ROUND_HALF_UP))
+            for index,(name,amount) in enumerate(groups.items(),len(offer.sections)):
+                offer.sections.append(runtime.OfferSection(name=name,net=float(amount),gross=float((amount*(gross/net if net else 1)).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)),sort_order=index,selected=False))
+            offer.net=float(net);offer.vat=float(vat);offer.gross=float(gross);offer.tax_rate=float(rate);offer.reconciled=True
+            runtime.db.session.flush()
+            if offer.status in ('Angenommen','Beauftragt'):runtime._sync_offer_costs(offer)
+            runtime._sync_current_version(offer);runtime.db.session.commit()
+            return runtime.jsonify(ok=True,offer=runtime.offer_dict(offer))
+        except (ValueError,TypeError,InvalidOperation) as exc:
+            runtime.db.session.rollback();return runtime.jsonify(error=str(exc)),400
+
     @runtime.app.patch('/api/offers/<int:offer_id>/draft')
     def offer_draft_update(offer_id):
         offer = runtime.db.session.get(runtime.Offer, offer_id)
@@ -673,9 +743,11 @@ def register(runtime: ModuleType):
         if not isinstance(values, dict):
             return (runtime.jsonify(error='Bitte gültige Angebotsdaten senden.'), 400)
         if 'positions' in values and offer.status != 'Entwurf':
-            return (runtime.jsonify(error='Einzelpositionen können nur vor der Übernahme aus dem PDF-Entwurf geändert werden.'), 409)
+            return (runtime.jsonify(error='Positionen bestehender Angebote bitte über den Positionsdialog bearbeiten.'), 409)
         try:
             positions = runtime._validated_offer_positions(values['positions']) if 'positions' in values else None
+            if offer.status != 'Entwurf' and any(key in values and runtime._offer_amount(values[key],key) != getattr(offer,key) for key in ('gross','net','vat')):
+                return runtime.jsonify(error='Angebotsbeträge bitte über Positionen bearbeiten.'),409
             own_ids = values.get('own_work_position_ids')
             if 'own_work_position_ids' in values:
                 if positions is not None or not isinstance(own_ids, list) or any(type(ident) is not int for ident in own_ids) or not set(own_ids) <= {p.id for p in offer.positions}:

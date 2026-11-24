@@ -41,7 +41,7 @@
   let comparingOffers = false;
   let offerUploading = false;
   let currentPreviewDocument=null;
-  const extraOfferTools=document.createElement('a');extraOfferTools.className='mini';extraOfferTools.textContent='Nachträge & Änderungen';extraOfferTools.id='offerExtraTools';$('offerEditDialog').querySelector('.offer-editor-actions')?.prepend(extraOfferTools);
+  const extraOfferTools=document.createElement('button');extraOfferTools.type='button';extraOfferTools.className='mini';extraOfferTools.textContent='Positionen';extraOfferTools.id='offerExtraTools';$('offerEditDialog').querySelector('.offer-editor-actions')?.prepend(extraOfferTools);
 
   function showOfferPreview(docId){
     const pane=$('offerPdfPane'),frame=$('offerPdfFrame');
@@ -164,7 +164,7 @@
     $('offerEditForm').dataset.offerAmountSource='gross';
     $('offerEditError').textContent='';
     $('reverseOfferAcceptance').hidden=!['Angenommen','Beauftragt'].includes(offer.status);
-    extraOfferTools.href='/projektwerkstatt?tab=changes&offer='+offer.id;
+
     const pane=$('offerEditPdfPane'),frame=$('offerEditPdfFrame');
     pane.hidden=!offer.document_id;
     if(offer.document_id){
@@ -184,6 +184,66 @@
     catch(error){$('offerEditError').textContent=error.message;}
     finally{offerEditBusy=false;controls.forEach((x,i)=>x.disabled=disabled[i]);}
   };
+  let positionsOffer=null,positionsBusy=false;
+  const positionsFlow=PHBFlow.manage({dialog:'offerPositionsDialog',forms:['offerPositionsForm'],dismiss:['closeOfferPositions'],isBusy:()=>positionsBusy});
+  extraOfferTools.onclick=async()=>{
+    if(offerEditBusy||!editingOfferId)return;
+    if(editFlow.dirty()){await PHBUI.alert('Bitte deine Angebotsangaben zuerst speichern oder verwerfen, bevor du Positionen bearbeitest.');return;}
+    const o=offers.find(row=>row.id===editingOfferId);if(!o)return;
+    positionsOffer=o;
+    const form=$('offerPositionsForm'),rate=offerTaxRate(o);
+    $('offerPositionsTitle').textContent='Positionen · '+o.vendor;
+    form.innerHTML=`<div class="offer-position-totals offer-wide">
+      <label>Umsatzsteuersatz<select name="position_tax" data-position-tax>${[19,7,0,'manual'].map(v=>`<option value="${v}" ${v===rate?'selected':''}>${v==='manual'?'Manuell / gemischt':v+' %'}</option>`).join('')}</select></label>
+      <label>Netto (€)<input name="net" inputmode="decimal" readonly aria-label="Positionssumme netto"></label>
+      <label>Umsatzsteuer (€)<input name="vat" inputmode="decimal" value="${o.vat==null?'':esc(o.vat)}" aria-label="Positionssumme Umsatzsteuer"></label>
+      <label>Brutto (€)<input name="gross" inputmode="decimal" readonly aria-label="Positionssumme brutto"></label>
+    </div>${o.acceptance?`<p class="offer-wide offer-positions-contract-note">Verbindlicher Auftragswert: ${fmt(o.agreed_gross)}. Dieser bleibt bei Änderungen der Angebotspositionen erhalten.</p>`:''}${positionEditor(o,true)}`;
+    PHBUI.currency.bind(form);checkPositions(form);$('offerPositionsError').textContent='';positionsFlow.open();
+  };
+  $('closeOfferPositions').onclick=()=>{if(!positionsBusy)$('offerPositionsDialog').close();};
+  function calculatePositionTotals(form){
+    let cents=0,missing=false;
+    for(const row of form.querySelectorAll('[data-position-row]')){
+      if(row.querySelector('[data-position-field="optional"]').checked)continue;
+      const value=PHBUI.currency.parse(row.querySelector('[data-position-field="net_amount"]').value);
+      if(!Number.isFinite(value)||value<0)missing=true;else cents+=Math.round(value*100);
+    }
+    const mode=form.querySelector('[data-position-tax]').value;
+    form.elements.vat.readOnly=mode!=='manual';
+    form.elements.net.value=missing?'':PHBUI.currency.format(cents/100);
+    if(mode!=='manual')form.elements.vat.value=missing?'':PHBUI.currency.format(Math.round(cents*Number(mode)/100)/100);
+    const vat=PHBUI.currency.parse(form.elements.vat.value);
+    form.elements.gross.value=missing||!Number.isFinite(vat)?'':PHBUI.currency.format((cents+Math.round(vat*100))/100);
+  }
+  document.addEventListener('input',event=>{
+    const form=event.target.closest('#offerPositionsForm');if(!form)return;
+    if(event.target.matches('[data-position-field="quantity"],[data-position-field="unit_price"]')){
+      const row=event.target.closest('[data-position-row]'),quantity=readMoney(row.querySelector('[data-position-field="quantity"]').value),price=PHBUI.currency.parse(row.querySelector('[data-position-field="unit_price"]').value);
+      if(Number.isFinite(quantity)&&quantity!==null&&Number.isFinite(price))row.querySelector(row.querySelector('[data-position-field="optional"]').checked?'[data-position-field="optional_amount"]':'[data-position-field="net_amount"]').value=PHBUI.currency.format(Math.round(quantity*price*100)/100);
+    }
+    checkPositions(form);
+  });
+  document.addEventListener('change',event=>{
+    const form=event.target.closest('#offerPositionsForm');if(form)checkPositions(form);
+  });
+  $('offerPositionsForm').onsubmit=async event=>{
+    event.preventDefault();if(positionsBusy||!positionsOffer)return;
+    const form=event.currentTarget;
+    if(!form.reportValidity())return;
+    let data;try{data=collectDraft(form);}catch(error){$('offerPositionsError').textContent=error.message;return;}
+    if(!data.positions.length||!data.positions.some(p=>!p.optional)){$('offerPositionsError').textContent='Mindestens eine nicht optionale Position ist erforderlich.';return;}
+    const controls=[...$('offerPositionsDialog').querySelectorAll('button,input,select,textarea')],prior=controls.map(node=>node.disabled);
+    positionsBusy=true;positionsFlow.setBusy(true);editFlow.setBusy(true);controls.forEach(node=>node.disabled=true);$('offerPositionsError').textContent='';
+    try{
+      const response=await request(offerUrl(positionsOffer.id)+'/positions',{method:'PUT',data:{positions:data.positions,tax_rate:form.querySelector('[data-position-tax]').value,vat:data.vat,positions_token:positionsOffer.positions_token}});
+      await reload();positionsFlow.finish();
+      $('offerEditFields').innerHTML=editFields(response.offer);PHBUI.currency.bind($('offerEditForm'));renderEditorExtras(response.offer);
+      editMetadataBaseline=PHBFlow.signature($('offerEditForm'));editFlow.snapshot();
+      for(const node of [editDialog,$('offerEditForm')])window.PHBRequests?.acknowledge(node,offerUrl(response.offer.id));
+    }catch(error){$('offerPositionsError').textContent=error.message;}
+    finally{positionsBusy=false;positionsFlow.setBusy(false);editFlow.setBusy(false);controls.forEach((node,i)=>node.disabled=prior[i]);}
+  };
   const closeEdit=()=>{
     if(offerEditBusy)return;
     editDialog.close();
@@ -202,7 +262,7 @@
     submit.disabled=true;
     $('closeOfferEdit').disabled=true;
     try{
-      // Only the reviewed metadata is updated; positions belong to PDF drafts/versions.
+      // Amounts and positions are saved together in the independent positions dialog.
       const diy=$('offerEditExtras').querySelector('form[data-offer-diy]');
       if(diy)payload.own_work_position_ids=[...diy.querySelectorAll('[data-diy-position]:checked')].map(input=>Number(input.value));
       await update(editingOfferId,payload);
@@ -337,7 +397,6 @@
   });
   function editFields(o){
     const recognized=o.vendor==='Firma nicht erkannt'?'':o.vendor;
-    const taxOptions=[19,7,0,'manual'].map(value=>`<option value="${value}" ${value===offerTaxRate(o)?'selected':''}>${value==='manual'?'Manuell / gemischt':value+' %'}</option>`).join('');
     return `<div class="offer-field-row offer-field-row-two">
       <label>Anbieter / Firma<select name="contractor_id" data-offer-company data-recognized-name="${esc(recognized)}" required>${companyOptions(o.contractor_id,recognized)}</select></label>
       <label>Kategorie / Gewerk<select name="category" required>${categoryOptions(o.category)}</select></label>
@@ -346,9 +405,9 @@
       <label>Datum<input name="issued" value="${esc(o.issued)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
       <label>Gültig bis<input name="expires" value="${esc(o.expires)}" maxlength="20" placeholder="TT.MM.JJJJ"></label>
     </div><div class="offer-field-row offer-field-row-three offer-amount-row">
-      <label>Brutto (€)<input name="gross" inputmode="decimal" value="${o.gross==null?'':esc(o.gross)}" required></label>
-      <div class="offer-tax-field"><label for="offerEditVat">MwSt. (€)</label><div class="offer-tax-input"><input id="offerEditVat" name="vat" aria-label="MwSt. (€)" inputmode="decimal" value="${o.vat==null?'':esc(o.vat)}"><select data-offer-tax aria-label="Umsatzsteuersatz">${taxOptions}</select></div></div>
-      <label>Netto (€)<input name="net" inputmode="decimal" value="${o.net==null?'':esc(o.net)}"></label>
+      <label>Brutto (€)<input aria-label="Angebot brutto" value="${o.gross==null?'':esc(PHBUI.currency.format(o.gross))}" readonly disabled></label>
+      <label>Umsatzsteuer (€)<input aria-label="Angebot Umsatzsteuer" value="${o.vat==null?'':esc(PHBUI.currency.format(o.vat))}" readonly disabled></label>
+      <label>Netto (€)<input aria-label="Angebot netto" value="${o.net==null?'':esc(PHBUI.currency.format(o.net))}" readonly disabled></label>
     </div><label>Notizen<textarea name="notes" rows="3" maxlength="2000">${esc(o.notes)}</textarea></label>`;
   }
   function fields(o) {
@@ -372,41 +431,41 @@
     const num=p.number==null ? String(idx+1) : String(p.number);
     const text=p.description||'';
     const moneyInput = val => val==null ? '' : esc(val);
-    return `<details class="offer-position-row" data-position-row ${expanded?'open':''}>
+    return `<details class="offer-position-row" data-position-row ${p.id?`data-position-id="${p.id}"`: ''} ${expanded?'open':''}>
       <summary class="offer-position-title"><strong data-position-label>Pos. ${esc(num)} · ${esc(text||'Neue Position')}</strong><span class="offer-position-amount">${p.optional?'Optional · ':''}${p.net_amount==null?'Betrag offen':fmt(p.net_amount)+' netto'}</span></summary>
       <div class="offer-position-fields">
-        <label>Positionsnummer<input data-position-field="number" value="${esc(num)}" maxlength="30" placeholder="z. B. 3.2"></label>
-        <label class="offer-position-description">Leistungsbeschreibung<input data-position-field="description" value="${esc(text)}" maxlength="300" placeholder="z. B. Leitungen verlegen" required></label>
-        <label>Leistungsgruppe / Beiblatt<input data-position-field="section" value="${esc(p.section||'')}" maxlength="170" placeholder="z. B. Elektro oder Anlage 2"></label>
-        <label>Menge<input data-position-field="quantity" inputmode="decimal" value="${moneyInput(p.quantity)}" placeholder="1"></label>
-        <label>Einheit<input data-position-field="unit" value="${esc(p.unit||'')}" maxlength="40" placeholder="Stk., m², Std."></label>
-        <label>Einzelpreis netto (€)<input data-position-field="unit_price" data-euro="true" inputmode="decimal" value="${moneyInput(p.unit_price)}" placeholder="0,00"></label>
-        <label>Positionssumme netto (€)<input data-position-field="net_amount" data-euro="true" inputmode="decimal" value="${moneyInput(p.net_amount)}" placeholder="0,00"></label>
-        <label>Optionaler Positionsbetrag (€)<input data-position-field="optional_amount" data-euro="true" inputmode="decimal" value="${moneyInput(p.optional_amount)}" placeholder="Nur bei optionaler Position"></label>
-        <label>PDF-Seite (optional)<input data-position-field="page" type="number" min="1" max="9999" step="1" value="${moneyInput(p.page)}" placeholder="Seite"></label>
-        <label class="offer-position-optional"><input type="checkbox" data-position-field="optional" ${p.optional?'checked':''}> Optionale / nicht beauftragte Position</label>
-        <label class="offer-position-optional"><input type="checkbox" data-position-field="own_work" ${p.own_work?'checked':''}> Als mögliche Eigenleistung planen</label>
+        <label>Positionsnummer<input name="position-${idx}-number" data-position-field="number" value="${esc(num)}" maxlength="30" placeholder="z. B. 3.2"></label>
+        <label class="offer-position-description">Leistungsbeschreibung<input name="position-${idx}-description" data-position-field="description" value="${esc(text)}" maxlength="300" placeholder="z. B. Leitungen verlegen" required></label>
+        <label>Leistungsgruppe / Beiblatt<input name="position-${idx}-section" data-position-field="section" value="${esc(p.section||'')}" maxlength="170" placeholder="z. B. Elektro oder Anlage 2"></label>
+        <label>Menge<input name="position-${idx}-quantity" data-position-field="quantity" inputmode="decimal" value="${moneyInput(p.quantity)}" placeholder="1"></label>
+        <label>Einheit<input name="position-${idx}-unit" data-position-field="unit" value="${esc(p.unit||'')}" maxlength="40" placeholder="Stk., m², Std."></label>
+        <label>Einzelpreis netto (€)<input name="position-${idx}-unit_price" data-position-field="unit_price" data-euro="true" inputmode="decimal" value="${moneyInput(p.unit_price)}" placeholder="0,00"></label>
+        <label>Positionssumme netto (€)<input name="position-${idx}-net_amount" data-position-field="net_amount" data-euro="true" inputmode="decimal" value="${moneyInput(p.net_amount)}" placeholder="0,00"></label>
+        <label>Optionaler Positionsbetrag (€)<input name="position-${idx}-optional_amount" data-position-field="optional_amount" data-euro="true" inputmode="decimal" value="${moneyInput(p.optional_amount)}" placeholder="Nur bei optionaler Position"></label>
+        <label>PDF-Seite (optional)<input name="position-${idx}-page" data-position-field="page" type="number" min="1" max="9999" step="1" value="${moneyInput(p.page)}" placeholder="Seite"></label>
+        <label class="offer-position-optional"><input type="checkbox" name="position-${idx}-optional" data-position-field="optional" ${p.optional?'checked':''}> Optionale / nicht beauftragte Position</label>
+        <label class="offer-position-optional"><input type="checkbox" name="position-${idx}-own_work" data-position-field="own_work" ${p.own_work?'checked':''}> Als mögliche Eigenleistung planen</label>
         <div class="offer-position-tools"><button type="button" class="mini" data-position-calculate>Aus Menge × Einzelpreis berechnen</button><button type="button" class="offer-text-danger" data-position-remove>Position entfernen</button></div>
       </div>
     </details>`;
   }
 
-  function positionEditor(o) {
+  function positionEditor(o, persistent=false) {
     const positions=o.positions||[];
     return `<section class="offer-positions-editor offer-wide" data-positions-editor>
-      <div class="offer-positions-head"><div><h4>Einzelpositionen prüfen und ergänzen</h4><p>Erkannte Positionen bearbeiten, fehlende Leistungen aus zusätzlichen Formularen eintragen oder falsche Positionen entfernen. Leere Beträge sind erlaubt.</p></div>
+      <div class="offer-positions-head"><div><h4>Einzelpositionen prüfen und ergänzen</h4><p>Erkannte Positionen bearbeiten, fehlende Leistungen aus zusätzlichen Formularen eintragen oder falsche Positionen entfernen. ${persistent?'Mindestens eine nicht optionale Position mit Nettobetrag bleibt erforderlich.':'Leere Beträge sind im Analyseentwurf erlaubt.'}</p></div>
       <button type="button" class="mini" data-position-add>+ Position hinzufügen</button></div>
       <div class="offer-position-list" data-position-list>${positions.map((p,i)=>positionCard(p,i,i===0)).join('')}</div>
-      <p class="offer-position-empty" data-position-empty ${positions.length?'hidden':''}>Keine Einzelpositionen erkannt. Du kannst sie jetzt manuell hinzufügen oder das Angebot nur mit einer Gesamtsumme übernehmen.</p>
+      <p class="offer-position-empty" data-position-empty ${positions.length?'hidden':''}>Keine Positionen vorhanden. Bitte mindestens eine Position ergänzen.</p>
       <div class="offer-positions-reconcile" data-position-summary role="status" aria-live="polite"></div>
-      <p class="offer-positions-footnote">Die Positionen werden netto geprüft. Optionale Leistungen zählen nicht zur Summe. Der <strong>Bruttogesamtbetrag oben bleibt unverändert</strong>, solange du ihn nicht selbst anpasst.</p>
+      <p class="offer-positions-footnote">${persistent?'Netto ist die Summe aller nicht optionalen Positionen. Brutto ergibt sich aus Netto und Umsatzsteuer.':'Die Positionen werden netto geprüft. Optionale Leistungen zählen nicht zur Summe. Der Bruttogesamtbetrag des Analyseentwurfs bleibt zur Prüfung separat erhalten.'}</p>
     </section>`;
   }
   function collectDraft(form) {
     const data=readForm(form);
     data.positions=[...form.querySelectorAll('[data-position-row]')].map(row=>{
       const field=name=>row.querySelector(`[data-position-field="${name}"]`);
-      return {number:field('number').value,description:field('description').value,
+      return {id:row.dataset.positionId?Number(row.dataset.positionId):undefined,number:field('number').value,description:field('description').value,
         section:field('section').value,quantity:field('quantity').value,
         unit:field('unit').value,unit_price:field('unit_price').value,
         net_amount:field('net_amount').value,optional_amount:field('optional_amount').value,
@@ -433,6 +492,7 @@
   function checkPositions(form) {
     const summary=form.querySelector('[data-position-summary]');
     if (!summary) return {warning:false};
+    if(form.id==='offerPositionsForm')calculatePositionTotals(form);
     const positions=collectDraft(form).positions;
     const included=positions.filter(p=>!p.optional);
     const subtotal=included.reduce((acc,p)=>acc+(readMoney(p.net_amount)||0),0);
@@ -581,7 +641,7 @@
   }
 
   function renderEditorExtras(o){
-    $('offerEditExtras').innerHTML=`${parsedPositions(o)}${notice(o)}`;
+    $('offerEditExtras').innerHTML=notice(o);
   }
   function updateDocumentsCount(o){
     const count=(o.attachments||[]).length;
@@ -818,7 +878,8 @@
     }
     const remove=e.target.closest('[data-position-remove]');
     if(remove){
-      if(!await PHBUI.confirm('Diese Einzelposition aus dem Entwurf entfernen? Die Änderung wird erst beim Speichern wirksam.'))return;
+      if(remove.closest('form').id==='offerPositionsForm'&&remove.closest('form').querySelectorAll('[data-position-row]').length<=1){await PHBUI.alert('Mindestens eine Position muss erhalten bleiben.');return;}
+      if(!await PHBUI.confirm('Diese Einzelposition entfernen? Die Änderung wird erst beim Speichern wirksam.'))return;
       const form=remove.closest('form');remove.closest('[data-position-row]').remove();checkPositions(form);
       return;
     }
@@ -837,11 +898,11 @@
     }
   });
   document.addEventListener('input',e=>{
-    const form=e.target.closest('form[data-review],form[data-version-review]');
+    const form=e.target.closest('form[data-review],form[data-version-review],#offerPositionsForm');
     if(form && (e.target.closest('[data-position-row]') || ['gross','net','vat'].includes(e.target.name)))checkPositions(form);
   });
   document.addEventListener('change',e=>{
-    const form=e.target.closest('form[data-review],form[data-version-review]');
+    const form=e.target.closest('form[data-review],form[data-version-review],#offerPositionsForm');
     if(form && e.target.closest('[data-position-row]'))checkPositions(form);
   });
   document.addEventListener('submit',async e=>{

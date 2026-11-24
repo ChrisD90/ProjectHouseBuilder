@@ -464,3 +464,12 @@ body.phb-app.phb-page-angebote .offers-stats strong {font-size:22px;}
 
 body.phb-app .offer-tax-field{font-size:12px;font-weight:650;color:var(--ui-ink-soft)}
 body.phb-app .offer-tax-input :is(input,select){font:inherit}
+
+/* Independent position editor: one scroll body, fixed totals/header/footer. */
+body.phb-app .offer-positions-dialog{width:min(1120px,calc(100vw - 36px))}
+body.phb-app .offer-positions-dialog .phb-workflow-body{overflow:auto;max-height:68dvh}
+body.phb-app .offer-position-totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;position:sticky;top:0;z-index:2;background:var(--ui-surface);padding:8px 0 14px;border-bottom:1px solid var(--ui-line)}
+body.phb-app .offer-positions-dialog input[readonly]{background:var(--ui-soft);color:var(--ui-ink)}
+body.phb-app .offer-positions-contract-note{font-size:12px;color:var(--ui-muted);margin:0}
+body.phb-app #offerPositionsError{color:var(--ui-danger,#a83c43);font-size:13px}
+@media(max-width:650px){body.phb-app .offer-position-totals{grid-template-columns:repeat(2,minmax(0,1fr));position:static}}
