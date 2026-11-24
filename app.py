@@ -74,7 +74,7 @@ REACT_ROUTES={'/system','/uebersicht','/projektwerkstatt','/projektunterlagen','
 
 @app.before_request
 def react_frontend():
-    if request.method!='GET' or (request.path not in REACT_ROUTES and request.path!='/projekte' and not re.fullmatch(r'/p/[1-9][0-9]*(/.*)?',request.path)):
+    if request.method!='GET' or (request.path not in REACT_ROUTES and request.path!='/projekte' and not re.fullmatch(r'/angebote/[1-9][0-9]*',request.path) and not re.fullmatch(r'/p/[1-9][0-9]*(/.*)?',request.path)):
         return None
     if request.args.get('_classic')=='1' or os.environ.get('PHB_UI','react')=='classic':
         return None

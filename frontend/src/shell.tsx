@@ -165,7 +165,10 @@ export function App() {
     guards = useRef<Set<() => boolean>>(new Set());
   const { colorScheme } = useMantineColorScheme();
   const logoTheme = useComputedColorScheme('light');
-  const route = items.find((i) => i[0] === location.pathname),
+  const navigationPath = /^\/angebote\/[1-9]\d*$/.test(location.pathname)
+    ? '/angebote'
+    : location.pathname;
+  const route = items.find((i) => i[0] === navigationPath),
     url = location.pathname + location.search + location.hash;
   // Preserve existing deep links into stored legacy work packages/phases.
   const legacyPlan =
@@ -453,8 +456,7 @@ export function App() {
                       aria-expanded={!groupClosed(group.id)}
                       aria-controls={'sidebar-group-' + group.id}
                       data-active={
-                        (groupClosed(group.id) && group.paths.includes(location.pathname)) ||
-                        undefined
+                        (groupClosed(group.id) && group.paths.includes(navigationPath)) || undefined
                       }
                       onClick={() => toggleGroup(group.id)}
                     >
@@ -485,7 +487,7 @@ export function App() {
                             }}
                             label={mini ? undefined : label}
                             leftSection={<Icon size={20} />}
-                            active={location.pathname === path}
+                            active={navigationPath === path}
                             aria-label={label}
                             styles={{
                               root: {
@@ -720,7 +722,11 @@ export function App() {
                       }
                       hidden={src === frame.src && !frame.ready}
                       className="workflow-frame"
-                      title={items.find((i) => i[0] === path)?.[1] || path}
+                      title={
+                        /^\/angebote\/[1-9]\d*$/.test(path)
+                          ? 'Angebotsdetails'
+                          : items.find((i) => i[0] === path)?.[1] || path
+                      }
                       src={classicURL(src)}
                       onLoad={(event) => {
                         const node = event.currentTarget;

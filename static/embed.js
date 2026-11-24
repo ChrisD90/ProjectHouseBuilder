@@ -14,7 +14,7 @@
  document.addEventListener('phb-write-complete',event=>{const form=event.detail.form;if(form){forms.set(form,signature(form));changed.delete(form);}bridge.changed?.();});
  document.addEventListener('click',event=>{
   const link=event.target.closest('a[href]');if(!link||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||link.target||link.hasAttribute('download'))return;
-  const url=new URL(link.href,location.href);url.pathname=url.pathname.replace(/^\/p\/[1-9]\d*(?=\/)/,'');if(url.origin!==location.origin||!routes.has(url.pathname))return;
+  const url=new URL(link.href,location.href);url.pathname=url.pathname.replace(/^\/p\/[1-9]\d*(?=\/)/,'');if(url.origin!==location.origin||!(routes.has(url.pathname)||/^\/angebote\/[1-9]\d*$/.test(url.pathname)))return;
   if(url.pathname===location.pathname&&url.search===location.search&&url.hash)return;
   url.searchParams.delete('_classic');url.searchParams.delete('_embedded');url.searchParams.delete('project_id');event.preventDefault();bridge.navigate(url.pathname+url.search+url.hash);
  });

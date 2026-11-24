@@ -612,6 +612,11 @@ def register(runtime: ModuleType):
 
     runtime.offers_page = offers_page
 
+    @runtime.app.get('/angebote/<int:offer_id>')
+    def offer_detail_page(offer_id):
+        offer=runtime.db.session.get(runtime.Offer,offer_id)
+        return runtime.render_template('angebote.html',offer_page_id=offer_id),200 if offer else 404
+
     @runtime.app.get('/api/cost-dashboard')
     def get_cost_dashboard():
         items = runtime.db.session.scalars(runtime.select(runtime.CostItem).order_by(runtime.CostItem.category, runtime.CostItem.id)).all()

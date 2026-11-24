@@ -4,6 +4,12 @@
   const $ = id => document.getElementById(id);
   const icon = name => `<svg class="phb-icon" aria-hidden="true" focusable="false"><use href="/static/icons/ui-icons.svg#${name}"></use></svg>`;
   if (!$('offerImportForm') || !$('offerList')) return;
+  const offerPageId=Number(document.body.dataset.offerPage)||0;
+  function goOfferPage(id){
+    const address=new URL(location.href);address.searchParams.delete('offer_id');history.replaceState(history.state,'',address);
+    const path='/angebote/'+Number(id);if(window.PHBEmbed)window.parent.PHBReactBridge.navigate(path);else location.assign(window.PHBProject?.url(path)||path);
+  }
+  function backToOffers(){if(window.PHBEmbed)window.parent.PHBReactBridge.navigate('/angebote');else location.assign(window.PHBProject?.url('/angebote')||'/angebote');}
   let offers = [], categories = [], budgets = [], contractors = [], versionDrafts = [];
   const sortKey='phb-offers-sort:'+(window.PHBProject?.id||new URLSearchParams(location.search).get('project_id')||'default');
   const sortOptions=[['default','Gewerk & Status'],['az','A–Z'],['za','Z–A'],['newest','Neueste zuerst'],['oldest','Älteste zuerst'],['amount-desc','Höchster Betrag'],['amount-asc','Niedrigster Betrag'],['status','Status']];
@@ -133,7 +139,8 @@
   const editDialog=$('offerEditDialog');
   let editingOfferId=null,offerEditBusy=false,editMetadataBaseline='';
   const editFlow=PHBFlow.manage({
-    routeParams:['offer_id'],
+    routeParams:offerPageId?[]:['offer_id'],
+    inline:Boolean(offerPageId),onCancel:()=>{if(offerPageId)backToOffers();},
     dialog:'offerEditDialog',forms:['offerEditForm','offerEditExtras'],
     dismiss:['closeOfferEdit'],
     isBusy:()=>offerEditBusy,
@@ -153,6 +160,7 @@
     dismiss:['closeOfferInvoices']
   });
   function openOfferEdit(id){
+    if(!offerPageId){goOfferPage(id);return;}
     const offer=offers.find(o=>o.id===id);
     if(!offer)return;
     editingOfferId=id;
@@ -172,6 +180,7 @@
       $('offerEditPdfDownload').href='/api/documents/'+offer.document_id+'/preview';
     }else frame.removeAttribute('src');
     editFlow.open();
+    if($('offerPageStatus'))$('offerPageStatus').hidden=true;
     editMetadataBaseline=PHBFlow.signature($('offerEditForm'));
   }
   $('reverseOfferAcceptance').onclick=async()=>{
@@ -180,7 +189,7 @@
     if(!await PHBUI.confirm('Annahme zurücknehmen? Der Auftrag wird aus der Kostenplanung entfernt. Original und Rücknahmehistorie bleiben erhalten. Zugeordnete Rechnungen oder Zahlungen verhindern die Rücknahme. Dies ersetzt keine rechtliche Vertragskündigung.'))return;
     offerEditBusy=true;
     const controls=[...editDialog.querySelectorAll('button,input,select,textarea')],disabled=controls.map(x=>x.disabled);controls.forEach(x=>x.disabled=true);
-    try{const reversedID=editingOfferId;await request('/api/offers/'+reversedID+'/reverse-acceptance',{method:'POST',data:{confirm:true}});editFlow.finish();await reload();if(detailsDialog.open)openOfferDetails(reversedID);}
+    try{const reversedID=editingOfferId;await request('/api/offers/'+reversedID+'/reverse-acceptance',{method:'POST',data:{confirm:true}});if(!offerPageId)editFlow.finish();await reload();if(offerPageId)openOfferEdit(reversedID);else if(detailsDialog.open)openOfferDetails(reversedID);}
     catch(error){$('offerEditError').textContent=error.message;}
     finally{offerEditBusy=false;controls.forEach((x,i)=>x.disabled=disabled[i]);}
   };
@@ -305,11 +314,11 @@
       // Amounts and positions are saved together in the independent positions dialog.
       const diy=$('offerEditExtras').querySelector('form[data-offer-diy]');
       if(diy)payload.own_work_position_ids=[...diy.querySelectorAll('[data-diy-position]:checked')].map(input=>Number(input.value));
-      await update(editingOfferId,payload);
+      const savedId=editingOfferId;
+      await update(savedId,payload);
       await reload();
-      editFlow.finish();
-      $('offerEditPdfFrame').removeAttribute('src');
-      editingOfferId=null;
+      if(offerPageId)openOfferEdit(savedId);
+      else{editFlow.finish();$('offerEditPdfFrame').removeAttribute('src');editingOfferId=null;}
       await PHBUI.alert('Angebotsangaben gespeichert.');
     }catch(error){
       $('offerEditError').textContent=error.message;
@@ -655,15 +664,15 @@
     const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${accepted?`<button class="offer-tile-icon" type="button" data-offer-invoices="${o.id}" aria-label="Zugeordnete Rechnungen anzeigen: ${invoiceCount}" title="Zugeordnete Rechnungen anzeigen">${icon('receipt')}<span class="offer-icon-badge">${invoiceCount}</span></button>`:''}${PHBWorkUI.button('offer',o.id,'offer-tile-icon')}${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
     return `<article class="offer-card offer-list-card offer-tile ${accepted?'offer-tile-with-payment':''}" data-offer-card="${o.id}">
       <div class="offer-tile-header"><span class="offer-stage ${color}">${label}</span>${corner}</div>
-      <button type="button" class="offer-tile-open" data-offer-details="${o.id}"
-        aria-haspopup="dialog" aria-controls="offerEditDialog"
+      <a href="/angebote/${o.id}" class="offer-tile-open" data-offer-details="${o.id}"
+        data-offer-page-link
         aria-label="Details zu ${esc(o.vendor)} öffnen">
         <strong class="offer-tile-vendor">${esc(o.vendor)}</strong>
         <span class="offer-tile-meta">${meta}${o.number?` · Nr. ${esc(o.number)}`:''}</span>
         <strong class="offer-tile-price">${fmt(accepted?o.agreed_gross:o.gross)}</strong>
         ${paymentIndicator(o)}
         <span class="offer-tile-chevron" aria-hidden="true">→</span>
-      </button>
+      </a>
       <div class="offer-actions offer-tile-actions">${actions}</div>
     </article>`;
   }
@@ -814,7 +823,7 @@
   $('offerMethodPdf').addEventListener('click',()=>switchMethod('pdf'));
   $('offerMethodManual').addEventListener('click',()=>switchMethod('manual'));
   $('offerCategoryFilter').addEventListener('change',refreshUI);
-  window.PHBPageRefresh=()=>reload();
+  window.PHBPageRefresh=async()=>{await reload();if(offerPageId&&(!editDialog.open||!editFlow.dirty()))activateOffer();};
   const aiAppend=form=>{
     const data=new FormData(form);
     if(data.get('analysis_mode')==='ai'){
@@ -1057,8 +1066,9 @@
     }catch(err){await PHBUI.alert(err.message)}
   });
   document.addEventListener('click',event=>{
-    const toggle=event.target.closest('button[data-offer-details]');
-    if(!toggle)return;
+    const toggle=event.target.closest('[data-offer-details]');
+    if(!toggle||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||event.button!==0)return;
+    event.preventDefault();
     openOfferDetails(Number(toggle.dataset.offerDetails));
   });
   document.addEventListener('click',async e=>{
@@ -1138,8 +1148,13 @@
     if(['offers','versions'].includes(event.detail.kind)&&!workflow.open)reload().catch(()=>{});
   });
   function activateOffer(){
+    if(offerPageId){
+      if(offers.some(o=>o.id===offerPageId)){if(!editDialog.open||!editFlow.dirty())openOfferEdit(offerPageId);}
+      else if($('offerPageStatus')){const status=$('offerPageStatus');status.hidden=false;status.textContent='Dieses Angebot wurde nicht gefunden oder gehört zu einem anderen Projekt. ';const back=document.createElement('button');back.className='mini';back.textContent='Zurück zu Angeboten';back.onclick=backToOffers;status.append(back);}
+      return;
+    }
     const linkedOfferId=Number(new URLSearchParams(location.search).get('offer_id'));
-    if(linkedOfferId&&!detailsDialog.open&&offers.some(offer=>offer.id===linkedOfferId)){
+    if(linkedOfferId>0&&!detailsDialog.open){
       requestAnimationFrame(()=>openOfferDetails(linkedOfferId));
     }
     const draftId=Number(new URLSearchParams(location.search).get('offer_draft'));
@@ -1153,6 +1168,7 @@
   }
   window.PHBPageActivate=activateOffer;
   reload().then(activateOffer).catch(error=>{
+    if($('offerPageStatus')){$('offerPageStatus').hidden=false;$('offerPageStatus').textContent='Angebot konnte nicht geladen werden: '+error.message;}
     $('offerList').textContent='Angebote konnten nicht geladen werden: '+error.message;
     $('offerDrafts').textContent='Verbindung zur Angebotsverwaltung fehlgeschlagen.';
   });

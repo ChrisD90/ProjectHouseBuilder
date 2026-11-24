@@ -490,3 +490,18 @@ body.phb-app .offer-position-import-state:is(.conflict,.duplicate,.invalid),body
 body.phb-app .offer-position-import-state.new{color:var(--ui-accent,#416317)}
 body.phb-app .offer-position-import-dialog .phb-dialog-actions>span{font-size:11px;color:var(--ui-muted);margin-right:auto;max-width:440px}
 @media(max-width:550px){body.phb-app .offer-position-import-controls{flex-wrap:wrap}}
+
+/* Dedicated offer page: non-modal form on the full content canvas. */
+body.phb-offer-detail-page main.offers-page{max-width:1700px}
+body.phb-offer-detail-page main.offers-page>:not(dialog):not(#offerPageStatus){display:none!important}
+body.phb-app.phb-offer-detail-page #offerEditDialog[open]{position:static;inset:auto;display:block;width:100%;max-width:none;height:auto;max-height:none;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:transparent;overflow:visible}
+body.phb-app.phb-offer-detail-page #offerEditDialog>.phb-workflow-head{padding:0 0 18px;margin-bottom:20px;align-items:flex-start;border-bottom:1px solid var(--ui-line);background:transparent}
+body.phb-app.phb-offer-detail-page #offerEditTitle{font-size:var(--phb-page-title-size,27px);line-height:1.25;font-weight:650;margin:0 0 4px;letter-spacing:-.8px}
+body.phb-app.phb-offer-detail-page #offerEditDialog>.phb-workflow-body{padding:0;max-height:none;overflow:visible}
+body.phb-app.phb-offer-detail-page .phb-offer-edit-layout{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);align-items:start;gap:24px}
+body.phb-app.phb-offer-detail-page .offer-edit-main{padding:18px;border:1px solid var(--ui-line);border-radius:12px;background:var(--ui-surface);min-width:0}
+body.phb-app.phb-offer-detail-page #offerEditPdfPane{position:sticky;top:14px}
+body.phb-app.phb-offer-detail-page #offerEditPdfFrame{height:calc(100dvh - 180px);min-height:500px;max-height:none}
+body.phb-app.phb-offer-detail-page .offer-editor-footer{position:sticky;bottom:0;z-index:3;margin-top:18px;padding:12px 0;background:var(--ui-surface)}
+@media(max-width:900px){body.phb-app.phb-offer-detail-page .phb-offer-edit-layout{grid-template-columns:minmax(0,1fr)}body.phb-app.phb-offer-detail-page #offerEditPdfPane{position:static}body.phb-app.phb-offer-detail-page #offerEditPdfFrame{height:65dvh;min-height:380px}}
+body.phb-app a.offer-tile-open{text-decoration:none;color:inherit}

@@ -6,7 +6,7 @@ Die Schnittstelle `PUT /api/offers/<id>/positions` prüft Projektzugehörigkeit,
 
 Migration `0043` ergänzt für Angebote ohne Positionen genau eine Sammelposition. Bestehende Positionen, Beträge, Originaldateien, Status, Bestätigungen und Versionshistorien bleiben erhalten. Fehlt das Netto, wird es nur aus bekannten Brutto- und Steuerbeträgen abgeleitet; ansonsten bleibt der Positionsbetrag offen. Es wird kein historischer Steuersatz geraten. Die Ergänzung ist wiederholbar, berücksichtigt die jeweilige Projekt-ID und läuft auch bei direktem App-Start sowie bei der Wiederherstellung älterer Projektbackups. Vor einer nötigen Ergänzung beim Start greift die bestehende Sicherheitskopie.
 
-Validiert: vier gezielte Integritätsprüfungen zu Rundung/Positionssummen, stabilen Förderungsbezügen, veralteten oder projektfremden Eingaben, unverändertem verbindlichem Auftragswert und additiver Datenmigration. JavaScript-Syntax und Patchformat geprüft. Der zusätzliche isolierte Browsercheck konnte in dieser Sitzung nicht gestartet werden.
+Validiert: vier gezielte Integritätsprüfungen zu Rundung/Positionssummen, stabilen Förderungsbezügen, veralteten oder projektfremden Eingaben, unverändertem verbindlichem Auftragswert und additiver Datenmigration. JavaScript-Syntax und Patchformat geprüft. Der dedizierte Unterseitenablauf ist inzwischen zusätzlich im isolierten Browser geprüft.
 
 
 ## Excel-/CSV-Import
@@ -30,3 +30,12 @@ Die Vorschau erkennt doppelte Positionsnummern innerhalb der Datei, identische b
 Vorschau und Konfliktauflösung verändern keine Angebotsdaten. Ein signierter, eine Stunde gültiger Vorschauzustand bindet die Auswahl an Projekt, Angebot und den Stand der offenen Positionen. Zwischenzeitliche Änderungen führen zu einer erneuten Prüfung. Übernahme ergänzt den offenen Positionsdialog, erhält bei Ersetzungen Positions-ID und PDF-Seitenbezug und aktualisiert dessen Summenvorschau. Erst „Speichern“ nutzt die bestehende atomare Positionsschnittstelle. Unbetroffene Positionen bleiben erhalten. Die Importdatei wird nicht dauerhaft abgelegt; eine Datenmigration ist nicht erforderlich.
 
 Zwei gezielte Integritätsprüfungen decken Konfliktentscheidungen, Erhalt der IDs, Schreiben erst beim endgültigen Speichern, veraltete Vorschauen, feste Spaltenreihenfolge, Formelabwehr, Vorlagen und Projekttrennung ab.
+
+
+## Eigene Angebotsunterseite
+
+Kachel und Stift öffnen `/p/<Projekt-ID>/angebote/<Angebots-ID>` im bestehenden App-Rahmen. Formular und Original-PDF nutzen die Inhaltsfläche der Seite; die Bearbeitung ist kein modales Popup mehr. Auf kleineren Bildschirmen stehen Formular und Vorschau untereinander. Speichern bleibt auf der Unterseite. „Zurück zu Angeboten“ führt zur Sammlung; ungespeicherte Änderungen werden weiterhin vor dem Verlassen abgefragt.
+
+Positionen, Tabellenimport, Anhänge und Versionsverwaltung bleiben als untergeordnete Dialoge erreichbar. Alte Links mit `/angebote?offer_id=<ID>` leiten zur Unterseite weiter. Die Sidebar markiert weiterhin Angebote als aktiv. Projektfremde Angebote sind nicht zugänglich. Keine Datenmigration oder Änderung bestehender Beträge erforderlich.
+
+Validierung dieser Umstellung: Produktionsbuild, eine gezielte Prüfung der projektbezogenen Route und `tests/browser_offer_subpage.cjs` für Öffnen, nicht modale Darstellung, Speichern, gestapelte Positionsbearbeitung, Zurücknavigation und alte Verlinkungen. Der Browsercheck läuft über `dev/ui_browser_smoke.py` mit temporärer Datenbank und eigenen Testdateien.

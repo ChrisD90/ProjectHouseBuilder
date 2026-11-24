@@ -83,7 +83,7 @@
   function open({step=0}={}){
    if(!dialog.open){
     opener=document.activeElement;
-    dialog.showModal();
+    if(config.inline)dialog.show();else dialog.showModal();
    }
    stage(step);
    snapshot();
@@ -104,6 +104,7 @@
     if(dirty()&&!await window.PHBUI.confirm(
       'Es gibt ungespeicherte Änderungen. Möchtest du sie wirklich verwerfen?'))return false;
     finish('cancel');
+    config.onCancel?.();
     return true;
    }finally{closing=false;}
   }
