@@ -1,4 +1,6 @@
 import { PageHeader } from './page-layout';
+import { displayDate } from './presentation';
+import './work.css';
 import { ActionBar, ActionCount, useViewState } from './ui';
 
 import {
@@ -17,6 +19,7 @@ import {
   Textarea,
   TextInput,
   Tooltip,
+  UnstyledButton,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useForm } from '@mantine/form';
@@ -339,7 +342,9 @@ export function WorkProvider({ children }: { children: React.ReactNode }) {
             <TextInput label="Titel" required maxLength={200} {...form.getInputProps('title')} />
             <Textarea
               label="Details"
+              autosize
               minRows={4}
+              maxRows={12}
               maxLength={10000}
               {...form.getInputProps('body')}
             />
@@ -469,7 +474,7 @@ function WorkRows({
 }) {
   const { edit, mutate, busy, pendingDone, goToSource } = useWork();
   return (
-    <Stack gap="sm">
+    <div className="work-card-grid phb-scroll-region" aria-label="To-dos und Notizen">
       {[...rows]
         .sort((a, b) => {
           if (sort === 'az') return compareText(a.title, b.title) || a.id - b.id;
@@ -481,115 +486,156 @@ function WorkRows({
             return Number(a.done) - Number(b.done) || compareText(a.title, b.title) || a.id - b.id;
           return Number(a.done) - Number(b.done) || compareDate(a.due_on, b.due_on) || b.id - a.id;
         })
-        .map((item) => (
-          <Paper withBorder p="md" radius="md" key={item.id}>
-            <Group align="start" wrap="nowrap">
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <Group wrap="nowrap" align="start">
-                  {item.kind === 'todo' && (
+        .map((item) => {
+          const done = pendingDone?.id === item.id ? pendingDone.done : item.done;
+          const overdue =
+            item.kind === 'todo' &&
+            !done &&
+            !item.archived &&
+            item.due_on &&
+            item.due_on < new Date().toLocaleDateString('sv-SE');
+          return (
+            <Paper
+              component="article"
+              withBorder
+              p="xs"
+              radius="md"
+              key={item.id}
+              className="work-card"
+              data-work-id={item.id}
+              data-done={done || undefined}
+              onClick={(event) => {
+                if (
+                  !busy &&
+                  !(event.target as HTMLElement).closest('button,input,a,label,[role="checkbox"]')
+                )
+                  edit(item);
+              }}
+            >
+              <Group justify="space-between" wrap="nowrap" gap={6}>
+                <Group gap={6} wrap="nowrap">
+                  {item.kind === 'todo' ? (
                     <Checkbox
-                      mt={3}
+                      size="sm"
                       aria-label={
-                        (item.done ? 'To-do wieder öffnen: ' : 'To-do abschließen: ') + item.title
+                        (done ? 'To-do wieder öffnen: ' : 'To-do abschließen: ') + item.title
                       }
-                      checked={pendingDone?.id === item.id ? pendingDone.done : item.done}
+                      checked={done}
                       disabled={busy || item.archived}
                       onChange={() => mutate(item, 'done')}
                     />
+                  ) : (
+                    <IconNotes size={17} aria-hidden="true" />
                   )}
-                  <Text
-                    fw={600}
-                    td={item.done ? 'line-through' : undefined}
-                    style={{ overflowWrap: 'anywhere' }}
+                  <Badge
+                    size="xs"
+                    variant="light"
+                    color={
+                      item.archived
+                        ? 'gray'
+                        : done
+                          ? 'green'
+                          : overdue
+                            ? 'red'
+                            : item.kind === 'todo'
+                              ? 'teal'
+                              : 'gray'
+                    }
                   >
-                    {item.title}
-                  </Text>
+                    {item.archived
+                      ? 'Archiviert'
+                      : done
+                        ? 'Erledigt'
+                        : overdue
+                          ? 'Überfällig'
+                          : item.kind === 'todo'
+                            ? 'Offen'
+                            : 'Notiz'}
+                  </Badge>
                 </Group>
+                <Group gap={2} wrap="nowrap" className="work-card-actions">
+                  <Tooltip label="Bearbeiten">
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      disabled={busy}
+                      aria-label={'Eintrag bearbeiten: ' + item.title}
+                      onClick={() => edit(item)}
+                    >
+                      <IconPencil size={15} />
+                    </ActionIcon>
+                  </Tooltip>
+                  <Tooltip label={item.archived ? 'Wiederherstellen' : 'Archivieren'}>
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      disabled={busy}
+                      aria-label={
+                        (item.archived ? 'Wiederherstellen: ' : 'Archivieren: ') + item.title
+                      }
+                      onClick={() => mutate(item, 'archive')}
+                    >
+                      {item.archived ? <IconArchiveOff size={15} /> : <IconArchive size={15} />}
+                    </ActionIcon>
+                  </Tooltip>
+                  <Tooltip label="Löschen">
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      color="red"
+                      disabled={busy}
+                      aria-label={'Löschen: ' + item.title}
+                      onClick={() => mutate(item, 'delete')}
+                    >
+                      <IconTrash size={15} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              </Group>
+              <UnstyledButton
+                className="work-card-open"
+                disabled={busy}
+                aria-label={'Details zu ' + item.title + ' öffnen'}
+                onClick={() => edit(item)}
+              >
+                <Text fw={600} size="sm" lineClamp={2} td={done ? 'line-through' : undefined}>
+                  {item.title}
+                </Text>
                 {item.body && (
-                  <Text
-                    size="sm"
-                    mt="xs"
-                    style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
-                  >
+                  <Text size="xs" c="dimmed" lineClamp={2} className="work-card-excerpt">
                     {item.body}
                   </Text>
                 )}
-                <Group gap="xs" mt="xs">
-                  {item.archived && (
-                    <Badge color="gray" variant="light">
-                      Archiviert
-                    </Badge>
-                  )}
-                  {item.done && <Badge variant="light">Erledigt</Badge>}
-                  {item.due_on && (
-                    <Badge
-                      variant="light"
-                      color={
-                        !item.done && item.due_on < new Date().toLocaleDateString('sv-SE')
-                          ? 'red'
-                          : 'gray'
-                      }
-                    >
-                      Fällig {item.due_on}
-                    </Badge>
-                  )}
-                  {item.source_type && (
-                    <Button
-                      size="compact-xs"
-                      variant="subtle"
-                      disabled={!item.source_url}
-                      onClick={() => goToSource(item.source_url)}
-                    >
-                      {item.source_label}
-                      {item.source_missing ? ' · Quelle entfernt' : ''}
-                    </Button>
-                  )}
-                </Group>
-              </div>
-              <Group gap={2} wrap="wrap" className="work-row-actions">
-                <Tooltip label="Bearbeiten">
-                  <ActionIcon
+              </UnstyledButton>
+              <Group gap={6} wrap="nowrap" className="work-card-footer">
+                {item.due_on && (
+                  <Text size="xs" c={overdue ? 'red' : 'dimmed'} className="work-card-date">
+                    {displayDate(item.due_on)}
+                  </Text>
+                )}
+                {item.source_type && (
+                  <Button
+                    size="compact-xs"
                     variant="subtle"
-                    disabled={busy}
-                    aria-label={'Eintrag bearbeiten: ' + item.title}
-                    onClick={() => edit(item)}
+                    className="work-card-source"
+                    disabled={busy || !item.source_url}
+                    title={item.source_label + (item.source_missing ? ' · Quelle entfernt' : '')}
+                    onClick={() => goToSource(item.source_url)}
                   >
-                    <IconPencil size={17} />
-                  </ActionIcon>
-                </Tooltip>
-                <Tooltip label={item.archived ? 'Wiederherstellen' : 'Archivieren'}>
-                  <ActionIcon
-                    variant="subtle"
-                    disabled={busy}
-                    aria-label={
-                      (item.archived ? 'Wiederherstellen: ' : 'Archivieren: ') + item.title
-                    }
-                    onClick={() => mutate(item, 'archive')}
-                  >
-                    {item.archived ? <IconArchiveOff size={17} /> : <IconArchive size={17} />}
-                  </ActionIcon>
-                </Tooltip>
-                <Tooltip label="Löschen">
-                  <ActionIcon
-                    variant="subtle"
-                    color="red"
-                    disabled={busy}
-                    aria-label={'Löschen: ' + item.title}
-                    onClick={() => mutate(item, 'delete')}
-                  >
-                    <IconTrash size={17} />
-                  </ActionIcon>
-                </Tooltip>
+                    {item.source_label}
+                    {item.source_missing ? ' · Quelle entfernt' : ''}
+                  </Button>
+                )}
               </Group>
-            </Group>
-          </Paper>
-        ))}
+            </Paper>
+          );
+        })}
       {!rows.length && (
         <Text c="dimmed" size="sm">
           {loading ? 'Einträge werden geladen …' : 'Keine passenden Einträge.'}
         </Text>
       )}
-    </Stack>
+    </div>
   );
 }
 export function SourceWork({

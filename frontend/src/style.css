@@ -326,14 +326,6 @@ input {
 .work-editor-actions {
   flex-wrap: wrap;
 }
-.work-row-actions {
-  flex: 0 0 auto;
-}
-@media (max-width: 384px) {
-  .work-row-actions {
-    max-width: 30px;
-  }
-}
 
 .funding-check-row {
   display: grid;

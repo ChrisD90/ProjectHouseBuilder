@@ -1,0 +1,65 @@
+.work-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 10px;
+  max-height: min(650px, calc(65dvh / var(--phb-ui-zoom, 1)));
+  align-items: stretch;
+  overflow: auto;
+  padding: 2px;
+}
+.work-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 170px;
+  gap: 7px;
+  cursor: pointer;
+  background: var(--mantine-color-body);
+}
+.work-card:hover {
+  border-color: var(--brand-accent);
+}
+.work-card-actions {
+  flex-shrink: 0;
+}
+.work-card-open {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  text-align: left;
+}
+.work-card-open > * {
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+.work-card-excerpt {
+  white-space: pre-line;
+}
+.work-card-footer {
+  min-height: 22px;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.work-card-date {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.work-card-source {
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+}
+.work-card-source .mantine-Button-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mantine-Modal-body .work-card-grid {
+  max-height: min(480px, calc(45dvh / var(--phb-ui-zoom, 1)));
+}
