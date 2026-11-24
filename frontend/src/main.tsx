@@ -15,6 +15,7 @@ import { workspaceBase } from './project-context';
 import { ProjectDashboard } from './projects';
 import { App } from './shell';
 import './style.css';
+import '../../static/page-headers.css';
 import '../../static/ui-density.css';
 const client = new QueryClient({
   defaultOptions: {

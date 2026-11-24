@@ -437,11 +437,11 @@ export function SelfWorkPage() {
         title="Eigenleistungen"
         description="Deine Vorhaben, Arbeitsschritte, Materialien und Werkzeuge an einem Ort."
       >
-        <Button leftSection={<IconPlus size={17} />} onClick={() => edit()}>
-          Eigenleistung planen
-        </Button>
         <Button variant="default" onClick={() => navigate('/projektwerkstatt?tab=shopping')}>
           Einkauf & Werkzeuge
+        </Button>
+        <Button leftSection={<IconPlus size={17} />} onClick={() => edit()}>
+          Neue Eigenleistung
         </Button>
       </PageHeader>
       <Paper withBorder p="md" mb="lg">

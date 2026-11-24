@@ -385,11 +385,11 @@ export function ProjectCalendar() {
         title="Projektkalender"
         description="Termine planen und Gewerke oder Firmen verknüpfen."
       >
-        <Button leftSection={<IconPlus size={17} />} onClick={() => open(today)}>
-          Termin erstellen
-        </Button>
         <Button component="a" href={projectURL('/api/calendar.ics')} variant="default">
           Kalender exportieren
+        </Button>
+        <Button leftSection={<IconPlus size={17} />} onClick={() => open(today)}>
+          Termin erstellen
         </Button>
       </PageHeader>
       <Paper withBorder p="sm" className="project-calendar-filters">

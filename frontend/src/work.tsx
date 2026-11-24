@@ -1,3 +1,4 @@
+import { PageHeader } from './page-layout';
 import { ActionBar, ActionCount, useViewState } from './ui';
 
 import {
@@ -15,7 +16,6 @@ import {
   Text,
   Textarea,
   TextInput,
-  Title,
   Tooltip,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
@@ -685,13 +685,10 @@ export function WorkPage() {
   }, [params, sources.data, sources.isFetching, query.isFetching]);
   return (
     <div className="page">
-      <Group className="page-header" justify="space-between">
-        <div>
-          <Title order={1}>To-dos & Notizen</Title>
-          <Text c="dimmed" size="sm">
-            Alles Wichtige festhalten – frei oder mit deinem Projekt verknüpft.
-          </Text>
-        </div>
+      <PageHeader
+        title="To-dos & Notizen"
+        description="Alles Wichtige festhalten – frei oder mit deinem Projekt verknüpft."
+      >
         <CreateButtons
           disabled={busy}
           onCreate={(kind) => {
@@ -701,7 +698,7 @@ export function WorkPage() {
             create(kind);
           }}
         />
-      </Group>
+      </PageHeader>
       <ErrorBox value={query.error || sources.error} />
       <Paper className="paper">
         <Group justify="space-between" mb="md">

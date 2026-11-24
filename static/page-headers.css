@@ -1,0 +1,68 @@
+/* Shared page chrome only: dialog headings and card titles keep their own scale. */
+:root {
+  --phb-page-title-size: 27px;
+  --phb-page-description-size: 14px;
+  --phb-page-header-gap: 22px;
+}
+.page-header,
+body.phb-app main.phb-main > :is(.phb-page-intro, .phb-action-header) {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin: 0 0 var(--phb-page-header-gap);
+  padding: 0;
+  min-width: 0;
+}
+.page-header > :first-child,
+body.phb-app
+  main.phb-main
+  > :is(.phb-page-intro, .phb-action-header)
+  > div:first-child {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.page-header h1,
+body.phb-app main.phb-main > :is(.phb-page-intro, .phb-action-header) h1 {
+  font-size: var(--phb-page-title-size);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.8px;
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+.page-header p,
+body.phb-app main.phb-main > :is(.phb-page-intro, .phb-action-header) p {
+  font-size: var(--phb-page-description-size);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 720px;
+}
+.page-header-actions,
+body.phb-app
+  main.phb-main
+  > :is(.phb-page-intro, .phb-action-header)
+  > :is(.phb-header-actions, .phb-page-actions) {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0 0 0 auto;
+}
+/* Classic embedded pages use the same title baseline as native pages. */
+body.phb-app.phb-embedded
+  main.phb-main
+  > :is(.phb-page-intro, .phb-action-header)
+  .phb-page-kicker {
+  display: none;
+}
+@media (max-width: 560px) {
+  :root {
+    --phb-page-title-size: 23px;
+  }
+}

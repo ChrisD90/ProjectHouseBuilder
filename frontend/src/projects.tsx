@@ -1,3 +1,4 @@
+import { PageHeader } from './page-layout';
 import { ActionBar } from './ui';
 import { useDisplaySettings } from './presentation';
 import {
@@ -278,17 +279,14 @@ export function ProjectDashboard() {
             </Tooltip>
           </Group>
         </Group>
-        <Group className="page-header" justify="space-between">
-          <div>
-            <Title order={1}>Deine Projekte</Title>
-            <Text size="sm" c="dimmed">
-              Haus, Garten oder ein einzelnes Gewerk – jedes Vorhaben hat seinen eigenen Platz.
-            </Text>
-          </div>
+        <PageHeader
+          title="Deine Projekte"
+          description="Haus, Garten oder ein einzelnes Gewerk – jedes Vorhaben hat seinen eigenen Platz."
+        >
           <Button leftSection={<IconPlus size={17} />} disabled={busy} onClick={() => open()}>
             Neues Projekt
           </Button>
-        </Group>
+        </PageHeader>
         <ErrorBox value={query.error} />
         <ErrorBox value={actionFailure} />
         <Group mb="lg" gap="xs" aria-label="Projektauswahl">

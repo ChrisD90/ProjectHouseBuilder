@@ -1,4 +1,4 @@
-import { Group, SimpleGrid, Text, Title } from '@mantine/core';
+import { SimpleGrid, Text, Title } from '@mantine/core';
 export function PageHeader({
   title,
   description,
@@ -9,15 +9,15 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <Group className="page-header" justify="space-between" align="start">
+    <header className="page-header">
       <div>
         <Title order={1}>{title}</Title>
         <Text c="dimmed" size="sm">
           {description}
         </Text>
       </div>
-      {children}
-    </Group>
+      {children && <div className="page-header-actions">{children}</div>}
+    </header>
   );
 }
 export function Metrics({
