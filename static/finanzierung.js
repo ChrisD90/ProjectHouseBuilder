@@ -201,8 +201,9 @@ function renderCreditHistory(){
 }
 function render(){
  const s=state.summary;
- const cards=[['Offener Finanzbedarf',s.project_remaining],['Finanzierung verfügbar',s.total_available],['Finanzierungslücke',s.financing_gap],['Restbudget Kredite',s.loan_remaining_budget],['Rechnungen aus Eigenkapital',s.equity_receipt_spent]];
- $('totals').innerHTML=cards.map(([k,v])=>`<article class="tile ${k==='Finanzierungslücke'&&v>0?'alert':''}"><span>${esc(k)}</span><strong>${euro(v)}</strong></article>`).join('');
+ const creditFrame=Number(s.loan_frame)||0,remaining=Number(s.loan_remaining_budget)||0;
+ const remainingPercent=creditFrame>0?Math.max(0,Math.min(100,remaining/creditFrame*100)):0;
+ $('totals').innerHTML=`<article class="tile"><span>Restbudget Kredite</span><strong>${euro(remaining)}</strong><small>${creditFrame>0?'von '+euro(creditFrame)+' Kreditrahmen':'Noch kein Kredit angelegt'}</small><div class="finance-budget-progress" role="progressbar" aria-label="Verbleibendes Kreditbudget" aria-valuemin="0" aria-valuemax="${creditFrame||1}" aria-valuenow="${Math.max(0,Math.min(remaining,creditFrame))}" aria-valuetext="${euro(remaining)} von ${euro(creditFrame)} verbleibend"><span style="width:${remainingPercent}%"></span></div></article><article class="tile"><span>Rechnungen aus Eigenkapital</span><strong>${euro(s.equity_receipt_spent)}</strong><small>Aktuell zugeordnete Rechnungszahlungen</small></article>`;
  $('warnings').innerHTML=s.warnings.map(x=>x==='Es bestehen bezahlte Rechnungsbeträge ohne Finanzierungszuordnung.'
   ?`<button type="button" class="warning finance-warning-action" id="openUnassignedReceipts"><span>⚠ ${esc(x)}</span><span class="finance-warning-link">Belege prüfen (${unassignedReceipts(state).size}) →</span></button>`
   :`<div class="warning">⚠ ${esc(x)}</div>`).join('');
