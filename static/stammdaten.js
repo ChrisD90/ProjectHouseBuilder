@@ -230,7 +230,7 @@
   const receiptId=Number(navigation.get('receipt_id'));
   if(Number.isSafeInteger(receiptId)&&receiptId>0){
     $('receiptReturn').hidden=false;
-    $('receiptReturnLink').href='/belege?receipt_id='+receiptId;
+    $('receiptReturnLink').href='/belege/'+receiptId;
   }
   reload().then(()=>{
     if(receiptId>0&&navigation.get('new_company')==='1')$('addCompany').click();

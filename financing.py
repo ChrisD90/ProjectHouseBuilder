@@ -268,6 +268,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         if old_unassigned > ZERO:
             warnings.append('Es bestehen bezahlte Rechnungsbeträge ohne Finanzierungszuordnung.')
         return {'project_budget':cost['budget'], 'loan_frame':float(loan_total), 'loan_drawn':float(drawn), 'loan_undrawn':float(undrawn),
+                'loan_remaining_budget':float(undrawn+unallocated),'equity_receipt_spent':float(sum((x['paid_for_project'] for x in es),ZERO)),
                 'loan_unallocated':float(unallocated), 'loan_debt':float(sum((x['outstanding_principal'] for x in ls),ZERO)),
                 'equity_available':float(eq_available), 'equity_reserve':float(reserved),
                 'total_available':float(available),'paid_loan':float(sum((x['paid_for_project'] for x in ls),ZERO)),
@@ -533,6 +534,12 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
     @app.get('/finanzierung')
     def finance_page():
         return render_template('finanzierung.html')
+
+    @app.get('/api/financing/sources')
+    def financing_sources():
+        events=all_rows(FinancingEvent);payments=all_rows(ReceiptFinancingPayment);usages=all_rows(LoanUsage)
+        return jsonify(loans=[dict(id=loan.id,name=loan.name,balance={k:float(v) for k,v in loan_account(loan,events,payments,usages).items()}) for loan in all_rows(Loan)],
+            equity=[dict(id=account.id,name=account.name,reserve=float(account.reserve),balance={k:float(v) for k,v in equity_account(account,events,payments).items()}) for account in all_rows(EquityAccount)])
 
     @app.get('/api/financing')
     def financing_list():

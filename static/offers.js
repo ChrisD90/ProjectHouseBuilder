@@ -52,7 +52,7 @@
   function showOfferPreview(docId){
     const pane=$('offerPdfPane'),frame=$('offerPdfFrame');
     if(!docId){pane.hidden=true;frame.removeAttribute('src');currentPreviewDocument=null;return;}
-    const url=window.PHBProject?.url('/api/documents/'+Number(docId)+'/preview')||'/api/documents/'+Number(docId)+'/preview';
+    const base=window.PHBProject?.url('/api/documents/'+Number(docId)+'/preview')||'/api/documents/'+Number(docId)+'/preview',url=window.PHBPDF?.fitWidth(base)||base;
     pane.hidden=false;
     if(currentPreviewDocument!==Number(docId)){frame.src=url;currentPreviewDocument=Number(docId);}
     $('offerPdfDownload').href='/api/documents/'+Number(docId)+'/download';
@@ -176,7 +176,7 @@
     const pane=$('offerEditPdfPane'),frame=$('offerEditPdfFrame');
     pane.hidden=!offer.document_id;
     if(offer.document_id){
-      frame.src=window.PHBProject?.url('/api/documents/'+offer.document_id+'/preview')||'/api/documents/'+offer.document_id+'/preview';
+      const base=window.PHBProject?.url('/api/documents/'+offer.document_id+'/preview')||'/api/documents/'+offer.document_id+'/preview';frame.src=window.PHBPDF?.fitWidth(base)||base;
       $('offerEditPdfDownload').href='/api/documents/'+offer.document_id+'/preview';
     }else frame.removeAttribute('src');
     editFlow.open();
@@ -698,7 +698,7 @@
     if(!b)return '';
     const percent=Math.max(0,Math.min(100,Number(b.percent)||0));
     const flag=b.stage==='overrun'?'Überziehung':b.stage==='fully_billed'?'Vollständig abgerechnet':b.stage==='warning'?'Über 80 % abgerechnet':'Im Rahmen';
-    const invoices=(b.invoices||[]).map(r=>`<tr><td><a href="/belege?receipt_id=${r.id}">${esc(r.number||'Rechnung #'+r.id)}</a><small>${esc(r.date||'')} · ${esc(r.billing_type)}</small></td><td>${fmt(r.gross)}</td><td>${r.advance_deduction?'-'+fmt(r.advance_deduction):'–'}</td><td>${fmt(r.counted)}</td><td>${fmt(r.paid)}</td></tr>`).join('');
+    const invoices=(b.invoices||[]).map(r=>`<tr><td><a href="/belege/${r.id}">${esc(r.number||'Rechnung #'+r.id)}</a><small>${esc(r.date||'')} · ${esc(r.billing_type)}</small></td><td>${fmt(r.gross)}</td><td>${r.advance_deduction?'-'+fmt(r.advance_deduction):'–'}</td><td>${fmt(r.counted)}</td><td>${fmt(r.paid)}</td></tr>`).join('');
     return `<section class="offer-billing offer-billing-${esc(b.stage)}" aria-label="Rechnungen und Abrechnungsstand">
       <div class="offer-billing-heading"><strong>Rechnungen & Abrechnungsstand</strong><span class="offer-billing-flag">${flag}</span></div>
       <div class="offer-billing-numbers"><span>Angebot: <b>${fmt(b.agreed)}</b></span><span>Abgerechnet: <b>${fmt(b.billed)}</b></span><span>Bezahlt: <b>${fmt(b.paid)}</b></span><span>Rest: <b>${fmt(b.remaining)}</b></span></div>
@@ -751,7 +751,7 @@
     const invoices=billing.linked_invoices||billing.invoices||[];
     $('offerInvoicesTitle').textContent='Rechnungen · '+o.vendor;
     $('offerInvoicesMeta').textContent=(o.number?'Angebot '+o.number+' · ':'')+invoices.length+' zugeordnete Belege';
-    const rows=invoices.map(r=>`<tr><td><strong>${esc(r.number||r.filename||'Rechnung #'+r.id)}</strong><small>${esc(r.supplier||o.vendor)} · ${esc(r.date||'Ohne Datum')}</small></td><td><span class="offer-invoice-status">${esc(r.status||'Gebucht')}</span><small>${esc(r.billing_type||r.kind||'Rechnung')}</small></td><td>${fmt(r.gross)}</td><td>${fmt(r.counted)}</td><td>${fmt(r.paid)}</td><td><div class="offer-invoice-row-actions"><a class="mini" href="/api/receipts/${r.id}/preview" target="_blank" rel="noopener">Original ansehen</a><a class="mini" href="/belege?receipt_id=${r.id}">Bearbeiten</a></div></td></tr>`).join('');
+    const rows=invoices.map(r=>`<tr><td><strong>${esc(r.number||r.filename||'Rechnung #'+r.id)}</strong><small>${esc(r.supplier||o.vendor)} · ${esc(r.date||'Ohne Datum')}</small></td><td><span class="offer-invoice-status">${esc(r.status||'Gebucht')}</span><small>${esc(r.billing_type||r.kind||'Rechnung')}</small></td><td>${fmt(r.gross)}</td><td>${fmt(r.counted)}</td><td>${fmt(r.paid)}</td><td><div class="offer-invoice-row-actions"><a class="mini" href="/api/receipts/${r.id}/preview" target="_blank" rel="noopener">Original ansehen</a><a class="mini" href="/belege/${r.id}">Bearbeiten</a></div></td></tr>`).join('');
     $('offerInvoicesContent').innerHTML=`<section class="offer-invoice-summary"><span>Auftragswert <b>${fmt(billing.agreed??o.agreed_gross)}</b></span><span>Gebucht <b>${fmt(billing.billed)}</b></span><span>Bezahlt <b>${fmt(billing.paid)}</b></span><span>Rest <b>${fmt(billing.remaining)}</b></span></section>${rows?`<div class="tablewrap"><table><thead><tr><th>Beleg</th><th>Status / Art</th><th>Brutto</th><th>Angerechnet</th><th>Bezahlt</th><th>Aktionen</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<p class="offer-empty">Diesem Angebot sind noch keine Rechnungen zugeordnet.</p>'}<div class="offer-invoices-actions"><a class="primary" href="/belege?offer_id=${o.id}">Neue Rechnung zuordnen</a></div>`;
     invoicesFlow.open();
   }

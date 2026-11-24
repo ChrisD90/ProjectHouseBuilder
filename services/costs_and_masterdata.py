@@ -319,7 +319,7 @@ def register(runtime: ModuleType):
             if target is None:
                 contractor = contractors.get(receipt.contractor_id)
                 kind = 'Eigenleistung' if receipt.assignment_type == 'Eigenleistung' else 'Fremdleistung'
-                target = {'id': f'receipt:{receipt.id}', 'title': receipt.invoice_number or receipt.original_name or 'Beleg', 'category': receipt.category or 'Sonstiges', 'trade': receipt.trade or '', 'kind': kind, 'phase': '', 'task': '', 'company': contractor.name if contractor else receipt.supplier or '', 'forecast': amount, 'committed': runtime.dec(0), 'invoiced': runtime.dec(0), 'paid': runtime.dec(0), 'basis': 'Nicht eingeplanter Beleg', 'source': 'Rechnung', 'url': f'/belege?receipt_id={receipt.id}'}
+                target = {'id': f'receipt:{receipt.id}', 'title': receipt.invoice_number or receipt.original_name or 'Beleg', 'category': receipt.category or 'Sonstiges', 'trade': receipt.trade or '', 'kind': kind, 'phase': '', 'task': '', 'company': contractor.name if contractor else receipt.supplier or '', 'forecast': amount, 'committed': runtime.dec(0), 'invoiced': runtime.dec(0), 'paid': runtime.dec(0), 'basis': 'Nicht eingeplanter Beleg', 'source': 'Rechnung', 'url': f'/belege/{receipt.id}'}
                 rows[target['id']] = target
             target['invoiced'] += amount
             target['paid'] += runtime.dec(receipt.paid_amount or 0)

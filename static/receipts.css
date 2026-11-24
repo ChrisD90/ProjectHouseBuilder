@@ -337,3 +337,15 @@ body.phb-app.phb-page-belege .receipt-filter-panel .receipt-labor-filter{flex-ba
 body.phb-app.phb-page-belege .receipt-filter-panel .receipt-filter select{height:34px;min-height:34px!important;padding-block:6px!important;font-size:12px}
 
 body.phb-app.phb-page-belege #list .receipt-unassigned-tag{display:inline-block;align-self:flex-start;margin-top:2px;padding:1px 6px;border:1px solid color-mix(in srgb,var(--ui-danger) 28%,var(--ui-line));border-radius:999px;background:color-mix(in srgb,var(--ui-danger) 10%,var(--ui-surface));color:var(--ui-danger);font-size:10px;font-weight:600;line-height:1.3;white-space:nowrap}
+/* Existing receipts use a full subpage; only initial uploads keep their dialog. */
+body.phb-app.phb-receipt-detail-page main.phb-main{max-width:1700px}
+body.phb-receipt-detail-page main.phb-main>:not(dialog):not(#receiptPageStatus){display:none!important}
+body.phb-app.phb-receipt-detail-page #receiptWorkflowDialog[open]{position:static;inset:auto;display:flex;width:100%;height:auto;max-width:none;max-height:none;margin:0;border:0;border-radius:0;box-shadow:none;background:transparent;overflow:visible}
+body.phb-app.phb-receipt-detail-page #receiptWorkflowDialog>.phb-workflow-head{padding:0 0 16px;background:transparent;align-items:flex-start}
+body.phb-app.phb-receipt-detail-page #receiptWorkflowTitle{font-size:var(--phb-page-title-size,27px);font-weight:650;line-height:1.25;margin:0;letter-spacing:-.8px}
+body.phb-app.phb-receipt-detail-page #receiptWorkflowDialog>.phb-workflow-body{padding:18px 0 0;overflow:visible;max-height:none}
+body.phb-app.phb-receipt-detail-page #receiptWorkflowDialog.is-reviewing .receipt-review-layout{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:24px}
+body.phb-app.phb-receipt-detail-page #receiptPdfPane{position:sticky;top:12px}
+body.phb-app.phb-receipt-detail-page #receiptPdfFrame{height:calc(100dvh - 190px);min-height:500px;max-height:none}
+body.phb-app.phb-receipt-detail-page .receipt-primary-actions{position:sticky;bottom:0;z-index:2;background:var(--ui-surface);padding:12px 0}
+@media(max-width:900px){body.phb-app.phb-receipt-detail-page #receiptWorkflowDialog.is-reviewing .receipt-review-layout{grid-template-columns:minmax(0,1fr)}body.phb-app.phb-receipt-detail-page #receiptPdfPane{position:static}body.phb-app.phb-receipt-detail-page #receiptPdfFrame{height:65dvh;min-height:380px}}

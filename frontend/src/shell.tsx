@@ -165,8 +165,8 @@ export function App() {
     guards = useRef<Set<() => boolean>>(new Set());
   const { colorScheme } = useMantineColorScheme();
   const logoTheme = useComputedColorScheme('light');
-  const navigationPath = /^\/angebote\/[1-9]\d*$/.test(location.pathname)
-    ? '/angebote'
+  const navigationPath = /^\/(angebote|belege)\/[1-9]\d*$/.test(location.pathname)
+    ? '/' + location.pathname.split('/')[1]
     : location.pathname;
   const route = items.find((i) => i[0] === navigationPath),
     url = location.pathname + location.search + location.hash;
@@ -725,7 +725,9 @@ export function App() {
                       title={
                         /^\/angebote\/[1-9]\d*$/.test(path)
                           ? 'Angebotsdetails'
-                          : items.find((i) => i[0] === path)?.[1] || path
+                          : /^\/belege\/[1-9]\d*$/.test(path)
+                            ? 'Belegdetails'
+                            : items.find((i) => i[0] === path)?.[1] || path
                       }
                       src={classicURL(src)}
                       onLoad={(event) => {

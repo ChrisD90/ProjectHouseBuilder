@@ -1,0 +1,16 @@
+# Beleg-Unterseiten, PDF-Vorschau und Finanzierungssummen
+
+Bestehende Rechnungen und Kassenzettel öffnen auf `/p/<Projekt-ID>/belege/<Beleg-ID>`. Die Bearbeitung nutzt die Inhaltsfläche der App, ohne überlagertes Popup. Speichern bleibt auf der Unterseite. Der Pfeil links vor der Überschrift führt zurück zur Belegsammlung; der vorhandene Schutz vor ungespeicherten Eingaben und laufenden Buchungen bleibt aktiv. Anfangsuploads behalten ihren bestehenden Uploaddialog. Alte `?receipt_id=`-Links funktionieren weiterhin und führen auf die Unterseite; interne Beleglinks verwenden direkt die neue Adresse.
+
+Der Editor lädt über `/api/receipts/<ID>/editor` nur den Beleg und seine Auswahldaten. Die aufwendige Kostenaggregation, sämtliche Angebotspositionen, Dokumentenlisten und die vollständige Belegsammlung werden dafür nicht mehr geladen. Kassenzettel laden Finanzierungsquellen über `/api/financing/sources` ohne die Projektkostenaggregation. Reserve, Vorauswahl und verfügbare Beträge bleiben enthalten. Dadurch entfallen unnötige Abrufe beim Öffnen; die echte Laufzeit hängt weiterhin von Datenmenge, Rechner und PDF-Viewer ab.
+
+Der Angebots-Zurückbutton ist ebenfalls ein Pfeil links vor dem Titel. PDF-Vorschauen starten über `view=FitH&zoom=page-width` mit Seitenbreite, soweit der verwendete Browser-PDF-Viewer diese Standardparameter unterstützt. Explizite Zoom-/Ansichtsparameter werden beibehalten; Originaldateien werden nicht verändert. Eine geänderte Mittelabruf-PDF-Vorschau wird weiterhin neu geladen.
+
+Die Finanzierungsübersicht ergänzt die bestehenden drei Kacheln um:
+
+- **Restbudget Kredite:** Summe noch nicht abgerufener Kreditmittel plus ausgezahlter, noch nicht verwendeter Mittel. Entspricht Kreditrahmen minus bisheriger Verwendung. Enthält noch nicht bestätigte Abrufe weiterhin als ungenutzten Rahmen. Tilgungen erhöhen dieses Baukostenbudget nicht.
+- **Rechnungen aus Eigenkapital:** Summe der aktuell allen Eigenkapitalkonten zugeordneten Rechnungszahlungen. Unbezahlte oder nicht zugeordnete Beträge und sonstige Entnahmen zählen nicht dazu.
+
+Auf Eigenkapital- und Kreditkacheln steht neben „Verfügbar“ zusätzlich „Rechnungen“. Gezählt werden die tatsächlich diesem Konto zugeordneten Zahlungsanteile, nicht jeweils die vollständigen Bruttobeträge der Rechnungen. Beim Kredit bleibt eine sonstige manuelle Verwendung separat im bisherigen Wert „Verwendet“ berücksichtigt. Bestätigte Erstattungen aus einem Kredit entlasten die EK-Anzeige automatisch über die bestehenden Finanzierungszuordnungen. Es entstehen keine zusätzlichen Buchungen.
+
+Keine Datenmigration erforderlich. Gezielte Validierung: Projekttrennung und schlanker Belegabruf, Summen über mehrere Konten mit Teilzahlungen und separaten Entnahmen, bestehender Teilauszahlungs-/Rücknahmeprozess. Ein isolierter Browser-Prozesscheck prüft Rechnungs-/Kassenzettel-Unterseiten, Speichern und Rückkehr, alte Links, PDF-Startparameter, den Angebots-Pfeil sowie fünf Finanzierungskacheln. Produktionsbuild erfolgreich.

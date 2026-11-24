@@ -74,7 +74,7 @@ REACT_ROUTES={'/system','/uebersicht','/projektwerkstatt','/projektunterlagen','
 
 @app.before_request
 def react_frontend():
-    if request.method!='GET' or (request.path not in REACT_ROUTES and request.path!='/projekte' and not re.fullmatch(r'/angebote/[1-9][0-9]*',request.path) and not re.fullmatch(r'/p/[1-9][0-9]*(/.*)?',request.path)):
+    if request.method!='GET' or (request.path not in REACT_ROUTES and request.path!='/projekte' and not re.fullmatch(r'/(angebote|belege)/[1-9][0-9]*',request.path) and not re.fullmatch(r'/p/[1-9][0-9]*(/.*)?',request.path)):
         return None
     if request.args.get('_classic')=='1' or os.environ.get('PHB_UI','react')=='classic':
         return None
@@ -612,7 +612,7 @@ OfferAcceptanceReversal = register_offer_reversals(app, db, Offer, CostItem, Ord
 from project_work import register_project_work
 work_sources = {
     'offer': (Offer, lambda x: 'Angebot · '+x.vendor, lambda x: '/angebote?offer_id='+str(x.id)),
-    'receipt': (Receipt, lambda x: 'Beleg · '+(x.supplier or x.original_name), lambda x: '/belege?receipt_id='+str(x.id)),
+    'receipt': (Receipt, lambda x: 'Beleg · '+(x.supplier or x.original_name), lambda x: '/belege/'+str(x.id)),
     'task': (Task, lambda x: 'Arbeitspaket · '+x.name, lambda x: '/?task_id='+str(x.id)),
     'phase': (BuildPhase, lambda x: 'Bauphase · '+x.title, lambda x: '/?phase_id='+str(x.id)),
     'funding': (Funding, lambda x: 'Förderung · '+x.name, lambda x: '/energieplanung?funding_id='+str(x.id)),

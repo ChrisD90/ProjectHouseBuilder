@@ -66,3 +66,6 @@ body.phb-app.phb-embedded
     --phb-page-title-size: 23px;
   }
 }
+body.phb-app .page-back-arrow{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;min-width:36px;padding:0;border:1px solid var(--ui-line);border-radius:9px;background:var(--ui-surface);color:var(--ui-ink);flex:0 0 auto}
+body.phb-app .page-back-arrow:hover{background:var(--ui-soft-accent)}
+body.phb-app :is(.offer-page-heading-copy,.receipt-page-heading-copy){flex:1;min-width:0}

@@ -356,6 +356,21 @@ def register(runtime: ModuleType):
 
     runtime.receipt_get = receipt_get
 
+    @runtime.app.get('/api/receipts/<int:rid>/editor')
+    def receipt_editor_context(rid):
+        receipt=runtime.db.session.get(runtime.Receipt,rid)
+        if not receipt:return runtime.jsonify(error='Beleg nicht gefunden.'),404
+        offers=runtime.db.session.scalars(runtime.select(runtime.Offer).where(runtime.Offer.status.in_(('Angenommen','Beauftragt')))).all()
+        items=runtime.db.session.scalars(runtime.select(runtime.CostItem)).all()
+        contacts=runtime.db.session.scalars(runtime.select(runtime.Contractor).order_by(runtime.Contractor.name)).all()
+        return runtime.jsonify(receipt=runtime._receipt_json(receipt,True),
+            categories=runtime.category_names(),trades=[t.name for t in runtime.db.session.scalars(runtime.select(runtime.Trade).order_by(runtime.Trade.name))],
+            self_work_plans=[dict(id=p.id,title=p.title) for p in runtime.db.session.scalars(runtime.select(runtime.SelfWorkPlan).order_by(runtime.SelfWorkPlan.title))],
+            context=dict(items=[dict(id=x.id,title=x.title,offer_id=x.offer_id,selected=x.selected,category=x.category) for x in items],
+                contractors=[dict(id=x.id,name=x.name,trade=x.trade) for x in contacts],
+                offers=[dict(id=o.id,vendor=o.vendor,number=o.number,status=o.status,contractor_id=o.contractor_id,gross=o.gross,agreed_gross=runtime._contract_gross(o)) for o in offers],
+                budget_lines=[runtime.budget_dict(x) for x in runtime.all_budget_lines()]))
+
     @runtime.app.get('/api/receipts/<int:rid>/download')
     def receipt_download(rid):
         r = runtime.db.session.get(runtime.Receipt, rid)
@@ -702,3 +717,8 @@ def register(runtime: ModuleType):
         return runtime.render_template('belege.html')
 
     runtime.receipts_page = receipts_page
+
+    @runtime.app.get('/belege/<int:receipt_id>')
+    def receipt_detail_page(receipt_id):
+        receipt=runtime.db.session.get(runtime.Receipt,receipt_id)
+        return runtime.render_template('belege.html',receipt_page_id=receipt_id),200 if receipt else 404

@@ -144,11 +144,7 @@ export function ReceiptOverview({
                         </Button>
                         <Button
                           component={Link}
-                          to={
-                            '/belege?receipt_id=' +
-                            r.id +
-                            (editMode === 'financing' ? '&financing=1' : '')
-                          }
+                          to={'/belege/' + r.id + (editMode === 'financing' ? '?financing=1' : '')}
                           onClick={onClose}
                           variant="subtle"
                           size="xs"

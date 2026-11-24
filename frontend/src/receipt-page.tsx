@@ -91,7 +91,15 @@ export function ReceiptPage({ bridge }: { bridge: Row }) {
     setLabor('all');
     setYear('all');
   };
-  const opened = params.has('receipt_id') || params.get('upload') === '1';
+  useEffect(() => {
+    const id = Number(params.get('receipt_id'));
+    if (id > 0 && params.get('upload') !== '1') {
+      const next = new URLSearchParams(params);
+      next.delete('receipt_id');
+      navigate('/belege/' + id + (next.size ? '?' + next.toString() : ''), { replace: true });
+    }
+  }, [params, navigate]);
+  const opened = params.get('upload') === '1';
   const frame = useRef<HTMLIFrameElement>(null),
     [source, setSource] = useState(''),
     [frameError, setFrameError] = useState(false),
@@ -205,7 +213,7 @@ export function ReceiptPage({ bridge }: { bridge: Row }) {
               className="receipt-native-card"
               onClick={(event) => {
                 if (!(event.target as HTMLElement).closest('button,a'))
-                  navigate('/belege?receipt_id=' + row.id);
+                  navigate('/belege/' + row.id);
               }}
             >
               <Group justify="space-between" gap={4} wrap="nowrap">
@@ -227,7 +235,7 @@ export function ReceiptPage({ bridge }: { bridge: Row }) {
                 <SourceWork type="receipt" id={row.id} compact />
               </Group>
               <UnstyledButton
-                onClick={() => navigate('/belege?receipt_id=' + row.id)}
+                onClick={() => navigate('/belege/' + row.id)}
                 className="receipt-native-open"
               >
                 <Group gap={5} wrap="nowrap">

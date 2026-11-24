@@ -137,7 +137,7 @@ export function UnpaidReceipts() {
                     }
                     onClick={() => {
                       setOpened(false);
-                      navigate('/belege?receipt_id=' + row.id + '&financing=1');
+                      navigate('/belege/' + row.id + '?financing=1');
                     }}
                   >
                     Bezahlen

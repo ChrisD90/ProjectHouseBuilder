@@ -1,5 +1,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
+const receiptPageId=Number(document.body.dataset.receiptPage)||0;
+function backToReceipts(){if(window.PHBEmbed)window.parent.PHBReactBridge.navigate('/belege');else location.assign(window.PHBProject?.url('/belege')||'/belege');}
 // A running server or an already rendered dialog can still supply the older
 // template after a static-script update. Upgrade this optional field before
 // wiring listeners; a missing extension must never stop the receipt journal.
@@ -60,7 +62,7 @@ async function loadTillFinancing(receipt){
  const ident=receipt.id;tillFinanceSelect.disabled=true;tillFinanceRetry.hidden=true;
  tillFinanceSelect.replaceChildren(new Option('Finanzierungsquellen werden geladen …',''));
  try{
-   const finance=await api('/api/financing');
+   const finance=await api('/api/financing/sources');
    if(selected!==ident)return;
    const equities=[...(finance.equity||[])].sort((a,b)=>a.id-b.id);
    tillFinanceChoices=new Map();tillFinanceSelect.replaceChildren(new Option('Nicht zugewiesen · später zuordnen','unassigned'));
@@ -116,14 +118,15 @@ function showReceiptPreview(item){
  if(pane.hidden){frame.removeAttribute('src');image.removeAttribute('src');return;}
  const url=window.PHBProject?.url('/api/receipts/'+encodeURIComponent(item.id)+'/preview')||'/api/receipts/'+encodeURIComponent(item.id)+'/preview';
  frame.hidden=!isPdf;image.hidden=!isImage;
- if(isPdf&&frame.getAttribute('src')!==url)frame.src=url;
+ const pdfUrl=window.PHBPDF?.fitWidth(url)||url;if(isPdf&&frame.getAttribute('src')!==pdfUrl)frame.src=pdfUrl;
  if(isImage)image.src=url;
  $('receiptPdfDownload').href='/api/receipts/'+item.id+'/download';
 }
 
 let uploading=false,receiptBusy=false,paymentBusy=false,receiptNavigationVersion=0;
 const receiptFlow=PHBFlow.manage({
- routeParams:['receipt_id','offer_id','upload','self_work_id','receipt_kind','new_company_id','financing'],
+ inline:Boolean(receiptPageId),onCancel:()=>{if(receiptPageId)backToReceipts();},
+ routeParams:receiptPageId?[]:['receipt_id','offer_id','upload','self_work_id','receipt_kind','new_company_id','financing'],
  onClose:()=>{if(!receiptDialog.open){receiptNavigationVersion++;selected=null;linkOffer=null;linkSelfWork=null;}},
  dialog:'receiptWorkflowDialog',
  forms:['upload','review','receiptPaymentForm'],
@@ -161,6 +164,7 @@ const navigation=new URLSearchParams(window.location.search);
 let linkOffer=Number(navigation.get('offer_id'))||null;
 let linkSelfWork=null;
 async function activateReceiptNavigation(){
+ if(receiptPageId){if(!receiptDialog.open)await reload(receiptPageId,true);return;}
  const params=new URLSearchParams(location.search);
  if(params.get('upload')==='1'&&!params.get('receipt_id')){
    uploadReceiptKind=params.get('receipt_kind')==='Kassenzettel'?'Kassenzettel':'Rechnung';
@@ -481,39 +485,42 @@ function inputs({booking=false}={}){
  return result;
 }
 function fillSelect(node,values,getTitle){node.innerHTML='<option value="">Keine Zuordnung</option>'+values.map(x=>`<option value="${x.id}">${safe(getTitle(x))}</option>`).join('')}
-window.PHBPageRefresh=()=>reload(selected,receiptDialog.open);
+window.PHBPageRefresh=()=>reload(selected||receiptPageId,receiptDialog.open||Boolean(receiptPageId));
 window.PHBPageActivate=()=>activateReceiptNavigation().catch(e=>notice(e.message,true));
 async function reload(keepId=selected,reopen=true){
  const version=receiptNavigationVersion;
- const linkedReceipt=Number(new URLSearchParams(location.search).get('receipt_id'))||null;
- const [r,c]=await Promise.all([api('/api/receipts'),api('/api/costs')]);overview=c;list=r.receipts;
+ const linkedReceipt=receiptPageId||Number(new URLSearchParams(location.search).get('receipt_id'))||null;
+ let r,c,loaded=null;
+ if(receiptPageId){r=await api('/api/receipts/'+receiptPageId+'/editor');c=r.context;loaded=r.receipt;r.receipts=[loaded];}
+ else [r,c]=await Promise.all([api('/api/receipts'),api('/api/costs')]);
+ overview=c;list=r.receipts;
  // A status refresh must never replace inputs entered while its request was in flight.
  if(!receiptBusy&&receiptDialog.open&&receiptFlow.dirty())return;
  $('receiptTrade').innerHTML='<option value="">Ohne Gewerk</option>'+(r.trades||[]).map(name=>`<option value="${safe(name)}">${safe(name)}</option>`).join('');
- $('stats').innerHTML=`<span>Entwürfe: <b>${r.drafts}</b></span><span>Gebucht brutto: <b>${money(r.booked_gross)}</b></span><span>Bezahlt: <b>${money(r.paid)}</b></span><span>Lohnanteil erfasst: <b>${list.filter(x=>x.labor_amount!==null).length} Belege</b></span>`;
+ if(!receiptPageId)$('stats').innerHTML=`<span>Entwürfe: <b>${r.drafts}</b></span><span>Gebucht brutto: <b>${money(r.booked_gross)}</b></span><span>Bezahlt: <b>${money(r.paid)}</b></span><span>Lohnanteil erfasst: <b>${list.filter(x=>x.labor_amount!==null).length} Belege</b></span>`;
  $('categories').innerHTML=r.categories.map(x=>`<option value="${safe(x)}">${safe(x)}</option>`).join('');
  fillSelect($('receiptSelfWork'),r.self_work_plans||[],x=>x.title);
  fillSelect($('budgetLines'),c.budget_lines.filter(x=>x.active&&!x.is_group),x=>x.category+' · '+x.title);
  renderCostItems();
- renderReceiptFilters();
+ if(!receiptPageId)renderReceiptFilters();
  if(version===receiptNavigationVersion&&keepId&&list.some(x=>x.id===keepId))selected=keepId;
- renderReceiptList();
+ if(!receiptPageId)renderReceiptList();
  if(version!==receiptNavigationVersion)return;
- if(reopen&&keepId&&list.some(x=>x.id===keepId))await open(keepId);
- else if(reopen&&linkedReceipt&&list.some(x=>x.id===linkedReceipt))await open(linkedReceipt);
+ if(reopen&&keepId&&list.some(x=>x.id===keepId))await open(keepId,loaded);
+ else if(reopen&&linkedReceipt&&list.some(x=>x.id===linkedReceipt))await open(linkedReceipt,loaded);
  else if(!list.length){$('review').hidden=true;$('placeholder').hidden=false;showReceiptPreview(null);}
  if(linkOffer&&!selected){$('uploadStatus').textContent='Angebot ausgewählt: Lade die Rechnung hoch und prüfe danach die Verknüpfung im Entwurf.';}
 }
-async function open(id){
+async function open(id,loaded=null){
  const version=++receiptNavigationVersion;
- try{let x=await api('/api/receipts/'+id);if(version!==receiptNavigationVersion||(!receiptBusy&&receiptDialog.open&&selected===id&&receiptFlow.dirty()))return;selected=id;currentReceipt=x;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
+ try{let x=loaded||await api('/api/receipts/'+id);if(version!==receiptNavigationVersion||(!receiptBusy&&receiptDialog.open&&selected===id&&receiptFlow.dirty()))return;selected=id;currentReceipt=x;document.querySelectorAll('.entry').forEach(b=>b.classList.toggle('active',Number(b.dataset.id)===id));
  $('review').elements.namedItem('kind').value=x.kind||'Rechnung';
  if(x.kind==='Kassenzettel'&&x.status==='Entwurf')await loadTillFinancing(x);
  if(selected!==id||version!==receiptNavigationVersion||(!receiptBusy&&receiptDialog.open&&receiptFlow.dirty()))return;
  $('review').hidden=false;$('placeholder').hidden=true;$('editorTitle').textContent=x.filename;
  $('receiptReviewLayout').hidden=false;
  $('receiptReviewStage').hidden=true;
- openReceiptDialog(true);showReceiptPreview(x);
+ openReceiptDialog(true);showReceiptPreview(x);if($('receiptPageStatus'))$('receiptPageStatus').hidden=true;
  const legacy=x.assignment_type==='Kostenposition';
  const legacyOption=$('receiptAssignmentType').querySelector('option[value="Kostenposition"]');
  if(legacyOption)legacyOption.remove();
@@ -538,7 +545,7 @@ async function open(id){
  $('receiptReviewState').textContent=x.status;
  $('receiptReviewTitle').textContent=x.status==='Entwurf'?'Rechnungsdaten prüfen':x.status==='Gebucht'?'Gebuchte Rechnung':'Stornierte Rechnung';
  $('receiptReviewHelp').textContent=x.status==='Entwurf'?'Unvollständige Daten kannst du jederzeit zwischenspeichern. Erst „Verbindlich buchen“ übernimmt die Rechnung in Kosten und Abrechnung; die Zahlung erfasst du danach separat.':x.status==='Gebucht'?'Alle Rechnungsdaten bleiben bearbeitbar. Änderungen an Betrag, Zuordnung und Abrechnungsart werden vor dem Speichern gegen Zahlungen und Angebotsabrechnung geprüft.':'Auch ein stornierter Beleg kann fachlich korrigiert werden. Originaldatei, Stornogrund und Historie bleiben erhalten.';
- $('receiptWorkflowTitle').textContent=x.status==='Entwurf'?'Rechnung prüfen':x.status==='Gebucht'?'Gebuchte Rechnung':'Stornierte Rechnung';
+ $('receiptWorkflowTitle').textContent=(x.kind==='Kassenzettel'?'Kassenzettel':'Rechnung')+' · '+(x.invoice_number||x.supplier||x.status);
  $('payReceipt').hidden=x.status!=='Gebucht';
  const cancellationInfo=x.cancellation
   ? 'Storniert am '+new Date(x.cancellation.date).toLocaleDateString('de-DE')+' · zurückgenommene Zahlungsvermerke: '+money(x.cancellation.previous_paid)+(x.cancellation.reason?' · Grund: '+x.cancellation.reason:'')
@@ -558,7 +565,7 @@ async function open(id){
  updateInvoiceControls();
  applyTillMode(x.kind==='Kassenzettel');
  if(x.kind==='Kassenzettel'&&x.status==='Entwurf'&&!tillFinanceSelect.disabled)tillFinanceHelp();
- const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();
+ if(!receiptPageId){const address=new URL(location.href);address.searchParams.set('receipt_id',String(id));history.replaceState(null,'',address);window.PHBEmbed?.syncURL();}
  $('raw').textContent=x.ocr_text||'Keine Textdaten erkannt. Manuelle Eingabe erforderlich.';
  receiptFlow.snapshot(); // Automatically filled invoice fields form the clean baseline.
  const returned=new URLSearchParams(location.search).get('new_company_id');
@@ -796,11 +803,11 @@ $('delete').onclick=async()=>{
  try{
   await api('/api/receipts/'+selected,{method:'DELETE'});
   receiptFlow.finish();
-  selected=null;currentReceipt=null;await reload(null,false);
+  selected=null;currentReceipt=null;if(receiptPageId){receiptBusy=false;await window.PHBImports?.refresh();backToReceipts();return;}await reload(null,false);
   await window.PHBImports?.refresh();
   notice('Entwurf gelöscht.');
  }catch(error){notice(error.message,true);}
  finally{receiptBusy=false;button.disabled=false;}
 };
 
-reload().then(activateReceiptNavigation).catch(e=>notice(e.message,true));
+reload().then(activateReceiptNavigation).catch(e=>{notice(e.message,true);if($('receiptPageStatus')){$('receiptPageStatus').hidden=false;$('receiptPageStatus').textContent='Beleg konnte nicht geladen werden: '+e.message;const back=document.createElement('button');back.className='mini';back.textContent='Zurück zu Belegen';back.onclick=backToReceipts;$('receiptPageStatus').append(back);}});

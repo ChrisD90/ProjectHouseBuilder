@@ -135,10 +135,7 @@ export function MasterData() {
       const receipt = params.get('receipt_id');
       if (receipt && /^[1-9]\d*$/.test(receipt))
         setTimeout(
-          () =>
-            navigate(
-              '/belege?receipt_id=' + receipt + '&new_company_id=' + savedCompany.contractor.id,
-            ),
+          () => navigate('/belege/' + receipt + '?new_company_id=' + savedCompany.contractor.id),
           0,
         );
     } catch (e) {

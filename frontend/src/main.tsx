@@ -10,6 +10,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import '../../static/components.css';
 import '../../static/palette.css';
 import '../../static/request.js';
+import '../../static/pdf-preview.js';
 import { DialogProvider } from './core';
 import { workspaceBase } from './project-context';
 import { ProjectDashboard } from './projects';

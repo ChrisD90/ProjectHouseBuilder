@@ -119,7 +119,11 @@ export function DocumentPreview({
 }) {
   return (
     <aside className="phb-document-preview" aria-label={title}>
-      {image ? <img src={url} alt={title} /> : <iframe src={url} title={title} />}
+      {image ? (
+        <img src={url} alt={title} />
+      ) : (
+        <iframe src={(window as any).PHBPDF?.fitWidth(url) || url} title={title} />
+      )}
     </aside>
   );
 }

@@ -111,7 +111,7 @@ const goURL = (kind: string, id: number) =>
   ({
     event: `/?calendar_event=${id}`,
     offer: `/angebote?offer_id=${id}`,
-    receipt: `/belege?receipt_id=${id}`,
+    receipt: `/belege/${id}`,
     funding: `/energieplanung?funding_id=${id}`,
     self_work: `/eigenleistungen?plan_id=${id}`,
     document: `/dokumente?document_id=${id}`,
@@ -1236,7 +1236,7 @@ function Liquidity() {
         <Button
           key={x.id}
           variant="subtle"
-          onClick={() => navigate('/belege?receipt_id=' + x.id + '&financing=1')}
+          onClick={() => navigate('/belege/' + x.id + '?financing=1')}
         >
           {x.title} · {money(x.amount)}
         </Button>
