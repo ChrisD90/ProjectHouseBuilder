@@ -211,10 +211,10 @@
     PHBUI.currency.bind(form);checkPositions(form);$('offerPositionsError').textContent='';positionsFlow.open();
   };
   $('closeOfferPositions').onclick=()=>{if(!positionsBusy)$('offerPositionsDialog').close();};
-  let positionImportPreview=null,positionImportBusy=false;
+  let positionImportPreview=null,positionImportBusy=false,importValidationRun=0,importValidationTimer=null,importValidationOK=false;
   const positionImportFlow=PHBFlow.manage({dialog:'offerPositionImportDialog',forms:['offerPositionImportForm','offerPositionImportPreview'],dismiss:['closeOfferPositionImport'],isBusy:()=>positionImportBusy});
   function clearPositionImport(){
-    positionImportPreview=null;$('offerPositionImportPreview').innerHTML='';$('offerPositionImportStatus').textContent='';$('offerPositionImportError').textContent='';$('applyOfferPositionImport').disabled=true;
+    positionImportPreview=null;importValidationRun++;clearTimeout(importValidationTimer);importValidationOK=false;$('offerPositionImportIssues').hidden=true;$('offerImportOnlyProblems').checked=false;$('offerPositionImportPreview').innerHTML='';$('offerPositionImportStatus').textContent='';$('offerPositionImportError').textContent='';$('applyOfferPositionImport').disabled=true;
   }
   $('openOfferPositionImport').onclick=()=>{
     if(positionsBusy||!positionsOffer)return;
@@ -225,23 +225,64 @@
     if(positionImportBusy)return;
     const controls=[...$('offerPositionImportDialog').querySelectorAll('button,input,select')],prior=controls.map(node=>node.disabled);
     positionImportBusy=true;positionImportFlow.setBusy(true);positionsFlow.setBusy(true);editFlow.setBusy(true);controls.forEach(node=>node.disabled=true);$('offerPositionImportError').textContent='';
-    try{await action();}catch(error){$('offerPositionImportError').textContent=error.message;}
-    finally{positionImportBusy=false;positionImportFlow.setBusy(false);positionsFlow.setBusy(false);editFlow.setBusy(false);controls.forEach((node,i)=>node.disabled=prior[i]);$('applyOfferPositionImport').disabled=!positionImportPreview;}
+    try{await action();}catch(error){showPositionImportError(error);}
+    finally{positionImportBusy=false;positionImportFlow.setBusy(false);positionsFlow.setBusy(false);editFlow.setBusy(false);controls.forEach((node,i)=>node.disabled=prior[i]);$('applyOfferPositionImport').disabled=!positionImportPreview||!importValidationOK;}
   }
   $('offerPositionImportForm').onsubmit=async event=>{
     event.preventDefault();const file=event.currentTarget.elements.file.files[0];if(!file||!positionsOffer)return;
     await runPositionImport(async()=>{
-      clearPositionImport();const data=new FormData();data.set('file',file);data.set('positions',JSON.stringify(collectDraft($('offerPositionsForm')).positions));data.set('positions_token',positionsOffer.positions_token);
+      clearPositionImport();const current=collectDraft($('offerPositionsForm')).positions;const data=new FormData();data.set('file',file);data.set('positions',JSON.stringify(current));data.set('positions_token',positionsOffer.positions_token);
       $('offerPositionImportStatus').textContent='Datei wird lokal geprüft …';
-      const result=await request(offerUrl(positionsOffer.id)+'/positions/import-preview',{method:'POST',formData:data});positionImportPreview=result;
+      const result=await request(offerUrl(positionsOffer.id)+'/positions/import-preview',{method:'POST',formData:data});positionImportPreview={...result,current};
       const labels={new:'Neu',conflict:'Konflikt',identical:'Identisch',duplicate:'Doppelte Nummer',invalid:'Fehler'};
       const conflicts=result.rows.filter(row=>!['new','identical'].includes(row.status)).length;
       $('offerPositionImportStatus').textContent=result.rows.length+' Zeilen · '+conflicts+' Konflikte/Fehler. Bestehende Positionen werden standardmäßig behalten.';
-      $('offerPositionImportPreview').innerHTML=`<div class="tablewrap offer-position-import-table"><table><thead><tr><th>Zeile / Status</th><th>Position & Vergleich</th><th>Netto</th><th>Aktion</th><th>Nummer übernehmen als</th></tr></thead><tbody>${result.rows.map((row,index)=>`<tr data-position-import-row="${index}"><td>${row.row}<br><strong class="offer-position-import-state ${row.status}">${labels[row.status]}</strong></td><td><strong>${esc(row.number)} · ${esc(row.description)}</strong><small>${esc(row.message)}</small>${row.existing.map(old=>`<small>Vorhanden: ${esc(old.number)} · ${esc(old.description)} · ${fmt(old.net_amount)}</small>`).join('')}</td><td>${row.position?fmt(row.position.net_amount):'–'}</td><td><select name="import-action-${index}" data-position-import-action aria-label="Aktion für Zeile ${row.row}"><option value="skip">Überspringen</option>${!row.errors.length?`<option value="add" ${row.status==='new'?'selected':''}>Hinzufügen</option>${row.targets.length===1?'<option value="replace">Vorhandene ersetzen</option>':''}`:''}</select></td><td><input name="import-number-${index}" data-position-import-number aria-label="Positionsnummer für Zeile ${row.row}" maxlength="30" value="${esc(row.number)}" ${row.errors.length?'disabled':''}></td></tr>`).join('')}</tbody></table></div>`;
+      $('offerPositionImportPreview').innerHTML=`<div class="tablewrap offer-position-import-table"><table><thead><tr><th>Zeile / Status</th><th>Position & Vergleich</th><th>Netto</th><th>Aktion</th><th>Nummer übernehmen als</th></tr></thead><tbody>${result.rows.map((row,index)=>`<tr data-position-import-row="${index}"><td>${row.row}<br><strong class="offer-position-import-state ${row.status}">${labels[row.status]}</strong></td><td><strong>${esc(row.number)} · ${esc(row.description)}</strong><small>${esc(row.message)}</small><small data-import-row-error hidden></small>${row.existing.map(old=>`<small>Vorhanden: ${esc(old.number)} · ${esc(old.description)} · ${fmt(old.net_amount)}</small>`).join('')}</td><td>${row.position?fmt(row.position.net_amount):'–'}</td><td><select name="import-action-${index}" data-position-import-action aria-label="Aktion für Zeile ${row.row}"><option value="pending" ${row.status!=='new'&&row.status!=='identical'?'selected':''}>Bitte entscheiden …</option><option value="skip" ${row.status==='identical'?'selected':''}>Überspringen</option>${!row.errors.length?`<option value="add" ${row.status==='new'?'selected':''}>Hinzufügen</option>${row.targets.length===1?'<option value="replace">Vorhandene ersetzen</option>':''}`:''}</select></td><td><input name="import-number-${index}" data-position-import-number aria-label="Positionsnummer für Zeile ${row.row}" maxlength="30" value="${esc(row.number)}" ${row.errors.length?'disabled':''}></td></tr>`).join('')}</tbody></table></div>`;
+      await validatePositionImport();
     });
   };
+  function importDecisions(){return [...$('offerPositionImportPreview').querySelectorAll('[data-position-import-row]')].map(row=>({action:row.querySelector('[data-position-import-action]').value,number:row.querySelector('[data-position-import-number]').value}));}
+  function showPositionImportError(error){
+    importValidationOK=false;$('applyOfferPositionImport').disabled=true;
+    $('offerPositionImportError').textContent=error.message;
+    if(error.details?.issues)renderImportIssues(error.details.issues);
+    $('offerPositionImportError').focus({preventScroll:true});
+  }
+  function renderImportIssues(issues){
+    const grouped=new Map();
+    for(const issue of issues){if(!grouped.has(issue.index))grouped.set(issue.index,[]);grouped.get(issue.index).push(issue.message);}
+    for(const row of $('offerPositionImportPreview').querySelectorAll('[data-position-import-row]')){
+      const messages=grouped.get(Number(row.dataset.positionImportRow))||[],field=row.querySelector('[data-import-row-error]');
+      row.dataset.importProblem=String(messages.length>0);field.hidden=!messages.length;field.textContent=[...new Set(messages)].join(' ');
+      row.querySelector('[data-position-import-action]').setAttribute('aria-invalid',String(messages.length>0));
+      row.hidden=$('offerImportOnlyProblems').checked&&!messages.length;
+    }
+    const summary=$('offerPositionImportIssues');summary.hidden=!grouped.size;
+    summary.innerHTML=grouped.size?`<strong>${grouped.size} Zeile(n) brauchen eine Entscheidung</strong><div class="offer-import-issue-links">${[...grouped.keys()].map(index=>{const row=positionImportPreview.rows[index];return `<button type="button" class="subtle" data-jump-import-row="${index}">Zeile ${row.row} · Pos. ${esc(row.number)}</button>`;}).join('')}</div>`:'';
+  }
+  async function validatePositionImport(){
+    if(!positionImportPreview)return;const run=++importValidationRun;importValidationOK=false;$('applyOfferPositionImport').disabled=true;
+    try{
+      await request(offerUrl(positionsOffer.id)+'/positions/import-apply',{method:'POST',data:{token:positionImportPreview.token,positions:collectDraft($('offerPositionsForm')).positions,decisions:importDecisions()}});
+      if(run!==importValidationRun)return;importValidationOK=true;$('offerPositionImportError').textContent='';renderImportIssues([]);
+    }catch(error){if(run!==importValidationRun)return;$('offerPositionImportError').textContent=error.details?.issues?.length?'':error.message;renderImportIssues(error.details?.issues||[]);}
+    if(run===importValidationRun)$('applyOfferPositionImport').disabled=positionImportBusy||!importValidationOK;
+  }
+  function queueImportValidation(){
+    if(!positionImportPreview)return;importValidationRun++;importValidationOK=false;$('applyOfferPositionImport').disabled=true;$('offerPositionImportError').textContent='';clearTimeout(importValidationTimer);importValidationTimer=setTimeout(()=>void validatePositionImport(),180);
+  }
+  $('offerPositionImportPreview').addEventListener('input',queueImportValidation);
+  $('offerPositionImportPreview').addEventListener('change',queueImportValidation);
+  $('offerImportOnlyProblems').onchange=()=>{
+    for(const row of $('offerPositionImportPreview').querySelectorAll('[data-position-import-row]'))row.hidden=$('offerImportOnlyProblems').checked&&row.dataset.importProblem!=='true';
+  };
+  $('offerPositionImportIssues').onclick=event=>{
+    const button=event.target.closest('[data-jump-import-row]');if(!button)return;
+    const row=$('offerPositionImportPreview').querySelector('[data-position-import-row="'+button.dataset.jumpImportRow+'"]');if(!row)return;
+    row.hidden=false;row.scrollIntoView({block:'center',behavior:'smooth'});row.querySelector('[data-position-import-action]').focus({preventScroll:true});
+  };
   $('applyOfferPositionImport').onclick=()=>{
-    if(!positionImportPreview||!positionsOffer)return;
+    if(!positionImportPreview||!positionsOffer||!importValidationOK)return;
     void runPositionImport(async()=>{
       const rows=[...$('offerPositionImportPreview').querySelectorAll('[data-position-import-row]')];
       const decisions=rows.map(row=>({action:row.querySelector('[data-position-import-action]').value,number:row.querySelector('[data-position-import-number]').value}));
@@ -250,6 +291,31 @@
       PHBUI.currency.bind(form);checkPositions(form);positionImportFlow.finish();
       $('offerPositionsError').textContent='Import übernommen: '+result.summary.added+' hinzugefügt, '+result.summary.replaced+' ersetzt, '+result.summary.skipped+' übersprungen. Bitte Positionen speichern.';
     });
+  };
+  function validateLivePositions(form){
+    const problems=[],rows=[...form.querySelectorAll('[data-position-row]')];
+    rows.forEach((row,index)=>{
+      const field=name=>row.querySelector('[data-position-field="'+name+'"]'),messages=[];
+      if(!field('description').value.trim())messages.push('Leistungsbeschreibung fehlt.');
+      for(const name of ['unit_price','net_amount','optional_amount']){
+        const input=field(name),value=PHBUI.currency.parse(input.value),required=name==='net_amount'&&!field('optional').checked;
+        const invalid=required&&value===null||value!==null&&(!Number.isFinite(value)||value<0||value>99999999.99||Math.abs(value*100-Math.round(value*100))>1e-6);
+        input.setAttribute('aria-invalid',String(Boolean(invalid)));if(invalid)messages.push(name==='net_amount'?'Nettobetrag fehlt oder ist ungültig.':'Positionsbetrag ist ungültig.');
+      }
+      const quantity=field('quantity').value.trim();if(quantity&&(!/^\d+(?:[.,]\d{1,6})?$/.test(quantity)||!Number.isFinite(readMoney(quantity))||Number(quantity.replace(',','.'))>99999999))messages.push('Menge ist ungültig.');
+      row.dataset.positionInvalid=String(messages.length>0);
+      let hint=row.querySelector('[data-live-position-error]');if(!hint){hint=document.createElement('p');hint.dataset.livePositionError='';row.querySelector('.offer-position-fields').prepend(hint);}hint.hidden=!messages.length;hint.textContent=messages.join(' ');
+      if(messages.length)problems.push({index,number:field('number').value||index+1});
+    });
+    const hasIncluded=rows.some(row=>!row.querySelector('[data-position-field="optional"]').checked);
+    const vat=PHBUI.currency.parse(form.elements.vat.value),gross=PHBUI.currency.parse(form.elements.gross.value),valid=rows.length>0&&hasIncluded&&!problems.length&&Number.isFinite(vat)&&vat>=0&&vat<=99999999.99&&Math.abs(vat*100-Math.round(vat*100))<1e-6&&Number.isFinite(gross)&&gross<=99999999.99;
+    const box=$('offerPositionsValidation');box.hidden=valid;
+    box.innerHTML=problems.length?`<strong>${problems.length} fehlerhafte Position(en) – Speichern gesperrt</strong><div class="offer-import-issue-links">${problems.map(p=>`<button type="button" class="subtle" data-jump-live-position="${p.index}">Position ${esc(p.number)}</button>`).join('')}</div>`:`<strong>${!rows.length||!hasIncluded?'Mindestens eine nicht optionale Position ist erforderlich.':'Umsatzsteuer oder Gesamtsumme ist ungültig (maximal 99.999.999,99 € und zwei Nachkommastellen).'}</strong>`;
+    $('saveOfferPositions').disabled=positionsBusy||!valid;return valid;
+  }
+  $('offerPositionsValidation').onclick=event=>{
+    const button=event.target.closest('[data-jump-live-position]');if(!button)return;
+    const row=$('offerPositionsForm').querySelectorAll('[data-position-row]')[Number(button.dataset.jumpLivePosition)];if(!row)return;row.open=true;row.scrollIntoView({block:'center',behavior:'smooth'});row.querySelector('[aria-invalid="true"],input').focus({preventScroll:true});
   };
   function calculatePositionTotals(form){
     let cents=0,missing=false;
@@ -279,6 +345,7 @@
   $('offerPositionsForm').onsubmit=async event=>{
     event.preventDefault();if(positionsBusy||!positionsOffer)return;
     const form=event.currentTarget;
+    if(!validateLivePositions(form)){$('offerPositionsValidation').focus({preventScroll:true});return;}
     if(!form.reportValidity())return;
     let data;try{data=collectDraft(form);}catch(error){$('offerPositionsError').textContent=error.message;return;}
     if(!data.positions.length||!data.positions.some(p=>!p.optional)){$('offerPositionsError').textContent='Mindestens eine nicht optionale Position ist erforderlich.';return;}
@@ -290,7 +357,7 @@
       $('offerEditFields').innerHTML=editFields(response.offer);PHBUI.currency.bind($('offerEditForm'));renderEditorExtras(response.offer);
       editMetadataBaseline=PHBFlow.signature($('offerEditForm'));editFlow.snapshot();
       for(const node of [editDialog,$('offerEditForm')])window.PHBRequests?.acknowledge(node,offerUrl(response.offer.id));
-    }catch(error){$('offerPositionsError').textContent=error.message;}
+    }catch(error){$('offerPositionsError').textContent=error.message;$('offerPositionsError').focus({preventScroll:true});}
     finally{positionsBusy=false;positionsFlow.setBusy(false);editFlow.setBusy(false);controls.forEach((node,i)=>node.disabled=prior[i]);}
   };
   const closeEdit=()=>{
@@ -541,7 +608,7 @@
   function checkPositions(form) {
     const summary=form.querySelector('[data-position-summary]');
     if (!summary) return {warning:false};
-    if(form.id==='offerPositionsForm')calculatePositionTotals(form);
+    if(form.id==='offerPositionsForm'){calculatePositionTotals(form);if(!validateLivePositions(form)){summary.textContent='Bitte die oben markierten Positionen prüfen.';return {warning:true};}}
     const positions=collectDraft(form).positions;
     const included=positions.filter(p=>!p.optional);
     const subtotal=included.reduce((acc,p)=>acc+(readMoney(p.net_amount)||0),0);
@@ -786,7 +853,7 @@
     const resp=await fetch(url,opts);
     let body;
     try {body=await resp.json()} catch {throw Error('Der Server hat keine gültige Antwort gesendet.')} 
-    if (!resp.ok) throw Error(body.error||'Aktion fehlgeschlagen.');
+    if (!resp.ok) throw Object.assign(Error(body.error||'Aktion fehlgeschlagen.'),{details:body});
     return body;
   }
   async function reload() {

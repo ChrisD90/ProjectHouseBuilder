@@ -466,7 +466,7 @@ body.phb-app .offer-tax-field{font-size:12px;font-weight:650;color:var(--ui-ink-
 body.phb-app .offer-tax-input :is(input,select){font:inherit}
 
 /* Independent position editor: one scroll body, fixed totals/header/footer. */
-body.phb-app .offer-positions-dialog{width:min(1120px,calc(100vw - 36px))}
+body.phb-app .offer-positions-dialog{width:min(1420px,calc(100vw - 24px))}
 body.phb-app .offer-positions-dialog .phb-workflow-body{overflow:auto;max-height:68dvh}
 body.phb-app .offer-position-totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;position:sticky;top:0;z-index:2;background:var(--ui-surface);padding:8px 0 14px;border-bottom:1px solid var(--ui-line)}
 body.phb-app .offer-positions-dialog input[readonly]{background:var(--ui-soft);color:var(--ui-ink)}
@@ -474,22 +474,47 @@ body.phb-app .offer-positions-contract-note{font-size:12px;color:var(--ui-muted)
 body.phb-app #offerPositionsError{color:var(--ui-danger,#a83c43);font-size:13px}
 @media(max-width:650px){body.phb-app .offer-position-totals{grid-template-columns:repeat(2,minmax(0,1fr));position:static}}
 
-body.phb-app .offer-position-import-dialog{width:min(1240px,calc(100vw - 36px))}
-body.phb-app .offer-position-import-dialog .phb-workflow-body{overflow:auto;max-height:66dvh}
-body.phb-app .offer-position-import-controls{display:flex;align-items:end;gap:12px;margin:16px 0}
+body.phb-app .offer-position-import-dialog{width:min(1580px,calc(100vw - 24px));height:min(90dvh,1000px)}
+body.phb-app .offer-position-import-dialog .phb-workflow-body{display:flex;flex-direction:column;gap:10px;overflow:hidden;max-height:none;padding:16px 24px;min-height:0}
+body.phb-app .offer-position-import-controls{display:flex;align-items:end;gap:12px;margin:0;flex:0 0 auto}
 body.phb-app .offer-position-import-controls label{flex:1;min-width:0}
-body.phb-app .offer-import-schema{padding:12px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-surface)}
+body.phb-app .offer-import-schema{flex:0 0 auto;padding:10px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-surface);max-height:160px;overflow:auto}
 body.phb-app .offer-import-schema ol{display:flex;flex-wrap:wrap;gap:6px 28px;padding-left:24px;font-size:12px}
-body.phb-app .offer-import-schema p,body.phb-app #offerPositionImportStatus{font-size:12px;color:var(--ui-muted)}
-body.phb-app .offer-position-import-table{max-height:42dvh;overflow:auto}
-body.phb-app .offer-position-import-table td{vertical-align:top;min-width:100px}
-body.phb-app .offer-position-import-table td:nth-child(2){max-width:350px;overflow-wrap:anywhere}
+body.phb-app .offer-import-schema p,body.phb-app #offerPositionImportStatus{font-size:12px;color:var(--ui-muted);margin:0}
+body.phb-app .offer-import-feedback{flex:0 0 auto;max-height:130px;overflow:auto}
+body.phb-app .offer-import-preview-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex:0 0 auto}
+body.phb-app .offer-import-preview-heading label{display:flex;flex-direction:row;align-items:center;gap:6px;font-size:12px;white-space:nowrap}
+body.phb-app .offer-import-preview-heading input{width:auto}
+body.phb-app #offerPositionImportPreview{flex:1 1 auto;min-height:0;overflow:hidden}
+body.phb-app .offer-position-import-table{height:100%;max-height:none;overflow:auto}
+body.phb-app .offer-position-import-table table{table-layout:fixed;width:100%;min-width:1020px}
+body.phb-app .offer-position-import-table :is(th,td){min-width:0;vertical-align:top;overflow-wrap:anywhere;padding:10px;box-sizing:border-box}
+body.phb-app .offer-position-import-table th{position:sticky;top:0;z-index:1;background:var(--ui-surface)}
+body.phb-app .offer-position-import-table :is(th,td):nth-child(1){width:112px}
+body.phb-app .offer-position-import-table :is(th,td):nth-child(3){width:110px}
+body.phb-app .offer-position-import-table :is(th,td):nth-child(4){width:222px}
+body.phb-app .offer-position-import-table :is(th,td):nth-child(5){width:150px}
 body.phb-app .offer-position-import-table small{display:block;font-size:11px;color:var(--ui-muted);margin-top:4px}
-body.phb-app .offer-position-import-table select{min-width:160px}
-body.phb-app .offer-position-import-state:is(.conflict,.duplicate,.invalid),body.phb-app #offerPositionImportError{color:var(--ui-danger,#a83c43)}
+body.phb-app .offer-position-import-table :is(select,input){width:100%;min-width:0;max-width:100%;box-sizing:border-box;font-size:12px}
+body.phb-app .offer-position-import-state:is(.conflict,.duplicate,.invalid),body.phb-app :is(#offerPositionImportError,[data-import-row-error],[data-live-position-error]){color:var(--ui-danger,#a83c43)}
 body.phb-app .offer-position-import-state.new{color:var(--ui-accent,#416317)}
+body.phb-app .offer-position-import-table tr[data-import-problem="true"] td{background:color-mix(in srgb,var(--ui-danger,#a83c43) 8%,var(--ui-surface))}
+body.phb-app .offer-position-import-table tr[data-import-problem="true"] td:first-child{box-shadow:inset 3px 0 var(--ui-danger,#a83c43)}
+body.phb-app .offer-position-import-table :is(tr,small)[hidden]{display:none!important}
 body.phb-app .offer-position-import-dialog .phb-dialog-actions>span{font-size:11px;color:var(--ui-muted);margin-right:auto;max-width:440px}
-@media(max-width:550px){body.phb-app .offer-position-import-controls{flex-wrap:wrap}}
+body.phb-app :is(#offerPositionImportIssues,.offer-validation-summary){padding:10px 14px;border:1px solid var(--ui-danger,#a83c43);border-radius:9px;color:var(--ui-ink);background:color-mix(in srgb,var(--ui-danger,#a83c43) 7%,var(--ui-surface));font-size:12px;flex:0 0 auto}
+body.phb-app .offer-validation-summary{margin:10px 24px 0;max-height:110px;overflow:auto}
+body.phb-app .offer-import-issue-links{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:6px}
+body.phb-app .offer-import-issue-links button{font-size:11px;padding:4px 7px}
+body.phb-app #offerPositionsError{margin:10px 24px 0;flex:0 0 auto}
+body.phb-app :is(#offerPositionsError,#offerPositionImportError):empty{display:none}
+body.phb-app .offer-position-row[data-position-invalid="true"]{border-color:var(--ui-danger,#a83c43)}
+body.phb-app .offer-position-row[data-position-invalid="true"]>.offer-position-title::after{content:"Bitte prüfen";color:var(--ui-danger,#a83c43);font-size:11px;white-space:nowrap}
+body.phb-app [data-live-position-error]{grid-column:1/-1;font-size:12px;margin:0}
+body.phb-app .offer-position-fields :is(label,input,select){min-width:0;max-width:100%;box-sizing:border-box}
+body.phb-app .offer-position-title{flex-wrap:wrap;gap:8px}
+body.phb-app .offer-position-title strong{min-width:0;overflow-wrap:anywhere}
+@media(max-width:550px){body.phb-app .offer-position-import-controls{flex-wrap:wrap}.offer-import-preview-heading{flex-wrap:wrap}}
 
 /* Dedicated offer page: non-modal form on the full content canvas. */
 body.phb-offer-detail-page main.offers-page{max-width:1700px}
@@ -505,3 +530,9 @@ body.phb-app.phb-offer-detail-page #offerEditPdfFrame{height:calc(100dvh - 180px
 body.phb-app.phb-offer-detail-page .offer-editor-footer{position:sticky;bottom:0;z-index:3;margin-top:18px;padding:12px 0;background:var(--ui-surface)}
 @media(max-width:900px){body.phb-app.phb-offer-detail-page .phb-offer-edit-layout{grid-template-columns:minmax(0,1fr)}body.phb-app.phb-offer-detail-page #offerEditPdfPane{position:static}body.phb-app.phb-offer-detail-page #offerEditPdfFrame{height:65dvh;min-height:380px}}
 body.phb-app a.offer-tile-open{text-decoration:none;color:inherit}
+@media(max-height:650px),(max-width:550px){
+ body.phb-app .offer-position-import-dialog .phb-workflow-body{overflow-y:auto}
+ body.phb-app .offer-import-feedback{position:sticky;top:0;z-index:3;background:var(--ui-surface)}
+ body.phb-app #offerPositionImportPreview{flex:0 0 auto;min-height:220px}
+ body.phb-app .offer-position-import-table{height:220px}
+}

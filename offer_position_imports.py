@@ -134,29 +134,45 @@ def analyze(raw,name,current,validate):
     return data
 
 
+class ResolutionError(ValueError):
+    def __init__(self,issues):
+        self.issues=issues
+        super().__init__('Bitte die markierten Zeilen korrigieren oder ausdrücklich überspringen.')
+
+
 def resolve(current,rows,decisions,validate):
     if not isinstance(decisions,list) or len(decisions)!=len(rows):raise ValueError('Bitte für jede Zeile eine Importentscheidung treffen.')
-    merged=[dict(pos) for pos in current];replaced=set();added=[]
+    merged=[dict(pos) for pos in current];replaced={};added=[];issues=[];origins={}
+    def issue(index,message):
+        issues.append(dict(index=index,row=rows[index]['row'],message=message))
     before=Counter(key(pos['number']) for pos in current)
-    for row,choice in zip(rows,decisions):
-        if not isinstance(choice,dict):raise ValueError('Ungültige Importentscheidung.')
+    for index,(row,choice) in enumerate(zip(rows,decisions)):
+        if not isinstance(choice,dict):issue(index,'Ungültige Importentscheidung.');continue
         action=choice.get('action')
         if action=='skip':continue
-        if action not in ('add','replace') or row['errors']:raise ValueError('Ungültige oder fehlerhafte Zeile kann nicht übernommen werden.')
+        if action not in ('add','replace'):
+            issue(index,'Bitte eine Aktion auswählen: '+row['message']);continue
+        if row['errors']:issue(index,'Fehlerhafte Zeile bitte ausdrücklich überspringen: '+row['message']);continue
         position=dict(row['position']);position['number']=str(choice.get('number',position['number'])).strip()
-        if not position['number']:raise ValueError('Bitte für jede übernommene Position eine eindeutige Nummer eingeben.')
+        if not position['number'] or len(position['number'])>30 or any(ord(c)<32 for c in position['number']):
+            issue(index,'Bitte eine gültige Positionsnummer mit maximal 30 Zeichen eingeben.');continue
         if action=='replace':
-            if len(row['targets'])!=1:raise ValueError('Ersetzung ist nur bei einem eindeutigen vorhandenen Treffer möglich.')
+            if len(row['targets'])!=1:issue(index,'Ersetzung ist nur bei einem eindeutigen vorhandenen Treffer möglich.');continue
             target=row['targets'][0]
-            if target in replaced:raise ValueError('Eine vorhandene Position kann pro Import nur einmal ersetzt werden.')
-            replaced.add(target)
-            merged[target]={**position,**{key:current[target][key] for key in ('id','page') if key in current[target]}}
+            if target in replaced:
+                issue(index,'Diese vorhandene Position wird bereits durch eine andere Zeile ersetzt.');issue(replaced[target],'Diese vorhandene Position wird mehrfach ersetzt.');continue
+            replaced[target]=index
+            merged[target]={**position,**{name:current[target][name] for name in ('id','page') if name in current[target]}}
         else:added.append(position)
+        origins.setdefault(key(position['number']),[]).append(index)
     merged+=added
+    after=Counter(key(pos['number']) for pos in merged)
+    for number,count in after.items():
+        if count>max(1,before[number]):
+            for index in origins.get(number,[]):issue(index,'Positionsnummer ist mehrfach vergeben. Bitte umnummerieren, ersetzen oder überspringen.')
+    if issues:raise ResolutionError(issues)
     if len(merged)>500:raise ValueError('Ein Angebot darf maximal 500 Positionen enthalten.')
     if not replaced and not added:raise ValueError('Bitte mindestens eine Position zur Übernahme auswählen.')
-    after=Counter(key(pos['number']) for pos in merged)
-    if any(count>max(1,before[number]) for number,count in after.items()):raise ValueError('Doppelte Positionsnummern: Bitte neue Positionen eindeutig umnummerieren oder vorhandene ersetzen.')
     validate(merged)
     if not any(not pos['optional'] for pos in merged):raise ValueError('Mindestens eine nicht optionale Position ist erforderlich.')
     return merged,dict(added=len(added),replaced=len(replaced),skipped=len(rows)-len(added)-len(replaced))
@@ -215,5 +231,6 @@ def register(runtime,position_token):
             if fingerprint(current)!=fingerprint(data['current']):return runtime.jsonify(error='Deine Positionen wurden seit der Vorschau verändert. Bitte die Datei erneut prüfen.'),409
             merged,summary=resolve(current,data['rows'],body.get('decisions'),runtime._validated_offer_positions)
             return runtime.jsonify(positions=merged,summary=summary)
+        except ResolutionError as exc:return runtime.jsonify(error=str(exc),issues=exc.issues),400
         except BadSignature:return runtime.jsonify(error='Importvorschau ist abgelaufen oder ungültig. Bitte Datei erneut prüfen.'),400
         except (ValueError,TypeError,KeyError) as exc:return runtime.jsonify(error=str(exc)),400

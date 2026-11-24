@@ -22,6 +22,8 @@ class OfferPositionImportTest(unittest.TestCase):
         response=self.preview(raw);self.assertEqual(response.status_code,200,response.json)
         preview=response.json;self.assertEqual([r['status'] for r in preview['rows']],['conflict','duplicate','duplicate'])
         invalid=self.apply(preview['token'],[{'action':'add'},{'action':'add'},{'action':'add'}]);self.assertEqual(invalid.status_code,400)
+        self.assertTrue(invalid.json['issues']);self.assertTrue(all('row' in issue and 'index' in issue for issue in invalid.json['issues']))
+        pending=self.apply(preview['token'],[{'action':'pending'},{'action':'add'},{'action':'skip'}]);self.assertEqual(pending.status_code,400);self.assertEqual(pending.json['issues'][0]['row'],2)
         result=self.apply(preview['token'],[{'action':'replace'},{'action':'add'},{'action':'skip'}]);self.assertEqual(result.status_code,200,result.json)
         rows=result.json['positions'];self.assertEqual(rows[0]['id'],self.offer['positions'][0]['id']);self.assertTrue(rows[0]['own_work'])
         self.assertEqual(b.db.session.get(b.Offer,self.offer['id']).net,100)

@@ -39,3 +39,14 @@ Kachel und Stift öffnen `/p/<Projekt-ID>/angebote/<Angebots-ID>` im bestehenden
 Positionen, Tabellenimport, Anhänge und Versionsverwaltung bleiben als untergeordnete Dialoge erreichbar. Alte Links mit `/angebote?offer_id=<ID>` leiten zur Unterseite weiter. Die Sidebar markiert weiterhin Angebote als aktiv. Projektfremde Angebote sind nicht zugänglich. Keine Datenmigration oder Änderung bestehender Beträge erforderlich.
 
 Validierung dieser Umstellung: Produktionsbuild, eine gezielte Prüfung der projektbezogenen Route und `tests/browser_offer_subpage.cjs` für Öffnen, nicht modale Darstellung, Speichern, gestapelte Positionsbearbeitung, Zurücknavigation und alte Verlinkungen. Der Browsercheck läuft über `dev/ui_browser_smoke.py` mit temporärer Datenbank und eigenen Testdateien.
+
+
+## Sichtbare Importfehler und Speicherschutz
+
+Import- und Positionsdialog sind verbreitert. Der Import trennt Positionstext, Aktion und neue Nummer mit festen Tabellenspalten; Auswahlfelder bleiben innerhalb ihrer Zellen. Nur die Tabelle scrollt im normalen Desktoplayout, Kopf und Rückmeldungen bleiben sichtbar. Kleine Fenster erlauben zusätzlich den äußeren Scrollbereich.
+
+Bei Konflikten, Dubletten und fehlerhaften Zeilen beginnt die Aktion mit „Bitte entscheiden“. Erst eine ausdrückliche Entscheidung löst den betreffenden Punkt. Die serverseitige Konfliktprüfung liefert konkrete Zeilen zurück. Sie wird nach Auswahl- oder Nummernänderungen erneut ausgeführt; veraltete Antworten können keinen Button freigeben. Bis zur erfolgreichen Prüfung bleibt „Auswahl übernehmen“ gesperrt. Rote Zeilenmarkierungen, Sprunglinks in der Fehlerübersicht und „Nur Probleme“ helfen beim Auffinden. Fehlerhafte Quelldaten können ausdrücklich übersprungen werden, gelangen aber nicht in die Positionen.
+
+Auch im Positionseditor werden ungültige Beträge und fehlende Beschreibungen direkt an der Position markiert. Eine feste Übersicht mit Sprunglinks zeigt sie oberhalb des Scrollbereichs; „Speichern“ bleibt gesperrt. Servermeldungen stehen ebenfalls oben.
+
+Validiert mit den beiden Import-Integritätsprüfungen und `tests/browser_offer_import_feedback.cjs`: offene Konflikte/Dubletten sperren die Übernahme, ausdrückliches Überspringen und Korrekturen entsperren sie, Dropdowns überdecken keinen Positionstext, ungültige Positionsdaten sperren Speichern und gültige Korrekturen lassen sich speichern.
