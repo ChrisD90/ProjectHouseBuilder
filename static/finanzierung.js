@@ -199,14 +199,29 @@ function renderCreditHistory(){
  $('creditHistory').querySelectorAll('[data-confirm-drawdown]').forEach(el=>el.onclick=()=>confirmDrawdown(Number(el.dataset.confirmDrawdown)));
  $('creditHistory').querySelectorAll('[data-reject-drawdown]').forEach(el=>el.onclick=()=>rejectDrawdown(Number(el.dataset.rejectDrawdown)));
 }
+// Project the same account values shown on the cards, including older API responses.
+function financingExpenseTotals(finance){
+ const cents=value=>{if(!['number','string'].includes(typeof value)||typeof value==='string'&&!value.trim())return null;const n=Number(value);return Number.isFinite(n)&&n>=0&&Number.isSafeInteger(Math.round(n*100))?Math.round(n*100):null;};
+ const sum=(rows,field,fallbacks)=>{
+  if(Array.isArray(rows)){
+   const amounts=rows.map(row=>cents(row.balance?.[field]));
+   if(amounts.every(value=>value!==null))return amounts.reduce((a,b)=>a+b,0);
+  }
+  for(const value of fallbacks){const amount=cents(value);if(amount!==null)return amount;}
+  return null;
+ };
+ const equity=sum(finance.equity,'paid_for_project',[finance.summary?.paid_equity,finance.summary?.equity_receipt_spent]);
+ const credit=sum(finance.loans,'drawn',[finance.summary?.loan_drawn]);
+ return {equity:equity===null?null:equity/100,total:equity===null||credit===null?null:(equity+credit)/100};
+}
 function render(){
- const s=state.summary;
+ const s=state.summary,expenseTotals=financingExpenseTotals(state);
  const creditFrame=Number(s.loan_frame)||0,remaining=Number(s.loan_remaining_budget)||0;
  const remainingCredit=Math.max(0,Math.min(creditFrame,remaining));
  const remainingPercent=creditFrame>0?remainingCredit/creditFrame*100:0;
  const pendingDrawdowns=(state.drawdowns||[]).filter(d=>['Eingereicht','Teilweise ausgezahlt'].includes(d.status)&&Number(d.remaining_amount??d.requested_amount)>0.004);
  const pendingAmount=pendingDrawdowns.reduce((cents,d)=>cents+Math.round(Number(d.remaining_amount??d.requested_amount)*100),0)/100;
- $('totals').innerHTML=`<article class="tile"><span>Restbudget Kredite</span><strong>${euro(remaining)}</strong><small>${creditFrame>0?'von '+euro(creditFrame)+' Kreditrahmen':'Noch kein Kredit angelegt'}</small><div class="finance-budget-progress" role="progressbar" aria-label="Verbleibendes Kreditbudget" title="Grün: verbleibendes Budget. Grau: bereits verbraucht." aria-valuemin="0" aria-valuemax="${creditFrame||1}" aria-valuenow="${remainingCredit}" aria-valuetext="${euro(remaining)} von ${euro(creditFrame)} verbleibend"><span style="width:${remainingPercent}%"></span></div></article><article class="tile"><span>Rechnungen aus Eigenkapital</span><strong>${euro(s.equity_receipt_spent)}</strong><small>Aktuell zugeordnete Rechnungszahlungen</small></article><article class="tile"><span>Mittelabrufe in Prüfung</span><strong>${euro(pendingAmount)}</strong><small>${pendingDrawdowns.length?pendingDrawdowns.length+' '+(pendingDrawdowns.length===1?'Abruf wartet':'Abrufe warten')+' auf Bankbestätigung':'Keine offenen Mittelabrufe'}</small></article><article class="tile"><span>Summe der Ausgaben</span><strong>${euro(s.expenses_equity_plus_drawn)}</strong><small>EK-Rechnungen + ausgezahlte Kreditmittel</small></article>`;
+ $('totals').innerHTML=`<article class="tile"><span>Restbudget Kredite</span><strong>${euro(remaining)}</strong><small>${creditFrame>0?'von '+euro(creditFrame)+' Kreditrahmen':'Noch kein Kredit angelegt'}</small><div class="finance-budget-progress" role="progressbar" aria-label="Verbleibendes Kreditbudget" title="Grün: verbleibendes Budget. Grau: bereits verbraucht." aria-valuemin="0" aria-valuemax="${creditFrame||1}" aria-valuenow="${remainingCredit}" aria-valuetext="${euro(remaining)} von ${euro(creditFrame)} verbleibend"><span style="width:${remainingPercent}%"></span></div></article><article class="tile"><span>Rechnungen aus Eigenkapital</span><strong>${expenseTotals.equity===null?'Nicht verfügbar':euro(expenseTotals.equity)}</strong><small>Aktuell zugeordnete Rechnungszahlungen</small></article><article class="tile"><span>Mittelabrufe in Prüfung</span><strong>${euro(pendingAmount)}</strong><small>${pendingDrawdowns.length?pendingDrawdowns.length+' '+(pendingDrawdowns.length===1?'Abruf wartet':'Abrufe warten')+' auf Bankbestätigung':'Keine offenen Mittelabrufe'}</small></article><article class="tile" data-finance-total="expenses"><span>Summe der Ausgaben</span><strong>${expenseTotals.total===null?'Nicht verfügbar':euro(expenseTotals.total)}</strong><small>EK-Rechnungen + ausgezahlte Kreditmittel</small></article>`;
  $('warnings').innerHTML=s.warnings.map(x=>x==='Es bestehen bezahlte Rechnungsbeträge ohne Finanzierungszuordnung.'
   ?`<button type="button" class="warning finance-warning-action" id="openUnassignedReceipts"><span>⚠ ${esc(x)}</span><span class="finance-warning-link">Belege prüfen (${unassignedReceipts(state).size}) →</span></button>`
   :`<div class="warning">⚠ ${esc(x)}</div>`).join('');
