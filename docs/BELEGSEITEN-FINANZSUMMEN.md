@@ -6,13 +6,14 @@ Der Editor lädt über `/api/receipts/<ID>/editor` nur den Beleg und seine Auswa
 
 Der Angebots-Zurückbutton ist ebenfalls ein Pfeil links vor dem Titel. PDF-Vorschauen starten über `view=FitH&zoom=page-width` mit Seitenbreite, soweit der verwendete Browser-PDF-Viewer diese Standardparameter unterstützt. Explizite Zoom-/Ansichtsparameter werden beibehalten; Originaldateien werden nicht verändert. Eine geänderte Mittelabruf-PDF-Vorschau wird weiterhin neu geladen.
 
-Die Finanzierungsübersicht konzentriert sich auf zwei gleich breite Kacheln über die volle Inhaltsbreite. Die bisherigen Kacheln „Offener Finanzbedarf“, „Finanzierung verfügbar“ und „Finanzierungslücke“ werden nicht mehr angezeigt:
+Die Finanzierungsübersicht konzentriert sich auf drei gleich breite Kacheln über die volle Inhaltsbreite. Die bisherigen Kacheln „Offener Finanzbedarf“, „Finanzierung verfügbar“ und „Finanzierungslücke“ werden nicht mehr angezeigt:
 
 - **Restbudget Kredite:** Summe noch nicht abgerufener Kreditmittel plus ausgezahlter, noch nicht verwendeter Mittel. Entspricht Kreditrahmen minus bisheriger Verwendung. Enthält noch nicht bestätigte Abrufe weiterhin als ungenutzten Rahmen. Tilgungen erhöhen dieses Baukostenbudget nicht.
+- **Mittelabrufe in Prüfung:** Noch offener Betrag eingereichter und teilweise ausgezahlter Abrufe sowie deren Anzahl. Bereits bestätigte Teilbeträge, Entwürfe, abgelehnte und zurückgenommene Abrufe zählen nicht dazu.
 - **Rechnungen aus Eigenkapital:** Summe der aktuell allen Eigenkapitalkonten zugeordneten Rechnungszahlungen. Unbezahlte oder nicht zugeordnete Beträge und sonstige Entnahmen zählen nicht dazu.
 
 Auf Eigenkapital- und Kreditkacheln steht neben „Verfügbar“ zusätzlich „Rechnungen“. Gezählt werden die tatsächlich diesem Konto zugeordneten Zahlungsanteile, nicht jeweils die vollständigen Bruttobeträge der Rechnungen. Beim Kredit bleibt eine sonstige manuelle Verwendung separat im bisherigen Wert „Verwendet“ berücksichtigt. Bestätigte Erstattungen aus einem Kredit entlasten die EK-Anzeige automatisch über die bestehenden Finanzierungszuordnungen. Es entstehen keine zusätzlichen Buchungen.
 
 Keine Datenmigration erforderlich. Gezielte Validierung: Projekttrennung und schlanker Belegabruf, Summen über mehrere Konten mit Teilzahlungen und separaten Entnahmen, bestehender Teilauszahlungs-/Rücknahmeprozess. Ein isolierter Browser-Prozesscheck prüft Rechnungs-/Kassenzettel-Unterseiten, Speichern und Rückkehr, alte Links, PDF-Startparameter, den Angebots-Pfeil sowie die Finanzierungskacheln. Produktionsbuild erfolgreich.
 
-Die Restbudget-Kachel zeigt zusätzlich einen grünen Balken: verbleibendes Kreditbudget im Verhältnis zum gesamten Kreditrahmen. Ohne Kredit bleibt er leer. Beide Kacheln verwenden größere Beträge und gemeinsame Abstände; auf schmalen Bildschirmen stehen sie untereinander. Die fachlichen Berechnungen und gespeicherten Daten bleiben dabei unverändert.
+Die Restbudget-Kachel zeigt zusätzlich einen grünen Balken: bereits verwendetes Kreditbudget im Verhältnis zum gesamten Kreditrahmen. Er wächst, während der angezeigte Restbetrag sinkt. Ohne Kredit bleibt er leer. Alle drei Kacheln verwenden größere Beträge und gemeinsame Abstände; auf schmalen Bildschirmen stehen sie untereinander. Die fachlichen Berechnungen und gespeicherten Daten bleiben dabei unverändert.
