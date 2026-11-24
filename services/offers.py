@@ -1086,3 +1086,6 @@ def register(runtime: ModuleType):
                 if moved.exists():moved.replace(path)
                 raise
         return runtime.jsonify(ok=True,offer=runtime.offer_dict(offer))
+
+    from offer_position_imports import register as register_position_imports
+    register_position_imports(runtime,positions_token)

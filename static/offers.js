@@ -202,6 +202,46 @@
     PHBUI.currency.bind(form);checkPositions(form);$('offerPositionsError').textContent='';positionsFlow.open();
   };
   $('closeOfferPositions').onclick=()=>{if(!positionsBusy)$('offerPositionsDialog').close();};
+  let positionImportPreview=null,positionImportBusy=false;
+  const positionImportFlow=PHBFlow.manage({dialog:'offerPositionImportDialog',forms:['offerPositionImportForm','offerPositionImportPreview'],dismiss:['closeOfferPositionImport'],isBusy:()=>positionImportBusy});
+  function clearPositionImport(){
+    positionImportPreview=null;$('offerPositionImportPreview').innerHTML='';$('offerPositionImportStatus').textContent='';$('offerPositionImportError').textContent='';$('applyOfferPositionImport').disabled=true;
+  }
+  $('openOfferPositionImport').onclick=()=>{
+    if(positionsBusy||!positionsOffer)return;
+    clearPositionImport();$('offerPositionImportForm').reset();positionImportFlow.open();
+  };
+  $('offerPositionImportForm').elements.file.onchange=clearPositionImport;
+  async function runPositionImport(action){
+    if(positionImportBusy)return;
+    const controls=[...$('offerPositionImportDialog').querySelectorAll('button,input,select')],prior=controls.map(node=>node.disabled);
+    positionImportBusy=true;positionImportFlow.setBusy(true);positionsFlow.setBusy(true);editFlow.setBusy(true);controls.forEach(node=>node.disabled=true);$('offerPositionImportError').textContent='';
+    try{await action();}catch(error){$('offerPositionImportError').textContent=error.message;}
+    finally{positionImportBusy=false;positionImportFlow.setBusy(false);positionsFlow.setBusy(false);editFlow.setBusy(false);controls.forEach((node,i)=>node.disabled=prior[i]);$('applyOfferPositionImport').disabled=!positionImportPreview;}
+  }
+  $('offerPositionImportForm').onsubmit=async event=>{
+    event.preventDefault();const file=event.currentTarget.elements.file.files[0];if(!file||!positionsOffer)return;
+    await runPositionImport(async()=>{
+      clearPositionImport();const data=new FormData();data.set('file',file);data.set('positions',JSON.stringify(collectDraft($('offerPositionsForm')).positions));data.set('positions_token',positionsOffer.positions_token);
+      $('offerPositionImportStatus').textContent='Datei wird lokal geprüft …';
+      const result=await request(offerUrl(positionsOffer.id)+'/positions/import-preview',{method:'POST',formData:data});positionImportPreview=result;
+      const labels={new:'Neu',conflict:'Konflikt',identical:'Identisch',duplicate:'Doppelte Nummer',invalid:'Fehler'};
+      const conflicts=result.rows.filter(row=>!['new','identical'].includes(row.status)).length;
+      $('offerPositionImportStatus').textContent=result.rows.length+' Zeilen · '+conflicts+' Konflikte/Fehler. Bestehende Positionen werden standardmäßig behalten.';
+      $('offerPositionImportPreview').innerHTML=`<div class="tablewrap offer-position-import-table"><table><thead><tr><th>Zeile / Status</th><th>Position & Vergleich</th><th>Netto</th><th>Aktion</th><th>Nummer übernehmen als</th></tr></thead><tbody>${result.rows.map((row,index)=>`<tr data-position-import-row="${index}"><td>${row.row}<br><strong class="offer-position-import-state ${row.status}">${labels[row.status]}</strong></td><td><strong>${esc(row.number)} · ${esc(row.description)}</strong><small>${esc(row.message)}</small>${row.existing.map(old=>`<small>Vorhanden: ${esc(old.number)} · ${esc(old.description)} · ${fmt(old.net_amount)}</small>`).join('')}</td><td>${row.position?fmt(row.position.net_amount):'–'}</td><td><select name="import-action-${index}" data-position-import-action aria-label="Aktion für Zeile ${row.row}"><option value="skip">Überspringen</option>${!row.errors.length?`<option value="add" ${row.status==='new'?'selected':''}>Hinzufügen</option>${row.targets.length===1?'<option value="replace">Vorhandene ersetzen</option>':''}`:''}</select></td><td><input name="import-number-${index}" data-position-import-number aria-label="Positionsnummer für Zeile ${row.row}" maxlength="30" value="${esc(row.number)}" ${row.errors.length?'disabled':''}></td></tr>`).join('')}</tbody></table></div>`;
+    });
+  };
+  $('applyOfferPositionImport').onclick=()=>{
+    if(!positionImportPreview||!positionsOffer)return;
+    void runPositionImport(async()=>{
+      const rows=[...$('offerPositionImportPreview').querySelectorAll('[data-position-import-row]')];
+      const decisions=rows.map(row=>({action:row.querySelector('[data-position-import-action]').value,number:row.querySelector('[data-position-import-number]').value}));
+      const result=await request(offerUrl(positionsOffer.id)+'/positions/import-apply',{method:'POST',data:{token:positionImportPreview.token,positions:collectDraft($('offerPositionsForm')).positions,decisions}});
+      const form=$('offerPositionsForm'),list=form.querySelector('[data-position-list]');list.innerHTML=result.positions.map((p,i)=>positionCard(p,i,false)).join('');
+      PHBUI.currency.bind(form);checkPositions(form);positionImportFlow.finish();
+      $('offerPositionsError').textContent='Import übernommen: '+result.summary.added+' hinzugefügt, '+result.summary.replaced+' ersetzt, '+result.summary.skipped+' übersprungen. Bitte Positionen speichern.';
+    });
+  };
   function calculatePositionTotals(form){
     let cents=0,missing=false;
     for(const row of form.querySelectorAll('[data-position-row]')){

@@ -46,8 +46,17 @@
       <div class="phb-messagebox-actions"><button id="cancelOfferCompany" type="button" class="subtle">Abbrechen</button><button type="submit" class="primary">Firma anlegen und auswählen</button></div>
     </form>
   </dialog>
+  <dialog id="offerPositionImportDialog" class="phb-workflow-dialog offer-position-import-dialog" aria-labelledby="offerPositionImportTitle">
+    <div class="phb-workflow-head"><div><h2 id="offerPositionImportTitle">Positionen importieren</h2><p>Excel oder CSV prüfen und Konflikte vor der Übernahme lösen.</p></div><button id="closeOfferPositionImport" type="button" class="subtle">Schließen</button></div>
+    <div class="phb-workflow-body">
+      <details class="offer-import-schema"><summary>Festes Dateiformat &amp; Vorlagen</summary><p>Eine Kopfzeile mit diesen Spalten, exakt in dieser Reihenfolge:</p><ol><li>Positionsnummer</li><li>Beschreibung</li><li>Menge</li><li>Einheit</li><li>Einzelpreis netto</li><li>Positionssumme netto</li><li>Leistungsgruppe</li><li>Optional</li><li>Eigenleistung</li></ol><p>Eine Zeile je Position, maximal 500. Excel: genau ein befülltes Blatt, keine Formeln. CSV: UTF-8, vorzugsweise Semikolon. Beträge netto, Optional/Eigenleistung: Ja oder Nein. Ohne Positionssumme wird Menge × Einzelpreis verwendet.</p><div class="phb-header-actions"><a class="mini" href="/api/offers/positions/import-template.xlsx" download>XLSX-Vorlage</a><a class="mini" href="/api/offers/positions/import-template.csv" download>CSV-Vorlage</a></div></details>
+      <form id="offerPositionImportForm" class="offer-position-import-controls"><label>Datei auswählen<input name="file" type="file" accept=".xlsx,.csv" required></label><button type="submit" class="primary">Datei prüfen</button></form>
+      <p id="offerPositionImportStatus" role="status"></p><div id="offerPositionImportPreview"></div><p id="offerPositionImportError" role="alert"></p>
+    </div>
+    <div class="phb-dialog-actions"><span>Übernahme ändert nur den offenen Dialog. Anschließend Positionen speichern.</span><button id="applyOfferPositionImport" type="button" class="primary" disabled>Auswahl übernehmen</button></div>
+  </dialog>
   <dialog id="offerPositionsDialog" class="phb-workflow-dialog offer-positions-dialog" aria-labelledby="offerPositionsTitle">
-    <div class="phb-workflow-head"><div><h2 id="offerPositionsTitle">Positionen</h2><p>Leistungen und Nettopreise bearbeiten. Die Angebotssumme wird daraus berechnet.</p></div><button id="closeOfferPositions" type="button" class="subtle">Schließen</button></div>
+    <div class="phb-workflow-head"><div><h2 id="offerPositionsTitle">Positionen</h2><p>Leistungen und Nettopreise bearbeiten. Die Angebotssumme wird daraus berechnet.</p></div><div class="phb-workflow-head-actions"><button id="openOfferPositionImport" type="button" class="mini">Positionen importieren</button><button id="closeOfferPositions" type="button" class="subtle">Schließen</button></div></div>
     <div class="phb-workflow-body"><form id="offerPositionsForm" class="offer-review-form"></form><p id="offerPositionsError" role="alert"></p></div>
     <div class="phb-dialog-actions"><button id="saveOfferPositions" type="submit" form="offerPositionsForm" class="primary">Speichern</button></div>
   </dialog>
