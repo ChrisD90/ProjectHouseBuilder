@@ -23,9 +23,10 @@ class ReceiptPageFinanceTest(unittest.TestCase):
         other=self.post('/api/projects',title='Fremdprojekt')['project']['id']
         self.assertEqual(self.client.get('/api/receipts/'+str(ident)+'/editor',headers={'X-PHB-Project':str(other)}).status_code,404)
     def test_overview_sums_only_assigned_payments_and_remaining_credit(self):
-        loan=self.post('/api/financing/loans',name='Kredit 1',principal=1000)['id'];self.post('/api/financing/loans',name='Kredit 2',principal=500)
+        loan=self.post('/api/financing/loans',name='Kredit 1',principal=1000)['id'];second_loan=self.post('/api/financing/loans',name='Kredit 2',principal=500)['id']
         first=self.post('/api/financing/equity',name='EK1',opening_balance=600,reserve=100)['id'];second=self.post('/api/financing/equity',name='EK2',opening_balance=400)['id']
         self.post('/api/financing/events',kind='loan_drawdown',loan_id=loan,amount=100,event_date='2026-11-24')
+        self.post('/api/financing/events',kind='loan_drawdown',loan_id=second_loan,amount=50,event_date='2026-11-24')
         r1=self.receipt(1,120);r2=self.receipt(2,80)
         for ident,amount,source,ref in [(r1,120,'equity',first),(r2,50,'equity',second),(r2,30,'loan',loan)]:
             self.post('/api/financing/payments',receipt_id=ident,amount=amount,source=source,**({'equity_id':ref} if source=='equity' else {'loan_id':ref}),payment_date='2026-11-24')
@@ -33,6 +34,8 @@ class ReceiptPageFinanceTest(unittest.TestCase):
         finance=self.client.get('/api/financing').json
         self.assertEqual(finance['summary']['loan_remaining_budget'],1470)
         self.assertEqual(finance['summary']['equity_receipt_spent'],170)
+        self.assertEqual(finance['summary']['loan_drawn'],150)
+        self.assertEqual(finance['summary']['expenses_equity_plus_drawn'],320)
         self.assertEqual([e['balance']['paid_for_project'] for e in finance['equity']],[120,50])
         with patch.object(b,'budget_summary',side_effect=AssertionError('Keine Kostenaggregation für Finanzierungsquellen')):
             sources=self.client.get('/api/financing/sources')

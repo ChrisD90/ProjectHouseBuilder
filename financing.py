@@ -268,6 +268,7 @@ def register_financing(app, db, Receipt, CostItem, BudgetLine, budget_summary, *
         if old_unassigned > ZERO:
             warnings.append('Es bestehen bezahlte Rechnungsbeträge ohne Finanzierungszuordnung.')
         return {'project_budget':cost['budget'], 'loan_frame':float(loan_total), 'loan_drawn':float(drawn), 'loan_undrawn':float(undrawn),
+                'expenses_equity_plus_drawn':float(sum((x['paid_for_project'] for x in es),ZERO)+drawn),
                 'loan_remaining_budget':float(undrawn+unallocated),'equity_receipt_spent':float(sum((x['paid_for_project'] for x in es),ZERO)),
                 'loan_unallocated':float(unallocated), 'loan_debt':float(sum((x['outstanding_principal'] for x in ls),ZERO)),
                 'equity_available':float(eq_available), 'equity_reserve':float(reserved),

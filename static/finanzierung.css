@@ -319,7 +319,7 @@
 .phb-page-finanzierung .credit-history-row.is-reversed{opacity:.72}
 .phb-page-finanzierung .status-verwendet{background:var(--ui-soft-accent);color:var(--ui-success)!important}
 @media(max-width:680px){.phb-page-finanzierung .credit-activity-choices{grid-template-columns:1fr}.phb-page-finanzierung .credit-history-row{flex-direction:column;gap:12px}.phb-page-finanzierung .credit-history-actions{max-width:100%;justify-content:flex-start}.phb-page-finanzierung .credit-history-panel .panel-title{flex-wrap:wrap;gap:12px}}
-body.phb-app.phb-page-finanzierung #totals{grid-template-columns:repeat(3,minmax(0,1fr));max-width:none;width:100%}
+body.phb-app.phb-page-finanzierung #totals{grid-template-columns:repeat(4,minmax(0,1fr));max-width:none;width:100%}
 body.phb-app.phb-page-finanzierung .loan-key-values{grid-template-columns:repeat(5,minmax(0,1fr))}
 body.phb-app.phb-page-finanzierung .equity-key-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:10px 0}
 body.phb-app.phb-page-finanzierung .equity-key-values span{display:block;font-size:11px;color:var(--ui-muted)}
@@ -333,4 +333,5 @@ body.phb-app.phb-page-finanzierung #totals .tile>strong{font-size:clamp(25px,2.5
 body.phb-app.phb-page-finanzierung #totals .tile>small{font-size:12px;color:var(--ui-muted)}
 body.phb-app.phb-page-finanzierung .finance-budget-progress{height:10px;border-radius:999px;background:var(--ui-line);overflow:hidden;margin-top:auto}
 body.phb-app.phb-page-finanzierung .finance-budget-progress>span{display:block;height:100%;min-height:0;margin-left:auto;background:var(--ui-success,#527c1c);border-radius:inherit}
+@media(max-width:1050px){body.phb-app.phb-page-finanzierung #totals{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){body.phb-app.phb-page-finanzierung #totals{grid-template-columns:minmax(0,1fr)}}
