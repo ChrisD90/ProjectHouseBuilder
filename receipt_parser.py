@@ -38,26 +38,15 @@ def decimal_amount(s):
         return value.quantize(Decimal('0.01')) if value.is_finite() and value >= 0 else None
     except (InvalidOperation, ValueError):
         return None
-def _ocr(path):
-    """Try block text and, for sparse scans, a more permissive page layout."""
-    try:
-        results=[]
-        for mode in ('3','6'):
-            p=subprocess.run(ocr_command('tesseract')+[str(path),'stdout','-l','deu+eng',
-                              '--psm',mode],timeout=55,check=True,capture_output=True,text=True)
-            text=p.stdout.strip()
-            results.append(text)
-            if len(text)>=45:break
-        return max(results,key=len,default='')
-    except FileNotFoundError as exc:
-        raise ValueError('Tesseract nicht installiert. OCR-Diagnose auf der Datenseite prüfen.') from exc
-    except subprocess.TimeoutExpired as exc:
-        raise ValueError('OCR-Zeitlimit überschritten; Scanauflösung reduzieren.') from exc
-    except subprocess.CalledProcessError as exc:
-        raise ValueError('Tesseract konnte die Datei nicht erkennen (deu/eng Sprachpakete prüfen).') from exc
+def _ocr(path, *, diagnostics=None):
+    from local_ocr import recognize_image
+    result=recognize_image(path)
+    if diagnostics is not None and not result.good:
+        diagnostics.append('Unsichere lokale OCR (mittlere Wortsicherheit '+str(round(result.confidence))+' %). Beträge, Datum und Belegnummer am Original prüfen; dieser Wert ist keine Garantie für korrekte Felder.')
+    return result.text
 
 
-def extract_pdf_pages(data,max_pages=15,layout=False):
+def extract_pdf_pages(data,max_pages=15,layout=False,diagnostics=None):
     """Keep native PDF text; OCR only pages with little or no actual text.
 
     Per-page conversion also fixes mixed scanned/digital documents, and avoids
@@ -73,41 +62,42 @@ def extract_pdf_pages(data,max_pages=15,layout=False):
         except (TypeError,ValueError):
             text=page.extract_text() or ''
         pages.append(text or '')
-    scanned=[i for i,text in enumerate(pages) if len(text.strip())<35]
+    scanned=[i for i,text in enumerate(pages) if len(text.strip())<35 or (text.count('\ufffd')>2 and text.count('\ufffd')/max(1,len(text))>.02)]
     if not scanned:return pages,False
     if len(scanned)>15:raise ValueError('Mehr als 15 Seiten benötigen OCR.')
     with tempfile.TemporaryDirectory() as temp:
         source=Path(temp)/'source.pdf';source.write_bytes(data)
-        ocr_success=False
+        ocr_success=False;failures=[]
         for i in scanned:
             target=Path(temp)/('scan-'+str(i+1))
             try:
                 subprocess.run(ocr_command('pdftoppm')+['-f',str(i+1),'-l',str(i+1),'-singlefile',
-                                '-r','230','-gray','-png',str(source),str(target)],
+                                '-r','300','-gray','-png',str(source),str(target)],
                                timeout=60,check=True,stdout=subprocess.DEVNULL,
                                stderr=subprocess.PIPE)
-                found=_ocr(str(target)+'.png')
+                page_diagnostics=[] if diagnostics is not None else None
+                found=_ocr(str(target)+'.png',diagnostics=page_diagnostics) if page_diagnostics is not None else _ocr(str(target)+'.png')
+                if diagnostics is not None:diagnostics.extend('Seite '+str(i+1)+': '+warning for warning in page_diagnostics)
                 if found:
                     pages[i]=found;ocr_success=True
-            except (FileNotFoundError,subprocess.TimeoutExpired,subprocess.CalledProcessError) as exc:
-                if not any(part.strip() for part in pages):
-                    raise ValueError('PDF-OCR fehlgeschlagen. Tesseract, Poppler und Sprache deu prüfen.') from exc
-                # Preserve genuine text on other pages; do not invent content.
+            except (OSError,ValueError,subprocess.TimeoutExpired,subprocess.CalledProcessError) as exc:
+                failures.append('Seite '+str(i+1)+': PDF-OCR fehlgeschlagen. '+str(exc)[:160])
                 continue
+        if diagnostics is not None:diagnostics.extend(failures)
     if not any(x.strip() for x in pages):
-        raise ValueError('Weder PDF-Textebene noch OCR-Text lesbar.')
+        raise ValueError(failures[0] if failures else 'Weder PDF-Textebene noch OCR-Text lesbar.')
     return pages,ocr_success
 
 
-def extract_text(data,filename):
+def extract_text(data,filename,diagnostics=None):
     suffix=Path(filename).suffix.lower()
     if suffix=='.pdf':
-        pages,used_ocr=extract_pdf_pages(data)
+        pages,used_ocr=extract_pdf_pages(data,diagnostics=diagnostics)
         return '\n'.join(pages)[:80000], 'OCR (PDF)' if used_ocr else 'PDF-Text'
     if suffix in ('.jpg','.jpeg','.png','.webp'):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/('scan'+suffix);path.write_bytes(data)
-            text=_ocr(str(path))
+            text=_ocr(str(path),diagnostics=diagnostics) if diagnostics is not None else _ocr(str(path))
             if not text:raise ValueError('Kein Text auf dem Foto erkannt. Bitte manuell prüfen.')
             return text[:80000], 'OCR (Foto)'
     raise ValueError('Nur PDF, JPG, PNG oder WEBP unterstützt.')

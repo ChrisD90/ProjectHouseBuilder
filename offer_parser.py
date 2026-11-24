@@ -27,9 +27,9 @@ def amount(value):
     return float(value.quantize(CENT, rounding=ROUND_HALF_UP))
 
 
-def pdf_to_pages(data):
+def pdf_to_pages(data,diagnostics=None):
     try:
-        pages,_=extract_pdf_pages(data, max_pages=40,layout=True)
+        pages,_=extract_pdf_pages(data, max_pages=40,layout=True,diagnostics=diagnostics)
     except ValueError as exc:
         if 'verschlüsselt' in str(exc).lower():
             raise ValueError('Verschlüsseltes PDF: zuerst lokal entsperren.') from exc
@@ -187,4 +187,7 @@ def parse_offer(pages, filename='Angebot.pdf'):
 
 
 def parse_pdf(data, filename):
-    return parse_offer(pdf_to_pages(data),filename)
+    diagnostics=[]
+    result=parse_offer(pdf_to_pages(data,diagnostics=diagnostics),filename)
+    result['warnings'].extend(diagnostics)
+    return result

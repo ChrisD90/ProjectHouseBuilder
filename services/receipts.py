@@ -238,8 +238,10 @@ def register(runtime: ModuleType):
             source = 'ChatGPT'
         else:
             try:
-                content, source = runtime.extract_text(data, name)
+                diagnostics=[]
+                content, source = runtime.extract_text(data, name, diagnostics=diagnostics)
                 guessed = runtime.parse_receipt(content)
+                guessed['warnings'].extend(diagnostics)
             except Exception as err:
                 content = ''
                 source = 'Nicht ausgelesen'

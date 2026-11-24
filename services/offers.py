@@ -365,8 +365,9 @@ def register(runtime: ModuleType):
         A parser failure never silently invents a total or prevents manual review.
         """
         empty = {'filename': name, 'family': 'Andere', 'vendor': 'Firma nicht erkannt', 'number': '', 'issued': '', 'expires': '', 'net': None, 'vat': None, 'gross': None, 'tax_rate': 0, 'positions': [], 'groups': [], 'reconciled': False, 'warnings': []}
+        diagnostics=[]
         try:
-            text_pages = runtime.pdf_to_pages(data)
+            text_pages = runtime.pdf_to_pages(data, diagnostics=diagnostics)
             parsed = runtime.parse_offer(text_pages, name)
             content = '\n'.join(text_pages)
         except Exception as exc:
@@ -375,7 +376,7 @@ def register(runtime: ModuleType):
             parsed = dict(empty)
             parsed['warnings'] = ['PDF-Texterkennung nicht ausreichend: ' + str(exc)]
             try:
-                content, mode = runtime.extract_text(data, name)
+                content, mode = runtime.extract_text(data, name, diagnostics=diagnostics)
                 if content.strip():
                     parsed = runtime.parse_offer([content], name)
                     parsed['warnings'].append('Analyse über ' + mode + '. Bitte den Gesamtbetrag besonders prüfen.')
@@ -397,6 +398,7 @@ def register(runtime: ModuleType):
                 parsed['number'] = generic['invoice_number']
             if not parsed['issued'] and generic.get('document_date'):
                 parsed['issued'] = generic['document_date']
+        parsed['warnings']=list(dict.fromkeys(parsed['warnings']+diagnostics))
         return (parsed, content)
 
     runtime._analyse_pdf_offer = _analyse_pdf_offer

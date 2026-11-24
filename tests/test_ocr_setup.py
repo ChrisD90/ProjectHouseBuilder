@@ -26,9 +26,13 @@ class OCRRuntimeTests(unittest.TestCase):
         self.assertEqual(finder.call_args.kwargs['path'],'/opt/homebrew/bin:/usr/local/bin')
 
     def test_image_extraction_uses_discovered_executable(self):
-        result=subprocess.CompletedProcess([],0,stdout='Rechnung mit mindestens 45 Zeichen und 123,45 EUR',stderr='')
-        with patch('ocr_runtime.find_ocr_tool',return_value='/opt/homebrew/bin/tesseract'),patch('receipt_parser.subprocess.run',return_value=result) as run:
-            receipt_parser._ocr('/tmp/synthetic.png')
+        from PIL import Image
+        from tests.test_local_ocr_quality import tsv
+        result=subprocess.CompletedProcess([],0,stdout=tsv([('Rechnung',95),('Bauunternehmen',95),('Gesamtbetrag',95),('123,45',95),('EUR',95)]),stderr='')
+        with tempfile.TemporaryDirectory() as folder:
+            source=Path(folder)/'synthetic.png';Image.new('RGB',(600,900),'white').save(source)
+            with patch('ocr_runtime.find_ocr_tool',return_value='/opt/homebrew/bin/tesseract'),patch('receipt_parser.subprocess.run',return_value=result) as run:
+                receipt_parser._ocr(source)
         self.assertEqual(run.call_args.args[0][0],'/opt/homebrew/bin/tesseract')
         self.assertIn('deu+eng',run.call_args.args[0])
 
