@@ -332,5 +332,5 @@ body.phb-app.phb-page-finanzierung #totals .tile>span{min-height:0;font-size:14p
 body.phb-app.phb-page-finanzierung #totals .tile>strong{font-size:clamp(25px,2.5vw,32px);line-height:1.2;color:var(--ui-ink);overflow-wrap:anywhere}
 body.phb-app.phb-page-finanzierung #totals .tile>small{font-size:12px;color:var(--ui-muted)}
 body.phb-app.phb-page-finanzierung .finance-budget-progress{height:10px;border-radius:999px;background:var(--ui-line);overflow:hidden;margin-top:auto}
-body.phb-app.phb-page-finanzierung .finance-budget-progress>span{display:block;height:100%;min-height:0;background:var(--ui-success,#527c1c);border-radius:inherit}
+body.phb-app.phb-page-finanzierung .finance-budget-progress>span{display:block;height:100%;min-height:0;margin-left:auto;background:var(--ui-success,#527c1c);border-radius:inherit}
 @media(max-width:560px){body.phb-app.phb-page-finanzierung #totals{grid-template-columns:minmax(0,1fr)}}
