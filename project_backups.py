@@ -271,6 +271,11 @@ def load_rows(path, db, owner):
                 row={**{'lease_owner':'','lease_until':None},**row}
             if set(row) != set(table.c.keys()): raise ValueError('Backup-Felder passen nicht zu ' + name)
             row = {key: _value(table.c[key], value) for key, value in row.items()}
+            if name=='setting' and row['key']=='dashboard_layout_v1':
+                from dashboard import validate_layout
+                saved=_loads(row['value'])
+                if not isinstance(saved,dict) or set(saved)!={'layout','revision'} or not isinstance(saved['revision'],str):raise ValueError('Ungültige Projektübersicht im Backup.')
+                validate_layout(saved['layout'])
             key = tuple(row[c.name] for c in table.primary_key)
             if key in keys: raise ValueError('Doppelte Datensätze im Backup.')
             keys.add(key); restored.append(row)

@@ -182,13 +182,19 @@ export function ProjectCalendar() {
     if (linked.data && linkedId) {
       setAnchor(linked.data.event.start_date);
       open(linked.data.event.start_date, linked.data.event);
-    } else open(today);
+    } else {
+      const requestedDay = params.get('event_date');
+      const day = requestedDay && /^\d{4}-\d{2}-\d{2}$/.test(requestedDay) ? requestedDay : today;
+      setAnchor(day);
+      open(day);
+    }
   }, [linkedId, linked.dataUpdatedAt, params.get('new_event')]);
   useEffect(() => {
     if (opened || !processedRoute.current) return;
     const next = new URLSearchParams(params);
     next.delete('calendar_event');
     next.delete('new_event');
+    next.delete('event_date');
     processedRoute.current = '';
     setParams(next, { replace: true });
   }, [opened]);

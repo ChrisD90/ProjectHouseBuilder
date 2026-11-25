@@ -730,6 +730,8 @@ install_fence(db,Project,ImportJob)
 
 from workspace_ui import register_workspace_ui
 register_workspace_ui(app,db,Setting)
+from dashboard import register_dashboard
+register_dashboard(__import__('sys').modules[__name__])
 
 if __name__=='__main__':
     from ocr_runtime import main as check_ocr

@@ -18,7 +18,7 @@ def define_models(db):
     class Setting(db.Model):
         project_id=db.Column(db.Integer,db.ForeignKey('project.id'),primary_key=True,default=current_project_id,server_default='1')
         key = db.Column(db.String(80), primary_key=True)
-        value = db.Column(db.String(255), nullable=False)
+        value = db.Column(db.Text, nullable=False)
 
 
     class Category(db.Model):

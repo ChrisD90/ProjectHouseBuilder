@@ -130,6 +130,16 @@ export function DocumentInbox({ bridge }: { bridge: Row }) {
     window.addEventListener('phb-inbox-settings', handler);
     return () => window.removeEventListener('phb-inbox-settings', handler);
   }, [config]);
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const id = (event as CustomEvent<{ id?: number }>).detail?.id;
+      const item = query.data?.items.find((x) => x.id === id);
+      if (item) choose(item);
+      setOpened(true);
+    };
+    window.addEventListener('phb-inbox-open', handler);
+    return () => window.removeEventListener('phb-inbox-open', handler);
+  }, [query.data]);
   const refresh = () => cache.invalidateQueries({ queryKey: ['document-inbox'] });
   async function chooseNativeFolder() {
     if (nativeSelecting) return;

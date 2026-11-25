@@ -262,12 +262,12 @@ def register_companion(r):
     def companion_search():return jsonify(items=serialize_search())
 
     @app.get('/api/companion/overview')
-    def overview():
+    def overview(only=None):
         today=date.today();last=(today+timedelta(days=7)).isoformat();now=today.isoformat()
-        events=[r.calendar_event_json(e) for e in db.session.scalars(select(r.CalendarEvent).where(r.CalendarEvent.end_date>=today,r.CalendarEvent.start_date<=today+timedelta(days=7)).order_by(r.CalendarEvent.start_date,r.CalendarEvent.start_time))]
-        todos=[r.project_work_dict(x) for x in db.session.scalars(select(r.ProjectWork).where(r.ProjectWork.kind=='todo',r.ProjectWork.completed_at.is_(None),r.ProjectWork.archived_at.is_(None)).order_by(r.ProjectWork.due_on,r.ProjectWork.id))]
+        events=[] if only else [r.calendar_event_json(e) for e in db.session.scalars(select(r.CalendarEvent).where(r.CalendarEvent.end_date>=today,r.CalendarEvent.start_date<=today+timedelta(days=7)).order_by(r.CalendarEvent.start_date,r.CalendarEvent.start_time))]
+        todos=[] if only else [r.project_work_dict(x) for x in db.session.scalars(select(r.ProjectWork).where(r.ProjectWork.kind=='todo',r.ProjectWork.completed_at.is_(None),r.ProjectWork.archived_at.is_(None)).order_by(r.ProjectWork.due_on,r.ProjectWork.id))]
         receipts=[]
-        for x in db.session.scalars(select(r.Receipt).where(r.Receipt.status=='Gebucht')):
+        for x in ([] if only else db.session.scalars(select(r.Receipt).where(r.Receipt.status=='Gebucht'))):
             amount=max(Decimal(0),r.dec(r._receipt_increment(x))-r.dec(x.paid_amount))
             if amount:receipts.append(dict(id=x.id,title=x.supplier or x.original_name,amount=float(amount),due_on=x.due_date or '',url='/belege?receipt_id='+str(x.id)+'&financing=1'))
         reminders=[wire(x) for x in records() if x.status not in ('Erledigt','Archiviert') and x.until and x.until<=last and x.kind in ('defect','house','tool_return','reminder')]

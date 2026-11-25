@@ -51,7 +51,8 @@ import { fundingDocumentOnly, projectID, workspaceURL } from './project-context'
 import { useServices } from './services';
 import { WorkPage, WorkProvider } from './work';
 import { ProjectCalendar } from './project-calendar';
-import { Overview, Workshop, GlobalTools } from './companion';
+import { Workshop, GlobalTools } from './companion';
+import { Overview } from './dashboard';
 import { WorkshopQuickAccess } from './workshop-quick-access';
 import { SystemSettings } from './system-settings';
 import { useDisplaySettings } from './presentation';
