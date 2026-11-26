@@ -28,6 +28,23 @@ export function SystemSettings({
     <div className="page">
       <PageHeader title="System" description="Darstellung und Verbindungen verwalten." />
       <Stack gap="md" maw={760}>
+        <Paper withBorder p="md">
+          <Group justify="space-between">
+            <div>
+              <Title order={3}>Projekttour & Ordner</Title>
+              <Text size="sm" c="dimmed">
+                Die wichtigsten Bereiche kennenlernen und Dokumenteneingang sowie Sicherungsziel
+                einrichten.
+              </Text>
+            </div>
+            <Button
+              variant="default"
+              onClick={() => window.dispatchEvent(new Event('phb-project-tour'))}
+            >
+              Projekttour starten
+            </Button>
+          </Group>
+        </Paper>
         <Paper withBorder p="md" data-phb-raw>
           <Stack gap="sm">
             <Title order={3}>Sprache & Formate</Title>

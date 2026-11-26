@@ -662,7 +662,7 @@ DocumentInboxConfig, DocumentInboxItem = register_document_inbox(__import__('sys
 PlanningBrowserState, planning_get, planning_put, planning_pop = register_planning_state(db)
 install_project_scope(app,db,Project)
 register_project_routes(app,db,Project,initialize=seed_project_defaults,
-    summary=budget_summary,Task=Task,CostItem=CostItem,ProjectWork=ProjectWork,
+    summary=budget_summary,Task=Task,CostItem=CostItem,ProjectWork=ProjectWork,Setting=Setting,
     categories=CATEGORIES,trades=DEFAULT_TRADES,
     operation_busy=lambda owner: restore_busy(owner))
 

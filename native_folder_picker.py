@@ -5,16 +5,16 @@ import subprocess
 import sys
 
 
-def choose_folder(initial=''):
-    env={**os.environ,'PHB_FOLDER_INITIAL':initial}
+def choose_folder(initial='',title='Eingangsordner auswählen'):
+    env={**os.environ,'PHB_FOLDER_INITIAL':initial,'PHB_FOLDER_TITLE':title}
     if sys.platform=='darwin':
         script='''activate
 try
     set initialPath to system attribute "PHB_FOLDER_INITIAL"
     if initialPath is "" then
-        set selectedFolder to choose folder with prompt "Eingangsordner auswählen"
+        set selectedFolder to choose folder with prompt (system attribute "PHB_FOLDER_TITLE")
     else
-        set selectedFolder to choose folder with prompt "Eingangsordner auswählen" default location (POSIX file initialPath)
+        set selectedFolder to choose folder with prompt (system attribute "PHB_FOLDER_TITLE") default location (POSIX file initialPath)
     end if
     return POSIX path of selectedFolder
 on error number -128
@@ -25,7 +25,7 @@ end try'''
         script='''[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 Add-Type -AssemblyName System.Windows.Forms
 $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = 'Eingangsordner auswählen'
+$dialog.Description = $env:PHB_FOLDER_TITLE
 $dialog.ShowNewFolderButton = $false
 $dialog.SelectedPath = $env:PHB_FOLDER_INITIAL
 try {
@@ -35,12 +35,12 @@ try {
 } finally { $dialog.Dispose() }'''
         command=['powershell.exe','-NoProfile','-NonInteractive','-STA','-Command',script]
     elif shutil.which('zenity'):
-        command=['zenity','--file-selection','--directory','--title=Eingangsordner auswählen']
+        command=['zenity','--file-selection','--directory','--title='+title]
         if initial:command.append('--filename='+initial.rstrip('/')+'/')
     elif shutil.which('kdialog'):
-        command=['kdialog','--getexistingdirectory',initial or os.path.expanduser('~'),'--title','Eingangsordner auswählen']
+        command=['kdialog','--getexistingdirectory',initial or os.path.expanduser('~'),'--title',title]
     else:
-        script="import os,tkinter as tk;from tkinter import filedialog;root=tk.Tk();root.withdraw();root.attributes('-topmost',True);print(filedialog.askdirectory(title='Eingangsordner auswählen',initialdir=os.environ.get('PHB_FOLDER_INITIAL') or None,mustexist=True));root.destroy()"
+        script="import os,tkinter as tk;from tkinter import filedialog;root=tk.Tk();root.withdraw();root.attributes('-topmost',True);print(filedialog.askdirectory(title=os.environ['PHB_FOLDER_TITLE'],initialdir=os.environ.get('PHB_FOLDER_INITIAL') or None,mustexist=True));root.destroy()"
         command=[sys.executable,'-c',script]
     try:
         result=subprocess.run(command,env=env,capture_output=True,text=True,encoding='utf-8',errors='replace',timeout=180,check=False)

@@ -220,28 +220,29 @@ def register(runtime: ModuleType):
 
     @runtime.app.post('/api/backup/native-folder')
     def backup_native_folder():
-        """Use macOS's native Choose Folder panel only on a directly local Mac.
-
-        A web browser cannot reveal a NAS server directory selected on the client.
-        """
-        import sys
-        import subprocess
+        from urllib.parse import urlsplit
+        from native_folder_picker import choose_folder
+        from process_lock import ProcessLock
         if runtime._backup_pg():
-            return (runtime.jsonify(error='Auf der Synology ist keine lokale macOS-Ordnerauswahl verfügbar. Bitte den NAS-Ordnerbrowser verwenden.'), 409)
-        peer = runtime.request.environ.get('werkzeug.proxy_fix.orig', {}).get('REMOTE_ADDR', runtime.request.remote_addr)
-        if sys.platform != 'darwin' or peer not in ('127.0.0.1', '::1') or runtime.request.host.split(':', 1)[0] not in ('127.0.0.1', 'localhost'):
-            return (runtime.jsonify(error='Der System-Ordnerdialog ist nur auf dem lokalen Mac verfügbar.'), 409)
-        script = 'POSIX path of (choose folder with prompt "Backup-Ziel für ProjectHouseBuilder auswählen")'
+            return runtime.jsonify(error='Bitte einen erreichbaren Sicherungsordner auf dem NAS angeben.'),409
+        peer=runtime.request.environ.get('werkzeug.proxy_fix.orig',{}).get('REMOTE_ADDR',runtime.request.remote_addr)
+        if peer not in ('127.0.0.1','::1') or runtime.request.remote_addr not in ('127.0.0.1','::1') or urlsplit(runtime.request.host_url).hostname not in ('127.0.0.1','localhost','::1'):
+            return runtime.jsonify(error='Der Systemdialog ist nur bei einer lokal auf diesem PC laufenden App verfügbar.'),409
+        data=runtime.request.get_json(silent=True) or {}
+        if not isinstance(data,dict) or set(data)-{'folder'}:return runtime.jsonify(error='Ungültige Ordnerauswahl.'),400
+        lock=ProcessLock(lambda:runtime.ROOT/'private'/'.document-inbox-native-dialog.lock')
+        if not lock.acquire(blocking=False):return runtime.jsonify(error='Eine System-Ordnerauswahl ist bereits geöffnet.'),409
         try:
-            result = subprocess.run(['osascript', '-e', script], capture_output=True, text=True, timeout=90, check=False)
-        except (OSError, subprocess.TimeoutExpired):
-            return (runtime.jsonify(error='Der System-Ordnerdialog konnte nicht geöffnet werden.'), 409)
-        if result.returncode:
-            return (runtime.jsonify(error='Ordnerauswahl abgebrochen oder Systemdialog nicht verfügbar.'), 409)
-        folder = result.stdout.strip()
-        if not folder or not runtime.Path(folder).is_dir():
-            return (runtime.jsonify(error='Ungültiger Ordner.'), 400)
-        return runtime.jsonify(folder=folder)
+            initial=data.get('folder','')
+            if not isinstance(initial,str) or len(initial)>2048:raise ValueError('Ungültiger Ordnerpfad.')
+            if initial and not runtime.Path(initial).is_dir():initial=''
+            runtime.db.session.rollback()
+            folder=choose_folder(initial,title='Sicherungsordner auswählen')
+            if folder is None:return runtime.jsonify(cancelled=True)
+            if not runtime.Path(folder).is_dir():raise ValueError('Ungültiger Ordner.')
+            return runtime.jsonify(cancelled=False,folder=folder)
+        except (OSError,ValueError) as exc:return runtime.jsonify(error=str(exc)),409
+        finally:lock.release()
 
     runtime.backup_native_folder = backup_native_folder
 

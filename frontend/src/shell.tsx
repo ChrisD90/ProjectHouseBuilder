@@ -55,6 +55,7 @@ import { Workshop, GlobalTools } from './companion';
 import { Overview } from './dashboard';
 import { WorkshopQuickAccess } from './workshop-quick-access';
 import { SystemSettings } from './system-settings';
+import { ProjectTour } from './project-tour';
 import { useDisplaySettings } from './presentation';
 import { TimeTracking } from './time-tracking';
 import { SelfWorkPage } from './self-work';
@@ -750,6 +751,9 @@ export function App() {
               )}
             </div>
           </AppShell.Main>
+          {projectInfo.data?.project && !projectInfo.data.project.archived && (
+            <ProjectTour title={projectInfo.data.project.title} />
+          )}
           {services.overlays}
         </AppShell>
       </WorkProvider>

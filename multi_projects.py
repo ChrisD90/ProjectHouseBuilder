@@ -1,4 +1,5 @@
 """Project ownership is enforced at the session boundary, including identity-map reads."""
+import json
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import date, datetime, timezone
@@ -167,7 +168,7 @@ def install_project_scope(app, db, Project):
         return jsonify(error=str(error)), 400
 
 
-def register_project_routes(app, db, Project, *, initialize, summary, Task, CostItem, ProjectWork, categories, trades, operation_busy):
+def register_project_routes(app, db, Project, *, initialize, summary, Task, CostItem, ProjectWork, Setting, categories, trades, operation_busy):
     from project_lifecycle import content_status, sqlite_write_lock
     def describe(project):
         return dict(id=project.id,title=project.title,kind=project.kind,description=project.description,
@@ -223,6 +224,8 @@ def register_project_routes(app, db, Project, *, initialize, summary, Task, Cost
             if project_id is None:
                 with project_context(project.id):
                     initialize(start)
+                    from uuid import uuid4
+                    db.session.add(Setting(key='project_onboarding_v1',value=json.dumps(dict(status='pending',step=0,revision=uuid4().hex))))
                     if body.get('template'):
                         app.extensions['companion_seed_template'](body['template'])
                     db.session.flush()

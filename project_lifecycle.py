@@ -38,6 +38,7 @@ def content_status(db, owner, categories, trades):
             def baseline(row):
                 key=row['key'];value=row['value']
                 if key in ('project_initialized','trades_initialized','build_phases_initialized'):return value=='1'
+                if key=='project_onboarding_v1':return True
                 if key=='start':
                     try:return date.fromisoformat(value).isoformat()==value
                     except (ValueError,TypeError):return False

@@ -41,7 +41,7 @@
       get('backupNow').disabled=false;
       get('backupFolderHint').textContent=config.backend==='postgres'
         ?'Synology: Die App verwaltet Unterordner im eingebundenen NAS-Speicher. Für eine andere Freigabe PHB_BACKUP_DIR im Docker-Volume ändern. Terminal-Backups bleiben verfügbar.'
-        :'Mac: Gib einen auf diesem Mac vorhandenen Ordnerpfad an. Die vorhandene Terminal-/LaunchAgent-Sicherung bleibt eingerichtet.';
+        :'Wähle einen auf diesem Rechner vorhandenen Sicherungsordner. Bestehende automatische Sicherungen bleiben eingerichtet.';
       return config;
     }catch(err){
       get('backupInfo').textContent='Backupstatus nicht verfügbar: '+err.message;
@@ -82,6 +82,7 @@
     get('backupNativeFolder').disabled=true;
     try{
       const data=await post('/api/backup/native-folder',{});
+      if(data.cancelled)return;
       get('backupFolder').value=data.folder;
       get('backupConfigMessage').textContent='Systemordner ausgewählt: '+data.folder;
     }catch(error){get('backupConfigMessage').textContent=error.message;}
@@ -109,7 +110,7 @@
     get('backupConfigMessage').textContent='';
     get('backupRootDescription').textContent=config?.backend==='postgres'
       ?'Der Ordner liegt innerhalb des auf der Synology bereitgestellten Backup-Volumes. Unterordner lassen sich auch neu anlegen.'
-      :'Öffne den macOS-Systemdialog, um einen lokalen Backup-Ordner auszuwählen.';
+      :'Öffne den Systemdialog auf dem Rechner, auf dem die App läuft, um einen lokalen Sicherungsordner auszuwählen.';
     backupFlow.open();
     if(config?.backend==='postgres')await browse(config?.configured?config.relative_folder:'');
   };
