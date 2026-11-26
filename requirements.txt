@@ -4,6 +4,8 @@ psycopg[binary]>=3.2,<4
 pypdf>=5,<7
 gunicorn>=22,<24
 Pillow>=10,<13
+# Native HEIC/HEIF decoding; use a release compatible with Pillow 12.
+pillow-heif>=0.22,<1.9
 alembic>=1.14,<2
 requests>=2.31,<3
 openpyxl>=3.1,<4

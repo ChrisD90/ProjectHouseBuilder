@@ -16,8 +16,9 @@ from sqlalchemy import select, event
 from multi_projects import ProjectSession, current_project_id
 from project_documents import plain
 from project_lifecycle import sqlite_write_lock
+from photo_formats import PHOTO_EXTENSIONS, FORMAT_EXTENSIONS, capabilities, supported_formats
 
-IMAGE_EXTENSIONS=('.jpg','.jpeg','.png','.webp')
+IMAGE_EXTENSIONS=PHOTO_EXTENSIONS
 
 
 def backfill(connection, owner=None):
@@ -151,6 +152,9 @@ def register_photos(r):
         if path.is_symlink() or not path.is_file() or not path.resolve().is_relative_to(root):raise ValueError('Originalfoto ist nicht verfügbar.')
         return path
 
+    @app.get('/api/photos/formats')
+    def photo_formats():return jsonify(capabilities())
+
     @app.get('/api/photos')
     def photo_list():
         query=select(ProjectPhoto).order_by(ProjectPhoto.created_at.desc(),ProjectPhoto.id.desc())
@@ -196,10 +200,21 @@ def register_photos(r):
             if not files:raise ValueError('Bitte Fotos auswählen.')
             compression=request.form.get('compression','original')
             if compression not in ('original','compact'):raise ValueError('Ungültige Komprimierungsoption.')
-            input_bytes=0;stored_bytes=0;optimized_count=0
+            input_bytes=0;stored_bytes=0;optimized_count=0;multi_frame_count=0
+            try:
+                tag_names=json.loads(request.form.get('tags','[]'))
+                requested_sources=json.loads(request.form['sources']) if 'sources' in request.form else None
+            except (ValueError,TypeError):raise ValueError('Tags oder Objektzuordnungen sind nicht gültig.')
+            allowed_formats={row['name'] for row in supported_formats()}
             # Same project lock as ordinary writes, including multipart uploads.
             sqlite_write_lock(db.session.connection());db.session.execute(select(r.Project.id).where(r.Project.id==current_project_id()).with_for_update()).first()
+            if requested_sources is not None:
+                if not isinstance(requested_sources,list) or len(requested_sources)>100 or any(not isinstance(x,dict) or set(x)!={'source_type','source_id'} for x in requested_sources):raise ValueError('Ungültige Objektauswahl.')
+                upload_sources={source_body(x) for x in requested_sources}
+            else:upload_sources=set()
             source=source_body(dict(source_type=request.form.get('source_type'),source_id=int(request.form['source_id']) if request.form.get('source_id') else None),True)
+            if source:upload_sources.add(source)
+            upload_tags=tags(tag_names)
             result=[];seen=set()
             for upload in files:
                 raw=upload.read();input_bytes+=len(raw);optimized=False
@@ -207,14 +222,17 @@ def register_photos(r):
                     warnings.simplefilter('error',Image.DecompressionBombWarning)
                     with Image.open(BytesIO(raw)) as image:
                         fmt=image.format
-                        if fmt not in ('JPEG','PNG','WEBP'):raise ValueError('Bitte JPEG-, PNG- oder WEBP-Fotos verwenden.')
-                        image.verify()
-                    if compression=='compact':
+                        if fmt not in allowed_formats:raise ValueError('Für dieses Bildformat ist kein Decoder verfügbar. Bitte die angezeigten unterstützten Formate beachten.')
+                        multi_frame=getattr(image,'n_frames',1)>1 or (fmt=='ICO' and len(image.ico.sizes())>1)
+                        if fmt in ('JPEG','PNG','WEBP'):image.verify()
+                        else:image.seek(0);image.load()
+                    if multi_frame:multi_frame_count+=1
+                    if compression=='compact' and not multi_frame:
                         with Image.open(BytesIO(raw)) as image:
                             image=ImageOps.exif_transpose(image)
                             image.thumbnail((2560,2560),Image.Resampling.LANCZOS)
                             if image.mode not in ('RGB','RGBA'):image=image.convert('RGBA' if 'transparency' in image.info else 'RGB')
-                            output=BytesIO();image.save(output,format='WEBP',quality=82,method=6)
+                            output=BytesIO();image.save(output,format='WEBP',quality=82,method=6,icc_profile=image.info.get('icc_profile'))
                             candidate=output.getvalue()
                             if len(candidate)<len(raw):raw=candidate;fmt='WEBP';optimized=True;optimized_count+=1
                 stored_bytes+=len(raw)
@@ -222,22 +240,27 @@ def register_photos(r):
                 if p is None:
                     doc=db.session.scalar(select(r.ProjectDocument).where(r.ProjectDocument.digest==digest,r.ProjectDocument.extension.in_(IMAGE_EXTENSIONS)).order_by(r.ProjectDocument.id))
                     if doc is None:
-                        ext={'JPEG':'.jpg','PNG':'.png','WEBP':'.webp'}[fmt];stored=uuid4().hex+ext
+                        ext=FORMAT_EXTENSIONS[fmt][0];stored=uuid4().hex+ext
                         r.PROJECT_DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True);path=r.PROJECT_DOCUMENT_ROOT/stored
                         with path.open('xb') as dst:dst.write(raw)
                         created.append(path)
                         filename=Path(upload.filename or 'Foto'+ext).name[:200]
-                        if optimized:filename=Path(filename).stem[:195]+'.webp'
+                        if optimized or Path(filename).suffix.lower() not in FORMAT_EXTENSIONS[fmt]:filename=Path(filename).stem[:200-len(ext)]+ext
                         doc=r.ProjectDocument(title=filename,original_name=filename,stored_name=stored,extension=ext,digest=digest,size_bytes=len(raw),category='Sonstiges',area='Allgemein',status='Aktuell',tags='',description='',extracted_text='',extraction_note='Foto in der Fotobibliothek')
                         db.session.add(doc);db.session.flush()
                     p=ensure_photo(doc)
-                if source:link(p,source)
+                existing_tags={x.tag_id for x in p.tag_links}
+                for tag in upload_tags:
+                    if tag.id not in existing_tags:p.tag_links.append(PhotoTagging(tag_id=tag.id));existing_tags.add(tag.id);p.revision=uuid4().hex
+                for selected_source in upload_sources:link(p,selected_source)
                 if p.id not in seen:seen.add(p.id);result.append(p.id)
-            db.session.commit();db.session.expire_all();return jsonify(photos=[wire(photo(i)) for i in result],upload_summary=dict(input_bytes=input_bytes,stored_bytes=stored_bytes,optimized_count=optimized_count)),201
+            db.session.commit();db.session.expire_all();return jsonify(photos=[wire(photo(i)) for i in result],upload_summary=dict(input_bytes=input_bytes,stored_bytes=stored_bytes,optimized_count=optimized_count,multi_frame_count=multi_frame_count)),201
         except (ValueError,TypeError,OSError,UnidentifiedImageError,Image.DecompressionBombWarning,Image.DecompressionBombError) as exc:
             db.session.rollback()
             for path in created:path.unlink(missing_ok=True)
-            return jsonify(error=str(exc) if isinstance(exc,ValueError) else 'Ein Foto ist nicht lesbar. Es wurde nichts aus diesem Upload gespeichert.'),400
+            missing_heic=any(Path(f.filename or '').suffix.lower() in ('.heic','.heif') for f in request.files.getlist('files')) and not capabilities()['heic_available']
+            message='HEIC/HEIF ist noch nicht verfügbar. Bitte die App-Abhängigkeiten aktualisieren und die App neu starten.' if missing_heic else str(exc) if isinstance(exc,ValueError) else 'Ein Foto ist nicht lesbar oder sein Format wird nicht unterstützt. Es wurde nichts aus diesem Upload gespeichert.'
+            return jsonify(error=message),400
         except Exception:
             db.session.rollback()
             for path in created:path.unlink(missing_ok=True)
@@ -289,8 +312,8 @@ def register_photos(r):
                 warnings.simplefilter('error',Image.DecompressionBombWarning)
                 with Image.open(path) as image:
                     image=ImageOps.exif_transpose(image);image.thumbnail((edge,edge));out=BytesIO()
-                    if image.mode not in ('RGB','RGBA'):image=image.convert('RGB')
-                    image.save(out,format='WEBP',quality=85)
+                    if image.mode not in ('RGB','RGBA'):image=image.convert('RGBA' if 'transparency' in image.info else 'RGB')
+                    image.save(out,format='WEBP',quality=85,icc_profile=image.info.get('icc_profile'))
             out.seek(0);response=send_file(out,mimetype='image/webp',etag=p.digest+'-'+str(edge),max_age=86400);response.headers['X-Content-Type-Options']='nosniff';response.cache_control.public=False;response.cache_control.private=True;return response
         except (ValueError,OSError,Image.DecompressionBombWarning,Image.DecompressionBombError):return jsonify(error='Das Originalfoto fehlt oder ist nicht lesbar.'),404
     @app.get('/api/photos/<int:ident>/original')

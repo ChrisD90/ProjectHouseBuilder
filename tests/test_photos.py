@@ -90,3 +90,38 @@ class PhotoIntegrityTest(unittest.TestCase):
         self.assertEqual((self.store/doc.stored_name).read_bytes(),raw)
         invalid=self.client.post('/api/photos',data={'files':(BytesIO(raw),'Fehler.jpg'),'compression':'unknown'})
         self.assertEqual(invalid.status_code,400);self.assertEqual(len(list(self.store.iterdir())),2)
+
+    def test_heic_upload_metadata_is_atomic_and_duplicate_upload_merges_without_losing_links(self):
+        raw=(Path(__file__).parent/'fixtures'/'project-photo.heic').read_bytes()
+        work=b.ProjectWork(kind='note',title='Notiz',body='Text');journal=b.CompanionRecord(kind='journal',title='Bautagebuch',data_json='{}')
+        b.db.session.add_all([work,journal]);b.db.session.commit();wid,jid=work.id,journal.id
+        sources=[dict(source_type='work',source_id=wid),dict(source_type='companion',source_id=jid)]
+        metadata=dict(tags=json.dumps(['Rohbau','Vorher']),sources=json.dumps(sources),compression='original')
+        response=self.client.post('/api/photos',data={**metadata,'files':(BytesIO(raw),'Baufortschritt.heic')})
+        self.assertEqual(response.status_code,201,response.json);p=response.json['photos'][0]
+        self.assertEqual({x['name'] for x in p['tags']},{'Rohbau','Vorher'});self.assertEqual(len(p['links']),2)
+        doc=b.db.session.get(b.ProjectDocument,p['document_id']);self.assertEqual((self.store/doc.stored_name).read_bytes(),raw);self.assertEqual(doc.extension,'.heic')
+        self.assertTrue(self.client.get('/api/photos/formats').json['heic_available'])
+        self.assertEqual(self.client.get('/api/photos/'+str(p['id'])+'/image').status_code,200)
+        self.assertEqual(self.client.get('/api/project-documents/'+str(doc.id)+'/preview').status_code,200)
+        self.assertEqual(self.client.get('/api/project-documents/'+str(doc.id)+'/versions/1/preview').status_code,200)
+        duplicate=self.client.post('/api/photos',data={'files':(BytesIO(raw),'Nochmals.heic'),'tags':json.dumps(['Nachher']),'sources':'[]'})
+        self.assertEqual(duplicate.status_code,201,duplicate.json);again=duplicate.json['photos'][0];self.assertEqual(again['id'],p['id']);self.assertEqual(len(again['links']),2);self.assertEqual({x['name'] for x in again['tags']},{'Vorher','Rohbau','Nachher'})
+        self.assertNotEqual(again['revision'],p['revision'])
+        failed=self.client.post('/api/photos',data={'files':(BytesIO(self.raw),'Nicht speichern.png'),'tags':json.dumps(['Soll nicht entstehen']),'sources':json.dumps([sources[0],dict(source_type='work',source_id=999999)])})
+        self.assertEqual(failed.status_code,400);self.assertEqual(len(self.client.get('/api/photos').json['photos']),1);self.assertEqual(len(list(self.store.iterdir())),1)
+        self.assertNotIn('Soll nicht entstehen',{x['name'] for x in self.client.get('/api/photo-tags').json['tags']})
+        backups=self.root/'backups';backups.mkdir();archive=project_backups.create(b.db,self.root,1,dict(folder=str(backups),keep=5))
+        with zipfile.ZipFile(archive) as z:self.assertEqual(z.read('private/project-documents/'+doc.stored_name),raw)
+        project_backups.restore(archive,b.db,self.root,1);self.assertEqual(len(self.client.get('/api/photos').json['photos'][0]['links']),2)
+
+    def test_multiframe_originals_are_retained_when_compression_is_selected(self):
+        for fmt,ext in [('GIF','.gif'),('TIFF','.tiff'),('PNG','.png')]:
+            with self.subTest(format=fmt):
+                output=BytesIO();Image.new('RGB',(32,24),'red').save(output,format=fmt,save_all=True,append_images=[Image.new('RGB',(32,24),'blue')],duration=100)
+                raw=output.getvalue()
+                response=self.client.post('/api/photos',data={'files':(BytesIO(raw),'Mehrere'+ext),'compression':'compact'})
+                self.assertEqual(response.status_code,201,response.json);self.assertEqual(response.json['upload_summary']['multi_frame_count'],1)
+                doc=b.db.session.get(b.ProjectDocument,response.json['photos'][0]['document_id'])
+                self.assertEqual((self.store/doc.stored_name).read_bytes(),raw)
+                self.assertEqual(self.client.get('/api/photos/'+str(response.json['photos'][0]['id'])+'/image').status_code,200)

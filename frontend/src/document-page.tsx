@@ -466,7 +466,9 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
         >
           <Stack>
             {record &&
-              /\.(pdf|png|jpe?g|webp)$/i.test(record.original_name || record.filename || '') && (
+              /\.(pdf|png|jpe?g|jpe|jfif|webp|heic|heif|avif|gif|tiff?|bmp|dib|ico|jp2|j2k|jpf|jpx)$/i.test(
+                record.original_name || record.filename || '',
+              ) && (
                 <DocumentPreview
                   url={projectURL(
                     '/api/project-documents/' +

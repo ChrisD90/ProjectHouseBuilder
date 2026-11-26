@@ -4,9 +4,9 @@ cd "$(dirname "$0")"
 sh scripts/ensure_ocr.sh
 python3 -m venv .venv
 . .venv/bin/activate
-# Avoid a source build of cryptography on unsupported macOS/Python combinations.
-# RS256 ChatGPT identity checks require this dependency; never omit it.
-python -m pip install --only-binary=cryptography -r requirements.txt
+# Use binary packages for identity checks and image codecs. HEIC support must not
+# depend on a local Homebrew/libheif source build, including on Intel Macs.
+python -m pip install --only-binary=cryptography,Pillow,pillow-heif -r requirements.txt
 # Fail closed: migrations & required verified backups must succeed before server start.
 python schema_manager.py
 export HOST="${HOST:-127.0.0.1}"

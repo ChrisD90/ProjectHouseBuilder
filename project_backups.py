@@ -339,9 +339,10 @@ def load_rows(path, db, owner):
         if not spec or link['source_id'] not in {x['id'] for x in result.get(spec[0].__tablename__,[])}:
             raise ValueError('Fotoverknüpfung hat kein gültiges Projektobjekt.')
     docs={x['id']:x for x in result.get('project_document',[])}
+    from photo_formats import PHOTO_EXTENSIONS
     for photo in result.get('project_photo',[]):
         doc=docs.get(photo['document_id'])
-        if not doc or doc['extension'] not in ('.jpg','.jpeg','.png','.webp') or photo['digest']!=doc['digest']:
+        if not doc or doc['extension'] not in PHOTO_EXTENSIONS or photo['digest']!=doc['digest']:
             raise ValueError('Ungültiges Fotooriginal im Backup.')
     receipts={row['id']:row for row in result.get('receipt',[])}
     for row in result.get('receipt_terms',[]):

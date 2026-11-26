@@ -4,6 +4,7 @@ Original entry points stay exported on runtime for CLI integrations and tests.
 No imports of app.py and no implicit application context are required.
 """
 from types import ModuleType
+from photo_formats import PHOTO_EXTENSIONS
 
 def register(runtime: ModuleType):
     def _document_json(d):
@@ -56,7 +57,7 @@ def register(runtime: ModuleType):
         """
         entries = []
         for d in runtime.db.session.scalars(runtime.select(runtime.ProjectDocument)).all():
-            entries.append({'source': 'Projektdokumente', 'id': 'project-' + str(d.id), 'title': d.title, 'filename': d.original_name, 'type': d.category, 'status': d.status, 'description': d.description or d.tags, 'date': d.uploaded_at.isoformat() if d.uploaded_at else '', 'download_url': f'/api/project-documents/{d.id}/download', 'view_url': f'/api/project-documents/{d.id}/preview' if d.extension.lower() in ('.pdf', '.jpg', '.jpeg', '.png', '.webp', '.txt') else None, 'module_url': f'/dokumente?document_id={d.id}', 'project_document_id': d.id})
+            entries.append({'source': 'Projektdokumente', 'id': 'project-' + str(d.id), 'title': d.title, 'filename': d.original_name, 'type': d.category, 'status': d.status, 'description': d.description or d.tags, 'date': d.uploaded_at.isoformat() if d.uploaded_at else '', 'download_url': f'/api/project-documents/{d.id}/download', 'view_url': f'/api/project-documents/{d.id}/preview' if d.extension.lower() in ('.pdf','.txt',*PHOTO_EXTENSIONS) else None, 'module_url': f'/dokumente?document_id={d.id}', 'project_document_id': d.id})
         offers = runtime.db.session.scalars(runtime.select(runtime.Offer)).all()
         by_document = {}
         by_offer = {o.id:o for o in offers}
@@ -185,6 +186,9 @@ def register(runtime: ModuleType):
             return (runtime.jsonify(error='Dokument nicht gefunden.'), 404)
         types = {'.pdf': 'application/pdf', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.txt': 'text/plain'}
         if record.extension not in types:
+            if record.extension in PHOTO_EXTENSIONS:
+                photo_id=runtime.db.session.scalar(runtime.select(runtime.ProjectPhoto.id).where(runtime.ProjectPhoto.document_id==did))
+                if photo_id:return runtime.app.view_functions['photo_image'](photo_id)
             return (runtime.jsonify(error='Für diesen Dateityp steht nur der Download zur Verfügung.'), 415)
         path = runtime.PROJECT_DOCUMENT_ROOT / record.stored_name
         if not path.is_file():

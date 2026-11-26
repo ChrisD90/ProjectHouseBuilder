@@ -2,6 +2,7 @@
 import json
 from datetime import datetime
 from uuid import uuid4
+from photo_formats import PHOTO_EXTENSIONS
 from pypdf.errors import PdfReadError
 
 def register(r):
@@ -18,7 +19,7 @@ def register(r):
         return dict(version=number,state=state,filename=data.get('original_name',''),title=data.get('title',''),
                     category=data.get('category',''),area=data.get('area',''),description=data.get('description',''),
                     uploaded_at=data.get('uploaded_at',''),download_url=path+'/download',
-                    view_url=path+'/preview' if data.get('extension') in ('.pdf','.jpg','.jpeg','.png','.webp','.txt') else None)
+                    view_url=path+'/preview' if data.get('extension') in ('.pdf','.txt',*PHOTO_EXTENSIONS) else None)
     @r.app.get('/api/project-documents/<int:did>/versions')
     def document_versions(did):
         doc=r.db.session.get(r.ProjectDocument,did)
@@ -103,7 +104,11 @@ def register(r):
         if not path.is_file():return r.jsonify(error='Originaldatei fehlt.'),404
         preview=r.request.path.endswith('/preview')
         mime={'.pdf':'application/pdf','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webp':'image/webp','.txt':'text/plain'}.get(data['extension'])
-        if preview and not mime:return r.jsonify(error='Für diesen Dateityp steht nur der Download zur Verfügung.'),415
+        if preview and not mime:
+            if number==doc.current_version and data['extension'] in PHOTO_EXTENSIONS:
+                photo_id=r.db.session.scalar(r.select(r.ProjectPhoto.id).where(r.ProjectPhoto.document_id==did))
+                if photo_id:return r.app.view_functions['photo_image'](photo_id)
+            return r.jsonify(error='Für diesen Dateityp steht nur der Download zur Verfügung.'),415
         response=r.send_file(path,as_attachment=not preview,download_name=data['original_name'],mimetype=mime)
         response.headers.update({'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':'sandbox'})
         return response

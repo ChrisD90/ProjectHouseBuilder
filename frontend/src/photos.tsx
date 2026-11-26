@@ -1,3 +1,4 @@
+import { PhotoUpload, usePhotoFormats } from './photo-upload';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from '@mantine/form';
@@ -7,13 +8,11 @@ import {
   Badge,
   Button,
   Checkbox,
-  FileButton,
   Group,
   Loader,
   Modal,
   MultiSelect,
   Paper,
-  Popover,
   Select,
   SimpleGrid,
   Stack,
@@ -29,7 +28,6 @@ import {
   IconDownload,
   IconLink,
   IconPhoto,
-  IconInfoCircle,
   IconSearch,
   IconFilter,
   IconArrowsSort,
@@ -259,7 +257,7 @@ function PhotoCollection({
   const [search, setSearch] = useState(''),
     [tagIds, setTagIds] = useState<string[]>([]),
     [sort, setSort] = useState<string | null>(initialSort),
-    [compression, setCompression] = useState<string | null>('original'),
+    [uploadOpen, setUploadOpen] = useState(false),
     [uploadSummary, setUploadSummary] = useState<Row | null>(null),
     [pick, setPick] = useState(false),
     [selected, setSelected] = useState<number[]>([]),
@@ -267,14 +265,15 @@ function PhotoCollection({
     [manageTags, setManageTags] = useState(false),
     [busy, setBusy] = useState(false),
     [failure, setFailure] = useState<unknown>(null);
+  const formats = usePhotoFormats();
   const query = usePhotos(pick ? undefined : source),
     tags = useTags(),
     changed = usePhotoChanges(),
     operation = useRef(false);
   useEffect(() => {
-    onLayerChange?.(detail !== null || manageTags || busy);
+    onLayerChange?.(detail !== null || manageTags || uploadOpen || busy);
     return () => onLayerChange?.(false);
-  }, [detail, manageTags, busy, onLayerChange]);
+  }, [detail, manageTags, uploadOpen, busy, onLayerChange]);
   async function run(fn: () => Promise<void>) {
     if (operation.current) return;
     operation.current = true;
@@ -289,20 +288,6 @@ function PhotoCollection({
       operation.current = false;
       setBusy(false);
     }
-  }
-  async function upload(files: File[]) {
-    if (!files.length) return;
-    await run(async () => {
-      const data = new FormData();
-      files.forEach((f) => data.append('files', f));
-      data.set('compression', compression || 'original');
-      if (source) {
-        data.set('source_type', source.type);
-        data.set('source_id', String(source.id));
-      }
-      const result = await api('/api/photos', 'POST', data);
-      setUploadSummary(result.upload_summary || null);
-    });
   }
   const rows: Row[] = (query.data?.photos || [])
     .filter(
@@ -360,44 +345,13 @@ function PhotoCollection({
               {pick ? 'Zurück zu verknüpften Fotos' : 'Aus Bibliothek hinzufügen'}
             </Button>
           )}
-          <Select
-            comboboxProps={{ zIndex: 480, withinPortal: true }}
-            aria-label="Bildgröße beim Upload"
-            value={compression}
-            onChange={setCompression}
-            allowDeselect={false}
+          <Button
+            onClick={() => setUploadOpen(true)}
             disabled={busy}
-            w={225}
-            data={[
-              { value: 'original', label: 'Originalgröße beibehalten' },
-              { value: 'compact', label: 'Komprimiert speichern' },
-            ]}
-          />
-          <Popover width={310} withinPortal zIndex={480} position="bottom-end" shadow="md">
-            <Popover.Target>
-              <ActionIcon variant="subtle" aria-label="Information zur Bildkomprimierung">
-                <IconInfoCircle size={17} />
-              </ActionIcon>
-            </Popover.Target>
-            <Popover.Dropdown>
-              <Text size="sm">
-                Komprimiert: bis zu 2560 Pixel, WEBP mit Qualität 82. Wird die Datei dadurch nicht
-                kleiner, bleibt sie unverändert. Die App speichert nur die gewählte Version. Deine
-                Quelldatei auf dem Rechner bleibt unverändert.
-              </Text>
-            </Popover.Dropdown>
-          </Popover>
-          <FileButton
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            onChange={(files) => void upload(files)}
+            leftSection={<IconPlus size={15} />}
           >
-            {(props) => (
-              <Button {...props} loading={busy} leftSection={<IconPlus size={15} />}>
-                Fotos hochladen
-              </Button>
-            )}
-          </FileButton>
+            Fotos hochladen
+          </Button>
         </Group>
       </Group>
       <Paper withBorder p="sm">
@@ -455,8 +409,10 @@ function PhotoCollection({
       ) : (
         <>
           <Text c="dimmed" size="xs">
-            {rows.length} Fotos · JPEG, PNG oder WEBP · Originale bleiben auch unter Dokumente
-            erhalten.
+            {rows.length} Fotos · Unterstützt:{' '}
+            {(formats.data?.formats || []).map((format: Row) => format.label).join(', ') ||
+              'Formate werden geladen …'}{' '}
+            · Originale bleiben auch unter Dokumente erhalten.
           </Text>
           {pick && (
             <Group>
@@ -561,6 +517,17 @@ function PhotoCollection({
             )}
           </div>
         </>
+      )}
+      {uploadOpen && (
+        <PhotoUpload
+          source={source}
+          onClose={() => setUploadOpen(false)}
+          onUploaded={async (result) => {
+            setUploadSummary(result.upload_summary || null);
+            await changed();
+            setUploadOpen(false);
+          }}
+        />
       )}
       {detail !== null && <PhotoDetails id={detail} onClose={() => setDetail(null)} />}
       {manageTags && <TagManager onClose={() => setManageTags(false)} />}

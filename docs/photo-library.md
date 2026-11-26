@@ -51,9 +51,25 @@ am Foto vergeben sowie zentral anlegen, umbenennen und entfernen. Ein Tag wird
 innerhalb eines Projekts ohne Beachtung der Groß-/Kleinschreibung wiederverwendet.
 Eine Tagänderung erzeugt oder entfernt keine Objektzuordnung.
 
-JPEG, PNG und WEBP werden unterstützt. Die Dateien werden lokal geprüft und nicht
-automatisch analysiert oder an ChatGPT gesendet. Beim Upload stehen zwei Optionen
-zur Verfügung:
+Vor dem Upload öffnet sich ein gemeinsamer Dialog für alle Fotoansichten. Hier
+lassen sich Bilder auswählen, freie Tags vergeben und mehrere Projektobjekte
+zuordnen. Die Angaben gelten für den gesamten gewählten Stapel. Beim Aufruf aus
+einem Eintrag ist dieser vorausgewählt. Tags und Zuordnungen werden atomar mit
+den Bildern gespeichert. Bei einem Fehler bleiben die Eingaben im Dialog stehen.
+Ein identischer erneuter Upload ergänzt Tags und Verknüpfungen, ohne vorhandene
+Angaben zu entfernen oder eine zweite Datei anzulegen.
+
+Die Anzeige nennt die tatsächlich verfügbaren Formate samt Dateiendungen. Mit
+den aktuellen Abhängigkeiten werden JPEG/JFIF, PNG, WEBP, HEIC/HEIF, AVIF, GIF,
+TIFF, BMP/DIB, ICO und JPEG 2000 unterstützt. HEIC/HEIF verwendet `pillow-heif`.
+Das Startskript installiert diese Abhängigkeit als Binärpaket, ohne einen lokalen
+Homebrew-/libheif-Build zu benötigen. Fehlt der Decoder in einer älteren
+Installation, zeigt der Dialog dies ausdrücklich an. Originale der neuen Formate
+bleiben auch im Projektbackup erhalten; die Vorschau wird browserkompatibel
+erzeugt. Das gilt auch für die Dokumentenansicht.
+
+Die Dateien werden lokal geprüft und nicht automatisch analysiert oder an
+ChatGPT gesendet. Beim Upload stehen zwei Optionen zur Verfügung:
 
 - **Originalgröße beibehalten**: unveränderte Bilddatei speichern.
 - **Komprimiert speichern**: Bildausrichtung berücksichtigen, auf höchstens 2560
@@ -66,6 +82,9 @@ abgelegt. Die Quelldatei auf dem Rechner bleibt unverändert. Bereits gespeicher
 Fotos werden nicht nachträglich verändert. Die Uploadanzeige nennt die erzielte
 Größenänderung. Ein fehlerhaftes Bild bricht den gesamten Upload ohne Teilablage ab.
 Identische gespeicherte Bilddaten werden innerhalb des Projekts wiederverwendet.
+Animationen und mehrseitige Dateien werden auch bei gewählter Komprimierung
+unverändert gespeichert, damit keine weiteren Bilder oder Seiten verloren gehen.
+Die Vorschau zeigt dabei das erste Bild.
 
 ## Daten und Backups
 
