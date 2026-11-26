@@ -5,6 +5,15 @@ No imports of app.py and no implicit application context are required.
 """
 from types import ModuleType
 from photo_formats import PHOTO_EXTENSIONS
+from multi_projects import current_project_id
+from project_lifecycle import sqlite_write_lock
+
+
+def lock_document_upload(runtime):
+    """Multipart uploads share the project lock with ordinary writes and restores."""
+    sqlite_write_lock(runtime.db.session.connection())
+    runtime.db.session.execute(runtime.select(runtime.Project.id).where(
+        runtime.Project.id == current_project_id()).with_for_update()).first()
 
 def register(runtime: ModuleType):
     def _document_json(d):
@@ -106,6 +115,7 @@ def register(runtime: ModuleType):
         raw = upload.read()
         try:
             filename, ext, text_value, note = runtime.inspect_upload(upload.filename, raw)
+            lock_document_upload(runtime)
             if runtime.db.session.scalar(runtime.select(runtime.ProjectDocument.id).where(runtime.ProjectDocument.digest == runtime.sha256(raw).hexdigest()).limit(1)):
                 return (runtime.jsonify(error='Das identische Dokument ist bereits hinterlegt.'), 409)
             fields = runtime._document_fields({'title': runtime.request.form.get('title') or runtime.Path(filename).stem, 'category': runtime.request.form.get('category', 'Sonstiges'), 'area': runtime.request.form.get('area', 'Allgemein'), 'status': runtime.request.form.get('status', 'Aktuell'), 'tags': runtime.request.form.get('tags', ''), 'description': runtime.request.form.get('description', '')})
@@ -114,18 +124,21 @@ def register(runtime: ModuleType):
         runtime.PROJECT_DOCUMENT_ROOT.mkdir(parents=True, exist_ok=True)
         stored = runtime.uuid4().hex + ext
         target = runtime.PROJECT_DOCUMENT_ROOT / stored
+        created = False
         try:
             with target.open('xb') as dst:
+                created = True
                 dst.write(raw)
             record = runtime.ProjectDocument(original_name=filename, stored_name=stored, extension=ext, digest=runtime.sha256(raw).hexdigest(), size_bytes=len(raw), extracted_text=text_value, extraction_note=note, **fields)
             runtime.db.session.add(record)
             runtime.db.session.flush()
             runtime.ensure_photo_document(record)
+            response = runtime.jsonify(document=runtime._document_json(record))
             runtime.db.session.commit()
-            return (runtime.jsonify(document=runtime._document_json(record)), 201)
+            return response, 201
         except Exception:
             runtime.db.session.rollback()
-            target.unlink(missing_ok=True)
+            if created:target.unlink(missing_ok=True)
             return (runtime.jsonify(error='Projektunterlage konnte nicht sicher gespeichert werden.'), 500)
 
     runtime.project_document_upload = project_document_upload

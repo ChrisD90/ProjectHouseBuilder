@@ -19,6 +19,16 @@ class DocumentVersionTests(unittest.TestCase):
     def upload(self,content=b'Neue Fassung',name='Neu.txt'):
         return self.client.post(self.path+'/versions',data={'file':(io.BytesIO(content),name)})
     def current(self):return self.client.get('/api/project-documents').json['documents'][0]
+    def test_upload_response_failure_rolls_back_new_documents_and_versions(self):
+        original_files={path.name:path.read_bytes() for path in self.docs.iterdir()}
+        with patch.object(b,'_document_json',side_effect=RuntimeError('Response failed')):
+            response=self.client.post('/api/project-documents',data={'file':(io.BytesIO(b'Neue Unterlage'),'Neu.txt')})
+            self.assertEqual(response.status_code,500)
+            self.assertEqual(self.upload().status_code,500)
+        self.assertEqual([row.id for row in b.db.session.scalars(b.select(b.ProjectDocument))],[self.id])
+        self.assertEqual(b.db.session.query(b.ProjectDocumentVersion).count(),0)
+        self.assertEqual({path.name:path.read_bytes() for path in self.docs.iterdir()},original_files)
+        self.assertEqual(self.upload().status_code,201)
     def test_review_preserves_current_file_ids_metadata_and_immutable_history(self):
         funding=b.Funding(name='Bestehende Förderung');b.db.session.add(funding);b.db.session.flush();funding_id=funding.id
         b.db.session.add(b.FundingDocument(funding_id=funding_id,document_id=self.id));b.db.session.commit()

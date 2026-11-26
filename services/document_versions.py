@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import uuid4
 from photo_formats import PHOTO_EXTENSIONS
 from pypdf.errors import PdfReadError
+from services.documents import lock_document_upload
 
 def register(r):
     fields=('title','original_name','extension','digest','size_bytes','category','area','status','tags','description','extracted_text','extraction_note','uploaded_at')
@@ -36,8 +37,12 @@ def register(r):
         upload=r.request.files.get('file')
         if not upload or not upload.filename:return r.jsonify(error='Bitte eine neue Datei auswählen.'),400
         target=None
+        created=False
         try:
             raw=upload.read();name,ext,text,note=r.inspect_upload(upload.filename,raw)
+            lock_document_upload(r)
+            if r.db.session.scalar(r.select(r.ProjectPhoto.id).where(r.ProjectPhoto.document_id==did)):
+                return r.jsonify(error='Das Original wird in der Fotobibliothek verwendet. Bitte ein neues Foto hochladen, damit andere Verknüpfungen unverändert bleiben.'),409
             doc=r.db.session.scalar(r.select(r.ProjectDocument).where(r.ProjectDocument.id==did).with_for_update().execution_options(populate_existing=True))
             if doc is None:raise ValueError('Dokument nicht mehr vorhanden.')
             rows=versions(did)
@@ -48,19 +53,23 @@ def register(r):
             number=max([doc.current_version]+[v.version for v in rows])+1
             stored=uuid4().hex+ext;r.PROJECT_DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True)
             target=r.PROJECT_DOCUMENT_ROOT/stored
-            with target.open('xb') as output:output.write(raw)
+            with target.open('xb') as output:
+                created=True
+                output.write(raw)
             data=snapshot(doc);data.update(original_name=name,extension=ext,digest=digest,size_bytes=len(raw),
                 extracted_text=text,extraction_note=note,uploaded_at=datetime.utcnow().isoformat(),base_version=doc.current_version)
             version=r.ProjectDocumentVersion(document_id=did,version=number,state='draft',stored_name=stored,snapshot_json=json.dumps(data,ensure_ascii=False))
-            r.db.session.add(version);r.db.session.commit()
-            return r.jsonify(document=r._document_json(doc),version=view(doc,number,data,'draft')),201
+            r.db.session.add(version);r.db.session.flush()
+            response=r.jsonify(document=r._document_json(doc),version=view(doc,number,data,'draft'))
+            r.db.session.commit()
+            return response,201
         except (ValueError,OSError,PdfReadError) as error:
             r.db.session.rollback()
-            if target:target.unlink(missing_ok=True)
+            if created:target.unlink(missing_ok=True)
             return r.jsonify(error=str(error)),400
         except Exception:
             r.db.session.rollback()
-            if target:target.unlink(missing_ok=True)
+            if created:target.unlink(missing_ok=True)
             r.app.logger.exception('Dokumentversion konnte nicht gespeichert werden')
             return r.jsonify(error='Die neue Version konnte nicht gespeichert werden.'),500
     r.project_document_version_upload=project_document_version_upload

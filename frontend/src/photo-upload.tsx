@@ -59,7 +59,7 @@ export function PhotoUpload({
       !busy &&
       (!dirty ||
         (await ask(
-          'Dateiauswahl und Upload-Angaben verwerfen? Es wurden noch keine Bilder hochgeladen.',
+          'Dateiauswahl und Upload-Angaben verwerfen? Bereits hochgeladene Bilder bleiben erhalten.',
         )))
     )
       onClose();

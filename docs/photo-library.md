@@ -76,18 +76,20 @@ Vor dem Upload öffnet sich ein gemeinsamer Dialog für alle Fotoansichten. Hier
 lassen sich Bilder auswählen, freie Tags vergeben und mehrere Projektobjekte
 zuordnen. Die Angaben gelten für den gesamten gewählten Stapel. Beim Aufruf aus
 einem Eintrag ist dieser vorausgewählt. Tags und Zuordnungen werden atomar mit
-den Bildern gespeichert. Bei einem Fehler bleiben die Eingaben im Dialog stehen.
+den erfolgreich lesbaren Bildern gespeichert. Ungültige gemeinsame Tags oder
+Zuordnungen verwerfen den gesamten Stapel; Eingaben bleiben im Dialog erhalten.
 Ein identischer erneuter Upload ergänzt Tags und Verknüpfungen, ohne vorhandene
 Angaben zu entfernen oder eine zweite Datei anzulegen.
 
 Die Anzeige nennt die tatsächlich verfügbaren Formate samt Dateiendungen. Mit
-den aktuellen Abhängigkeiten werden JPEG/JFIF, PNG, WEBP, HEIC/HEIF, AVIF, GIF,
+den aktuellen Abhängigkeiten werden JPEG/JFIF, JPEG mit MPO-Zusatzbildern, PNG, WEBP, HEIC/HEIF, AVIF, GIF,
 TIFF, BMP/DIB, ICO und JPEG 2000 unterstützt. HEIC/HEIF verwendet `pillow-heif`.
 Das Startskript installiert diese Abhängigkeit als Binärpaket, ohne einen lokalen
 Homebrew-/libheif-Build zu benötigen. Fehlt der Decoder in einer älteren
 Installation, zeigt der Dialog dies ausdrücklich an. Originale der neuen Formate
 bleiben auch im Projektbackup erhalten; die Vorschau wird browserkompatibel
-erzeugt. Das gilt auch für die Dokumentenansicht.
+erzeugt. Bilder sind ausschließlich in den Fotoansichten sichtbar. Projektunterlagen
+und Dokument-Gesamtübersicht blenden Bilddateien aus; bestehende Dateiverweise bleiben erhalten.
 
 Die Dateien werden lokal geprüft und nicht automatisch analysiert oder an
 ChatGPT gesendet. Beim Upload stehen zwei Optionen zur Verfügung:
@@ -100,10 +102,18 @@ ChatGPT gesendet. Beim Upload stehen zwei Optionen zur Verfügung:
 Die Option ist in der Bibliothek und in jeder verknüpften Fotoansicht vorhanden.
 Bei komprimierter Speicherung wird keine zweite große Originalkopie in der App
 abgelegt. Die Quelldatei auf dem Rechner bleibt unverändert. Bereits gespeicherte
-Fotos werden nicht nachträglich verändert. Die Uploadanzeige nennt die erzielte
-Größenänderung. Ein fehlerhaftes Bild bricht den gesamten Upload ohne Teilablage ab.
+Fotos werden nicht nachträglich verändert. Nach dem Upload bleibt ein Bericht
+mit dem Ergebnis pro Dateiname sichtbar: gespeichert, bereits vorhanden oder
+übersprungen. Nicht lesbare Bilder werden einzeln mit erkanntem Format und Grund
+übersprungen; die übrigen werden gespeichert. Speicher- oder Datenbankfehler
+rollen weiterhin die gesamte Speicherung zurück.
 Identische gespeicherte Bilddaten werden innerhalb des Projekts wiederverwendet.
-Animationen und mehrseitige Dateien werden auch bei gewählter Komprimierung
+Seit Migration **0046** merkt sich `photo_fingerprint` zusätzlich den Fingerabdruck
+der Quelldatei, damit erneute Uploads auch bei wechselnder Komprimierungsoption
+denselben Bibliothekseintrag verwenden. Diese Zuordnung ist projektbezogen und
+wird gesichert und wiederhergestellt. Frühere Quelldaten bereits komprimierter
+Bilder lassen sich daraus nicht nachträglich rekonstruieren.
+MPO-Dateien mit Zusatzbildern, Animationen und mehrseitige Dateien werden auch bei gewählter Komprimierung
 unverändert gespeichert, damit keine weiteren Bilder oder Seiten verloren gehen.
 Die Vorschau zeigt dabei das erste Bild. Bei komprimierten Bildern bleiben die
 Aufnahmezeit-Metadaten erhalten; eine bereits angewandte Bilddrehung wird dabei
@@ -130,8 +140,9 @@ als auch die Ziele der generischen Fotoverknüpfungen.
 Solange ein Foto in der Bibliothek liegt, kann sein Original nicht über den
 Dokumentenbereich gelöscht oder durch eine Dokumentversion ersetzt werden.
 **Aus Bibliothek entfernen** ist erst nach Lösen aller Fotoverknüpfungen möglich.
-Das Original bleibt anschließend unter Dokumente erhalten und kann dort nach den
-vorhandenen Schutzregeln separat gelöscht werden.
+Das gespeicherte Original bleibt anschließend intern im Dokumentenspeicher und
+in den Projektbackups erhalten. Es wird dadurch nicht wieder in den
+Dokumentenübersichten eingeblendet.
 
 Fotoänderungen verwenden Revisionskennungen gegen veraltete Schreibstände.
 Schreiboperationen teilen die Projektsperre. Bilder eines anderen Projekts können
