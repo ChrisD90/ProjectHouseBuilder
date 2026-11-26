@@ -30,6 +30,10 @@ class PhotoIntegrityTest(unittest.TestCase):
         self.assertEqual(filtered.status_code,200,filtered.json)
         self.assertEqual([x['id'] for x in filtered.json['documents']],[doc['id']])
         self.assertEqual(len(self.client.get('/api/project-documents').json['documents']),2)
+        library=self.client.get('/api/document-library?documents_only=1').json
+        self.assertEqual([x['project_document_id'] for x in library['documents']],[doc['id']])
+        self.assertEqual(library['total'],1)
+        self.assertEqual(len(self.client.get('/api/document-library').json['documents']),2)
         self.assertEqual(self.client.get('/api/photos').json['photos'][0]['id'],p['id'])
         self.assertEqual(self.client.get('/api/photos/'+str(p['id'])+'/image').status_code,200)
     def test_shared_photo_tags_object_deletion_and_project_safety(self):

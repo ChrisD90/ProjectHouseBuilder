@@ -41,8 +41,10 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
     staleTime: 0,
     queryFn: async () => {
       const [docs, library] = await Promise.all([
-        api('/api/project-documents' + (projectOnly ? '?documents_only=1' : '')),
-        projectOnly ? Promise.resolve<Row>({ documents: [] }) : api('/api/document-library'),
+        api('/api/project-documents?documents_only=1'),
+        projectOnly
+          ? Promise.resolve<Row>({ documents: [] })
+          : api('/api/document-library?documents_only=1'),
       ]);
       return { ...docs, library: library.documents || library.entries || [] };
     },
@@ -522,7 +524,7 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
             <FileInput
               label="Dateien"
               description="Bis zu 8 Dateien. Dateien werden lokal eingelesen."
-              accept={projectOnly ? '.pdf,.txt,.docx' : '.pdf,.jpg,.jpeg,.png,.webp,.txt,.docx'}
+              accept=".pdf,.txt,.docx"
               multiple
               required
               value={files}

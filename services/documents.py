@@ -85,6 +85,8 @@ def register(runtime: ModuleType):
             entries.append({'source': 'Finanzierung', 'id': 'loan-' + str(ld.id), 'title': ld.original_name, 'filename': ld.original_name, 'type': 'Kreditunterlage', 'status': 'Abgelegt', 'description': ld.notes or '', 'date': ld.uploaded_at.isoformat() if ld.uploaded_at else '', 'download_url': f'/api/financing/loans/{ld.loan_id}/documents/{ld.id}/download', 'view_url': f'/api/financing/loans/{ld.loan_id}/documents/{ld.id}/download?inline=1' if runtime.Path(ld.original_name).suffix.lower() == '.pdf' else None, 'module_url': f'/finanzierung?loan_id={ld.loan_id}'})
         for usage in runtime.db.session.scalars(runtime.select(runtime.LoanUsage).where(runtime.LoanUsage.stored_name != '')).all():
             entries.append({'source': 'Finanzierung', 'id': 'loan-usage-' + str(usage.id), 'title': usage.purpose, 'filename': usage.original_name, 'type': 'Verwendungsnachweis', 'status': usage.status, 'description': usage.notes or '', 'date': usage.created_at.isoformat() if usage.created_at else '', 'download_url': f'/api/financing/usages/{usage.id}/document', 'view_url': f'/api/financing/usages/{usage.id}/document?inline=1' if runtime.Path(usage.original_name).suffix.lower() == '.pdf' else None, 'module_url': '/finanzierung'})
+        if runtime.request.args.get('documents_only') == '1':
+            entries = [entry for entry in entries if runtime.Path(entry['filename']).suffix.lower() not in PHOTO_EXTENSIONS]
         entries.sort(key=lambda entry: (entry['date'], entry['id']), reverse=True)
         response = runtime.jsonify(documents=entries, total=len(entries))
         response.headers['Cache-Control'] = 'no-store'
