@@ -24,6 +24,26 @@ Fotoverknüpfungen in derselben Transaktion entfernt; die Fotos bleiben bestehen
 Mehrfachauswahl beim Zuordnen wird atomar geprüft und gespeichert. Ein erneutes
 Zuordnen erzeugt keine doppelten Verknüpfungen.
 
+## Räume und Baufortschritt
+
+Unter **Projektwerkstatt → Räume & Grundrisse** zeigt jeder gespeicherte Raum
+seine Bilder direkt im Bereich **Fotos & Baufortschritt**. Die Vorschau enthält
+bis zu sechs Aufnahmen. **Fotos hochladen / zuordnen** öffnet die gemeinsame
+Fotoverwaltung mit Upload, optionaler Komprimierung und Auswahl aus der Bibliothek.
+Ein Klick auf eine Vorschau öffnet die Fotodetails; Raum- und Fotoansicht bleiben
+dabei gestapelt erhalten.
+
+Die Raumvorschau zeigt die neuesten Aufnahmen zuerst. Die Fotoverwaltung lässt
+sich zusätzlich nach Aufnahmedatum auf- oder absteigend sortieren. Wenn kein
+Aufnahmedatum eingetragen ist, wird das Upload-Datum verwendet und ausdrücklich
+als **Upload** gekennzeichnet. Aufnahmedatum, Beschreibung und Tags lassen sich
+in den Fotodetails pflegen. Bilder werden dabei nicht kopiert; andere
+Objektzuordnungen und die zentrale Bibliothek bleiben dieselben.
+
+Neue Räume müssen zuerst gespeichert werden; danach erscheint der Fotobereich
+sofort im noch geöffneten Raumdialog. Beim Löschen eines Raums bleiben die Bilder
+und alle anderen Zuordnungen erhalten. Lediglich die Verknüpfung zum Raum entfällt.
+
 ## Tags und Upload
 
 Tags sind frei anlegbar und unabhängig von Objektverknüpfungen. Sie lassen sich

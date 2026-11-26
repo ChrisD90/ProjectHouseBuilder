@@ -47,6 +47,10 @@ import { displayDate } from './presentation';
 import { PhotoOverlayContext } from './photo-context';
 import './photos.css';
 export type PhotoSource = { type: string; id: number };
+type PhotoView = PhotoSource & { photoId?: number; chronology?: boolean };
+const photoDay = (photo: Row) => photo.taken_on || photo.created_at.slice(0, 10);
+const photoDateLabel = (photo: Row) =>
+  (photo.taken_on ? 'Aufnahme: ' : 'Upload: ') + displayDate(photoDay(photo));
 function usePhotos(source?: PhotoSource) {
   return useQuery({
     queryKey: ['photos', projectID, source?.type || '', source?.id || 0],
@@ -93,13 +97,98 @@ export function SourcePhotos({ type, id }: { type: string; id: number }) {
     </Tooltip>
   );
 }
+export function SourcePhotoSection({
+  type,
+  id,
+  title = 'Fotos',
+}: PhotoSource & { title?: string }) {
+  const query = usePhotos({ type, id });
+  const rows: Row[] = [...(query.data?.photos || [])].sort(
+    (a, b) =>
+      photoDay(b).localeCompare(photoDay(a)) ||
+      b.created_at.localeCompare(a.created_at) ||
+      b.id - a.id,
+  );
+  const open = (photoId?: number) =>
+    window.dispatchEvent(
+      new CustomEvent('phb-photos-open', { detail: { type, id, chronology: true, photoId } }),
+    );
+  return (
+    <Paper
+      component="section"
+      withBorder
+      p="sm"
+      className="source-photo-section"
+      aria-label={title}
+    >
+      <Stack gap="xs">
+        <Group justify="space-between" gap="sm">
+          <Text component="h3" m={0} size="sm" fw={600}>
+            {title}{' '}
+            {rows.length > 0 && (
+              <Badge variant="light" size="sm">
+                {rows.length}
+              </Badge>
+            )}
+          </Text>
+          <Button
+            variant="default"
+            size="compact-sm"
+            leftSection={<IconCamera size={15} />}
+            onClick={() => open()}
+          >
+            Fotos hochladen / zuordnen
+          </Button>
+        </Group>
+        <Text size="xs" c="dimmed">
+          Die neuesten Aufnahmen zuerst. Je Foto kannst du Datum, Beschreibung und Tags pflegen.
+          Ohne Aufnahmedatum gilt das Upload-Datum.
+        </Text>
+        <ErrorBox value={query.error} />
+        {query.isPending ? (
+          <Loader size="xs" />
+        ) : rows.length ? (
+          <>
+            <SimpleGrid cols={{ base: 2, sm: 3, lg: 6 }} spacing="xs">
+              {rows.slice(0, 6).map((photo) => (
+                <UnstyledButton
+                  className="source-photo-preview"
+                  key={photo.id}
+                  aria-label={'Foto öffnen: ' + photo.title}
+                  onClick={() => open(photo.id)}
+                >
+                  <img src={projectURL(photo.thumbnail_url)} alt={photo.title} loading="lazy" />
+                  <Text size="xs" fw={500} truncate>
+                    {photo.title}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {photoDateLabel(photo)}
+                  </Text>
+                </UnstyledButton>
+              ))}
+            </SimpleGrid>
+            {rows.length > 6 && (
+              <Button variant="subtle" size="compact-xs" onClick={() => open()}>
+                Alle {rows.length} Fotos ansehen
+              </Button>
+            )}
+          </>
+        ) : (
+          <Text size="sm" c="dimmed">
+            Noch keine Fotos zugeordnet. Halte hier den Baufortschritt dieses Raums fest.
+          </Text>
+        )}
+      </Stack>
+    </Paper>
+  );
+}
 export function PhotoProvider({ children }: { children: ReactNode }) {
-  const [source, setSource] = useState<PhotoSource | null>(null),
+  const [source, setSource] = useState<PhotoView | null>(null),
     [inner, setInner] = useState(false);
   const confirming = useConfirmVisible();
   useEffect(() => {
     const open = (event: Event) => {
-      const value = (event as CustomEvent<PhotoSource>).detail;
+      const value = (event as CustomEvent<PhotoView>).detail;
       if (value && typeof value.type === 'string' && Number.isSafeInteger(value.id) && value.id > 0)
         setSource(value);
     };
@@ -131,6 +220,8 @@ export function PhotoProvider({ children }: { children: ReactNode }) {
           <PhotoCollection
             key={source.type + ':' + source.id}
             source={source}
+            initialPhotoId={source.photoId}
+            initialSort={source.chronology ? 'taken_new' : 'new'}
             onLayerChange={setInner}
           />
           <Group justify="flex-end" mt="md">
@@ -156,19 +247,23 @@ export function PhotosPage() {
 }
 function PhotoCollection({
   source,
+  initialPhotoId,
+  initialSort = 'new',
   onLayerChange,
 }: {
   source?: PhotoSource;
+  initialPhotoId?: number;
+  initialSort?: string;
   onLayerChange?: (value: boolean) => void;
 }) {
   const [search, setSearch] = useState(''),
     [tagIds, setTagIds] = useState<string[]>([]),
-    [sort, setSort] = useState<string | null>('new'),
+    [sort, setSort] = useState<string | null>(initialSort),
     [compression, setCompression] = useState<string | null>('original'),
     [uploadSummary, setUploadSummary] = useState<Row | null>(null),
     [pick, setPick] = useState(false),
     [selected, setSelected] = useState<number[]>([]),
-    [detail, setDetail] = useState<number | null>(null),
+    [detail, setDetail] = useState<number | null>(initialPhotoId || null),
     [manageTags, setManageTags] = useState(false),
     [busy, setBusy] = useState(false),
     [failure, setFailure] = useState<unknown>(null);
@@ -220,11 +315,19 @@ function PhotoCollection({
         tagIds.every((id) => p.tags.some((t: Row) => String(t.id) === id)),
     )
     .sort((a: Row, b: Row) =>
-      sort === 'az'
-        ? a.title.localeCompare(b.title, 'de')
-        : sort === 'old'
-          ? a.created_at.localeCompare(b.created_at)
-          : b.created_at.localeCompare(a.created_at),
+      sort === 'taken_new'
+        ? photoDay(b).localeCompare(photoDay(a)) ||
+          b.created_at.localeCompare(a.created_at) ||
+          b.id - a.id
+        : sort === 'taken_old'
+          ? photoDay(a).localeCompare(photoDay(b)) ||
+            a.created_at.localeCompare(b.created_at) ||
+            a.id - b.id
+          : sort === 'az'
+            ? a.title.localeCompare(b.title, 'de')
+            : sort === 'old'
+              ? a.created_at.localeCompare(b.created_at)
+              : b.created_at.localeCompare(a.created_at),
     );
   return (
     <Stack gap="sm">
@@ -329,6 +432,8 @@ function PhotoCollection({
             data={[
               { value: 'new', label: 'Neueste zuerst' },
               { value: 'old', label: 'Älteste zuerst' },
+              { value: 'taken_new', label: 'Aufnahmedatum: neueste zuerst' },
+              { value: 'taken_old', label: 'Aufnahmedatum: älteste zuerst' },
               { value: 'az', label: 'Titel A–Z' },
             ]}
             value={sort}
@@ -410,8 +515,7 @@ function PhotoCollection({
                   </UnstyledButton>
                   <div className="photo-card-footer">
                     <Text size="xs" c="dimmed">
-                      {p.taken_on ? displayDate(p.taken_on) : displayDate(p.created_at)} ·{' '}
-                      {p.links.length} Verknüpfungen
+                      {photoDateLabel(p)} · {p.links.length} Verknüpfungen
                     </Text>
                     <Group gap={3} mt={4}>
                       {p.tags.slice(0, 3).map((t: Row) => (

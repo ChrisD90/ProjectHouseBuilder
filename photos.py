@@ -86,7 +86,7 @@ def register_photos(r):
 
     sources={**r.work_sources,
         'work':(r.ProjectWork,lambda x:('Notiz · ' if x.kind=='note' else 'To-do · ')+x.title,lambda x:'/aufgaben?work_id='+str(x.id)),
-        'companion':(r.CompanionRecord,lambda x:x.title,lambda x:'/projektwerkstatt?tab='+x.kind+'&record='+str(x.id)),
+        'companion':(r.CompanionRecord,lambda x:x.title,lambda x:'/projektwerkstatt?tab='+{'room':'rooms','tile_plan':'tiles','osb_plan':'osb'}.get(x.kind,x.kind)+'&record='+str(x.id)),
         'person':(r.TimePerson,lambda x:'Stunden · '+x.name,lambda x:'/stunden?person_id='+str(x.id)),
         'equity':(r.EquityAccount,lambda x:'Eigenkapital · '+x.name,lambda x:'/finanzierung?equity_id='+str(x.id))}
     # Modern offer navigation opens the existing detail subpage.

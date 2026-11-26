@@ -1,3 +1,4 @@
+import { SourcePhotoSection } from './photos';
 import { DraftTools } from './draft-tools';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -18,7 +19,7 @@ import { useForm } from '@mantine/form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, Editor, error, ErrorBox, Row, success, useConfirm } from './core';
-import { SearchField } from './ui';
+import { SearchField, useDialogRouteCleanup } from './ui';
 import { useDirtyGuard } from './shell';
 import { RoomGeometry, RoomGeometryFields, roomGeometryOnly } from './room-geometry-fields';
 import { roomGeometry, roomEdgeLabels, svgPath } from './tile-geometry';
@@ -192,11 +193,16 @@ export function Rooms() {
     [id, setId] = useState<number | null>(null),
     [busy, setBusy] = useState(false),
     [showPoints, setShowPoints] = useState(false),
-    [search, setSearch] = useState('');
+    [search, setSearch] = useState(''),
+    [savedRoute, setSavedRoute] = useState<number | null>(null);
   const form = useForm({ initialValues: fresh() }),
     version = useRef(''),
     handled = useRef('');
   useDirtyGuard(opened && form.isDirty());
+  useDialogRouteCleanup(opened, ['record']);
+  useEffect(() => {
+    if (!opened) handled.current = '';
+  }, [opened]);
   const rows: Row[] = (query.data?.records || [])
     .filter((x: Row) => x.kind === 'room')
     .sort((a: Row, b: Row) => a.title.localeCompare(b.title, 'de'));
@@ -213,8 +219,14 @@ export function Rooms() {
     if (value) next.set('record', String(value));
     else next.delete('record');
     handled.current = value ? String(value) : '';
-    setParams(next, { replace: true });
+    if (next.toString() !== params.toString()) setParams(next, { replace: true });
   }
+  useEffect(() => {
+    if (savedRoute !== null && !form.isDirty()) {
+      route(savedRoute);
+      setSavedRoute(null);
+    }
+  }, [savedRoute, form.isDirty()]);
   function edit(row?: Row) {
     const values = row
       ? {
@@ -257,8 +269,8 @@ export function Rooms() {
       );
       version.current = result._versions?.['/api/companion/records/' + result.record.id] || '';
       setId(result.record.id);
-      route(result.record.id);
       form.resetDirty();
+      setSavedRoute(result.record.id);
       await cache.invalidateQueries({ queryKey: ['companion'] });
       success('Raum gespeichert.');
     } catch (e) {
@@ -271,7 +283,7 @@ export function Rooms() {
     if (
       !id ||
       !(await ask(
-        'Diesen Raum löschen? Bereits übernommene Grundrisse in Verlegeplänen bleiben erhalten.',
+        'Diesen Raum löschen? Bereits übernommene Grundrisse in Verlegeplänen und Fotos in der Fotobibliothek bleiben erhalten. Nur die Fotozuordnung zu diesem Raum wird gelöst.',
       ))
     )
       return;
@@ -285,7 +297,6 @@ export function Rooms() {
         version.current ? { 'If-Match': version.current } : {},
       );
       setOpened(false);
-      route(null);
       await cache.invalidateQueries({ queryKey: ['companion'] });
       success('Raum gelöscht.');
     } catch (e) {
@@ -378,10 +389,7 @@ export function Rooms() {
         size="min(1150px, calc(96vw / var(--phb-ui-zoom, 1)))"
         dirty={form.isDirty()}
         busy={busy}
-        onClose={() => {
-          setOpened(false);
-          route(null);
-        }}
+        onClose={() => setOpened(false)}
       >
         <Stack>
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -409,6 +417,14 @@ export function Rooms() {
             minRows={2}
             {...form.getInputProps('body')}
           />
+          {id ? (
+            <SourcePhotoSection type="companion" id={id} title="Fotos & Baufortschritt" />
+          ) : (
+            <Text size="sm" c="dimmed">
+              Speichere den Raum zuerst. Danach kannst du hier Fotos zum Baufortschritt hochladen
+              oder zuordnen.
+            </Text>
+          )}
           <Text size="xs" c="dimmed">
             Grundrissmaße ohne Abzug von Fugen. Rundungen sind angenähert; innere Aussparungen sind
             noch nicht enthalten.
