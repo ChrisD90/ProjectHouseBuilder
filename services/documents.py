@@ -41,7 +41,10 @@ def register(runtime: ModuleType):
 
     @runtime.app.get('/api/project-documents')
     def project_documents_list():
-        docs = runtime.db.session.scalars(runtime.select(runtime.ProjectDocument).order_by(runtime.ProjectDocument.uploaded_at.desc(), runtime.ProjectDocument.id.desc())).all()
+        query = runtime.select(runtime.ProjectDocument)
+        if runtime.request.args.get('documents_only') == '1':
+            query = query.where(runtime.db.func.lower(runtime.ProjectDocument.extension).not_in(PHOTO_EXTENSIONS))
+        docs = runtime.db.session.scalars(query.order_by(runtime.ProjectDocument.uploaded_at.desc(), runtime.ProjectDocument.id.desc())).all()
         response = runtime.jsonify(documents=[runtime._document_json(d) for d in docs], categories=list(runtime.DOCUMENT_CATEGORIES), areas=list(runtime.DOCUMENT_AREAS), statuses=list(runtime.DOCUMENT_STATUSES))
         response.headers['Cache-Control'] = 'no-store'
         return response

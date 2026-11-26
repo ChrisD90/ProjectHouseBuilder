@@ -23,6 +23,15 @@ class PhotoIntegrityTest(unittest.TestCase):
         result=self.client.post('/api/photos',data=data);self.assertEqual(result.status_code,201,result.json);return result.json['photos'][0]
     def action(self,p,source,action='add'):
         result=self.client.post('/api/photos/links',json=dict(photo_ids=[p],source_type=source[0],source_id=source[1],action=action));self.assertEqual(result.status_code,200,result.json)
+    def test_project_documents_hide_images_without_removing_originals(self):
+        p=self.upload()
+        doc=self.client.post('/api/project-documents',data={'file':(BytesIO(b'Projektunterlage'),'Plan.txt'),'title':'Plan'}).json['document']
+        filtered=self.client.get('/api/project-documents?documents_only=1')
+        self.assertEqual(filtered.status_code,200,filtered.json)
+        self.assertEqual([x['id'] for x in filtered.json['documents']],[doc['id']])
+        self.assertEqual(len(self.client.get('/api/project-documents').json['documents']),2)
+        self.assertEqual(self.client.get('/api/photos').json['photos'][0]['id'],p['id'])
+        self.assertEqual(self.client.get('/api/photos/'+str(p['id'])+'/image').status_code,200)
     def test_shared_photo_tags_object_deletion_and_project_safety(self):
         work=b.ProjectWork(kind='note',title='Notiz',body='Text');journal=b.CompanionRecord(kind='journal',title='Bautagebuch',data_json='{}');offer=b.Offer(vendor='Betrieb',digest='o'*64,filename='Angebot.pdf',status='Angebot')
         b.db.session.add_all([work,journal,offer]);b.db.session.commit();wid,jid,oid=work.id,journal.id,offer.id
