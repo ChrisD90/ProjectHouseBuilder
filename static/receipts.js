@@ -135,6 +135,7 @@ const receiptFlow=PHBFlow.manage({
  isBusy:()=>uploading||receiptBusy||paymentBusy
 });
 function openReceiptDialog(review=false){
+  const photoHost=document.querySelector('#receiptWorkflowDialog .phb-workflow-head');if(photoHost){photoHost.dataset.photoType='receipt';photoHost.dataset.photoId=review&&currentReceipt?.id?String(currentReceipt.id):'';}
   receiptDialog.classList.toggle('is-reviewing',Boolean(review));
   if(!review)$('receiptWorkflowTitle').textContent=uploadReceiptKind==='Kassenzettel'?'Kassenzettel hochladen':'Rechnung hochladen und prüfen';
   applyTillMode(review?currentReceipt?.kind==='Kassenzettel':uploadReceiptKind==='Kassenzettel');

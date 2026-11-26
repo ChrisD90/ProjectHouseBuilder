@@ -70,7 +70,7 @@ def validate_request_origin():
 
 # React owns the shared frame; the reviewed classic workflows remain available
 # as isolated same-origin documents while their native components are migrated.
-REACT_ROUTES={'/system','/uebersicht','/projektwerkstatt','/projektunterlagen','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen','/stunden'}
+REACT_ROUTES={'/fotos','/system','/uebersicht','/projektwerkstatt','/projektunterlagen','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen','/stunden'}
 
 @app.before_request
 def react_frontend():
@@ -657,6 +657,9 @@ work_sources['event']=(CalendarEvent,lambda x:'Termin · '+x.title,lambda x:'/?c
 
 from document_inbox import register_document_inbox
 DocumentInboxConfig, DocumentInboxItem = register_document_inbox(__import__('sys').modules[__name__])
+
+from photos import register_photos
+ProjectPhoto, PhotoTag, PhotoTagging, PhotoObjectLink = register_photos(__import__('sys').modules[__name__])
 
 # Backup settings belong to the server; a browser can only select reachable/mounted paths.
 PlanningBrowserState, planning_get, planning_put, planning_pop = register_planning_state(db)

@@ -653,6 +653,7 @@ export function ProjectCalendar() {
         )}
       </Paper>
       <Editor
+        photoSource={selected ? { type: 'event', id: selected } : null}
         opened={opened}
         title={selected ? 'Termin bearbeiten' : 'Termin erstellen'}
         dirty={form.isDirty()}

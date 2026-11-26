@@ -28,6 +28,8 @@ def register(r):
         return r.jsonify(document=r._document_json(doc),versions=sorted(rows,key=lambda v:v['version'],reverse=True))
     @r.app.post('/api/project-documents/<int:did>/versions')
     def project_document_version_upload(did):
+        if r.db.session.scalar(r.select(r.ProjectPhoto.id).where(r.ProjectPhoto.document_id==did)):
+            return r.jsonify(error='Das Original wird in der Fotobibliothek verwendet. Bitte ein neues Foto hochladen, damit andere Verknüpfungen unverändert bleiben.'),409
         doc=r.db.session.get(r.ProjectDocument,did)
         if not doc:return r.jsonify(error='Dokument nicht gefunden.'),404
         upload=r.request.files.get('file')

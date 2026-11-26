@@ -341,6 +341,7 @@ export function Energy() {
         </Group>
       </Paper>
       <Editor
+        photoSource={id ? { type: 'funding', id } : null}
         opened={opened}
         title={id ? 'Förderung bearbeiten' : 'Förderung erfassen'}
         dirty={form.isDirty()}

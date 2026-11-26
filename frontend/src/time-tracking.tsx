@@ -381,6 +381,7 @@ export function TimeTracking() {
         </div>
       )}
       <Editor
+        photoSource={selected ? { type: 'person', id: selected } : null}
         opened={selected !== null}
         onClose={() => {
           setSelected(null);

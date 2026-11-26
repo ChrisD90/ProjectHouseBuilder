@@ -1,3 +1,4 @@
+import { SourcePhotos } from './photos';
 import { DraftTools } from './draft-tools';
 import { defaultOsb, osbLayout, osbSources } from './osb-layout';
 import { OsbFields, OsbNotes } from './osb-fields';
@@ -497,6 +498,7 @@ export function TilePlanner({ material = 'tile' }: { material?: 'tile' | 'osb' }
           info="Raum aufnehmen, Raster ausrichten und Zuschnitte prüfen. Konturzuschnitte zeigen Außenmaße; den Schnittverlauf siehst du im Plan. Rundungen werden durch 48 Kanten angenähert, innere Aussparungen sind noch nicht enthalten. Maße vor Ort prüfen; Bewegungsfugen, Untergrund und zulässigen Verband nach Herstellerangaben gesondert planen."
         />
         <Group gap="xs">
+          {id && <SourcePhotos type="companion" id={id} />}
           <Select
             aria-label={'Gespeicherten ' + plannerTitle + ' öffnen'}
             placeholder="Gespeicherte Pläne"

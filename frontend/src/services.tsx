@@ -282,6 +282,10 @@ export function useServices(navigate: (url: string) => void) {
         }
       },
     },
+    photos: {
+      open: (type: string, id: number) =>
+        window.dispatchEvent(new CustomEvent('phb-photos-open', { detail: { type, id } })),
+    },
     receipts: { open: (data: ReceiptOverviewData) => setReceiptOverview(data) },
     ai: {
       selection: () => methods.current.ai.selection(),

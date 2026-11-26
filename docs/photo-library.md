@@ -1,0 +1,74 @@
+# Gemeinsame Fotobibliothek
+
+Die **Fotobibliothek** steht in der Sidebar unter **Projekt**. Sie zeigt kompakte
+Bildkacheln mit Vorschau, Titel, Datum, Tags und Zahl der Objektverknüpfungen.
+Suche durchsucht Titel, Beschreibung, Dateiname und Tags. Mehrere ausgewählte Tags
+filtern gemeinsam. Sortierung: neueste, älteste oder Titel A–Z.
+
+## Ein Foto, mehrere Einträge
+
+Fotos werden einmal in der Bibliothek gespeichert. Angebote, Rechnungen,
+To-dos/Notizen, Bautagebuch und andere Werkstatteinträge, Termine, Eigenleistungen,
+Förderungen, Firmen, Dokumente, Stundenübersichten und Finanzierungskonten können
+auf dieselben Fotos verweisen. Jeder Eintrag kann mehrere Fotos haben.
+
+Das Kamera-Icon im Kopf eines **gespeicherten** Eintrags öffnet immer dieselbe
+Ansicht. Dort kann man Fotos direkt hochladen oder aus der Bibliothek auswählen.
+Direkt hochgeladene Fotos werden dem geöffneten Eintrag sofort zugeordnet.
+Die Fotos bleiben auch zentral sichtbar. In den Fotodetails können zusätzliche
+Einträge zugeordnet und einzelne Verknüpfungen gelöst werden.
+
+**Hier lösen** entfernt nur die gewählte Zuordnung. Das Original und alle anderen
+Zuordnungen bleiben erhalten. Wird ein Objekt gelöscht, werden seine
+Fotoverknüpfungen in derselben Transaktion entfernt; die Fotos bleiben bestehen.
+Mehrfachauswahl beim Zuordnen wird atomar geprüft und gespeichert. Ein erneutes
+Zuordnen erzeugt keine doppelten Verknüpfungen.
+
+## Tags und Upload
+
+Tags sind frei anlegbar und unabhängig von Objektverknüpfungen. Sie lassen sich
+am Foto vergeben sowie zentral anlegen, umbenennen und entfernen. Ein Tag wird
+innerhalb eines Projekts ohne Beachtung der Groß-/Kleinschreibung wiederverwendet.
+Eine Tagänderung erzeugt oder entfernt keine Objektzuordnung.
+
+JPEG, PNG und WEBP werden unterstützt. Die Dateien werden lokal geprüft und nicht
+automatisch analysiert oder an ChatGPT gesendet. Beim Upload stehen zwei Optionen
+zur Verfügung:
+
+- **Originalgröße beibehalten**: unveränderte Bilddatei speichern.
+- **Komprimiert speichern**: Bildausrichtung berücksichtigen, auf höchstens 2560
+  Pixel je Kante verkleinern und als WEBP mit Qualität 82 speichern. Wenn dies
+  keine kleinere Datei ergibt, wird die ursprüngliche Datei verwendet.
+
+Die Option ist in der Bibliothek und in jeder verknüpften Fotoansicht vorhanden.
+Bei komprimierter Speicherung wird keine zweite große Originalkopie in der App
+abgelegt. Die Quelldatei auf dem Rechner bleibt unverändert. Bereits gespeicherte
+Fotos werden nicht nachträglich verändert. Die Uploadanzeige nennt die erzielte
+Größenänderung. Ein fehlerhaftes Bild bricht den gesamten Upload ohne Teilablage ab.
+Identische gespeicherte Bilddaten werden innerhalb des Projekts wiederverwendet.
+
+## Daten und Backups
+
+`project_photo` hält Fotometadaten und verweist auf das Original im vorhandenen
+Projekt-Dokumentenspeicher. `photo_tag`, `photo_tagging` und `project_photo_link`
+verwalten Tags und Zuordnungen. Alles gehört zum jeweiligen Projekt. Das Original
+wird im Projektbackup einmal über `project_document` gesichert; Vorschaubilder
+werden bei Bedarf erzeugt und benötigen keine zusätzlichen Sicherungsdateien.
+
+Migration **0045** ergänzt die Tabellen und übernimmt vorhandene JPEG-/PNG-/WEBP-
+Projektdokumente sowie ihre bisherigen Zuordnungen aus der Projektdokumentation.
+Originale und bestehende Dokumentverweise werden dabei nicht verändert. Beim
+Wiederherstellen eines älteren Backups wird diese Metadatenübernahme nur für das
+wiederhergestellte Projekt ausgeführt. Backupvalidierung prüft sowohl Dateiverweise
+als auch die Ziele der generischen Fotoverknüpfungen.
+
+Solange ein Foto in der Bibliothek liegt, kann sein Original nicht über den
+Dokumentenbereich gelöscht oder durch eine Dokumentversion ersetzt werden.
+**Aus Bibliothek entfernen** ist erst nach Lösen aller Fotoverknüpfungen möglich.
+Das Original bleibt anschließend unter Dokumente erhalten und kann dort nach den
+vorhandenen Schutzregeln separat gelöscht werden.
+
+Fotoänderungen verwenden Revisionskennungen gegen veraltete Schreibstände.
+Schreiboperationen teilen die Projektsperre. Bilder eines anderen Projekts können
+weder abgerufen noch zugeordnet werden. Die Originaldateien des Nutzers werden
+nicht durch Tests oder Migrationen bearbeitet.

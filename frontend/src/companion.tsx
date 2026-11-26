@@ -523,6 +523,7 @@ export function CompanionPanel({
         </Text>
       )}
       <Editor
+        photoSource={selected ? { type: 'companion', id: selected } : null}
         opened={editing}
         title={labels[kind]}
         onClose={() => setOpen(false)}
@@ -653,7 +654,7 @@ export function CompanionPanel({
               {...form.getInputProps('body')}
             />
             <MultiSelect
-              label="Unterlagen / Fotos"
+              label="Unterlagen"
               searchable
               clearable
               value={(form.values.data.document_ids || []).map(String)}
@@ -665,8 +666,8 @@ export function CompanionPanel({
             />
             <Group align="end" wrap="nowrap">
               <FileInput
-                label="Foto oder Unterlage ergänzen"
-                accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.docx"
+                label="Unterlage ergänzen"
+                accept=".pdf,.txt,.docx"
                 value={file}
                 onChange={setFile}
                 style={{ flex: 1 }}
@@ -676,7 +677,8 @@ export function CompanionPanel({
               </Button>
             </Group>
             <Text size="xs" c="dimmed">
-              Hochgeladene Originale bleiben auch im Bereich Dokumente erhalten.
+              Hochgeladene Originale bleiben auch im Bereich Dokumente erhalten. Fotos verwaltest du
+              über die Kamera im Kopf des gespeicherten Eintrags.
             </Text>
             <Group justify="flex-end">
               <Button type="submit" loading={busy}>
@@ -740,7 +742,6 @@ export function CheckpointButton() {
     </Paper>
   );
 }
-
 
 function Shopping() {
   const q = useQuery({

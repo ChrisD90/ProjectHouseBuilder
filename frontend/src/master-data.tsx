@@ -27,7 +27,7 @@ import {
   IconStar,
 } from '@tabler/icons-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import type { CompanyRecord, ReferenceRecord } from './contracts';
 import { Editor, ErrorBox, Row, api, error, success, useConfirm } from './core';
@@ -55,7 +55,7 @@ export function MasterData() {
   const cache = useQueryClient(),
     ask = useConfirm(),
     navigate = useNavigate(),
-    [params] = useSearchParams();
+    [params, setParams] = useSearchParams();
   const query = useQuery({
     queryKey: ['master'],
     staleTime: 0,
@@ -118,6 +118,28 @@ export function MasterData() {
   useEffect(() => {
     if (query.data && params.get('new_company') === '1') open();
   }, [!!query.data]);
+  const handledCompany = useRef('');
+  useEffect(() => {
+    const value = params.get('contractor_id') || '';
+    if (!value) {
+      handledCompany.current = '';
+      return;
+    }
+    if (handledCompany.current === value) return;
+    const company = query.data?.companies.find((x) => x.id === Number(value));
+    if (company) {
+      handledCompany.current = value;
+      open(company);
+    }
+  }, [query.dataUpdatedAt, params.get('contractor_id')]);
+  function closeCompany() {
+    setOpened(false);
+    if (params.has('contractor_id')) {
+      const next = new URLSearchParams(params);
+      next.delete('contractor_id');
+      setParams(next, { replace: true });
+    }
+  }
   async function save() {
     if (busy) return;
     if (form.validate().hasErrors) return;
@@ -129,8 +151,8 @@ export function MasterData() {
         record ? 'PUT' : 'POST',
         form.values,
       );
+      closeCompany();
       await cache.invalidateQueries({ queryKey: ['master'] });
-      setOpened(false);
       success('Firma gespeichert.');
       const receipt = params.get('receipt_id');
       if (receipt && /^[1-9]\d*$/.test(receipt))
@@ -154,7 +176,7 @@ export function MasterData() {
     setBusy(true);
     try {
       await api('/api/contractors/' + record.id, 'DELETE');
-      setOpened(false);
+      closeCompany();
       await cache.invalidateQueries({ queryKey: ['master'] });
     } catch (e) {
       setFailure(e);
@@ -394,13 +416,14 @@ export function MasterData() {
         </Paper>
       </Tabs>
       <Editor
+        photoSource={record?.id ? { type: 'company', id: record.id } : null}
         opened={opened}
         title={record ? 'Firma bearbeiten' : 'Neue Firma'}
         dirty={form.isDirty()}
         changes={form.values}
         original={form.getInitialValues()}
         busy={busy}
-        onClose={() => setOpened(false)}
+        onClose={closeCompany}
       >
         <form
           onSubmit={(e) => {

@@ -9,6 +9,7 @@ const loanFlow=PHBFlow.manage({
  busyMessage:'Die Vertragsanalyse läuft noch. Bitte das Ergebnis abwarten.'
 });
 const equityFlow=PHBFlow.manage({
+ routeParams:['equity_id'],
  dialog:'equityDialog',forms:['equityForm'],dismiss:['closeEquity'],
  isBusy:()=>equityBusy
 });
@@ -253,7 +254,7 @@ function render(){
  document.querySelectorAll('[data-confirm-drawdown]').forEach(el=>el.onclick=()=>confirmDrawdown(Number(el.dataset.confirmDrawdown)));
  document.querySelectorAll('[data-reject-drawdown]').forEach(el=>el.onclick=()=>rejectDrawdown(Number(el.dataset.rejectDrawdown)));
 }
-window.PHBPageActivate=()=>{const id=Number(new URLSearchParams(location.search).get('loan_id'));if(id&&!$('loanDialog').open&&state.loans.some(x=>x.id===id))openLoan(id);};
+window.PHBPageActivate=()=>{const params=new URLSearchParams(location.search),id=Number(params.get('loan_id')),equity=Number(params.get('equity_id'));if(id&&!$('loanDialog').open&&state.loans.some(x=>x.id===id))openLoan(id);else if(equity&&!$('equityDialog').open&&state.equity.some(x=>x.id===equity))openEquity(equity);};
 async function reload(){const [finance,drawdowns]=await Promise.all([api('/api/financing'),api('/api/financing/drawdowns')]);state=finance;state.drawdowns=drawdowns.drawdowns||[];render()}
 function fill(form,obj){for(const [k,v] of Object.entries(obj||{})){const f=form.elements.namedItem(k);if(f&&f.tagName!=='BUTTON'){f.value=v??'';if(f instanceof HTMLInputElement)PHBUI.currency.prepare(f);}}}
 function documentRows(loan){
@@ -288,6 +289,7 @@ function updateLoanEditorMode(id){
  $('loanDocuments').hidden=!existing;
 }
 function openLoan(id=null){
+ const host=document.querySelector('#loanDialog .modal-head');if(host){host.dataset.photoType='loan';host.dataset.photoId=id?String(id):'';}
  const loan=id?state.loans.find(x=>x.id===id):null;
  if(id&&!loan){message('Kredit nicht gefunden.',true);return;}
  pendingLoanScan=null;
@@ -309,7 +311,7 @@ function openLoan(id=null){
  if(loan){documentRows(loan);showLoanDrawdownProfile(loan);}
  loanFlow.open();
 }
-function openEquity(id=null){$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;equityFlow.open()}
+function openEquity(id=null){const host=document.querySelector('#equityDialog .modal-head');if(host){host.dataset.photoType='equity';host.dataset.photoId=id?String(id):'';}$('equityForm').reset();$('equityForm').elements.namedItem('id').value='';if(id)fill($('equityForm'),state.equity.find(x=>x.id===id));$('deleteEquity').hidden=!id;equityFlow.open()}
 $('newLoan').onclick=()=>openLoan();$('newEquity').onclick=()=>openEquity();
 
 function usageAction(){return $('usageForm').elements.namedItem('action').value}
@@ -710,4 +712,5 @@ reload().then(()=>{
    if(scanId>0)return reviewLoanScan(scanId);
    const loanId=Number(new URLSearchParams(location.search).get('loan_id'));
    if(loanId&&state.loans.some(loan=>loan.id===loanId))openLoan(loanId);
+   else {const equity=Number(new URLSearchParams(location.search).get('equity_id'));if(equity&&state.equity.some(x=>x.id===equity))openEquity(equity);}
  }).catch(err=>message('Finanzierung nicht geladen: '+err.message,true));

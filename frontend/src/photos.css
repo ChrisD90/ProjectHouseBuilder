@@ -1,0 +1,93 @@
+.photo-trigger {
+  position: relative;
+  flex-shrink: 0;
+}
+.photo-count {
+  position: absolute;
+  right: -5px;
+  top: -6px;
+  font-size: 9px;
+  line-height: 15px;
+  min-width: 15px;
+  border-radius: 20px;
+  background: var(--mantine-primary-color-filled);
+  color: var(--mantine-color-white);
+  padding: 0 3px;
+}
+.photo-search {
+  flex: 1;
+  min-width: 180px;
+}
+.photo-tag-filter {
+  flex: 1;
+  min-width: 180px;
+}
+.photo-scroll {
+  max-height: 65vh;
+  overflow: auto;
+  scrollbar-width: thin;
+  padding: 2px;
+}
+.photo-card {
+  min-width: 0;
+  overflow: hidden;
+}
+.photo-card-open {
+  display: block;
+  width: 100%;
+}
+.photo-image-wrap {
+  position: relative;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  background: var(--mantine-color-default-hover);
+}
+.photo-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.photo-selection {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  pointer-events: none;
+}
+.photo-card-footer {
+  padding: 0 8px 8px;
+  min-height: 60px;
+}
+.photo-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+  gap: 18px;
+}
+.photo-detail-image {
+  min-width: 0;
+}
+.photo-detail-image > img {
+  width: 100%;
+  height: 55vh;
+  object-fit: contain;
+  background: var(--mantine-color-default-hover);
+  border-radius: 8px;
+}
+.photo-tags-list {
+  max-height: 45vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (max-width: 700px) {
+  .photo-detail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .photo-detail-image > img {
+    height: 32vh;
+  }
+  .photo-scroll {
+    max-height: 55vh;
+  }
+}

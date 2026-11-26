@@ -315,6 +315,7 @@ export function WorkProvider({ children }: { children: React.ReactNode }) {
         )}
       </Modal>
       <Editor
+        photoSource={item?.id ? { type: 'work', id: item.id } : null}
         title={
           note
             ? item?.id

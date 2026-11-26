@@ -164,6 +164,7 @@
     const offer=offers.find(o=>o.id===id);
     if(!offer)return;
     editingOfferId=id;
+    const photoHost=document.querySelector('#offerEditDialog .offer-editor-actions');if(photoHost){photoHost.dataset.photoType='offer';photoHost.dataset.photoId=String(id);}
     $('offerEditTitle').textContent='Angebot '+(offer.number||'#'+offer.id)+' bearbeiten';
     $('offerEditFields').innerHTML=editFields(offer);
     PHBUI.currency.bind($('offerEditForm'));

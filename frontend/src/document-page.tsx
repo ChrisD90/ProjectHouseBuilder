@@ -426,6 +426,7 @@ export function Documents({ projectOnly = false }: { projectOnly?: boolean }) {
         </Tabs>
       )}
       <Editor
+        photoSource={record?.id ? { type: 'document', id: record.id } : null}
         opened={opened}
         title="Dokument pflegen"
         headerActions={

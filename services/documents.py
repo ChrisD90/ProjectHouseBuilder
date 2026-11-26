@@ -113,6 +113,8 @@ def register(runtime: ModuleType):
                 dst.write(raw)
             record = runtime.ProjectDocument(original_name=filename, stored_name=stored, extension=ext, digest=runtime.sha256(raw).hexdigest(), size_bytes=len(raw), extracted_text=text_value, extraction_note=note, **fields)
             runtime.db.session.add(record)
+            runtime.db.session.flush()
+            runtime.ensure_photo_document(record)
             runtime.db.session.commit()
             return (runtime.jsonify(document=runtime._document_json(record)), 201)
         except Exception:
@@ -200,6 +202,8 @@ def register(runtime: ModuleType):
         record = runtime.db.session.get(runtime.ProjectDocument, did)
         if not record:
             return (runtime.jsonify(error='Dokument nicht gefunden.'), 404)
+        if runtime.db.session.scalar(runtime.select(runtime.ProjectPhoto.id).where(runtime.ProjectPhoto.document_id==did)):
+            return runtime.jsonify(error='Dieses Bild gehört zur Fotobibliothek. Bitte dort zuerst die Verknüpfungen lösen und es aus der Bibliothek entfernen.'),409
         versions=runtime.db.session.scalars(runtime.select(runtime.ProjectDocumentVersion).where(runtime.ProjectDocumentVersion.document_id==did)).all()
         names=[record.stored_name]+[version.stored_name for version in versions]
         runtime._forget_import_result('documents', did)

@@ -362,6 +362,7 @@ export function Rooms() {
         </Text>
       )}
       <Editor
+        photoSource={id ? { type: 'companion', id } : null}
         opened={opened}
         headerActions={
           opened ? (

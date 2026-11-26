@@ -21,7 +21,7 @@ def content_status(db, owner, categories, trades):
     labels={'companion_record':'Projektdokumentation','calendar_preferences':'Termineinstellungen','work_recurrence':'Wiederholungen','receipt_terms':'Zahlungskonditionen','calendar_event':'Kalendertermine','calendar_event_trade':'Terminzuordnungen','document_inbox_item':'Eingangsdokumente','time_person':'Personen der Stundenerfassung','time_entry':'Stundeneinträge','task':'Arbeitspakete','build_phase':'Bauphasen','contractor':'Firmen','category':'eigene Kategorien',
         'trade':'eigene Gewerke','setting':'Projekteinstellungen','project_work':'To-dos oder Notizen',
         'offer':'Angebote','receipt':'Rechnungen oder Belege','import_job':'Importdaten','schedule_history':'Planungshistorien',
-        'project_document':'Dokumente','document':'Angebotsdokumente','funding':'Förderungen',
+        'project_photo':'Fotos','photo_tag':'Foto-Tags','photo_tagging':'Foto-Tags','project_photo_link':'Fotoverknüpfungen','project_document':'Dokumente','document':'Angebotsdokumente','funding':'Förderungen',
         'funding_plan':'Förderplanungen','planning_browser_state':'KI-Planungsentwürfe','self_work_plan':'Eigenleistungen'}
     for table in db.metadata.tables.values():
         if 'project_id' not in table.c or table.name in ('document_inbox_config','document_inbox_item'):continue

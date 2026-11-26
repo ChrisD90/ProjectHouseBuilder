@@ -649,6 +649,7 @@ export function SelfWorkPage() {
         entstehen durch gebuchte Belege. Der Beschaffungsstatus löst keine Zahlung aus.
       </Text>
       <Editor
+        photoSource={id ? { type: 'self_work', id } : null}
         className="self-work-editor"
         headerActions={
           opened ? (

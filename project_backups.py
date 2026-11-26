@@ -233,7 +233,7 @@ def load_rows(path, db, owner):
     expected = set(tables) - EPHEMERAL
     # Backups from revision 0028 predate both plan tables; they legitimately contain no plans.
     missing=expected-set(payload['tables'])
-    for name in ('time_person','time_entry','document_inbox_config','document_inbox_item','calendar_event','calendar_event_trade','calendar_event_company','calendar_company_time','companion_record','calendar_preferences','work_recurrence','receipt_terms'):
+    for name in ('project_photo','photo_tag','photo_tagging','project_photo_link','time_person','time_entry','document_inbox_config','document_inbox_item','calendar_event','calendar_event_trade','calendar_event_company','calendar_company_time','companion_record','calendar_preferences','work_recurrence','receipt_terms'):
         if name in missing:
             payload['tables'][name]=[]
             missing.remove(name)
@@ -332,6 +332,17 @@ def load_rows(path, db, owner):
                 if sum((Decimal(str(position['amount'])) for position in part.get('positions',[])),Decimal(0))!=amount:raise ValueError('Teilbeträge stimmen nicht mit der Auszahlung überein.')
                 total_parts+=amount
             if total_parts>row['requested_amount']:raise ValueError('Teilzahlungen übersteigen den Mittelabruf.')
+    # Generic object links must resolve inside the restored project, just like FKs.
+    from app import photo_sources
+    for link in result.get('project_photo_link',[]):
+        spec=photo_sources.get(link['source_type'])
+        if not spec or link['source_id'] not in {x['id'] for x in result.get(spec[0].__tablename__,[])}:
+            raise ValueError('Fotoverknüpfung hat kein gültiges Projektobjekt.')
+    docs={x['id']:x for x in result.get('project_document',[])}
+    for photo in result.get('project_photo',[]):
+        doc=docs.get(photo['document_id'])
+        if not doc or doc['extension'] not in ('.jpg','.jpeg','.png','.webp') or photo['digest']!=doc['digest']:
+            raise ValueError('Ungültiges Fotooriginal im Backup.')
     receipts={row['id']:row for row in result.get('receipt',[])}
     for row in result.get('receipt_terms',[]):
         receipt=receipts[row['receipt_id']]
@@ -391,6 +402,8 @@ def clear_rows(connection, db, owner):
 
 def restore(path, db, root, owner):
     project, rows = load_rows(path, db, owner)
+    with zipfile.ZipFile(path) as archive:
+        legacy_photos='project_photo' not in _loads(archive.read('project-data.json'))['tables']
     tables = owned_tables(db)
     root = Path(root).resolve(); private = _path(root, 'private'); private.mkdir(exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix='.project-restore-', dir=private))
@@ -420,6 +433,9 @@ def restore(path, db, root, owner):
                     nullable = {fk.parent.name for fk in table.foreign_keys if fk.parent.nullable}
                     for row in entries:
                         if nullable: connection.execute(table.update().where(table.c.project_id == owner, *[c == row[c.name] for c in table.primary_key]).values(**{key: row[key] for key in nullable}))
+                if legacy_photos:
+                    from photos import backfill
+                    backfill(connection,owner=owner)
                 p = db.metadata.tables['project']
                 connection.execute(p.update().where(p.c.id == owner).values(**{key: project[key] for key in ('title', 'kind', 'description')}))
                 if connection.dialect.name == 'postgresql':

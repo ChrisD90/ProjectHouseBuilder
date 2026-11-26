@@ -1,3 +1,4 @@
+import { PhotoProvider, PhotosPage } from './photos';
 import { ReceiptPage } from './receipt-page';
 import {
   ActionIcon,
@@ -40,9 +41,18 @@ import {
   IconListCheck,
   IconReceipt,
   IconTools,
+  IconCamera,
 } from '@tabler/icons-react';
 import { useQuery } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useBlocker, useLocation, useNavigate } from 'react-router-dom';
 import { BrandLogo } from './brand';
 import { api, error, hasWrites, useConfirm } from './core';
@@ -64,6 +74,7 @@ import { UnpaidReceipts } from './unpaid-receipts';
 const items = [
   ['/uebersicht', 'Übersicht', IconLayoutDashboard],
   ['/projektunterlagen', 'Unterlagen', IconFolderOpen],
+  ['/fotos', 'Fotobibliothek', IconCamera],
   ['/', 'Kalender', IconCalendarEvent],
   ['/angebote', 'Angebote', IconFileDescription],
   ['/energieplanung', 'Energetische Planung', IconLeaf],
@@ -83,7 +94,7 @@ const navigationGroups = [
   {
     id: 'project',
     label: 'Projekt',
-    paths: ['/uebersicht', '/projektunterlagen', '/', '/angebote', '/energieplanung'],
+    paths: ['/uebersicht', '/projektunterlagen', '/fotos', '/', '/angebote', '/energieplanung'],
   },
   {
     id: 'execution',
@@ -99,6 +110,7 @@ const navigationGroups = [
   { id: 'data', label: 'Datenmanagement', paths: ['/dokumente', '/daten'] },
 ];
 const native = new Set([
+  '/fotos',
   '/belege',
   '/system',
   '/uebersicht',
@@ -119,6 +131,13 @@ export function useDirtyGuard(dirty: boolean) {
   const ref = useRef(dirty);
   ref.current = dirty;
   useEffect(() => register(() => ref.current), [register]);
+}
+function ProjectWorkProvider({ children }: { children: ReactNode }) {
+  return (
+    <PhotoProvider>
+      <WorkProvider>{children}</WorkProvider>
+    </PhotoProvider>
+  );
 }
 export function App() {
   const displaySettings = useDisplaySettings();
@@ -374,7 +393,7 @@ export function App() {
       refreshing === location.pathname);
   return (
     <GuardContext.Provider value={register}>
-      <WorkProvider>
+      <ProjectWorkProvider>
         <AppShell
           header={{ height: { base: 72, sm: 80 } }}
           navbar={{
@@ -627,7 +646,9 @@ export function App() {
                 display: nativePage ? 'block' : 'none',
               }}
             >
-              {location.pathname === '/uebersicht' ? (
+              {location.pathname === '/fotos' ? (
+                <PhotosPage />
+              ) : location.pathname === '/uebersicht' ? (
                 <Overview />
               ) : location.pathname === '/projektwerkstatt' ? (
                 <Workshop />
@@ -756,7 +777,7 @@ export function App() {
           )}
           {services.overlays}
         </AppShell>
-      </WorkProvider>
+      </ProjectWorkProvider>
     </GuardContext.Provider>
   );
 }

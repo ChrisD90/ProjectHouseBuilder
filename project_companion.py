@@ -206,7 +206,7 @@ def register_companion(r):
             for key in ('contractor_id','event_id','offer_id','self_work_id'):
                 if data.get(key) is not None:source({'contractor_id':'company','event_id':'event','offer_id':'offer','self_work_id':'self_work'}[key],data[key])
             row.data_json=json.dumps(data,ensure_ascii=False);row.updated_at=datetime.now(timezone.utc)
-            db.session.add(row);db.session.commit();return jsonify(record=wire(row)),200 if ident else 201
+            db.session.add(row);db.session.flush();r.sync_companion_photos(row);db.session.commit();return jsonify(record=wire(row)),200 if ident else 201
         except (ValueError,TypeError) as exc:
             db.session.rollback();return jsonify(error=str(exc)),400
 

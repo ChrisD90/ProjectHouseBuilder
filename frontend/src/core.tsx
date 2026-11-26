@@ -1,3 +1,5 @@
+import { SourcePhotos, type PhotoSource } from './photos';
+import { usePhotoOverlay } from './photo-context';
 import { Alert, Button, Group, Modal, Stack, Text, TextInput } from '@mantine/core';
 import { createPortal } from 'react-dom';
 import { notifications } from '@mantine/notifications';
@@ -168,6 +170,7 @@ export function Editor({
   size = 'lg',
   className,
   headerActions,
+  photoSource,
   snapshotRevision,
 }: {
   opened: boolean;
@@ -184,24 +187,27 @@ export function Editor({
   size?: string | number;
   className?: string;
   headerActions?: React.ReactNode;
+  photoSource?: PhotoSource | null;
   snapshotRevision?: number;
 }) {
+  const photoOverlay = usePhotoOverlay();
   const ask = useConfirm(),
     confirming = useModalLayer().blocked,
-    covered = useContext(EditorCoveredContext) || suspended;
+    covered = useContext(EditorCoveredContext) || photoOverlay || suspended;
+  const hasActions = !!headerActions || !!photoSource;
   const fieldset = useRef<HTMLFieldSetElement | null>(null);
   const [header, setHeader] = useState<HTMLElement | null>(null);
   const bindFieldset = React.useCallback(
     (node: HTMLFieldSetElement | null) => {
       fieldset.current = node;
       setHeader(
-        node && headerActions
+        node && hasActions
           ? node.closest('[role=dialog]')?.querySelector<HTMLElement>('.mantine-Modal-header') ||
               null
           : null,
       );
     },
-    [!!headerActions],
+    [hasActions],
   );
   React.useEffect(() => {
     if (opened && !dirty)
@@ -210,7 +216,7 @@ export function Editor({
   return (
     <Modal
       classNames={{ content: className }}
-      styles={headerActions ? { title: { flex: 1 }, close: { order: 2 } } : undefined}
+      styles={hasActions ? { title: { flex: 1 }, close: { order: 2 } } : undefined}
       trapFocus={!confirming && !covered}
       zIndex={zIndex}
       opened={opened}
@@ -226,9 +232,10 @@ export function Editor({
       centered
     >
       {header &&
-        headerActions &&
+        hasActions &&
         createPortal(
           <Group gap={6} style={{ order: 1, marginLeft: 'auto', marginRight: 8 }}>
+            {photoSource && opened && <SourcePhotos {...photoSource} />}
             {headerActions}
           </Group>,
           header,
