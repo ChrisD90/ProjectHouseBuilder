@@ -8,6 +8,8 @@ import {
   Modal,
   MultiSelect,
   Select,
+  ScrollArea,
+  Paper,
   Stack,
   TagsInput,
   Text,
@@ -45,15 +47,12 @@ export function PhotoUpload({
     [targets, setTargets] = useState<string[]>(initial),
     [compression, setCompression] = useState<string | null>('original'),
     [busy, setBusy] = useState(false),
-    [failure, setFailure] = useState<unknown>(null);
+    [failure, setFailure] = useState<unknown>(null),
+    [report, setReport] = useState<Row[]>([]);
   const lock = useRef(false),
     ask = useConfirm(),
     confirming = useConfirmVisible();
-  const dirty =
-    files.length > 0 ||
-    names.length > 0 ||
-    compression !== 'original' ||
-    JSON.stringify(initial) !== JSON.stringify(targets);
+  const dirty = files.length > 0;
   useDirtyGuard(dirty);
   async function close() {
     if (
@@ -85,6 +84,8 @@ export function PhotoUpload({
         ),
       );
       const result = await api('/api/photos', 'POST', body);
+      setReport(result.files || []);
+      setFiles([]);
       await onUploaded(result);
     } catch (e) {
       setFailure(e);
@@ -111,6 +112,49 @@ export function PhotoUpload({
           Wähle deine Bilder aus und lege Tags sowie Zuordnungen direkt fest. Die Angaben gelten für
           alle ausgewählten Bilder.
         </Text>
+        {report.length > 0 && (
+          <Stack gap="xs" aria-live="polite">
+            <Alert color={report.some((item) => item.status === 'skipped') ? 'yellow' : 'green'}>
+              {report.filter((item) => item.status === 'created').length} neu gespeichert ·{' '}
+              {report.filter((item) => item.status === 'duplicate').length} bereits vorhanden ·{' '}
+              {report.filter((item) => item.status === 'skipped').length} übersprungen
+              {report.some((item) => item.status === 'duplicate') && (
+                <Text size="xs">
+                  Vorhandene Bilder wurden wiederverwendet; gewählte Tags und Zuordnungen wurden
+                  ergänzt.
+                </Text>
+              )}
+            </Alert>
+            <ScrollArea.Autosize mah={240} type="auto">
+              <Stack gap="xs">
+                {report.map((item) => (
+                  <Paper key={item.index} withBorder p="xs">
+                    <Text size="sm" fw={600} style={{ overflowWrap: 'anywhere' }}>
+                      {item.filename}
+                    </Text>
+                    <Text size="xs" c={item.status === 'skipped' ? 'red' : 'dimmed'}>
+                      {item.status === 'skipped'
+                        ? 'Übersprungen'
+                        : item.status === 'duplicate'
+                          ? 'Bereits vorhanden'
+                          : 'Gespeichert'}{' '}
+                      · {item.format || 'Unbekanntes Format'}
+                    </Text>
+                    {item.reason && <Text size="xs">{item.reason}</Text>}
+                  </Paper>
+                ))}
+              </Stack>
+            </ScrollArea.Autosize>
+            {report.some((item) => item.status === 'skipped') && (
+              <Text size="xs" c="dimmed">
+                {report.some((item) => item.status !== 'skipped')
+                  ? 'Die übrigen Bilder wurden übernommen. '
+                  : 'Es wurden keine Bilder übernommen. '}
+                Übersprungene Dateien kannst du nach einer Korrektur erneut auswählen.
+              </Text>
+            )}
+          </Stack>
+        )}
         <FileInput
           label="Bilder auswählen"
           multiple

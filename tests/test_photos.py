@@ -46,7 +46,7 @@ class PhotoIntegrityTest(unittest.TestCase):
         self.assertEqual(self.client.get('/api/photos/'+str(p['id'])+'/image',headers=headers).status_code,404)
         foreign=self.client.post('/api/photos/links',headers=headers,json={'photo_ids':[p['id']],'source_type':'offer','source_id':oid,'action':'add'});self.assertEqual(foreign.status_code,400)
         self.assertEqual(self.client.get('/api/photos/'+str(p['id'])+'/image').status_code,200)
-    def test_failed_upload_is_atomic_and_backup_roundtrip_preserves_original_and_links(self):
+    def test_partial_upload_and_backup_roundtrip_preserves_original_and_links(self):
         record=b.CompanionRecord(kind='journal',title='Altbestand',data_json='{}');b.db.session.add(record);b.db.session.commit()
         digest=hashlib.sha256(self.raw).hexdigest();doc=b.ProjectDocument(title='Altes Foto',original_name='alt.png',stored_name='alt.png',extension='.png',digest=digest,size_bytes=len(self.raw),category='Protokoll',area='Allgemein')
         b.db.session.add(doc);b.db.session.flush();record.data_json=json.dumps({'document_ids':[doc.id]});b.db.session.commit();old_data=record.data_json;did=doc.id
@@ -56,7 +56,12 @@ class PhotoIntegrityTest(unittest.TestCase):
         before=self.client.get('/api/photos').json
         out=BytesIO();Image.new('RGB',(10,10),'red').save(out,format='PNG')
         failed=self.client.post('/api/photos',data={'files':[(BytesIO(out.getvalue()),'neu.png'),(BytesIO(b'not an image'),'kaputt.png')]})
-        self.assertEqual(failed.status_code,400,failed.json);self.assertEqual(self.client.get('/api/photos').json,before);self.assertEqual([x.name for x in self.store.iterdir()],['alt.png'])
+        self.assertEqual(failed.status_code,201,failed.json)
+        self.assertEqual([x['status'] for x in failed.json['files']],['created','skipped'])
+        self.assertEqual(failed.json['files'][1]['filename'],'kaputt.png')
+        self.assertEqual(failed.json['files'][1]['error_code'],'unreadable_image')
+        before=self.client.get('/api/photos').json
+        self.assertEqual(len(before['photos']),2);self.assertEqual(len(list(self.store.iterdir())),2)
         backups=self.root/'backups';backups.mkdir();archive=project_backups.create(b.db,self.root,1,dict(folder=str(backups),keep=5))
         with zipfile.ZipFile(archive) as z:self.assertEqual(z.read('private/project-documents/alt.png'),self.raw)
         self.action(p['id'],('companion',record.id),'remove')
@@ -65,13 +70,13 @@ class PhotoIntegrityTest(unittest.TestCase):
         # Old backups without library tables rebuild only the restored project's metadata.
         with zipfile.ZipFile(archive) as z:contents={name:z.read(name) for name in z.namelist()}
         data=json.loads(contents['project-data.json'])
-        for name in ('project_photo','project_photo_link','photo_tag','photo_tagging'):data['tables'].pop(name)
+        for name in ('photo_fingerprint','project_photo','project_photo_link','photo_tag','photo_tagging'):data['tables'].pop(name)
         contents['project-data.json']=json.dumps(data).encode();manifest=json.loads(contents['backup-manifest.json']);manifest['files']['project-data.json']={'sha256':hashlib.sha256(contents['project-data.json']).hexdigest(),'bytes':len(contents['project-data.json'])};contents['backup-manifest.json']=json.dumps(manifest).encode()
         old=self.root/'legacy.zip'
         with zipfile.ZipFile(old,'w') as z:
             for name,raw in contents.items():z.writestr(name,raw)
         project_backups.restore(old,b.db,self.root,1)
-        restored=self.client.get('/api/photos').json['photos'];self.assertEqual(len(restored),1);self.assertEqual(restored[0]['document_id'],did);self.assertEqual(len(restored[0]['links']),1)
+        restored=self.client.get('/api/photos').json['photos'];self.assertEqual(len(restored),2);legacy=next(x for x in restored if x['document_id']==did);self.assertEqual(len(legacy['links']),1)
 
     def test_optional_compression_keeps_orientation_and_only_stores_selected_version(self):
         image=Image.new('RGB',(4000,3000),'#356047');exif=Image.Exif();exif[274]=6;exif[34665]={36867:'2026:11:26 12:30:00'}
@@ -95,9 +100,14 @@ class PhotoIntegrityTest(unittest.TestCase):
 
         original=self.client.post('/api/photos',data={'files':(BytesIO(raw),'Original.jpg'),'compression':'original'})
         self.assertEqual(original.status_code,201,original.json);doc=b.db.session.get(b.ProjectDocument,original.json['photos'][0]['document_id'])
-        self.assertEqual((self.store/doc.stored_name).read_bytes(),raw)
+        self.assertEqual(original.json['photos'][0]['id'],p['id']);self.assertEqual(original.json['files'][0]['status'],'duplicate')
+        self.assertEqual(doc.extension,'.webp');self.assertEqual(len(list(self.store.iterdir())),1)
+        backups=self.root/'backups';backups.mkdir();archive=project_backups.create(b.db,self.root,1,dict(folder=str(backups),keep=5))
+        project_backups.restore(archive,b.db,self.root,1)
+        again=self.client.post('/api/photos',data={'files':(BytesIO(raw),'Nach Restore.jpg')})
+        self.assertEqual(again.json['files'][0]['status'],'duplicate');self.assertEqual(again.json['photos'][0]['id'],p['id'])
         invalid=self.client.post('/api/photos',data={'files':(BytesIO(raw),'Fehler.jpg'),'compression':'unknown'})
-        self.assertEqual(invalid.status_code,400);self.assertEqual(len(list(self.store.iterdir())),2)
+        self.assertEqual(invalid.status_code,400);self.assertEqual(len(list(self.store.iterdir())),1)
 
     def test_heic_upload_metadata_is_atomic_and_duplicate_upload_merges_without_losing_links(self):
         raw=(Path(__file__).parent/'fixtures'/'project-photo.heic').read_bytes()
@@ -183,3 +193,26 @@ class PhotoIntegrityTest(unittest.TestCase):
         self.assertEqual(failed.status_code,400);self.assertEqual(self.client.get('/api/photos').json,current)
         self.assertNotIn('Nicht speichern',{t['name'] for t in self.client.get('/api/photo-tags').json['tags']})
         self.assertEqual(self.client.post('/api/photos/bulk',json=dict(photo_ids=ids,taken_on='2001-01-01')).status_code,400)
+
+    def test_mixed_batch_duplicates_decoder_errors_and_project_isolation(self):
+        import photos
+        from photo_formats import supported_formats
+        heic=(Path(__file__).parent/'fixtures'/'project-photo.heic').read_bytes()
+        available=[row for row in supported_formats() if row['name']!='HEIF']
+        with patch.object(photos,'supported_formats',return_value=available),patch('photo_formats.supported_formats',return_value=available):
+            response=self.client.post('/api/photos',data={'files':[(BytesIO(self.raw),'Erstes.png'),(BytesIO(heic),'Handy.heic'),(BytesIO(self.raw),'Kopie.png'),(BytesIO(b''),'Leer.png')]})
+        self.assertEqual(response.status_code,201,response.json)
+        report=response.json['files'];self.assertEqual([x['status'] for x in report],['created','skipped','duplicate','skipped'])
+        self.assertEqual(report[1]['filename'],'Handy.heic');self.assertEqual(report[1]['error_code'],'decoder_unavailable');self.assertEqual(report[1]['format'],'HEIC / HEIF')
+        self.assertEqual(report[3]['error_code'],'empty_file');self.assertEqual(len(list(self.store.iterdir())),1)
+        all_bad=self.client.post('/api/photos',data={'files':(BytesIO(b'not a picture'),'Falsch.heic'),'tags':json.dumps(['Nicht anlegen'])})
+        self.assertEqual(all_bad.status_code,200,all_bad.json);self.assertEqual(all_bad.json['photos'],[])
+        self.assertEqual(all_bad.json['files'][0]['error_code'],'unreadable_image')
+        self.assertEqual(self.client.get('/api/photo-tags').json['tags'],[])
+        # Original first, then compression: one photo in this project.
+        repeat=self.client.post('/api/photos',data={'files':(BytesIO(self.raw),'Kompakt.png'),'compression':'compact'})
+        self.assertEqual(repeat.json['files'][0]['status'],'duplicate');self.assertEqual(len(list(self.store.iterdir())),1)
+        other=self.client.post('/api/projects',json={'title':'Eigenständiges Projekt'}).json['project']['id']
+        foreign=self.client.post('/api/photos',headers={'X-PHB-Project':str(other)},data={'files':(BytesIO(self.raw),'Eigenes.png')})
+        self.assertEqual(foreign.status_code,201,foreign.json);self.assertEqual(foreign.json['files'][0]['status'],'created')
+        self.assertNotEqual(foreign.json['photos'][0]['id'],repeat.json['photos'][0]['id'])

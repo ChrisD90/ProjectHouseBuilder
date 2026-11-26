@@ -39,3 +39,35 @@ def capabilities():
     return dict(formats=rows,accept=','.join(value for row in rows for value in (*row['extensions'],*row['mimes'])),
                 heic_available=any(x['name']=='HEIF' for x in rows),
                 hint='Bei animierten oder mehrseitigen Dateien zeigt die Vorschau das erste Bild. Die Originaldatei bleibt erhalten; diese Dateien werden nicht komprimiert.')
+
+
+def upload_failure(raw, filename, detected, error):
+    """Describe only this file; extensions are hints, not proof of a codec failure."""
+    from pathlib import Path
+    from PIL import UnidentifiedImageError
+    signature = detected
+    if not signature:
+        if raw.startswith(b'\xff\xd8\xff'):signature='JPEG'
+        elif raw.startswith(b'\x89PNG\r\n\x1a\n'):signature='PNG'
+        elif raw[:6] in (b'GIF87a',b'GIF89a'):signature='GIF'
+        elif raw.startswith((b'II*\x00',b'MM\x00*')):signature='TIFF'
+        elif raw[:4]==b'RIFF' and raw[8:12]==b'WEBP':signature='WEBP'
+        elif raw[4:8]==b'ftyp':
+            brands=[raw[i:i+4] for i in range(8,min(len(raw),64),4)]
+            if any(x in (b'avif',b'avis') for x in brands):signature='AVIF'
+            elif any(x in (b'heic',b'heix',b'hevc',b'hevx',b'mif1',b'msf1') for x in brands):signature='HEIF'
+    available={x['name'] for x in supported_formats()}
+    ext=Path(filename).suffix.lower()
+    hint=next((label for _,label,extensions,_ in FORMATS if ext in extensions),None)
+    label=next((label for name,label,_,_ in FORMATS if name==signature),None)
+    if signature and signature not in available:
+        code='decoder_unavailable';reason=f'Für {label or signature} ist in dieser Installation kein Decoder verfügbar. Bitte die App-Abhängigkeiten aktualisieren und die App neu starten oder das Bild als JPEG/PNG exportieren.'
+    elif isinstance(error,(Image.DecompressionBombError,Image.DecompressionBombWarning)):
+        code='image_too_large';reason='Die Bildabmessungen überschreiten die sichere Decoder-Grenze. Bitte das Bild vor dem Upload verkleinern.'
+    elif not raw:
+        code='empty_file';reason='Die Datei ist leer.'
+    elif isinstance(error,UnidentifiedImageError):
+        code='unreadable_image';reason='Der Dateiinhalt konnte nicht als unterstütztes Bild erkannt werden. Die Datei kann beschädigt sein oder einen nicht unterstützten Codec verwenden. Bitte als JPEG/PNG exportieren.'
+    else:
+        code='decode_failed';reason='Das Bild konnte nicht vollständig gelesen oder komprimiert werden. Bitte die Datei lokal öffnen und erneut als JPEG/PNG speichern.'
+    return dict(format=label or ('Unbekannt'+(f' (Dateiendung: {hint})' if hint else '')),error_code=code,reason=reason)

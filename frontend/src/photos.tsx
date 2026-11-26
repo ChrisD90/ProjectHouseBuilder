@@ -468,9 +468,8 @@ function PhotoCollection({
 
       {uploadSummary && (
         <Text size="xs" c="dimmed">
-          {uploadSummary.optimized_count > 0
-            ? `${uploadSummary.optimized_count} Fotos komprimiert · ${Math.round(uploadSummary.input_bytes / 1024).toLocaleString('de-DE')} KB → ${Math.round(uploadSummary.stored_bytes / 1024).toLocaleString('de-DE')} KB`
-            : 'Upload abgeschlossen. Die Bilddateien wurden unverändert übernommen.'}
+          {`${uploadSummary.created_count ?? 0} neu gespeichert · ${uploadSummary.duplicate_count ?? 0} bereits vorhanden · ${uploadSummary.skipped_count ?? 0} übersprungen`}
+          {uploadSummary.optimized_count > 0 && ` · ${uploadSummary.optimized_count} komprimiert`}
         </Text>
       )}
       {query.isPending ? (
@@ -619,7 +618,6 @@ function PhotoCollection({
           onUploaded={async (result) => {
             setUploadSummary(result.upload_summary || null);
             await changed();
-            setUploadOpen(false);
           }}
         />
       )}

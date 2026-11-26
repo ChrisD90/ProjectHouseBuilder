@@ -66,6 +66,14 @@ def register_photos(r):
         document=db.relationship(r.ProjectDocument,lazy='joined')
         tag_links=db.relationship('PhotoTagging',cascade='all, delete-orphan',lazy='selectin')
         links=db.relationship('PhotoObjectLink',cascade='all, delete-orphan',lazy='selectin')
+        fingerprints=db.relationship('PhotoFingerprint',cascade='all, delete-orphan')
+    class PhotoFingerprint(db.Model):
+        __tablename__='photo_fingerprint'
+        __table_args__=(db.UniqueConstraint('project_id','digest',name='uq_photo_source_content'),)
+        id=db.Column(db.Integer,primary_key=True)
+        photo_id=db.Column(db.Integer,db.ForeignKey('project_photo.id'),nullable=False,index=True)
+        digest=db.Column(db.String(64),nullable=False)
+    r.PhotoFingerprint=PhotoFingerprint
     class PhotoTag(db.Model):
         __tablename__='photo_tag'
         __table_args__=(db.UniqueConstraint('project_id','normalized',name='uq_photo_tag_name'),)
@@ -218,53 +226,84 @@ def register_photos(r):
             else:upload_sources=set()
             source=source_body(dict(source_type=request.form.get('source_type'),source_id=int(request.form['source_id']) if request.form.get('source_id') else None),True)
             if source:upload_sources.add(source)
-            upload_tags=tags(tag_names)
-            result=[];seen=set()
-            for upload in files:
+            # Validate shared metadata before processing any file. Create tags lazily.
+            if not isinstance(tag_names,list) or len(tag_names)>50:raise ValueError('Bitte höchstens 50 Tags angeben.')
+            for name in tag_names:plain(name,'Tag',60,required=True)
+            upload_tags=None
+            result=[];seen=set();report=[]
+            for index,upload in enumerate(files):
+                filename=Path(upload.filename or 'Unbenanntes Bild').name
                 raw=upload.read();input_bytes+=len(raw);optimized=False
-                with warnings.catch_warnings():
-                    warnings.simplefilter('error',Image.DecompressionBombWarning)
-                    with Image.open(BytesIO(raw)) as image:
-                        fmt=image.format
-                        if fmt not in allowed_formats:raise ValueError('Für dieses Bildformat ist kein Decoder verfügbar. Bitte die angezeigten unterstützten Formate beachten.')
-                        multi_frame=getattr(image,'n_frames',1)>1 or (fmt=='ICO' and len(image.ico.sizes())>1)
-                        if fmt in ('JPEG','PNG','WEBP'):image.verify()
-                        else:image.seek(0);image.load()
-                    if multi_frame:multi_frame_count+=1
-                    if compression=='compact' and not multi_frame:
-                        with Image.open(BytesIO(raw)) as image:
-                            timestamp_exif=capture_exif(image)
-                            image=ImageOps.exif_transpose(image)
-                            image.thumbnail((2560,2560),Image.Resampling.LANCZOS)
-                            if image.mode not in ('RGB','RGBA'):image=image.convert('RGBA' if 'transparency' in image.info else 'RGB')
-                            output=BytesIO();image.save(output,format='WEBP',quality=82,method=6,icc_profile=image.info.get('icc_profile'),exif=timestamp_exif)
-                            candidate=output.getvalue()
-                            if len(candidate)<len(raw):raw=candidate;fmt='WEBP';optimized=True;optimized_count+=1
-                stored_bytes+=len(raw)
-                digest=sha256(raw).hexdigest();p=db.session.scalar(select(ProjectPhoto).where(ProjectPhoto.digest==digest))
+                source_digest=sha256(raw).hexdigest()
+                fingerprint=db.session.scalar(select(PhotoFingerprint).where(PhotoFingerprint.digest==source_digest))
+                p=db.session.get(ProjectPhoto,fingerprint.photo_id) if fingerprint else db.session.scalar(select(ProjectPhoto).where(ProjectPhoto.digest==source_digest))
+                fmt=None
+                if p is None:
+                    try:
+                        with warnings.catch_warnings():
+                            warnings.simplefilter('error',Image.DecompressionBombWarning)
+                            with Image.open(BytesIO(raw)) as image:
+                                fmt=image.format
+                                if fmt not in allowed_formats:raise ValueError('Für dieses Bildformat ist kein Decoder verfügbar. Bitte die angezeigten unterstützten Formate beachten.')
+                                multi_frame=getattr(image,'n_frames',1)>1 or (fmt=='ICO' and len(image.ico.sizes())>1)
+                                if fmt in ('JPEG','PNG','WEBP'):image.verify()
+                                else:image.seek(0);image.load()
+                            with Image.open(BytesIO(raw)) as checked:checked.seek(0);checked.load()
+                            if multi_frame:multi_frame_count+=1
+                            if compression=='compact' and not multi_frame:
+                                with Image.open(BytesIO(raw)) as image:
+                                    timestamp_exif=capture_exif(image)
+                                    image=ImageOps.exif_transpose(image)
+                                    image.thumbnail((2560,2560),Image.Resampling.LANCZOS)
+                                    if image.mode not in ('RGB','RGBA'):image=image.convert('RGBA' if 'transparency' in image.info else 'RGB')
+                                    output=BytesIO();image.save(output,format='WEBP',quality=82,method=6,icc_profile=image.info.get('icc_profile'),exif=timestamp_exif)
+                                    candidate=output.getvalue()
+                                    if len(candidate)<len(raw):raw=candidate;fmt='WEBP';optimized=True;optimized_count+=1
+                    except (ValueError,TypeError,OSError,SyntaxError,EOFError,NotImplementedError,RuntimeError,UnidentifiedImageError,Image.DecompressionBombWarning,Image.DecompressionBombError) as exc:
+                        from photo_formats import upload_failure
+                        report.append(dict(index=index,filename=filename,status='skipped',**upload_failure(raw,filename,fmt,exc)))
+                        continue
+                else:
+                    # Original-byte fingerprint also matches a previously compressed upload.
+                    fmt=next((name for name,extensions in FORMAT_EXTENSIONS.items() if p.document.extension in extensions),None)
+                duplicate=p is not None
+                stored_bytes+=p.document.size_bytes if p else len(raw)
+                digest=sha256(raw).hexdigest()
+                if p is None:p=db.session.scalar(select(ProjectPhoto).where(ProjectPhoto.digest==digest))
+                duplicate=duplicate or p is not None
                 if p is None:
                     doc=db.session.scalar(select(r.ProjectDocument).where(r.ProjectDocument.digest==digest,r.ProjectDocument.extension.in_(IMAGE_EXTENSIONS)).order_by(r.ProjectDocument.id))
                     if doc is None:
                         ext=FORMAT_EXTENSIONS[fmt][0];stored=uuid4().hex+ext
                         r.PROJECT_DOCUMENT_ROOT.mkdir(parents=True,exist_ok=True);path=r.PROJECT_DOCUMENT_ROOT/stored
-                        with path.open('xb') as dst:dst.write(raw)
-                        created.append(path)
-                        filename=Path(upload.filename or 'Foto'+ext).name[:200]
-                        if optimized or Path(filename).suffix.lower() not in FORMAT_EXTENSIONS[fmt]:filename=Path(filename).stem[:200-len(ext)]+ext
-                        doc=r.ProjectDocument(title=filename,original_name=filename,stored_name=stored,extension=ext,digest=digest,size_bytes=len(raw),category='Sonstiges',area='Allgemein',status='Aktuell',tags='',description='',extracted_text='',extraction_note='Foto in der Fotobibliothek')
+                        with path.open('xb') as dst:
+                            created.append(path)
+                            dst.write(raw)
+                        stored_filename=filename[:200]
+                        if optimized or Path(stored_filename).suffix.lower() not in FORMAT_EXTENSIONS[fmt]:stored_filename=Path(stored_filename).stem[:200-len(ext)]+ext
+                        doc=r.ProjectDocument(title=stored_filename,original_name=stored_filename,stored_name=stored,extension=ext,digest=digest,size_bytes=len(raw),category='Sonstiges',area='Allgemein',status='Aktuell',tags='',description='',extracted_text='',extraction_note='Foto in der Fotobibliothek')
                         db.session.add(doc);db.session.flush()
+                    duplicate=duplicate or db.session.scalar(select(ProjectPhoto).where(ProjectPhoto.document_id==doc.id)) is not None
                     p=ensure_photo(doc)
+                if fingerprint is None:
+                    db.session.add(PhotoFingerprint(photo_id=p.id,digest=source_digest))
+                if upload_tags is None:upload_tags=tags(tag_names)
+                report.append(dict(index=index,filename=filename,status='duplicate' if duplicate else 'created',photo_id=p.id,format=fmt))
                 existing_tags={x.tag_id for x in p.tag_links}
                 for tag in upload_tags:
                     if tag.id not in existing_tags:p.tag_links.append(PhotoTagging(tag_id=tag.id));existing_tags.add(tag.id);p.revision=uuid4().hex
                 for selected_source in upload_sources:link(p,selected_source)
                 if p.id not in seen:seen.add(p.id);result.append(p.id)
-            db.session.commit();db.session.expire_all();return jsonify(photos=[wire(photo(i)) for i in result],upload_summary=dict(input_bytes=input_bytes,stored_bytes=stored_bytes,optimized_count=optimized_count,multi_frame_count=multi_frame_count)),201
+            # Prepare the response before commit: an encoding/metadata error must never
+            # delete originals whose database transaction has already committed.
+            db.session.flush();db.session.expire_all()
+            response=jsonify(photos=[wire(photo(i)) for i in result],files=report,upload_summary=dict(input_bytes=input_bytes,stored_bytes=stored_bytes,optimized_count=optimized_count,multi_frame_count=multi_frame_count,created_count=sum(x['status']=='created' for x in report),duplicate_count=sum(x['status']=='duplicate' for x in report),skipped_count=sum(x['status']=='skipped' for x in report)))
+            db.session.commit()
+            return response,201 if result else 200
         except (ValueError,TypeError,OSError,UnidentifiedImageError,Image.DecompressionBombWarning,Image.DecompressionBombError) as exc:
             db.session.rollback()
             for path in created:path.unlink(missing_ok=True)
-            missing_heic=any(Path(f.filename or '').suffix.lower() in ('.heic','.heif') for f in request.files.getlist('files')) and not capabilities()['heic_available']
-            message='HEIC/HEIF ist noch nicht verfügbar. Bitte die App-Abhängigkeiten aktualisieren und die App neu starten.' if missing_heic else str(exc) if isinstance(exc,ValueError) else 'Ein Foto ist nicht lesbar oder sein Format wird nicht unterstützt. Es wurde nichts aus diesem Upload gespeichert.'
+            message=str(exc) if isinstance(exc,ValueError) else 'Der Upload konnte nicht gespeichert werden. Es wurden keine Änderungen aus diesem Upload übernommen.'
             return jsonify(error=message),400
         except Exception:
             db.session.rollback()
