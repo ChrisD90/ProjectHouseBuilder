@@ -134,7 +134,7 @@ class PhotoIntegrityTest(unittest.TestCase):
         project_backups.restore(archive,b.db,self.root,1);self.assertEqual(len(self.client.get('/api/photos').json['photos'][0]['links']),2)
 
     def test_multiframe_originals_are_retained_when_compression_is_selected(self):
-        for fmt,ext in [('GIF','.gif'),('TIFF','.tiff'),('PNG','.png')]:
+        for fmt,ext in [('GIF','.gif'),('TIFF','.tiff'),('PNG','.png'),('MPO','.JPG')]:
             with self.subTest(format=fmt):
                 output=BytesIO();Image.new('RGB',(32,24),'red').save(output,format=fmt,save_all=True,append_images=[Image.new('RGB',(32,24),'blue')],duration=100)
                 raw=output.getvalue()
@@ -143,6 +143,14 @@ class PhotoIntegrityTest(unittest.TestCase):
                 doc=b.db.session.get(b.ProjectDocument,response.json['photos'][0]['document_id'])
                 self.assertEqual((self.store/doc.stored_name).read_bytes(),raw)
                 self.assertEqual(self.client.get('/api/photos/'+str(response.json['photos'][0]['id'])+'/image').status_code,200)
+                if fmt=='MPO':
+                    self.assertEqual(response.json['files'][0]['format'],'MPO')
+                    self.assertEqual(doc.original_name,'Mehrere.JPG')
+                    with Image.open(self.store/doc.stored_name) as saved:
+                        self.assertEqual(saved.n_frames,2);saved.seek(1);saved.load()
+                    repeated=self.client.post('/api/photos',data={'files':(BytesIO(raw),'IMG_0451.JPG')})
+                    self.assertEqual(repeated.json['files'][0]['status'],'duplicate')
+                    self.assertEqual(repeated.json['photos'][0]['id'],response.json['photos'][0]['id'])
 
     def test_capture_dates_come_from_original_metadata_including_compressed_heic(self):
         exif=Image.Exif();exif[34665]={36867:'2024:09:08 14:30:00',36868:'2025:01:01 00:00:00',36881:'+02:00'}

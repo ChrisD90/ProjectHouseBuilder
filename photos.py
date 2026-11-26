@@ -245,7 +245,9 @@ def register_photos(r):
                             with Image.open(BytesIO(raw)) as image:
                                 fmt=image.format
                                 if fmt not in allowed_formats:raise ValueError('Für dieses Bildformat ist kein Decoder verfügbar. Bitte die angezeigten unterstützten Formate beachten.')
-                                multi_frame=getattr(image,'n_frames',1)>1 or (fmt=='ICO' and len(image.ico.sizes())>1)
+                                # Camera JPEGs can contain MPO auxiliary images (e.g. depth/HDR).
+                                # Preserve their complete original, even when compact was selected.
+                                multi_frame=fmt=='MPO' or getattr(image,'n_frames',1)>1 or (fmt=='ICO' and len(image.ico.sizes())>1)
                                 if fmt in ('JPEG','PNG','WEBP'):image.verify()
                                 else:image.seek(0);image.load()
                             with Image.open(BytesIO(raw)) as checked:checked.seek(0);checked.load()

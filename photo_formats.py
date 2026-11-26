@@ -11,6 +11,7 @@ Image.init()
 
 FORMATS = (
     ('JPEG','JPEG',('.jpg','.jpeg','.jpe','.jfif'),('image/jpeg',)),
+    ('MPO','JPEG mit Zusatzbildern (MPO)',('.jpg','.jpeg','.mpo'),('image/jpeg','image/mpo')),
     ('PNG','PNG',('.png',),('image/png',)),
     ('WEBP','WEBP',('.webp',),('image/webp',)),
     ('HEIF','HEIC / HEIF',('.heic','.heif'),('image/heic','image/heif')),
@@ -28,7 +29,9 @@ FORMAT_EXTENSIONS={name:extensions for name,_,extensions,_ in FORMATS}
 def supported_formats():
     result=[]
     for name,label,extensions,mimes in FORMATS:
-        available=name in Image.OPEN
+        # Pillow detects MPO through the JPEG factory, without its own OPEN entry.
+        available=('JPEG' if name=='MPO' else name) in Image.OPEN
+        if name=='MPO':available=available and features.check_codec('jpg')
         if name=='JPEG2000':available=available and features.check_codec('jpg_2000')
         if name=='WEBP':available=available and features.check_module('webp')
         if available:result.append(dict(name=name,label=label,extensions=extensions,mimes=mimes))
