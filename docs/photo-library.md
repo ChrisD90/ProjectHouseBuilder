@@ -24,6 +24,25 @@ Fotoverknüpfungen in derselben Transaktion entfernt; die Fotos bleiben bestehen
 Mehrfachauswahl beim Zuordnen wird atomar geprüft und gespeichert. Ein erneutes
 Zuordnen erzeugt keine doppelten Verknüpfungen.
 
+## Sammelbearbeitung
+
+Über **Mehrere auswählen** lassen sich einzelne Kacheln markieren. **Alle Treffer
+auswählen** markiert die aktuellen Such-/Filterergebnisse, bis zu 500 Fotos pro
+Vorgang. Beim Ändern des Such- oder Tagfilters wird die Auswahl geleert; die
+Sortierreihenfolge ändert die Auswahl nicht. Markierte Bilder sind mit Rahmen
+und Häkchen gekennzeichnet.
+
+**Auswahl bearbeiten** öffnet einen gemeinsamen Dialog. Tags, Räume und weitere
+Objekte haben jeweils eine eigene Aktion **Hinzufügen** oder **Entfernen**.
+Hinzufügen ergänzt die vorhandenen Angaben. Entfernen löst ausschließlich die
+gewählten Tags oder Zuordnungen. Leere Felder verändern nichts. Die Originale,
+Aufnahmedaten und alle übrigen Verknüpfungen bleiben erhalten.
+
+Der Server prüft sämtliche Bilder und Ziele auf Projektzugehörigkeit und Existenz.
+Die gesamte Sammeländerung erfolgt in einer Transaktion: Fehler führen zu keiner
+Teiländerung. Erneutes Anwenden einer Hinzufüge-Aktion erzeugt keine Duplikate.
+Nach dem Speichern zeigt die Übersicht die tatsächlich geänderte Bildanzahl.
+
 ## Räume und Baufortschritt
 
 Unter **Projektwerkstatt → Räume & Grundrisse** zeigt jeder gespeicherte Raum
@@ -35,9 +54,11 @@ dabei gestapelt erhalten.
 
 Die Raumvorschau zeigt die neuesten Aufnahmen zuerst. Die Fotoverwaltung lässt
 sich zusätzlich nach Aufnahmedatum auf- oder absteigend sortieren. Wenn kein
-Aufnahmedatum eingetragen ist, wird das Upload-Datum verwendet und ausdrücklich
-als **Upload** gekennzeichnet. Aufnahmedatum, Beschreibung und Tags lassen sich
-in den Fotodetails pflegen. Bilder werden dabei nicht kopiert; andere
+Aufnahmedatum in den Bildmetadaten vorliegt, wird das Upload-Datum verwendet und ausdrücklich
+als **Upload** gekennzeichnet. Das Aufnahmedatum ist schreibgeschützt. Es wird
+aus EXIF `DateTimeOriginal`, alternativ `DateTimeDigitized`, gelesen. Ein
+Dateiänderungsdatum wird nicht als Aufnahmezeit ausgegeben. Beschreibung und Tags
+bleiben in den Fotodetails bearbeitbar. Bilder werden dabei nicht kopiert; andere
 Objektzuordnungen und die zentrale Bibliothek bleiben dieselben.
 
 Neue Räume müssen zuerst gespeichert werden; danach erscheint der Fotobereich
@@ -84,7 +105,12 @@ Größenänderung. Ein fehlerhaftes Bild bricht den gesamten Upload ohne Teilabl
 Identische gespeicherte Bilddaten werden innerhalb des Projekts wiederverwendet.
 Animationen und mehrseitige Dateien werden auch bei gewählter Komprimierung
 unverändert gespeichert, damit keine weiteren Bilder oder Seiten verloren gehen.
-Die Vorschau zeigt dabei das erste Bild.
+Die Vorschau zeigt dabei das erste Bild. Bei komprimierten Bildern bleiben die
+Aufnahmezeit-Metadaten erhalten; eine bereits angewandte Bilddrehung wird dabei
+nicht nochmals als EXIF-Orientierung gespeichert. Bereits vorhandene Originale
+werden für die Datumsanzeige ebenfalls ausgelesen. Historische manuelle
+Datumsangaben bleiben intern und in Backups erhalten, beeinflussen die Anzeige
+und Reihenfolge jedoch nicht mehr.
 
 ## Daten und Backups
 

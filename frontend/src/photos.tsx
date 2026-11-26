@@ -1,3 +1,4 @@
+import { PhotoBulk } from './photo-bulk';
 import { PhotoUpload, usePhotoFormats } from './photo-upload';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -139,8 +140,9 @@ export function SourcePhotoSection({
           </Button>
         </Group>
         <Text size="xs" c="dimmed">
-          Die neuesten Aufnahmen zuerst. Je Foto kannst du Datum, Beschreibung und Tags pflegen.
-          Ohne Aufnahmedatum gilt das Upload-Datum.
+          Die neuesten Aufnahmen zuerst. Das Aufnahmedatum wird aus den Bildmetadaten gelesen.
+          Beschreibung und Tags kannst du ergänzen. Ohne Aufnahmedatum gilt für die Sortierung das
+          Upload-Datum.
         </Text>
         <ErrorBox value={query.error} />
         {query.isPending ? (
@@ -260,6 +262,9 @@ function PhotoCollection({
     [uploadOpen, setUploadOpen] = useState(false),
     [uploadSummary, setUploadSummary] = useState<Row | null>(null),
     [pick, setPick] = useState(false),
+    [bulkMode, setBulkMode] = useState(false),
+    [bulkIds, setBulkIds] = useState<number[] | null>(null),
+    [bulkMessage, setBulkMessage] = useState(''),
     [selected, setSelected] = useState<number[]>([]),
     [detail, setDetail] = useState<number | null>(initialPhotoId || null),
     [manageTags, setManageTags] = useState(false),
@@ -271,9 +276,9 @@ function PhotoCollection({
     changed = usePhotoChanges(),
     operation = useRef(false);
   useEffect(() => {
-    onLayerChange?.(detail !== null || manageTags || uploadOpen || busy);
+    onLayerChange?.(detail !== null || manageTags || uploadOpen || bulkIds !== null || busy);
     return () => onLayerChange?.(false);
-  }, [detail, manageTags, uploadOpen, busy, onLayerChange]);
+  }, [detail, manageTags, uploadOpen, bulkIds, busy, onLayerChange]);
   async function run(fn: () => Promise<void>) {
     if (operation.current) return;
     operation.current = true;
@@ -314,6 +319,9 @@ function PhotoCollection({
               ? a.created_at.localeCompare(b.created_at)
               : b.created_at.localeCompare(a.created_at),
     );
+  const selecting = pick || bulkMode;
+  const visibleIds = new Set(rows.map((row) => row.id));
+  const visibleSelection = selected.filter((id) => visibleIds.has(id));
   return (
     <Stack gap="sm">
       <Group justify="space-between">
@@ -323,6 +331,18 @@ function PhotoCollection({
             : 'Ein Foto kann mehreren Einträgen zugeordnet sein. Tags dienen ausschließlich der Suche.'}
         </Text>
         <Group gap={6}>
+          {!pick && (
+            <Button
+              variant="default"
+              disabled={busy}
+              onClick={() => {
+                setBulkMode(!bulkMode);
+                setSelected([]);
+              }}
+            >
+              {bulkMode ? 'Auswahl beenden' : 'Mehrere auswählen'}
+            </Button>
+          )}
           <Button
             variant="default"
             size="compact-sm"
@@ -339,6 +359,8 @@ function PhotoCollection({
               leftSection={<IconLink size={15} />}
               onClick={() => {
                 setPick(!pick);
+                setBulkMode(false);
+                setBulkIds(null);
                 setSelected([]);
               }}
             >
@@ -363,7 +385,10 @@ function PhotoCollection({
             label="Fotos suchen"
             placeholder="Titel, Beschreibung oder Tag"
             value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
+            onChange={(e) => {
+              setSearch(e.currentTarget.value);
+              if (bulkMode) setSelected([]);
+            }}
           />
           <MultiSelect
             comboboxProps={{ zIndex: 480, withinPortal: true }}
@@ -376,7 +401,10 @@ function PhotoCollection({
             clearable
             data={(tags.data?.tags || []).map((t: Row) => ({ value: String(t.id), label: t.name }))}
             value={tagIds}
-            onChange={setTagIds}
+            onChange={(values) => {
+              setTagIds(values);
+              if (bulkMode) setSelected([]);
+            }}
           />
           <Select
             comboboxProps={{ zIndex: 480, withinPortal: true }}
@@ -397,6 +425,47 @@ function PhotoCollection({
         </Group>
       </Paper>
       <ErrorBox value={failure || query.error || tags.error} />
+      {bulkMessage && (
+        <Text size="sm" c="dimmed">
+          {bulkMessage}
+        </Text>
+      )}
+      {bulkMode && (
+        <Group className="photo-bulk-bar" justify="space-between" aria-label="Fotoauswahl">
+          <Text size="sm" fw={600}>
+            {visibleSelection.length} Fotos ausgewählt
+          </Text>
+          <Group gap={6}>
+            <Button
+              variant="default"
+              size="compact-sm"
+              disabled={!rows.length || busy}
+              onClick={() => setSelected(rows.slice(0, 500).map((row) => row.id))}
+            >
+              {rows.length > 500 ? 'Erste 500 Treffer auswählen' : 'Alle Treffer auswählen'}
+            </Button>
+            <Button
+              variant="subtle"
+              size="compact-sm"
+              disabled={!selected.length || busy}
+              onClick={() => setSelected([])}
+            >
+              Auswahl leeren
+            </Button>
+            <Button
+              size="compact-sm"
+              disabled={!visibleSelection.length || busy}
+              onClick={() => setBulkIds([...visibleSelection])}
+            >
+              Auswahl bearbeiten
+            </Button>
+          </Group>
+          <Text size="xs" c="dimmed">
+            Bis zu 500 Bilder pro Vorgang. Such- oder Tagfilter ändern leert die Auswahl.
+          </Text>
+        </Group>
+      )}
+
       {uploadSummary && (
         <Text size="xs" c="dimmed">
           {uploadSummary.optimized_count > 0
@@ -439,23 +508,35 @@ function PhotoCollection({
           <div className="photo-scroll">
             <SimpleGrid cols={{ base: 2, sm: 3, lg: 5 }} spacing="sm">
               {rows.map((p) => (
-                <Paper withBorder key={p.id} className="photo-card">
+                <Paper
+                  withBorder
+                  key={p.id}
+                  className={
+                    'photo-card' +
+                    (selecting && selected.includes(p.id) ? ' photo-card-selected' : '')
+                  }
+                >
                   <UnstyledButton
                     className="photo-card-open"
                     onClick={() =>
-                      pick
+                      selecting
                         ? setSelected(
                             selected.includes(p.id)
                               ? selected.filter((x) => x !== p.id)
-                              : [...selected, p.id],
+                              : selected.length < 500
+                                ? [...selected, p.id]
+                                : selected,
                           )
                         : setDetail(p.id)
                     }
-                    aria-label={pick ? 'Foto auswählen: ' + p.title : 'Foto öffnen: ' + p.title}
+                    aria-label={
+                      selecting ? 'Foto auswählen: ' + p.title : 'Foto öffnen: ' + p.title
+                    }
+                    aria-pressed={selecting ? selected.includes(p.id) : undefined}
                   >
                     <div className="photo-image-wrap">
                       <img src={projectURL(p.thumbnail_url)} alt={p.title} loading="lazy" />
-                      {pick && (
+                      {selecting && (
                         <Checkbox
                           checked={selected.includes(p.id)}
                           readOnly
@@ -481,7 +562,7 @@ function PhotoCollection({
                       ))}
                       {p.tags.length > 3 && <Text size="xs">+{p.tags.length - 3}</Text>}
                     </Group>
-                    {source && !pick && (
+                    {source && !selecting && (
                       <Button
                         variant="subtle"
                         size="compact-xs"
@@ -517,6 +598,19 @@ function PhotoCollection({
             )}
           </div>
         </>
+      )}
+      {bulkIds && (
+        <PhotoBulk
+          ids={bulkIds}
+          onClose={() => setBulkIds(null)}
+          onSaved={async (result) => {
+            await changed();
+            setBulkMessage(`${result.changed} von ${result.processed} Fotos aktualisiert.`);
+            setBulkIds(null);
+            setBulkMode(false);
+            setSelected([]);
+          }}
+        />
       )}
       {uploadOpen && (
         <PhotoUpload
@@ -558,7 +652,6 @@ function PhotoDetails({ id, onClose }: { id: number; onClose: () => void }) {
       initialValues: {
         title: '',
         description: '',
-        taken_on: '',
         tags: [] as string[],
         revision: '',
       },
@@ -570,7 +663,6 @@ function PhotoDetails({ id, onClose }: { id: number; onClose: () => void }) {
       const value = {
         title: p.title,
         description: p.description,
-        taken_on: p.taken_on,
         tags: p.tags.map((t: Row) => t.name),
         revision: p.revision,
       };
@@ -635,9 +727,11 @@ function PhotoDetails({ id, onClose }: { id: number; onClose: () => void }) {
             />
             <TextInput
               label="Aufnahmedatum"
-              type="date"
-              disabled={busy}
-              {...form.getInputProps('taken_on')}
+              readOnly
+              value={
+                p.taken_on ? displayDate(p.taken_on) : 'Kein Aufnahmedatum in den Bildmetadaten'
+              }
+              description="Automatisch aus den Bildmetadaten; nicht bearbeitbar."
             />
             <Textarea
               label="Beschreibung"

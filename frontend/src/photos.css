@@ -115,3 +115,13 @@
   outline: 2px solid var(--mantine-primary-color-filled);
   outline-offset: 2px;
 }
+.photo-card-selected {
+  outline: 2px solid var(--mantine-primary-color-filled);
+  outline-offset: -2px;
+}
+.photo-bulk-bar {
+  padding: 10px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mantine-primary-color-light);
+}

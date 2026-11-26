@@ -5,7 +5,7 @@ backed up once. An object link is removed on deletion of its object, never its p
 """
 import json
 import warnings
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
@@ -16,6 +16,7 @@ from sqlalchemy import select, event
 from multi_projects import ProjectSession, current_project_id
 from project_documents import plain
 from project_lifecycle import sqlite_write_lock
+from photo_metadata import capture_exif, stored_capture_date
 from photo_formats import PHOTO_EXTENSIONS, FORMAT_EXTENSIONS, capabilities, supported_formats
 
 IMAGE_EXTENSIONS=PHOTO_EXTENSIONS
@@ -58,6 +59,7 @@ def register_photos(r):
         digest=db.Column(db.String(64),nullable=False)
         title=db.Column(db.String(200),nullable=False)
         description=db.Column(db.Text,nullable=False,default='')
+        # Keep historical manual entries in backups; the API reads original metadata.
         taken_on=db.Column(db.String(10),nullable=False,default='')
         revision=db.Column(db.String(32),nullable=False,default=lambda:uuid4().hex)
         created_at=db.Column(db.DateTime,nullable=False,default=lambda:datetime.now(timezone.utc))
@@ -101,7 +103,7 @@ def register_photos(r):
     def info(kind,ident):
         try:obj=target(kind,ident)
         except ValueError:return None
-        return dict(type=kind,id=ident,label=sources[kind][1](obj),url=sources[kind][2](obj))
+        return dict(type=kind,id=ident,kind=getattr(obj,'kind',''),label=sources[kind][1](obj),url=sources[kind][2](obj))
     def source_body(body,optional=False):
         kind=body.get('source_type');ident=body.get('source_id')
         if optional and not kind and ident is None:return None
@@ -109,7 +111,7 @@ def register_photos(r):
     def wire(p):
         doc=p.document
         if not doc or doc.project_id!=current_project_id():raise ValueError('Ungültige Foto-Dateizuordnung.')
-        return dict(id=p.id,title=p.title,description=p.description,taken_on=p.taken_on,revision=p.revision,created_at=p.created_at.isoformat(),filename=doc.original_name,document_id=doc.id,
+        return dict(id=p.id,title=p.title,description=p.description,taken_on=stored_capture_date(r.PROJECT_DOCUMENT_ROOT,doc.stored_name),revision=p.revision,created_at=p.created_at.isoformat(),filename=doc.original_name,document_id=doc.id,
                     tags=[dict(id=x.tag.id,name=x.tag.name) for x in p.tag_links if x.tag.project_id==current_project_id()],
                     links=[{**(info(x.source_type,x.source_id) or dict(type=x.source_type,id=x.source_id,label='Objekt nicht mehr vorhanden',url='')),'link_id':x.id} for x in p.links],
                     thumbnail_url=f'/api/photos/{p.id}/image?size=thumb',image_url=f'/api/photos/{p.id}/image',original_url=f'/api/photos/{p.id}/original')
@@ -123,7 +125,9 @@ def register_photos(r):
     def link(photo,source):
         kind,ident=source
         exists=db.session.scalar(select(PhotoObjectLink.id).where(PhotoObjectLink.photo_id==photo.id,PhotoObjectLink.source_type==kind,PhotoObjectLink.source_id==ident))
-        if not exists:db.session.add(PhotoObjectLink(photo_id=photo.id,source_type=kind,source_id=ident))
+        if not exists:
+            db.session.add(PhotoObjectLink(photo_id=photo.id,source_type=kind,source_id=ident));return True
+        return False
     def sync_companion(row):
         ids=json.loads(row.data_json).get('document_ids',[])
         for doc in db.session.scalars(select(r.ProjectDocument).where(r.ProjectDocument.id.in_(ids))):
@@ -229,10 +233,11 @@ def register_photos(r):
                     if multi_frame:multi_frame_count+=1
                     if compression=='compact' and not multi_frame:
                         with Image.open(BytesIO(raw)) as image:
+                            timestamp_exif=capture_exif(image)
                             image=ImageOps.exif_transpose(image)
                             image.thumbnail((2560,2560),Image.Resampling.LANCZOS)
                             if image.mode not in ('RGB','RGBA'):image=image.convert('RGBA' if 'transparency' in image.info else 'RGB')
-                            output=BytesIO();image.save(output,format='WEBP',quality=82,method=6,icc_profile=image.info.get('icc_profile'))
+                            output=BytesIO();image.save(output,format='WEBP',quality=82,method=6,icc_profile=image.info.get('icc_profile'),exif=timestamp_exif)
                             candidate=output.getvalue()
                             if len(candidate)<len(raw):raw=candidate;fmt='WEBP';optimized=True;optimized_count+=1
                 stored_bytes+=len(raw)
@@ -277,14 +282,57 @@ def register_photos(r):
                 if p.links:return jsonify(error='Das Foto ist noch verknüpft. Bitte zuerst die Objektverknüpfungen lösen.'),409
                 db.session.delete(p);db.session.commit();return jsonify(ok=True,original_retained=True)
             if not isinstance(body,dict) or set(body)-{'revision','title','description','taken_on','tags'}:raise ValueError('Ungültige Fotodaten.')
+            if 'taken_on' in body and body['taken_on']!=stored_capture_date(r.PROJECT_DOCUMENT_ROOT,p.document.stored_name):
+                raise ValueError('Das Aufnahmedatum stammt aus den Bildmetadaten und kann nicht geändert werden.')
             p.title=plain(body.get('title',''),'Titel',200,required=True);p.description=plain(body.get('description',''),'Beschreibung',5000)
-            taken=body.get('taken_on','')
-            if not isinstance(taken,str) or (taken and date.fromisoformat(taken).isoformat()!=taken):raise ValueError('Ungültiges Aufnahmedatum.')
-            p.taken_on=taken;p.revision=uuid4().hex
+            p.revision=uuid4().hex
             selected=tags(body.get('tags',[]));existing={x.tag_id:x for x in p.tag_links}
             p.tag_links=[existing.get(x.id) or PhotoTagging(tag_id=x.id) for x in selected]
             db.session.commit();return jsonify(photo=wire(p))
         except (ValueError,TypeError) as exc:db.session.rollback();return jsonify(error=str(exc)),400
+    @app.post('/api/photos/bulk')
+    def photo_bulk():
+        try:
+            body=request.get_json(silent=True)
+            allowed={'photo_ids','add_tags','remove_tags','add_sources','remove_sources'}
+            if not isinstance(body,dict) or set(body)-allowed:raise ValueError('Ungültige Sammeländerung.')
+            ids=body.get('photo_ids')
+            if not isinstance(ids,list) or not ids or len(ids)>500 or any(type(x)is not int or x<1 for x in ids):raise ValueError('Bitte 1 bis 500 Fotos auswählen.')
+            selected=[photo(ident) for ident in sorted(set(ids))]
+            names={}
+            for field in ('add_tags','remove_tags'):
+                values=body.get(field,[])
+                if not isinstance(values,list) or len(values)>50:raise ValueError('Maximal 50 Tags pro Aktion sind möglich.')
+                names[field]={plain(value,'Tag',60,required=True).casefold():plain(value,'Tag',60,required=True) for value in values}
+            if names['add_tags'].keys() & names['remove_tags'].keys():raise ValueError('Ein Tag kann nicht zugleich hinzugefügt und entfernt werden.')
+            targets={}
+            for field in ('add_sources','remove_sources'):
+                values=body.get(field,[])
+                if not isinstance(values,list) or len(values)>100 or any(not isinstance(x,dict) or set(x)!={'source_type','source_id'} for x in values):raise ValueError('Ungültige Objektauswahl.')
+                targets[field]={source_body(value) for value in values}
+            if targets['add_sources'] & targets['remove_sources']:raise ValueError('Eine Zuordnung kann nicht zugleich hinzugefügt und entfernt werden.')
+            if not any(names.values()) and not any(targets.values()):raise ValueError('Bitte mindestens eine Änderung auswählen.')
+            # Validate all IDs/references before any change; one project transaction.
+            additions=tags(list(names['add_tags'].values()))
+            removals=set(db.session.scalars(select(PhotoTag.id).where(PhotoTag.normalized.in_(list(names['remove_tags'])))))
+            changed=set();tag_changes=0;links_added=0;links_removed=0
+            for item in selected:
+                existing={entry.tag_id:entry for entry in item.tag_links}
+                desired={ident:entry for ident,entry in existing.items() if ident not in removals}
+                for tag in additions:
+                    if tag.id not in desired:desired[tag.id]=PhotoTagging(tag_id=tag.id)
+                if len(desired)>50:raise ValueError('Ein ausgewähltes Foto hätte mehr als 50 Tags. Es wurde nichts geändert.')
+                if set(desired)!=set(existing):
+                    tag_changes+=len(set(existing)^set(desired));item.tag_links=list(desired.values());item.revision=uuid4().hex;changed.add(item.id)
+                for target_value in targets['add_sources']:
+                    if link(item,target_value):links_added+=1;changed.add(item.id)
+                for kind,ident in targets['remove_sources']:
+                    count=db.session.query(PhotoObjectLink).filter_by(photo_id=item.id,source_type=kind,source_id=ident).delete()
+                    if count:links_removed+=count;changed.add(item.id)
+            db.session.commit()
+            return jsonify(ok=True,processed=len(selected),changed=len(changed),tag_changes=tag_changes,links_added=links_added,links_removed=links_removed)
+        except (ValueError,TypeError) as exc:db.session.rollback();return jsonify(error=str(exc)),400
+
     @app.post('/api/photos/links')
     def photo_links():
         try:
