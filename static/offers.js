@@ -44,6 +44,7 @@
     }
   }
   sortSelect.onchange=()=>{try{localStorage.setItem(sortKey,sortSelect.value);}catch{}refreshUI();};
+  let offerPaymentTotals=null;
   let offerSumMode=false;
   const offerSumIds=new Set();
   function updateOfferSelection() {
@@ -762,7 +763,7 @@
     const invoiceCount=o.billing?.linked_invoices?.length??o.billing?.invoices?.length??0;
     const meta=[o.category,o.issued||'Ohne Datum'].filter(Boolean).map(esc).join(' · ');
     const actions=accepted
-      ? `<a class="mini" href="/?firmenvorschlaege=1" title="Arbeitspaket im Bauzeitenplan zuordnen" aria-label="Arbeitspaket zuordnen">Arbeitspaket<span class="offer-action-detail"> zuordnen</span></a><a class="mini" href="/energieplanung?offer_id=${o.id}" title="Förderung prüfen" aria-label="Förderung prüfen">Förderung<span class="offer-action-detail"> prüfen</span></a>`
+      ? (o.payment_completed?`<span class="offer-payment-completed">Vollständig bezahlt</span><button class="offer-tile-icon" type="button" data-offer-payment-completed="${o.id}" aria-label="Zahlungsabschluss zurücknehmen" title="Zahlungsabschluss zurücknehmen">${icon('history')}</button>`:`<button class="mini" type="button" data-offer-payment-completed="${o.id}" aria-label="Angebot als vollständig bezahlt markieren">Als bezahlt markieren</button>`)
       : `<button class="primary mini" type="button" data-offer-accept="${o.id}">Annehmen</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
     const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${accepted?`<button class="offer-tile-icon" type="button" data-offer-invoices="${o.id}" aria-label="Zugeordnete Rechnungen anzeigen: ${invoiceCount}" title="Zugeordnete Rechnungen anzeigen">${icon('receipt')}<span class="offer-icon-badge">${invoiceCount}</span></button>`:''}${PHBWorkUI.button('offer',o.id,'offer-tile-icon')}${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
     return `<article class="offer-card offer-list-card offer-tile ${accepted?'offer-tile-with-payment':''}" data-offer-card="${o.id}">
@@ -850,7 +851,9 @@
     $('offersCountDraft').textContent=String(drafts.length+versionDrafts.length);
     $('offersCountListed').textContent=String(listed.length);
     $('offersCountAccepted').textContent=String(accepted.length);
-    $('offersAcceptedTotal').textContent=fmt(accepted.reduce((sum,o)=>sum+Number(o.agreed_gross??o.gross??0),0));
+    $('offersAcceptedTotal').textContent=fmt(offerPaymentTotals?.agreed??accepted.reduce((sum,o)=>sum+Number(o.agreed_gross??o.gross??0),0));
+    $('offersPaidTotal').textContent=offerPaymentTotals?fmt(offerPaymentTotals.paid):'–';
+    $('offersOpenTotal').textContent=offerPaymentTotals?fmt(offerPaymentTotals.open):'–';
     $('offersCountRejected').textContent=String(rejected.length);
     $('offersDraftBadge').textContent=(drafts.length+versionDrafts.length)?`(${drafts.length+versionDrafts.length})`:'';
     const draftCount=drafts.length+versionDrafts.length;
@@ -898,6 +901,7 @@
   }
   async function reload() {
     const [o,c] = await Promise.all([request('/api/offers'),request('/api/costs')]);
+    offerPaymentTotals=o.payment_totals||null;
     offers=o.offers||[]; categories=o.categories||[]; contractors=c.contractors||[]; versionDrafts=o.draft_versions||[];
     budgets=(c.budget_lines||[]).filter(b=>b.active&&!b.is_group);
     refreshUI();
@@ -1184,12 +1188,29 @@
     openOfferDetails(Number(toggle.dataset.offerDetails));
   });
   document.addEventListener('click',async e=>{
-    const button=e.target.closest('button[data-offer-promote],button[data-offer-accept],button[data-offer-reject],button[data-offer-relist],button[data-offer-edit],button[data-offer-delete],button[data-offer-invoices]');
+    const button=e.target.closest('button[data-offer-promote],button[data-offer-accept],button[data-offer-reject],button[data-offer-relist],button[data-offer-edit],button[data-offer-delete],button[data-offer-invoices],button[data-offer-payment-completed]');
     if(!button)return;
     const dataset=button.dataset;
     const key=Object.keys(dataset).find(k=>k.startsWith('offer'));
     const id=dataset[key];
     try {
+      if(key==='offerPaymentCompleted'){
+        if(button.disabled)return;
+        button.disabled=true;
+        try{
+          const offer=offers.find(o=>Number(o.id)===Number(id));
+          if(!offer)return;
+          const completed=!offer.payment_completed;
+          const unpaid=(offer.billing?.invoices||[]).filter(r=>Number(r.counted)-Number(r.paid)>0.01).length;
+          const message=completed
+            ? 'Angebot als vollständig bezahlt markieren? Auftragssumme: '+fmt(offer.agreed_gross??offer.gross)+'. Erfasste Zahlungen: '+fmt(offer.billing?.paid??0)+'. Der rechnerische Rest dieses Angebots wird auf 0 gesetzt. Rechnungen und Finanzierungsbuchungen bleiben unverändert.'+(unpaid?' Achtung: '+unpaid+' zugeordnete Rechnungen sind noch nicht vollständig bezahlt.':'')
+            : 'Zahlungsabschluss zurücknehmen? Der offene Betrag wird wieder aus Auftragssumme und erfassten Rechnungszahlungen berechnet.';
+          if(!await PHBUI.confirm(message))return;
+          await request(offerUrl(id)+'/payment-completion',{method:'POST',data:{completed,confirm:true}});
+          await reload();
+        }finally{button.disabled=false;}
+        return;
+      }
       if(key==='offerEdit'){
         openOfferEdit(Number(id));
         return;

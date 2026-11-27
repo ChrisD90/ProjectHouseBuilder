@@ -43,6 +43,7 @@ def register_offer_reversals(app, db, Offer, CostItem, OrderAcceptance, *, has_d
                 accepted_at=accepted.created_at if accepted else None))
             if accepted: db.session.delete(accepted)
             offer.status = 'Angebot'; offer.deletion_locked = True
+            offer.payment_completed = False
             db.session.flush()
             sync_costs(offer); sync_version(offer)
             db.session.commit()

@@ -281,6 +281,7 @@ def define_models(db):
         created_at=db.Column(db.DateTime,default=datetime.utcnow)
         current_version=db.Column(db.Integer,nullable=False,default=1,server_default='1')
         deletion_locked=db.Column(db.Boolean,nullable=False,default=False,server_default=text('FALSE'))
+        payment_completed=db.Column(db.Boolean,nullable=False,default=False,server_default=text('FALSE'))
         versions=db.relationship('OfferVersion',cascade='all,delete-orphan',lazy='select',order_by='OfferVersion.version_number')
         sections=db.relationship('OfferSection',cascade='all,delete-orphan',lazy='select')
         positions=db.relationship('OfferPosition',cascade='all,delete-orphan',lazy='select')

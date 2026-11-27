@@ -256,6 +256,7 @@ def load_rows(path, db, owner):
         total += len(rows)
         if total > MAX_ROWS: raise ValueError('Zu viele Datensätze im Backup.')
         for row in rows:
+            if name=='offer' and 'payment_completed' not in row:row={**row,'payment_completed':False}
             if name=='calendar_preferences' and 'work_json' not in row:row={**row,'work_json':'{}'}
             if name=='finance_loan_drawdown' and 'payouts_json' not in row:row={**row,'payouts_json':'[]'}
             if name=='self_work_plan' and 'calendar_event_id' not in row:row={**row,'calendar_event_id':None}

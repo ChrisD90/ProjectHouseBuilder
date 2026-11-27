@@ -358,7 +358,7 @@ def register(runtime: ModuleType):
         reversals = [dict(reversed_at=x.reversed_at.isoformat(), agreed_gross=float(x.agreed_gross), document_id=x.confirmation_document_id) for x in runtime.db.session.scalars(runtime.select(runtime.OfferAcceptanceReversal).where(runtime.OfferAcceptanceReversal.offer_id == o.id).order_by(runtime.OfferAcceptanceReversal.id.desc()))]
         acceptance_json = {'id': acceptance.id, 'mode': acceptance.mode, 'quoted_gross': float(acceptance.quoted_gross), 'agreed_gross': float(acceptance.agreed_gross), 'document_id': acceptance.confirmation_document_id, 'created_at': acceptance.created_at.isoformat() if acceptance.created_at else ''} if acceptance else None
         deletion_reason = runtime._offer_deletion_reason(o)
-        return {'positions_token':positions_token(o),'diy_estimate':diy_estimate(o),'attachments':[{'id':d.id,'filename':d.original_name,'uploaded_at':d.uploaded_at.isoformat() if d.uploaded_at else '', 'view_url':f'/api/documents/{d.id}/preview' if runtime.Path(d.original_name).suffix.lower() in ('.pdf','.jpg','.jpeg','.png','.webp','.txt') else None,'download_url':f'/api/documents/{d.id}/download'} for d in runtime.db.session.scalars(runtime.select(runtime.Document).where(runtime.Document.offer_id==o.id).order_by(runtime.Document.id.desc()))], 'acceptance_reversals': reversals, 'acceptance': acceptance_json, 'agreed_gross': runtime._contract_gross(o), 'can_delete': not deletion_reason, 'deletion_reason': deletion_reason, 'id': o.id, 'number': o.number, 'vendor': o.vendor, 'filename': o.filename, 'issued': o.issued, 'expires': o.expires, 'net': o.net, 'vat': o.vat, 'gross': o.gross, 'category': o.category, 'budget_line_id': o.budget_line_id, 'notes': o.notes, 'tax_rate': o.tax_rate, 'status': o.status, 'reconciled': o.reconciled, 'warnings': runtime.json.loads(o.warnings or '[]'), 'document_id': o.document_id, 'contractor_id': o.contractor_id, 'billing': runtime.offer_billing_dict(o), 'current_version': o.current_version or 1, 'versions': [runtime._version_json(v) for v in reversed(o.versions)], 'sections': [{'id': g.id, 'name': g.name, 'net': g.net, 'gross': g.gross, 'budget_line_id': g.budget_line_id, 'selected': g.selected} for g in sorted(o.sections, key=lambda x: x.sort_order)], 'positions': [{'id': p.id, 'number': p.number, 'section': p.section, 'description': p.description, 'quantity': p.quantity, 'unit': p.unit, 'unit_price': p.unit_price, 'net_amount': p.net_amount, 'optional_amount': p.optional_amount, 'optional': p.optional, 'page': p.page, 'own_work': bool(p.own_work)} for p in sorted(o.positions, key=lambda x: x.id)]}
+        return {'positions_token':positions_token(o),'diy_estimate':diy_estimate(o),'attachments':[{'id':d.id,'filename':d.original_name,'uploaded_at':d.uploaded_at.isoformat() if d.uploaded_at else '', 'view_url':f'/api/documents/{d.id}/preview' if runtime.Path(d.original_name).suffix.lower() in ('.pdf','.jpg','.jpeg','.png','.webp','.txt') else None,'download_url':f'/api/documents/{d.id}/download'} for d in runtime.db.session.scalars(runtime.select(runtime.Document).where(runtime.Document.offer_id==o.id).order_by(runtime.Document.id.desc()))], 'acceptance_reversals': reversals, 'acceptance': acceptance_json, 'agreed_gross': runtime._contract_gross(o), 'payment_completed': bool(o.payment_completed), 'can_delete': not deletion_reason, 'deletion_reason': deletion_reason, 'id': o.id, 'number': o.number, 'vendor': o.vendor, 'filename': o.filename, 'issued': o.issued, 'expires': o.expires, 'net': o.net, 'vat': o.vat, 'gross': o.gross, 'category': o.category, 'budget_line_id': o.budget_line_id, 'notes': o.notes, 'tax_rate': o.tax_rate, 'status': o.status, 'reconciled': o.reconciled, 'warnings': runtime.json.loads(o.warnings or '[]'), 'document_id': o.document_id, 'contractor_id': o.contractor_id, 'billing': runtime.offer_billing_dict(o), 'current_version': o.current_version or 1, 'versions': [runtime._version_json(v) for v in reversed(o.versions)], 'sections': [{'id': g.id, 'name': g.name, 'net': g.net, 'gross': g.gross, 'budget_line_id': g.budget_line_id, 'selected': g.selected} for g in sorted(o.sections, key=lambda x: x.sort_order)], 'positions': [{'id': p.id, 'number': p.number, 'section': p.section, 'description': p.description, 'quantity': p.quantity, 'unit': p.unit, 'unit_price': p.unit_price, 'net_amount': p.net_amount, 'optional_amount': p.optional_amount, 'optional': p.optional, 'page': p.page, 'own_work': bool(p.own_work)} for p in sorted(o.positions, key=lambda x: x.id)]}
 
     runtime.offer_dict = offer_dict
 
@@ -465,7 +465,9 @@ def register(runtime: ModuleType):
 
     @runtime.app.get('/api/offers')
     def offers_list():
-        return runtime.jsonify(offers=[runtime.offer_dict(x) for x in runtime.db.session.scalars(runtime.select(runtime.Offer).order_by(runtime.Offer.id.desc()))], draft_versions=runtime._version_drafts(), categories=runtime.category_names())
+        from offer_payments import payment_totals
+        offers=[runtime.offer_dict(x) for x in runtime.db.session.scalars(runtime.select(runtime.Offer).order_by(runtime.Offer.id.desc()))]
+        return runtime.jsonify(offers=offers, payment_totals=payment_totals(offers), draft_versions=runtime._version_drafts(), categories=runtime.category_names())
 
     runtime.offers_list = offers_list
 
@@ -890,6 +892,7 @@ def register(runtime: ModuleType):
             if offer.status != target and (not (offer.status == 'Entwurf' and target == 'Angebot')):
                 offer.deletion_locked = True
             offer.status = target
+            if target not in ('Angenommen','Beauftragt'):offer.payment_completed=False
             if target == 'Angenommen' and offer.contractor_id is None and offer.vendor.strip() and (offer.vendor != 'Firma nicht erkannt'):
                 company = runtime.db.session.scalar(runtime.select(runtime.Contractor).where(runtime.db.func.lower(runtime.Contractor.name) == offer.vendor.lower()).limit(1))
                 if company is None:
@@ -1089,3 +1092,6 @@ def register(runtime: ModuleType):
 
     from offer_position_imports import register as register_position_imports
     register_position_imports(runtime,positions_token)
+
+    from offer_payments import register as register_offer_payments
+    register_offer_payments(runtime)
