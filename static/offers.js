@@ -44,6 +44,41 @@
     }
   }
   sortSelect.onchange=()=>{try{localStorage.setItem(sortKey,sortSelect.value);}catch{}refreshUI();};
+  let offerSumMode=false;
+  const offerSumIds=new Set();
+  function updateOfferSelection() {
+    const summary=window.PHBOfferSelection.summarize(offers,offerSumIds);
+    $('toggleOfferSum').disabled=!offers.some(window.PHBOfferSelection.eligible);
+    $('toggleOfferSum').setAttribute('aria-pressed',String(offerSumMode));
+    $('offerSelectionSummary').hidden=!offerSumMode;
+    $('offerSelectionTotal').textContent=summary.count+' '+(summary.count===1?'Angebot':'Angebote')+' · '+fmt(summary.selected)+' brutto';
+    $('offerSelectionProjected').textContent='Gesamt bei Annahme: '+fmt(summary.projected);
+    const filter=$('offerCategoryFilter').value;
+    const hidden=offers.filter(o=>offerSumIds.has(Number(o.id))&&filter&&o.category!==filter).length;
+    const notes=['Unverbindliche Berechnung – Angebotsstatus bleiben unverändert.'];
+    if(hidden)notes.push(hidden+(hidden===1?' ausgewähltes Angebot':' ausgewählte Angebote')+' außerhalb des Filters.');
+    if(summary.missingProjected||summary.missingSelected)notes.push('Fehlende Beträge: '+Math.max(summary.missingProjected,summary.missingSelected)+' – die Summen sind unvollständig.');
+    $('offerSelectionNote').textContent=notes.join(' ');
+    $('offerSelectionSummary').classList.toggle('has-missing-amount',!!(summary.missingProjected||summary.missingSelected));
+    document.querySelectorAll('[data-offer-sum]').forEach(input=>{
+      input.checked=offerSumIds.has(Number(input.dataset.offerSum));
+      input.closest('[data-offer-card]').classList.toggle('offer-sum-selected',input.checked);
+    });
+  }
+  function setOfferSumMode(enabled) {
+    offerSumMode=enabled;
+    if(!enabled)offerSumIds.clear();
+    refreshUI();
+  }
+  $('toggleOfferSum').onclick=()=>setOfferSumMode(!offerSumMode);
+  $('closeOfferSum').onclick=()=>setOfferSumMode(false);
+  document.addEventListener('change',event=>{
+    const input=event.target.closest('[data-offer-sum]');
+    if(!input||!offerSumMode)return;
+    const id=Number(input.dataset.offerSum);
+    if(input.checked)offerSumIds.add(id);else offerSumIds.delete(id);
+    updateOfferSelection();
+  });
   let comparingOffers = false;
   let offerUploading = false;
   let currentPreviewDocument=null;
@@ -731,7 +766,7 @@
       : `<button class="primary mini" type="button" data-offer-accept="${o.id}">Annehmen</button>${rejected?`<button class="mini" type="button" data-offer-relist="${o.id}">Wieder aufnehmen</button>`:`<button class="mini" type="button" data-offer-reject="${o.id}">Ablehnen</button>`}`;
     const corner=`<div class="offer-tile-corner-actions"><button class="offer-tile-icon" type="button" data-offer-edit="${o.id}" aria-label="Angebot bearbeiten" title="Angebot bearbeiten">${icon('pencil')}</button>${accepted?`<button class="offer-tile-icon" type="button" data-offer-invoices="${o.id}" aria-label="Zugeordnete Rechnungen anzeigen: ${invoiceCount}" title="Zugeordnete Rechnungen anzeigen">${icon('receipt')}<span class="offer-icon-badge">${invoiceCount}</span></button>`:''}${PHBWorkUI.button('offer',o.id,'offer-tile-icon')}${o.can_delete?`<button class="offer-tile-icon danger" type="button" data-offer-delete="${o.id}" aria-label="Angebot löschen" title="Angebot löschen">${icon('trash')}</button>`:''}</div>`;
     return `<article class="offer-card offer-list-card offer-tile ${accepted?'offer-tile-with-payment':''}" data-offer-card="${o.id}">
-      <div class="offer-tile-header"><span class="offer-stage ${color}">${label}</span>${corner}</div>
+      <div class="offer-tile-header"><div class="offer-tile-status">${offerSumMode?`<label class="offer-sum-choice" title="Für die Berechnung auswählen"><input type="checkbox" data-offer-sum="${o.id}" aria-label="Angebot von ${esc(o.vendor)} zur Summe auswählen" ${offerSumIds.has(Number(o.id))?'checked':''}></label>`:''}<span class="offer-stage ${color}">${label}</span></div>${corner}</div>
       <a href="/angebote/${o.id}" class="offer-tile-open" data-offer-details="${o.id}"
         data-offer-page-link
         aria-label="Details zu ${esc(o.vendor)} öffnen">
@@ -804,6 +839,9 @@
   const filterReset=document.createElement('button');filterReset.type='button';filterReset.className='subtle';filterReset.textContent='Filter zurücksetzen';filters.append(filterReset);
   filterReset.onclick=()=>{$('offerCategoryFilter').value='';refreshUI();};
   function refreshUI() {
+    const eligible=new Set(offers.filter(window.PHBOfferSelection.eligible).map(o=>Number(o.id)));
+    for(const id of offerSumIds)if(!eligible.has(id))offerSumIds.delete(id);
+    if(!eligible.size)offerSumMode=false;
     filterReset.hidden=!$('offerCategoryFilter').value;
     const drafts=offers.filter(o=>o.status==='Entwurf');
     const listed=offers.filter(o=>o.status==='Angebot');
@@ -832,6 +870,7 @@
     visible.sort(compareOffers);
     $('offerList').innerHTML=visible.length ? visible.map(renderListed).join('') : '<p class="offer-empty">Noch keine Angebote in der Liste. Du kannst oben manuell ein Angebot anlegen oder ein PDF hochladen und prüfen.</p>';
     $('rejectedOfferList').innerHTML=rejected.length?rejected.sort(compareOffers).map(renderListed).join(''):'<p class="offer-empty">Keine abgelehnten Angebote.</p>';
+    updateOfferSelection();
     if ($('aiOfferChoices')) {
       const previous=new Set([...$('aiOfferChoices').querySelectorAll('input:checked')].map(x=>Number(x.value)));
       $('aiOfferChoices').innerHTML=visible.map(o=>`<label><input type="checkbox" name="ai-compare" value="${o.id}" ${previous.has(o.id)?'checked':''}><span>${esc(o.vendor)} · ${esc(o.category)} · ${fmt(o.gross)}</span></label>`).join('')||'<p class="offer-empty">Mindestens zwei geprüfte Angebote benötigt.</p>';
@@ -1137,6 +1176,11 @@
     const toggle=event.target.closest('[data-offer-details]');
     if(!toggle||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||event.button!==0)return;
     event.preventDefault();
+    if(offerSumMode){
+      const id=Number(toggle.dataset.offerDetails);
+      if(offerSumIds.has(id))offerSumIds.delete(id);else offerSumIds.add(id);
+      updateOfferSelection();return;
+    }
     openOfferDetails(Number(toggle.dataset.offerDetails));
   });
   document.addEventListener('click',async e=>{

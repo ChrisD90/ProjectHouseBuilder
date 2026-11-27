@@ -536,3 +536,18 @@ body.phb-app a.offer-tile-open{text-decoration:none;color:inherit}
  body.phb-app #offerPositionImportPreview{flex:0 0 auto;min-height:220px}
  body.phb-app .offer-position-import-table{height:220px}
 }
+
+/* Optional read-only scenario selection; card dimensions stay unchanged. */
+body.phb-app .offers-list-header .offer-sum-toggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;margin-left:auto;font-size:12px;white-space:nowrap}
+body.phb-app .offers-list-header .offers-list-filters{order:-1}
+body.phb-app .offer-sum-toggle[aria-pressed="true"]{border-color:var(--ui-accent);color:var(--ui-accent)}
+body.phb-app .offer-selection-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 12px;padding:10px 14px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-surface);color:var(--ui-ink);font-size:12px}
+body.phb-app .offer-selection-summary[hidden]{display:none!important}
+body.phb-app .offer-selection-summary>div{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 20px;min-width:0}
+body.phb-app .offer-selection-summary small{flex-basis:100%;font-size:11px;color:var(--ui-muted)}
+body.phb-app .offer-selection-summary.has-missing-amount small{color:var(--ui-danger)}
+body.phb-app .offer-selection-summary>button{padding:5px;display:inline-flex;flex:0 0 auto}
+body.phb-app .offer-tile-status{display:flex;align-items:center;gap:6px;min-width:0}
+body.phb-app .offer-tile-header .offer-sum-choice{display:inline-flex;align-items:center;justify-content:center;margin:0;padding:0;flex:0 0 16px;cursor:pointer}
+body.phb-app .offer-sum-choice input{width:15px;height:15px;margin:0;accent-color:var(--ui-accent);cursor:pointer}
+body.phb-app .offer-tile.offer-sum-selected{outline:2px solid var(--ui-accent);outline-offset:-2px}
