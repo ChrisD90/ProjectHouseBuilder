@@ -70,7 +70,7 @@ def validate_request_origin():
 
 # React owns the shared frame; the reviewed classic workflows remain available
 # as isolated same-origin documents while their native components are migrated.
-REACT_ROUTES={'/fotos','/system','/uebersicht','/projektwerkstatt','/projektunterlagen','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen','/stunden'}
+REACT_ROUTES={'/szenarien','/fotos','/system','/uebersicht','/projektwerkstatt','/projektunterlagen','/','/kosten','/angebote','/belege','/finanzierung','/energieplanung','/stammdaten','/dokumente','/daten','/aufgaben','/eigenleistungen','/stunden'}
 
 @app.before_request
 def react_frontend():
@@ -661,6 +661,9 @@ DocumentInboxConfig, DocumentInboxItem = register_document_inbox(__import__('sys
 from photos import register_photos
 ProjectPhoto, PhotoTag, PhotoTagging, PhotoObjectLink = register_photos(__import__('sys').modules[__name__])
 
+from finance_scenarios import register as register_finance_scenarios
+FinanceScenario = register_finance_scenarios(__import__('sys').modules[__name__])
+
 # Backup settings belong to the server; a browser can only select reachable/mounted paths.
 PlanningBrowserState, planning_get, planning_put, planning_pop = register_planning_state(db)
 install_project_scope(app,db,Project)
@@ -742,7 +745,7 @@ if __name__=='__main__':
         raise SystemExit(1)
     if DATABASE_URL.startswith('sqlite:'):
         from schema_manager import upgrade_database
-        upgrade_database()
+        upgrade_database(progress=lambda message: print(message,flush=True))
     with app.app_context():
         initialize()
         _ensure_import_recovery()

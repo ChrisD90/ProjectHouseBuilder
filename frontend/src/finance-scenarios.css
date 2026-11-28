@@ -1,0 +1,67 @@
+.scenario-page {
+  max-width: 1800px;
+}
+.scenario-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.scenario-card-open {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  padding-top: 8px;
+}
+.scenario-planning {
+  overflow: hidden;
+}
+.scenario-list-header {
+  border-bottom: 1px solid var(--ui-line);
+  background: var(--ui-surface);
+}
+.scenario-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ui-surface);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.scenario-table td {
+  font-size: 12px;
+  vertical-align: middle;
+}
+.scenario-table td:first-child {
+  padding-left: 12px;
+}
+.scenario-table td:nth-child(2) {
+  min-width: 210px;
+}
+.scenario-disabled-line {
+  background: color-mix(in srgb, var(--ui-muted) 5%, transparent);
+}
+.scenario-disabled-line td:not(:first-child) {
+  opacity: 0.65;
+}
+.scenario-sources {
+  margin-top: 16px;
+  border: 1px solid var(--ui-line);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--ui-surface);
+}
+.scenario-sources summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.scenario-save-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 12px 0;
+  margin-top: 16px;
+  border-top: 1px solid var(--ui-line);
+  background: var(--ui-background, var(--ui-surface));
+}

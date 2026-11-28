@@ -27,8 +27,10 @@ def alembic_config(database_url: str) -> Config:
     return cfg
 
 
-def upgrade_database(*, backup_function=None) -> dict:
+def upgrade_database(*, backup_function=None, progress=None) -> dict:
     """Upgrade only SQLite; call backup first if an existing DB needs revisions."""
+    report = progress or (lambda message: None)
+    report('Datenbankversion und Integrität werden geprüft …')
     database_url = os.environ.get('DATABASE_URL', 'sqlite:///' + str(ROOT / 'sanierung.db'))
     url = make_url(database_url)
     if url.drivername != 'sqlite' or url.database in (None, '', ':memory:'):
@@ -53,6 +55,7 @@ def upgrade_database(*, backup_function=None) -> dict:
             else:
                 revision = None
         if revision == expected:
+            report('Datenbank ist aktuell ('+expected+').')
             return {'status': 'current', 'revision': revision, 'backup': None}
         # Ensure revision is known (also guards accidental checkout of older code).
         if revision is not None:
@@ -68,13 +71,17 @@ def upgrade_database(*, backup_function=None) -> dict:
             if revision not in predecessors:
                 raise RuntimeError('Die Datenbank ist neuer oder hat eine andere Migrationshistorie.')
         # A backup is compulsory BEFORE touching an existing database.
+        report('Sicherheitsbackup vor dem Update wird erstellt. Bei vielen Fotos kann dies mehrere Minuten dauern; bitte den Start nicht abbrechen.')
         archive = backup_function()
+        report('Sicherheitsbackup wird geprüft: '+str(archive))
         backup_manager.verify_backup(Path(archive))
     else:
         archive = None
         path.parent.mkdir(parents=True, exist_ok=True)
     try:
+        report('Datenbankschema wird auf '+expected+' aktualisiert …')
         command.upgrade(cfg, 'head')
+        report('Datenbankupdate erfolgreich abgeschlossen.')
     except Exception as exc:
         raise RuntimeError('Migration fehlgeschlagen. Der Start wurde abgebrochen. '\
                            f'Backup: {archive or "(neue leere Datenbank)"}. '
@@ -101,7 +108,7 @@ def main(argv=None):
             print('SQLite-Version:', rev, 'Integrität:', db.execute('PRAGMA integrity_check').fetchone()[0])
         return 0
     try:
-        print(upgrade_database())
+        print(upgrade_database(progress=lambda message: print(message,flush=True)))
     except Exception as ex:
         print('Schema-Update abgebrochen:', ex, file=sys.stderr)
         return 1

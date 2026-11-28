@@ -8,7 +8,8 @@ python3 -m venv .venv
 # depend on a local Homebrew/libheif source build, including on Intel Macs.
 python -m pip install --only-binary=cryptography,Pillow,pillow-heif -r requirements.txt
 # Fail closed: migrations & required verified backups must succeed before server start.
-python schema_manager.py
+printf '\nDatenbank wird geprüft. Ein nötiges Sicherheitsbackup kann bei vielen Fotos länger dauern.\n'
+python -u schema_manager.py
 export HOST="${HOST:-127.0.0.1}"
 export PORT="${PORT:-5055}"
 printf "\nProjectHouseBuilder lokal: http://127.0.0.1:%s\n" "$PORT"

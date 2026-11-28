@@ -22,6 +22,7 @@ import {
 import { useLocalStorage, useMediaQuery } from '@mantine/hooks';
 import {
   IconBuildingBank,
+  IconArrowsSplit,
   IconHome,
   IconCalendarEvent,
   IconClock,
@@ -67,6 +68,7 @@ import { WorkshopQuickAccess } from './workshop-quick-access';
 import { SystemSettings } from './system-settings';
 import { ProjectTour } from './project-tour';
 import { useDisplaySettings } from './presentation';
+import { FinanceScenarios } from './finance-scenarios';
 import { TimeTracking } from './time-tracking';
 import { SelfWorkPage } from './self-work';
 import { DocumentInbox } from './document-inbox';
@@ -85,6 +87,7 @@ const items = [
   ['/kosten', 'Kosten & Budget', IconChartBar],
   ['/belege', 'Rechnungen & Belege', IconReceipt],
   ['/finanzierung', 'Kredite & Eigenkapital', IconBuildingBank],
+  ['/szenarien', 'Szenarien', IconArrowsSplit],
   ['/system', 'System', IconSettings],
   ['/stammdaten', 'Stammdaten', IconAddressBook],
   ['/dokumente', 'Dokumente', IconFiles],
@@ -104,12 +107,13 @@ const navigationGroups = [
   {
     id: 'finance',
     label: 'Finanzen',
-    paths: ['/kosten', '/belege', '/finanzierung'],
+    paths: ['/kosten', '/belege', '/finanzierung', '/szenarien'],
   },
   { id: 'settings', label: 'Einstellungen', paths: ['/system', '/stammdaten'] },
   { id: 'data', label: 'Datenmanagement', paths: ['/dokumente', '/daten'] },
 ];
 const native = new Set([
+  '/szenarien',
   '/fotos',
   '/belege',
   '/system',
@@ -646,7 +650,9 @@ export function App() {
                 display: nativePage ? 'block' : 'none',
               }}
             >
-              {location.pathname === '/fotos' ? (
+              {location.pathname === '/szenarien' ? (
+                <FinanceScenarios />
+              ) : location.pathname === '/fotos' ? (
                 <PhotosPage />
               ) : location.pathname === '/uebersicht' ? (
                 <Overview />

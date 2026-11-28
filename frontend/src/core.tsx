@@ -15,12 +15,13 @@ export async function api<T = Row>(
   body?: unknown,
   ai = false,
   extraHeaders: Record<string, string> = {},
+  options: { readOnly?: boolean } = {},
 ): Promise<T> {
   const form = body instanceof FormData;
   const headers: Record<string, string> = { 'X-PHB-Project': String(projectID), ...extraHeaders };
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
   if (ai) headers['X-PHB-AI'] = '1';
-  const mutation = !['GET', 'HEAD'].includes(method);
+  const mutation = !options.readOnly && !['GET', 'HEAD'].includes(method);
   if (mutation) writes++;
   try {
     const r = await fetch(path, {
